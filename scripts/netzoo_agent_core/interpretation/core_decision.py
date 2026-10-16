@@ -16,6 +16,8 @@ Rules, in the spec's order of precedence:
    registered methods as the choice and no result; one named method is never unclear; a tool request is never held.
 3. ASK -- phase 2: the fact agent's kept questions (R1-R6, `interpretation.fact_check`); the fixed dimensions
    (`needs_fact`, or a run held for it) only when the agent did not run, and recorded as shadow when it did.
+   Phase 5b: a count the user gave as candidates, each judged in code, is asked whether or not the agent ran
+   (`count_fact`), before the agent's questions.
 4. DECLINE -- every result read is not available (a full gap), a run was held on a gap, routing found the request
    unsupported with nothing read, or the request names a method combination no workflow implements.
 5. CLARIFY (phase 0) -- no result was read, nothing is run and routing offered no workflow.
@@ -33,6 +35,7 @@ from ..capability_sheet import entry, produced_text
 from ..contracts.capability_check import APPROVING_RUN_VERDICTS
 from ..contracts.core_decision import ClarifyNeed, CoreDecision, DeclinedPart, FactQuestion
 from ..method_names import workflows_in
+from .fact_check import MAX_ASKED
 from .needed_facts import _question
 
 __all__ = ["decide_core", "goal_unclear", "with_core"]
@@ -91,17 +94,29 @@ def _boundary(decision, task: str) -> tuple[str, str] | None:
     return None
 
 
-def _facts(check) -> list[FactQuestion]:
-    rows = check.needed_facts() if check is not None else []
+def _facts(check, by_code: bool | None = None) -> list[FactQuestion]:
+    """The check's waits as questions: all, or only those code judged (phase 5b) or only the legacy dimensions'."""
+    rows = [row for row in (check.needed_facts() if check is not None else [])
+            if by_code is None or row.by_code == by_code]
     return [FactQuestion(question=_question(row), user_quote=row.unknown_quote, depends_on=row.depends_on or "",
                          workflows=_names(key for keys in row.outcomes.values() for key in keys),
-                         outcomes={value: _names(keys) for value, keys in row.outcomes.items()})
+                         outcomes={value: _names(keys) for value, keys in row.outcomes.items()},
+                         by_code=row.by_code, notes=dict(row.outcome_notes))
             for row in rows]
 
 
 def _overlaps(a: str, b: str) -> bool:
     a, b = a.casefold().strip(), b.casefold().strip()
     return bool(a and b) and (a in b or b in a)
+
+
+def _same_words(task: str, a: str, b: str) -> bool:
+    """Whether two quotes are, in the request, overlapping words (by containment when they cannot be placed)."""
+    from .request_spans import _span
+
+    if task and (first := _span(task, a)) is not None and (second := _span(task, b)) is not None:
+        return first[0] < second[1] and second[0] < first[1]
+    return _overlaps(a, b)
 
 
 def goal_unclear(check) -> bool:
@@ -143,7 +158,7 @@ def _clarify_need(decision, check) -> ClarifyNeed:
 def with_core(decision, core: CoreDecision):
     """The decision a call leaves: CLARIFY (phase 1) and an agent's ASK (phase 2) select, refuse and run nothing;
     the other kinds change nothing yet."""
-    if core.kind == "ASK" and core.basis == "fact_agent":
+    if core.kind == "ASK" and core.basis in ("fact_agent", "count_fact"):
         asked = [fact.question for fact in core.facts if not fact.settled_by_input_check]
         return decision.model_copy(update={
             "core": core, "action": "no_tool", "should_execute": False, "execution_requested": False,
@@ -194,9 +209,13 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     agent = getattr(decision, "fact_check", None)
     if agent is not None and agent.status == "checked":
         evidence["legacy_facts"] = [fact.question for fact in agent.legacy]  # phase 2: shadow
-        asked = [fact for fact in agent.accepted if not fact.settled_by_input_check]
+        # Phase 5b (spec 13.3): a count code judged is asked first, beside the agent's (the code's on the same words).
+        counted = _facts(check, by_code=True)
+        asked = [*counted, *(fact for fact in agent.accepted if not fact.settled_by_input_check and not any(
+            _same_words(task, fact.user_quote, count.user_quote) for count in counted))][:MAX_ASKED]
         if asked:
-            return call("ASK", "fact_agent", facts=agent.accepted,
+            settled = [fact for fact in agent.accepted if fact.settled_by_input_check]
+            return call("ASK", "count_fact" if counted else "fact_agent", facts=[*asked, *settled],
                         workflows=list(dict.fromkeys(name for fact in asked for name in fact.workflows)))
     elif (facts := _facts(check)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":
         return call("ASK", "needs_fact", facts=facts, workflows=_names(k for f in facts for k in f.workflows))

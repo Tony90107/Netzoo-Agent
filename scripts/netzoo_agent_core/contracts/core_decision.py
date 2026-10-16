@@ -37,6 +37,10 @@ class FactQuestion(BaseModel):
     if_yes: str = ""
     if_no: str = ""
     """Phase 2: what each answer leads to -- supported, not_supported, or other_workflow:<NAME>."""
+    by_code: bool = False
+    """Phase 5b: a candidate count, each candidate judged in code; its outcomes are said with the question."""
+    notes: dict[str, str] = Field(default_factory=dict)
+    """Phase 5b: for a candidate whose workflows lose a credit, the contract limit that removes it."""
 
 
 class DeclinedPart(BaseModel):

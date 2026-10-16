@@ -143,3 +143,14 @@ def test_the_loader_holds_value_names_to_allowed_values(tmp_path):
     definition = replace(ACTION_DEFINITIONS["run_bonobo"], controls=tuple(map(_control_from_spec, spec.controls)))
     with pytest.raises(ProjectPolicyError, match="value_names must name allowed enum values"):
         _validate_controls("run_bonobo", spec, definition, set(TaskDecision.model_fields))
+
+
+def test_the_requests_feature_counts_reach_an_ask_with_their_number_of_data_types():
+    """Phase 5b review: the request's features reached an ask without feature_counts, so `_single` read a sum over
+    two data types as one count and a relation could be judged on it."""
+    from netzoo_agent_core.interpretation.method_conditions import _single, with_request_method
+
+    whole = {"features": 348, "feature_counts": 2, "feature_items": [[0, 5, 48], [10, 15, 300]]}
+    merged = with_request_method({"samples": 600, "samples_quote": "600 patients"}, whole)
+    assert (merged["features"], merged["feature_counts"], _single(merged)) == (348, 2, None)
+    assert data_issue(conditions_for("COBRA"), 600, merged["features"], _single(merged)) is None

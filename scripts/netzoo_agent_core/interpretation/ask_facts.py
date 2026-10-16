@@ -22,6 +22,12 @@ def ask_reply(core) -> str:
     asked = [fact for fact in core.facts if not fact.settled_by_input_check]
     lines = []
     for fact in asked:
+        if fact.by_code:  # phase 5b: each candidate count was judged in code, so what it leads to is said
+            from .count_alternatives import count_outcome_lines
+
+            lines.append(f"- {fact.question}\n  You wrote: \"{fact.user_quote.rstrip('. ')}\".\n"
+                         + "\n".join(f"  - {line}" for line in count_outcome_lines(fact.outcomes, fact.notes)))
+            continue
         workflow = fact.workflows[0] if fact.workflows else "the workflow"
         lines.append(f"- {fact.question}\n  You wrote: \"{fact.user_quote.rstrip('. ')}\". "
                      f"{workflow}'s contract: \"{fact.contract_quote.rstrip('. ')}\".")
@@ -37,7 +43,7 @@ def ask_result(state, reply) -> dict | None:
     from ..contracts import TaskDecision
 
     core = TaskDecision.model_validate(state["decision"]).core
-    if core is None or core.kind != "ASK" or core.basis != "fact_agent":
+    if core is None or core.kind != "ASK" or core.basis not in ("fact_agent", "count_fact"):
         return None
     return reply(ask_reply(core), ASK_KIND)
 

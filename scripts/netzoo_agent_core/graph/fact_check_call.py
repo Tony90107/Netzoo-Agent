@@ -86,7 +86,7 @@ def without_legacy_waits(check):
     """A check whose legacy `needs_fact` rows are read as what they could give (the agent asks instead)."""
     rows = []
     for row in check.requirements:
-        if row.status == "needs_fact":
+        if row.status == "needs_fact" and not row.by_code:  # phase 5b: a count code judged is no legacy shadow
             delivered = row.delivered_by or list(dict.fromkeys(k for keys in row.outcomes.values() for k in keys))
             row = row.model_copy(update={"status": "available" if delivered else "not_available",
                                          "delivered_by": delivered})
@@ -112,7 +112,7 @@ def apply_fact_check(context, state, user_task: str, result, decision, check):
         return result, decision, check
     result = replace(result, usage=usage, budget_warnings=warnings)
     if facts.status == "checked":
-        facts = facts.model_copy(update={"legacy": _facts(check)})
+        facts = facts.model_copy(update={"legacy": _facts(check, by_code=False)})
         check = without_legacy_waits(check)
     record_event(context, state, "core.fact_check", "classify", facts.model_dump(mode="json"))
     decision = decision.model_copy(update={"fact_check": facts})
