@@ -9,8 +9,8 @@ holds the turn; their replies answer it); the other kinds still mirror today's r
 Rules, in the spec's order of precedence:
 
 1. UNCHECKED -- routing failed closed with nothing routed (unless the check confirmed a full gap, which the reply
-   still gives: round p0 C10, C22, C37, C49), the check could not confirm what it read, or the run was held because
-   the check could not confirm or read it.
+   still gives: round p0 C10, C22, C37, C49; or, phase 5a, the check's confirmed reading says the goal is unclear),
+   the check could not confirm what it read, or the run was held because the check could not confirm or read it.
 2. CLARIFY (phase 1, spec section 5) -- the check's confirmed reading says the request names no result
    (`purpose_only`), or the result it names is in no requirement the check read, or its goal words name two
    registered methods as the choice and no result; one named method is never unclear; a tool request is never held.
@@ -181,7 +181,9 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         return CoreDecision(kind=kind, basis=basis, evidence=evidence, **fields)
 
     confirmed_gap = check is not None and check.full_gap and not check.unconfirmed()
-    if _failed_closed(decision, reason_code) and not confirmed_gap:  # p0: a confirmed gap is still answered
+    # p0: a confirmed gap is still answered. Phase 5a (spec 13.2): so is a confirmed unclear goal -- p2-p4c C10 ran
+    # no failed call; the hypothesis reader read unclear_goal and routing was labelled research_choices_unavailable.
+    if _failed_closed(decision, reason_code) and not confirmed_gap and not goal_unclear(check):
         return call("UNCHECKED", "routing_failed")
     if verdict is not None and verdict.held and verdict.verdict in _UNCHECKED_HOLDS:
         return call("UNCHECKED", f"run_held_{verdict.verdict}", workflows=_routed(decision))
