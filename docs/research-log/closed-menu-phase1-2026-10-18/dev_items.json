@@ -1,0 +1,938 @@
+{
+ "about": "Dev sets: heldout11-19, accept24, m3 heldout -- already seen, deduplicated by prompt, English, single-turn. They have\nno gold readings, so a round is judged by what the phase-0 missed-field check said matters: doubts read as doubts and\nlimits read as limits.",
+ "pool": {
+  "ask": 41,
+  "dont": 93,
+  "do": 175
+ },
+ "items": [
+  {
+   "id": "accept24:U01",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "I want a network from our 80 maize leaf RNA-seq samples, but honestly I don't know yet whether we need regulators linked to their target genes or just genes linked to genes.",
+   "workflows": [
+    "GIRAFFE",
+    "LIONESS-COEXPRESSION",
+    "OTTER",
+    "PANDA"
+   ],
+   "note": "panda.yaml (TF-gene, needs priors) and lioness-coexpression.yaml (gene-gene, expression only) answer different network types. Regulator-to-gene links -> PANDA/OTTER/GIRAFFE (motif and PPI priors then needed); gene-gene links -> LIONESS-COEXPRESSION's aggregate co-expression network."
+  },
+  {
+   "id": "accept24:U02",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "The core facility sent a matrix with 3,000 columns labelled cells_x_genes, and I'm not sure whether those columns are single cells or pooled bulk samples. We want a TF-gene network for each column; motif and PPI priors are ready.",
+   "workflows": [
+    "LIONESS-PANDA"
+   ],
+   "note": "LIONESS-PANDA is a bulk sample-specific method; the column type decides whether it applies. Bulk samples -> LIONESS-PANDA; single cells -> not supported (per-cell networks need SCORPION-style metacells)."
+  },
+  {
+   "id": "accept24:U03",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "We have a proteomics table and an RNA-seq table from the same hospital biobank, but I don't know whether they were measured on the same patients. Can we get one joint network linking proteins and transcripts?",
+   "workflows": [
+    "DRAGON"
+   ],
+   "note": "dragon.yaml requires exact sample-ID set equality between the two layers. Same patients (matching sample IDs) -> DRAGON; different patients -> not supported."
+  },
+  {
+   "id": "accept24:U04",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Our collaborator's prior file might include miRNA-target edges as well as TF motifs - I haven't opened it yet. We want one regulators-to-genes network for 55 liver samples; expression and PPI are ready.",
+   "workflows": [
+    "GIRAFFE",
+    "OTTER",
+    "PANDA",
+    "PUMA"
+   ],
+   "note": "puma.yaml requires every miRNA in the prior to be listed in mirna_file; PANDA treats all regulators as TFs. TF motifs only -> PANDA; TF motifs plus miRNA-target edges -> PUMA (with a miRNA list)."
+  },
+  {
+   "id": "accept24:U05",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "We're still deciding whether to add metabolomics to the methylation and expression data from the same 70 mice. Either way, we want one network across all the layers we end up using.",
+   "workflows": [
+    "DRAGON"
+   ],
+   "note": "DRAGON takes exactly two layers (dragon.yaml). Two layers (methylation + expression) -> DRAGON; three layers with metabolomics -> not supported."
+  },
+  {
+   "id": "accept24:U06",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "We haven't decided whether we want per-sample TF activity scores or per-sample TF-gene networks for our 90 psoriasis skin biopsies. Motif prior, PPI and expression are all available, so please get started.",
+   "workflows": [
+    "GIRAFFE",
+    "LIONESS-PANDA"
+   ],
+   "note": "giraffe.yaml (per_sample_quantity activity) and lioness-panda.yaml (per_sample_quantity wiring) give different results. TF activity per sample -> GIRAFFE (TFA matrix); TF-gene wiring per sample -> LIONESS-PANDA."
+  },
+  {
+   "id": "accept24:U07",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Our pilot may yield 2 or 20 biopsies - we won't know until next month. Whatever we get, we want a co-expression network for each biopsy (log2, centred).",
+   "workflows": [
+    "BONOBO",
+    "LIONESS-COEXPRESSION"
+   ],
+   "note": "BONOBO and LIONESS require at least three samples (bonobo.yaml; execution.py). 3 or more biopsies -> BONOBO or LIONESS-COEXPRESSION; only 2 -> not supported."
+  },
+  {
+   "id": "accept24:U08",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Our sequencing partner sent a variant-by-gene count table for 190 patients and I'm not sure whether it holds somatic tumour mutations or germline variants. We'd like pathway mutation scores and patient subgroups from it; gene lengths, the cancer-gene list and a GMT file are ready.",
+   "workflows": [
+    "SAMBAR"
+   ],
+   "note": "sambar.yaml accepts somatic_mutation modality; SAMBAR (Kuijjer et al. 2018) models somatic mutation burden. Somatic tumour mutations -> SAMBAR; germline variants -> not supported. SAMBAR's sample clustering depends on the same somatic-input condition (sambar.yaml). Somatic tumour mutations -> SAMBAR"
+  },
+  {
+   "id": "accept24:U10",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "I inherited a network file from a former student and can't tell whether it holds TF-to-gene edges or gene-gene co-expression edges. Can you find communities in it?",
+   "workflows": [
+    "CONDOR"
+   ],
+   "note": "CONDOR requires a bipartite regulator-gene edge list (condor.yaml). Bipartite TF-to-gene edges -> CONDOR; gene-gene co-expression edges -> not supported."
+  },
+  {
+   "id": "accept24:U11",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "The second layer for our 110 tumours is either binary mutation calls or continuous copy-number values - I need to check with our bioinformatician. We want a partial-correlation network between it and the matched expression.",
+   "workflows": [
+    "DRAGON"
+   ],
+   "note": "dragon.yaml requires finite continuous measurements in both layers (Gaussian graphical model). Continuous copy-number -> DRAGON; binary mutation calls -> not supported."
+  },
+  {
+   "id": "accept24:U12",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "My PI wants 'the regulators of the EMT genes' in our 64 tumours, and I'm not sure if she means transcription factors or lncRNAs. We have expression, a TF motif prior and a PPI.",
+   "workflows": [
+    "GIRAFFE",
+    "OTTER",
+    "PANDA"
+   ],
+   "note": "Registered regulator classes are TFs and miRNAs only (panda.yaml, puma.yaml). Transcription factors -> PANDA/OTTER/GIRAFFE TF-gene network; lncRNAs -> not supported."
+  },
+  {
+   "id": "accept24:U16",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "We have 'miRNA data' for 60 gastric samples from an old project, and I'm not sure if it's measured miRNA expression or a table of predicted miRNA targets. We want miRNAs linked to the genes they affect; gene expression for the same samples is ready.",
+   "workflows": [
+    "DRAGON",
+    "PUMA"
+   ],
+   "note": "DRAGON takes two paired measured layers (dragon.yaml); PUMA takes a miRNA-target prior (puma.yaml). Measured miRNA expression on the same samples -> DRAGON (miRNA-mRNA partial correlation); predicted targets -> PUMA (which then also needs a TF motif prior and PPI)."
+  },
+  {
+   "id": "accept24:U17",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Not sure yet whether we want the co-expression changes associated with age or just the overall co-expression network for our 120 blood samples; age is a numeric column in the sample sheet.",
+   "workflows": [
+    "COBRA",
+    "LIONESS-COEXPRESSION"
+   ],
+   "note": "cobra.yaml decomposes co-expression by covariates; lioness-coexpression.yaml gives the aggregate co-expression network. Age-associated co-expression -> COBRA (age as covariate); overall network -> LIONESS-COEXPRESSION aggregate output."
+  },
+  {
+   "id": "accept24:U18",
+   "set": "final-acceptance-2026-10-14",
+   "family": "U",
+   "class": "ask",
+   "prompt": "We have a 10-time-point series of mouse liver after partial hepatectomy, one sample per time point, plus motif and PPI priors. We haven't decided whether we want one network per time point or the time delays between regulators and their targets.",
+   "workflows": [
+    "LIONESS-PANDA"
+   ],
+   "note": "LIONESS-PANDA gives per-sample networks; no workflow models temporal lags. One network per time point -> LIONESS-PANDA (10 samples); time delays -> not supported."
+  },
+  {
+   "id": "m3:U01",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run BONOBO on lunar.tsv for our lunar-cycle algae experiment. The expression table has a header and numeric values, but I do not know whether the upstream export was log-transformed and centered. Please establish that before proceeding.",
+   "workflows": [
+    "BONOBO"
+   ],
+   "note": "workflows/bonobo.yaml: Log-transformed and centered declarations are required. Was the expression log-transformed and centered?"
+  },
+  {
+   "id": "m3:U02",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can BONOBO analyze our archived salamander expression cohort? The archive catalog does not say whether it contains two total samples or six; all other format and preprocessing requirements are met.",
+   "workflows": [
+    "BONOBO"
+   ],
+   "note": "workflows/bonobo.yaml: Requires at least three total samples. How many total samples are present: two or six?"
+  },
+  {
+   "id": "m3:U03",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run LIONESS-PANDA for the validated acorn RNA panel with matching priors. I am waiting to learn whether the panel has two independent samples or five.",
+   "workflows": [
+    "LIONESS-PANDA"
+   ],
+   "note": "workflows/lioness-panda.yaml: Minimum three samples. Does the panel have at least three samples?"
+  },
+  {
+   "id": "m3:U04",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can LIONESS-PUMA handle the zebrafish injury panel? Every required input is available, but the lab has not confirmed whether there are two samples or twelve.",
+   "workflows": [
+    "LIONESS-PUMA"
+   ],
+   "note": "workflows/lioness-puma.yaml: At least three samples required. How many expression samples are available?"
+  },
+  {
+   "id": "m3:U05",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run LIONESS-COEXPRESSION for the night-shift experiment. The table is valid expression, but the sample count might be two or twenty depending on which release was approved.",
+   "workflows": [
+    "LIONESS-COEXPRESSION"
+   ],
+   "note": "workflows/lioness-coexpression.yaml: Requires >=3 samples. Which release and sample count is approved?"
+  },
+  {
+   "id": "m3:U06",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can COBRA analyze the midge experiment? The valid expression/design pair is ready, but after filtering I do not know whether 20 or 200 genes remain for the 40 samples.",
+   "workflows": [
+    "COBRA"
+   ],
+   "note": "workflows/cobra.yaml: Requires more genes than samples. Are there more than 40 genes after filtering?"
+  },
+  {
+   "id": "m3:U07",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run COBRA for the wheat site-effect analysis. All sample IDs match, but I do not know whether the design columns encode sites numerically or still contain text labels.",
+   "workflows": [
+    "COBRA"
+   ],
+   "note": "workflows/cobra.yaml: Design covariates must be numeric. Are the design covariates numeric or unencoded text categories?"
+  },
+  {
+   "id": "m3:U08",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can CONDOR analyze edges_release.tsv? Its source and target sets are disjoint and the file has source,target,weight columns, but the provider has not confirmed whether weight contains numeric values or text confidence labels. No conversion is authorized.",
+   "workflows": [
+    "CONDOR"
+   ],
+   "note": "workflows/condor.yaml: the optional weight column must be numeric. Does weight contain numeric values or text confidence labels?"
+  },
+  {
+   "id": "m3:U09",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run DRAGON on the two stellar-radiation cell-culture tables. Their shapes and headers are correct, but it is unknown whether the sample ID sets match exactly.",
+   "workflows": [
+    "DRAGON"
+   ],
+   "note": "workflows/dragon.yaml: Exact paired sample set required. Do both layers contain exactly the same sample IDs?"
+  },
+  {
+   "id": "m3:U10",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can DRAGON combine the two assay exports for the marine parasite project? The second assay may contain continuous concentrations or categorical low/medium/high calls; the collaborator has not clarified which.",
+   "workflows": [
+    "DRAGON"
+   ],
+   "note": "workflows/dragon.yaml: Inputs require continuous numeric measurements. Does the second layer contain continuous numeric measurements or category labels?"
+  },
+  {
+   "id": "m3:U11",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run LIONESS-DRAGON on two valid-format layers for the mosquito diapause study. They may contain two or ten paired samples; that count is not yet known.",
+   "workflows": [
+    "LIONESS-DRAGON"
+   ],
+   "note": "workflows/lioness-dragon.yaml: Requires at least three samples. How many paired samples are available?"
+  },
+  {
+   "id": "m3:U12",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "The data management team has not finished the export for this project, and I cannot infer the number of measured features from its working filename. There are two plausible releases: a compact targeted panel and a large untargeted panel. Both releases have the same participants and would otherwise satisfy the paired-table requirements. Our funding milestone requires retaining every pair of features and every participant in a single run. Reducing the panel, dropping people, or splitting the requested output into multiple independent runs has not been approved. I need a capability judgment that waits for the size fact rather than assuming the smaller release. Can LIONESS-DRAGON process all feature pairs for our 100 participants? There are either 100 or 1000 total features across the two layers; the export manifest has not arrived.",
+   "workflows": [
+    "LIONESS-DRAGON"
+   ],
+   "note": "workflows/lioness-dragon.yaml: Output cap 20,000,000; candidate sizes below vs above cap. What is the total number of features across the two layers?"
+  },
+  {
+   "id": "m3:U13",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run OTTER for the conifer seed study using our validated expression, seed and PPI files. The grant requires a particular device, but I have not checked whether CPU is allowed or GPU is mandatory.",
+   "workflows": [
+    "OTTER"
+   ],
+   "note": "workflows/otter.yaml: Current runtime CPU only. Is CPU permitted, or is GPU execution mandatory?"
+  },
+  {
+   "id": "m3:U14",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can OTTER run with the value in our approved lam setting? The note is unreadable: it could be 0.3 or 3.0, and I cannot authorize changing it.",
+   "workflows": [
+    "OTTER"
+   ],
+   "note": "workflows/otter.yaml: lam range [0,1]. Is the required lam 0.3 or 3.0?"
+  },
+  {
+   "id": "m3:U15",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run GIRAFFE on the validated desert moss files. We need our published optimizer settings preserved, but I have not determined whether they are package defaults or customized values.",
+   "workflows": [
+    "GIRAFFE"
+   ],
+   "note": "workflows/giraffe.yaml: Adapter exposes only defaults for optional parameters. Are the required optimizer settings package defaults or custom settings?"
+  },
+  {
+   "id": "m3:U16",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can SAMBAR subtype the leukemia panel into up to seven groups? The number of mutation samples is either five or fifteen; the final inclusion list is pending.",
+   "workflows": [
+    "SAMBAR"
+   ],
+   "note": "workflows/sambar.yaml: kmax cannot exceed sample count. Are at least seven mutation samples included?"
+  },
+  {
+   "id": "m3:U17",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run SAMBAR using the provided four reference/data files. I do not yet know whether their gene identifier sets share any gene across all four files.",
+   "workflows": [
+    "SAMBAR"
+   ],
+   "note": "workflows/sambar.yaml: Requires nonempty four-way gene overlap. Is there nonempty gene overlap across all four inputs?"
+  },
+  {
+   "id": "m3:U18",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can PANDA use covariance_bundle.tsv as coexpression_file alongside our valid expression, motif and PPI files? All gene IDs and dimensions match, but the analyst has not confirmed whether the square matrix is symmetric or asymmetric; no repair is authorized.",
+   "workflows": [
+    "PANDA"
+   ],
+   "note": "workflows/panda.yaml: precomputed coexpression must be labeled, square and symmetric with matching gene IDs. Is the precomputed matrix symmetric?"
+  },
+  {
+   "id": "m3:U19",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run aggregate PUMA for the oyster infection analysis. The miRNA file exists and is well formatted, but it is unknown whether all listed miRNA IDs occur in column one of the regulator prior.",
+   "workflows": [
+    "PUMA"
+   ],
+   "note": "workflows/puma.yaml: Every listed miRNA must occur in prior column one. Are all listed miRNA IDs present in prior column one?"
+  },
+  {
+   "id": "m3:U20",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can BONOBO honor the approved sparsification setup? We know save_pvals=true, but the lab has not confirmed whether sparsify was set to true or false and we must preserve that setting.",
+   "workflows": [
+    "BONOBO"
+   ],
+   "note": "workflows/bonobo.yaml: save_pvals true requires sparsify true. Is the required sparsify flag true or false?"
+  },
+  {
+   "id": "m3:U21",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run BONOBO with sparsify=true using the fixed delta in our protocol. The protocol owner must confirm whether delta is 0.2 or 0.5; do not substitute another value.",
+   "workflows": [
+    "BONOBO"
+   ],
+   "note": "workflows/bonobo.yaml: With sparsify, delta must lie strictly between 0 and 1/3. Is the fixed delta 0.2 or 0.5?"
+  },
+  {
+   "id": "m3:U22",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can OTTER take network_input.tsv as coexpression_file? Its author has not confirmed whether it is an aggregate gene-by-gene matrix or a collection of per-sample networks.",
+   "workflows": [
+    "OTTER"
+   ],
+   "note": "workflows/otter.yaml: Coexpression input must be validated aggregate matrix. Is this one aggregate gene-by-gene matrix or per-sample networks?"
+  },
+  {
+   "id": "m3:U23",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run DRAGON with lambda1=0.45. My collaborator is checking whether a lambda2 value was also fixed by the protocol or must remain absent; preserve that decision.",
+   "workflows": [
+    "DRAGON"
+   ],
+   "note": "workflows/dragon.yaml: Manual shrinkage must provide both values. Is a valid lambda2 also specified, or must it remain unspecified?"
+  },
+  {
+   "id": "m3:U24",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "The study combines several seedling samples and asks for a result that differs between individuals. In discussions, the authors have used the words regulation, activity, and personalized network interchangeably, and that has made the planned deliverable unclear. The expression matrix and both biological priors have already passed the file checks, so requesting another file will not settle the issue. Before recommending an execution path, we need to identify what numerical object the authors intend to compare across the individual samples. Please keep the unresolved scientific endpoint visible rather than silently selecting one interpretation. Can GIRAFFE meet the requirement for an individual result in our beet-root paper? The authors have not decided whether individual means TF activity per sample or a different regulatory wiring matrix per sample.",
+   "workflows": [
+    "GIRAFFE"
+   ],
+   "note": "workflows/giraffe.yaml: Sample-varying TFA supported, sample-specific R not supported. Does individual mean TF activity per sample or a separate wiring matrix per sample?"
+  },
+  {
+   "id": "m3:U25",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Run CONDOR using the file called network.tsv after we confirm its structure. I have not been told whether it is a source-target edge list or raw gene-by-sample expression.",
+   "workflows": [
+    "CONDOR"
+   ],
+   "note": "workflows/condor.yaml: Network edge list required; raw expression cannot be consumed. Is the file a bipartite edge list or raw expression?"
+  },
+  {
+   "id": "m3:U28",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can SAMBAR score this insect tumor dataset? The assay lead has not said whether the matrix records somatic mutation counts or RNA abundance; the filename does not resolve it.",
+   "workflows": [
+    "SAMBAR"
+   ],
+   "note": "workflows/sambar.yaml: Somatic mutation accepted, expression incompatible. Does the matrix contain somatic mutations or expression abundance?"
+  },
+  {
+   "id": "m3:U30",
+   "set": "m3-clarification-2026-10-15",
+   "family": "U",
+   "class": "ask",
+   "prompt": "Can LIONESS-PANDA fulfill our requirement for personalized regulation? We have adequate expression and priors, but the committee has not decided whether it needs network wiring for each sample or TF activity values for each sample.",
+   "workflows": [
+    "LIONESS-PANDA"
+   ],
+   "note": "workflows/lioness-panda.yaml: Per-sample wiring supported; TFA not native output. Does the requirement mean per-sample wiring or per-sample TF activity?"
+  },
+  {
+   "id": "accept24:N25",
+   "set": "final-acceptance-2026-10-14",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Could you build a phylogenetic tree of the bHLH transcription factor family across 20 vertebrate genomes?",
+   "workflows": [],
+   "note": "No registered workflow performs sequence alignment or phylogenetics. "
+  },
+  {
+   "id": "m3:N20",
+   "set": "m3-clarification-2026-10-15",
+   "family": "N",
+   "class": "dont",
+   "prompt": "We deleted the expression file. Can aggregate PANDA execute solely from a co-expression matrix, motif and PPI without reconstructing expression?",
+   "workflows": [
+    "PANDA"
+   ],
+   "note": "workflows/panda.yaml: Expression remains required for gene/prior compatibility. "
+  },
+  {
+   "id": "m3:N30",
+   "set": "m3-clarification-2026-10-15",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Can BONOBO accept positional sample indices 0 and 2 in sample_names without translating them into actual sample IDs?",
+   "workflows": [
+    "BONOBO"
+   ],
+   "note": "workflows/bonobo.yaml: sample_names are explicit IDs, never positional indices. "
+  },
+  {
+   "id": "heldout18:CS3",
+   "set": "request-conditions-2026-10-12",
+   "family": "CS",
+   "class": "dont",
+   "prompt": "We have proteomics for 50 patients and RNA-seq for a different set of 60 patients. We want a partial-correlation network linking proteins and transcripts.",
+   "workflows": [],
+   "note": " "
+  },
+  {
+   "id": "m3:N24",
+   "set": "m3-clarification-2026-10-15",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Can OTTER preserve the exact fractional PPI interaction confidence values inside P? I prohibit binarization.",
+   "workflows": [
+    "OTTER"
+   ],
+   "note": "workflows/otter.yaml: Adapter projects positive PPI weights to binary adjacency. "
+  },
+  {
+   "id": "accept24:N03",
+   "set": "final-acceptance-2026-10-14",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Can we get, for every one of our 40 sepsis patients, a TF-gene network where each edge is labelled as activating or repressing in that patient?",
+   "workflows": [],
+   "note": "GIRAFFE's signed R is aggregate only (giraffe.yaml granularities [aggregate]); LIONESS-PANDA edges are unsigned targeting scores, so per-sample signs are unavailable. "
+  },
+  {
+   "id": "m3:N13",
+   "set": "m3-clarification-2026-10-15",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Can registered OTTER produce a separate optimized network per individual using LIONESS-OTTER?",
+   "workflows": [
+    "OTTER"
+   ],
+   "note": "workflows/otter.yaml: Registered OTTER aggregate only; upstream class does not establish support. "
+  },
+  {
+   "id": "accept24:N15",
+   "set": "final-acceptance-2026-10-14",
+   "family": "N",
+   "class": "dont",
+   "prompt": "How can we quantify, with differential modularity, how the community structure of our control PANDA network is reorganised in the disease network?",
+   "workflows": [],
+   "note": "CONDOR partitions one network at a time; differential modularity is ALPACA (Padi & Quackenbush 2018), not registered. "
+  },
+  {
+   "id": "m3:N25",
+   "set": "m3-clarification-2026-10-15",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Can DRAGON run with lambda1=0.4 and leave lambda2 unspecified while keeping lambda1 fixed?",
+   "workflows": [
+    "DRAGON"
+   ],
+   "note": "workflows/dragon.yaml: Manual values must be supplied together. "
+  },
+  {
+   "id": "heldout19:UN6",
+   "set": "unknown-conditions-2026-10-12",
+   "family": "UN",
+   "class": "dont",
+   "prompt": "We have expression and methylation for 80 matched samples. We want a network linking them. Each link must come with a bootstrap confidence interval.",
+   "workflows": [],
+   "note": " "
+  },
+  {
+   "id": "m3:N05",
+   "set": "m3-clarification-2026-10-15",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Can LIONESS-COEXPRESSION guarantee the direction of causal regulation between genes from expression alone?",
+   "workflows": [
+    "LIONESS-COEXPRESSION"
+   ],
+   "note": "workflows/lioness-coexpression.yaml: Only coexpression artifacts declared, not causal regulation. "
+  },
+  {
+   "id": "accept24:N27",
+   "set": "final-acceptance-2026-10-14",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Email the CONDOR community files from yesterday's run to my co-author right now.",
+   "workflows": [],
+   "note": "Executors only write result files to an output folder; nothing sends e-mail. "
+  },
+  {
+   "id": "accept24:N02",
+   "set": "final-acceptance-2026-10-14",
+   "family": "N",
+   "class": "dont",
+   "prompt": "We'd like a network in which lncRNAs act as the regulators of protein-coding genes across our 60 prostate tumours.",
+   "workflows": [],
+   "note": "Registered regulator classes are TFs and miRNAs only (puma.yaml regulator_types [tf, mirna]); no workflow models lncRNA regulators. "
+  },
+  {
+   "id": "heldout18:CS5",
+   "set": "request-conditions-2026-10-12",
+   "family": "CS",
+   "class": "dont",
+   "prompt": "We have Visium data for 4,000 spots with motifs and PPI. Each spot's network has to take its neighbouring spots into account. We want TF-gene networks per spot.",
+   "workflows": [],
+   "note": " "
+  },
+  {
+   "id": "accept24:N24",
+   "set": "final-acceptance-2026-10-14",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Go ahead and call somatic SNVs and indels from our 30 tumour/normal BAM pairs with Mutect2.",
+   "workflows": [],
+   "note": "Variant calling is not registered; SAMBAR only consumes an existing mutation matrix (sambar.yaml). "
+  },
+  {
+   "id": "m3:N06",
+   "set": "m3-clarification-2026-10-15",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Can COBRA run on 15 genes measured in 60 samples without changing the dimensions?",
+   "workflows": [
+    "COBRA"
+   ],
+   "note": "workflows/cobra.yaml: Requires more genes than samples. "
+  },
+  {
+   "id": "heldout19:UN5",
+   "set": "unknown-conditions-2026-10-12",
+   "family": "UN",
+   "class": "dont",
+   "prompt": "We want the communities of our bipartite TF-gene network. They must be found with the Louvain algorithm.",
+   "workflows": [],
+   "note": " "
+  },
+  {
+   "id": "heldout19:UN1",
+   "set": "unknown-conditions-2026-10-12",
+   "family": "UN",
+   "class": "dont",
+   "prompt": "We have expression and PPI for 70 samples. We want one TF-gene network. No motif or binding-site information may be used.",
+   "workflows": [],
+   "note": " "
+  },
+  {
+   "id": "m3:N12",
+   "set": "m3-clarification-2026-10-15",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Can this agent run OTTER on the GPU when CPU execution is unacceptable and I need the current runtime to execute it?",
+   "workflows": [
+    "OTTER"
+   ],
+   "note": "workflows/otter.yaml: Current runtime explicitly does not enable GPU. "
+  },
+  {
+   "id": "m3:N16",
+   "set": "m3-clarification-2026-10-15",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Can BONOBO output a cohort-level aggregate prior network directly, instead of its per-sample matrices?",
+   "workflows": [
+    "BONOBO"
+   ],
+   "note": "workflows/bonobo.yaml: No aggregate/prior output. "
+  },
+  {
+   "id": "heldout11:VN5q",
+   "set": "requirement-verdicts-2026-10-10",
+   "family": "N",
+   "class": "dont",
+   "prompt": "We measured expression every 2 hours for 48 hours after heat shock, with motifs and PPI. Is there a method that models how each TF-gene edge at one time point depends on the edges at the previous time point?",
+   "workflows": [],
+   "note": " "
+  },
+  {
+   "id": "accept24:N29",
+   "set": "final-acceptance-2026-10-14",
+   "family": "N",
+   "class": "dont",
+   "prompt": "Build us an interactive web dashboard where lab members can browse the networks and search for their favourite gene.",
+   "workflows": [],
+   "note": "No registered workflow produces dashboards or web pages. "
+  },
+  {
+   "id": "heldout13:CE1",
+   "set": "checked-match-2026-10-11",
+   "family": "CE",
+   "class": "do",
+   "prompt": "We have RNA-seq from 110 kidney samples, TF motifs and a PPI network. We want one TF-gene regulatory network for the whole cohort.",
+   "workflows": [
+    "OTTER",
+    "PANDA"
+   ],
+   "note": " "
+  },
+  {
+   "id": "m3:P06",
+   "set": "m3-clarification-2026-10-15",
+   "family": "P",
+   "class": "do",
+   "prompt": "Our plant RNA table has 600 genes and 24 samples; the numeric design table has exactly those 24 sample IDs and an intercept. Can COBRA produce the adjusted gene-by-gene co-expression artifact?",
+   "workflows": [
+    "COBRA"
+   ],
+   "note": "workflows/cobra.yaml: More genes than samples and matched numeric design; adjusted coexpression output. "
+  },
+  {
+   "id": "m3:P29",
+   "set": "m3-clarification-2026-10-15",
+   "family": "P",
+   "class": "do",
+   "prompt": "The PI wants the leave-one-out co-expression network for sample R17 in a 45-sample root microbiome expression cohort. Can LIONESS-COEXPRESSION retain its sample identity and keep that result separate from the aggregate?",
+   "workflows": [
+    "LIONESS-COEXPRESSION"
+   ],
+   "note": "workflows/lioness-coexpression.yaml: Sample-specific identity and separation explicitly required. "
+  },
+  {
+   "id": "heldout19:UP5",
+   "set": "unknown-conditions-2026-10-12",
+   "family": "UP",
+   "class": "do",
+   "prompt": "We have expression and proteomics for 100 matched samples. We want a network linking them. Each link must be conditional on all other measured features.",
+   "workflows": [
+    "DRAGON"
+   ],
+   "note": " "
+  },
+  {
+   "id": "heldout18:XP3",
+   "set": "request-conditions-2026-10-12",
+   "family": "XP",
+   "class": "do",
+   "prompt": "We have expression for 140 samples with a batch covariate. We want the co-expression with the batch part separated.",
+   "workflows": [
+    "COBRA"
+   ],
+   "note": " "
+  },
+  {
+   "id": "heldout12:BP3",
+   "set": "checked-no-result-2026-10-11",
+   "family": "B",
+   "class": "do",
+   "prompt": "We have expression, motifs and PPI from 75 tumors. We want each TF's activity in each tumor and a signed TF-gene regulatory matrix.",
+   "workflows": [
+    "GIRAFFE"
+   ],
+   "note": "   "
+  },
+  {
+   "id": "heldout14:CE3",
+   "set": "reread-2026-10-11",
+   "family": "CE",
+   "class": "do",
+   "prompt": "We have a bipartite TF-gene network. We want its communities.",
+   "workflows": [
+    "CONDOR"
+   ],
+   "note": " "
+  },
+  {
+   "id": "heldout11:VM2s",
+   "set": "requirement-verdicts-2026-10-10",
+   "family": "M",
+   "class": "do",
+   "prompt": "We have expression from 70 colon samples. We want a TF-gene network for each sample.",
+   "workflows": [
+    "LIONESS-PANDA",
+    "LIONESS-PUMA"
+   ],
+   "note": " "
+  },
+  {
+   "id": "heldout17:PI1",
+   "set": "rescore-2026-10-12",
+   "family": "PI",
+   "class": "do",
+   "prompt": "We want one network of how TFs and miRNAs regulate genes in our 70 samples.",
+   "workflows": [
+    "PUMA"
+   ],
+   "note": " "
+  },
+  {
+   "id": "m3:P13",
+   "set": "m3-clarification-2026-10-15",
+   "family": "P",
+   "class": "do",
+   "prompt": "Run BONOBO on centered_log.tsv: a validated, labeled, log-transformed and centered gene-by-sample matrix with seven samples. Select sample IDs H2 and H5, save CSV networks, and leave sparsify=false.",
+   "workflows": [
+    "BONOBO"
+   ],
+   "note": "workflows/bonobo.yaml: Explicit sample IDs and CSV supported for validated log-centered expression. "
+  },
+  {
+   "id": "heldout17:PQ2",
+   "set": "rescore-2026-10-12",
+   "family": "PQ",
+   "class": "do",
+   "prompt": "We have expression of 90 samples. Is there a method that gives each sample its own Pearson co-expression network?",
+   "workflows": [
+    "BONOBO",
+    "LIONESS-COEXPRESSION"
+   ],
+   "note": " "
+  },
+  {
+   "id": "accept24:P15",
+   "set": "final-acceptance-2026-10-14",
+   "family": "P",
+   "class": "do",
+   "prompt": "Using our 66 melanoma samples (expression, motif prior and PPI are in /data/mel/), please estimate TF activity for each sample and then tell us which TFs' activity is associated with overall survival.",
+   "workflows": [
+    "GIRAFFE"
+   ],
+   "note": "Per-sample TFA is a GIRAFFE output (giraffe.yaml produced_artifacts tf_activity_matrix).  A survival model (e.g. Cox regression on TFA) is not run by any executor; GIRAFFE supplies the TFA matrix it needs. "
+  },
+  {
+   "id": "m3:P18",
+   "set": "m3-clarification-2026-10-15",
+   "family": "P",
+   "class": "do",
+   "prompt": "Our regulatory analysis must use relaxed graph matching after adjustment for sequencing plate. We have 900 genes, 40 samples, an appropriate numeric COBRA design, and compatible OTTER priors. Plan COBRA then OTTER with explicit adjusted-matrix validation.",
+   "workflows": [
+    "COBRA",
+    "OTTER"
+   ],
+   "note": "workflows/cobra.yaml; workflows/otter.yaml: COBRA adjusted matrix is a registered OTTER input after exact validation. "
+  },
+  {
+   "id": "heldout15:PI1",
+   "set": "executability-score-2026-10-11",
+   "family": "PI",
+   "class": "do",
+   "prompt": "We have expression from 90 samples and want one TF-gene regulatory network for them.",
+   "workflows": [
+    "OTTER",
+    "PANDA"
+   ],
+   "note": " "
+  },
+  {
+   "id": "heldout11:VC2q",
+   "set": "requirement-verdicts-2026-10-10",
+   "family": "C",
+   "class": "do",
+   "prompt": "From expression, motifs and PPI of 110 lymphoma samples, which method gives a separate TF-gene network for each sample?",
+   "workflows": [
+    "LIONESS-PANDA",
+    "LIONESS-PUMA"
+   ],
+   "note": " "
+  },
+  {
+   "id": "heldout18:XP2",
+   "set": "request-conditions-2026-10-12",
+   "family": "XP",
+   "class": "do",
+   "prompt": "We have somatic mutation calls for 160 tumors. We want subtypes from pathway mutation scores.",
+   "workflows": [
+    "SAMBAR"
+   ],
+   "note": " "
+  },
+  {
+   "id": "heldout13:CP8",
+   "set": "checked-match-2026-10-11",
+   "family": "CP",
+   "class": "do",
+   "prompt": "From expression, motifs and PPI of 70 tumors, we want each TF's activity in each tumor, estimated separately from the TF's own mRNA level.",
+   "workflows": [
+    "GIRAFFE"
+   ],
+   "note": " "
+  },
+  {
+   "id": "heldout11:VC7s",
+   "set": "requirement-verdicts-2026-10-10",
+   "family": "C",
+   "class": "do",
+   "prompt": "From expression, motifs and PPI of 88 patients with survival follow-up, we want a network for each patient and then a test of which TFs' targeting relates to survival.",
+   "workflows": [
+    "LIONESS-PANDA",
+    "LIONESS-PUMA"
+   ],
+   "note": "   "
+  },
+  {
+   "id": "heldout18:CP3",
+   "set": "request-conditions-2026-10-12",
+   "family": "CP",
+   "class": "do",
+   "prompt": "We have expression and methylation from the same 85 tumors. We want a partial-correlation network linking them.",
+   "workflows": [
+    "DRAGON"
+   ],
+   "note": " "
+  },
+  {
+   "id": "heldout13:CP1",
+   "set": "checked-match-2026-10-11",
+   "family": "CP",
+   "class": "do",
+   "prompt": "We have expression and proteomics from 120 matched samples. We want the links between the two layers and a Benjamini-Hochberg adjusted p-value for every link.",
+   "workflows": [
+    "DRAGON"
+   ],
+   "note": "   "
+  },
+  {
+   "id": "m3:P12",
+   "set": "m3-clarification-2026-10-15",
+   "family": "P",
+   "class": "do",
+   "prompt": "Can GIRAFFE jointly estimate the aggregate signed regulatory coefficient matrix and TF activities for our pancreatic differentiation samples? We will provide gene expression, motif priors and a TF interaction prior.",
+   "workflows": [
+    "GIRAFFE"
+   ],
+   "note": "workflows/giraffe.yaml: Joint R and TFA using expression and both priors. "
+  },
+  {
+   "id": "heldout14:QP4",
+   "set": "reread-2026-10-11",
+   "family": "QP",
+   "class": "do",
+   "prompt": "We have a bipartite TF-gene network. Which method identifies its communities and each node's core score?",
+   "workflows": [
+    "CONDOR"
+   ],
+   "note": " "
+  }
+ ]
+}
