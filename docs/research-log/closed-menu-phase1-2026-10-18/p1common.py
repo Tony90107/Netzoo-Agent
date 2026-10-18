@@ -104,10 +104,11 @@ def read_many(jobs, *, workers: int = 6, focus: bool = False, requirements: bool
         row["final"] = _final(decide_menu(latest, item["prompt"]), latest)
         if probe:
             probed, questions = read_intent(item["prompt"], focused_reading, llm)
-            row["probe"] = {"questions": [[q.item, q.dimension] for q in questions], "ran": probed is not None}
+            row["probe"] = {"ran": probed is not None}
             arm = latest
             if probed is not None:
                 row["probe"].update(stage(item, rep, probed))
+            row["probe"]["probed"] = [[q.item, q.dimension] for q in questions]  # after the stage's own `questions`
                 if probed.reading != focused_reading:
                     arm = probed.reading
                     if requirements:
