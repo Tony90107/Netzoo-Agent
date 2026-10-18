@@ -22,6 +22,7 @@ from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage
 from ..method_names import registered_workflows
+from .capability_check_call import with_reading_allowance
 from .context import preflight_budget, record_event
 from .structured_calls import _serialized_structured_input
 
@@ -43,9 +44,13 @@ _REQUIREMENT_SHAPE = (
 
 
 def _call(context, state, role, model, llm, messages, schema, usage, warnings):
+    # The gates read the request after routing, as the capability check, its second opinion, the study purpose and
+    # the data facts do, so they share those calls' allowance (smoke run: priced against the turn budget alone, the
+    # gate of a 44k-token turn was blocked at 30k).
+    reading = with_reading_allowance(context, usage)
     input_text = _serialized_structured_input(messages, schema)
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=warnings)
-    budget, warnings = preflight_budget(context, call_state, role=role, model=model, input_text=input_text,
+    budget, warnings = preflight_budget(reading, call_state, role=role, model=model, input_text=input_text,
                                         reserved_output_tokens=context.router_max_tokens, allow_reserve=False)
     if budget.status == "blocked":
         return None, usage, warnings, "blocked"
@@ -63,7 +68,7 @@ def _call(context, state, role, model, llm, messages, schema, usage, warnings):
                      {"role": role, "error_type": type(error).__name__, "error_message": str(error)[:500]})
         data = None
     usage = append_llm_usage(usage, role=role, model=model, response=raw, input_text=input_text,
-                             output_text=output_text, budget_tokens=context.task_token_budget,
+                             output_text=output_text, budget_tokens=reading.task_token_budget,
                              duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000), status=status,
                              price_catalog=context.price_catalog)
     return data, usage, warnings, status
