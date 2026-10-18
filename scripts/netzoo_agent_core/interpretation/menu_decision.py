@@ -1,0 +1,556 @@
+"""The closed-menu decision table and ask loop (spec docs/superpowers/specs/2026-10-18-closed-menu-judgment-design.md,
+sections 3.2-3.4, 3.8-3.10).
+
+`decide_menu` reads a `MenuReading` -- what the user said, never whether it can be done -- with the defaults table
+(`judgment_defaults`) and the capability sheet, and makes one `MenuDecision`. It makes no model call. For each thing
+the user wants delivered:
+
+1. the candidates are the sheet results whose artifact the words allow (all of them when the result is open);
+2. stated values narrow them (granularity, regulators, signs, joint layers, a comparison), and named workflows
+   restrict them; nothing not stated narrows anything, except a dimension's plain value (`extra`);
+3. contract conditions rule candidates out with a reason -- a condition value off the menu, data the user says they
+   lack, a count or setting the workflow cannot take, a requirement its contract contradicts, an unregistered method;
+4. what is still open and decides something is asked: an intent that splits the remaining candidates (coarse question
+   groups first), or a value the user is unsure of between alternatives that lead to different outcomes -- asked with
+   the user's own alternatives; requirements the contract does not address are asked while fewer than
+   `soft_requirements_met` of the user's requirements are met;
+5. otherwise the workflows left are the answer; several of the same kind are a tie offered with `tie_options`.
+
+Then: a question about a result the user never named -> CLARIFY; any other question -> ASK; nothing left anywhere ->
+DECLINE; some parts left -> DO, partial when others were ruled out. A ruled-out part always has a positive reason:
+an empty match is never a refusal.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from itertools import combinations
+
+from ..capability_sheet import sheet_entries
+from ..contracts.capability_check import CONDITIONS
+from ..contracts.menu_reading import (
+    Count, Declined, MenuDecision, MenuReading, Question, Said, SettingAsked, TieChoice, Wanted,
+)
+from ..judgment_defaults import JudgmentDefaults, judgment_defaults
+from ..method_names import LIONESS_FAMILY, registered_workflows, workflows_in
+from ..workflow_conditions import (
+    UNREGISTERED, StatedSetting, all_conditions, combination_issues, data_issue, setting_issue,
+)
+
+__all__ = ["apply_answers", "decide_menu"]
+
+_REGULATION = frozenset({"regulatory_network", "targeting_scores", "tf_activity"})
+_JOINT = frozenset({"multi_omic_network", "edge_significance"})
+_SCALES = ("whole_cohort", "per_group", "per_sample")
+_RESULT = ("artifact", "artifact_group")
+# A stated condition value off the menu, and the entries it rules out.
+_OFF = {name: rules_out for name, (_values, rules_out, _description) in CONDITIONS.items()}
+_OFF["input_network"] = "gene_gene"
+
+
+def _ruled_out(table: JudgmentDefaults, name: str, item) -> bool:
+    if name in ("data_unit", "time_model", "spatial"):
+        return True
+    if name == "mutation_origin":
+        return item.workflow == "SAMBAR"
+    if name == "value_type":  # every workflow but SAMBAR and CONDOR models continuous measurements
+        return not {"mutation_calls", "regulator_gene_network"} & set(table.workflow_data[item.workflow][0])
+    if name == "samples_matched":
+        return item.layers is not None
+    if name == "mirna_driver":
+        return bool(item.regulators and "mirna" in item.regulators)
+    if name == "group_membership":
+        return item.groups == "one_group"
+    if name == "input_network":
+        return item.input_network == "regulator_gene"
+    return False
+
+
+@dataclass
+class _Item:
+    index: int
+    wanted: Wanted
+    result_open: bool = False
+    questions: list[Question] = field(default_factory=list)
+    workflows: list[str] = field(default_factory=list)
+    ties: list[TieChoice] = field(default_factory=list)
+    declined: Declined | None = None
+    assumptions: list[str] = field(default_factory=list)
+    needs: list[str] = field(default_factory=list)
+    unconfirmed: list[str] = field(default_factory=list)
+    steps: list[str] = field(default_factory=list)
+    settled: list[str] = field(default_factory=list)
+
+
+def _said(value: str, quote: str = "") -> Said:
+    return Said(status="stated", value=value, basis="answered", quotes=[quote or value])
+
+
+def _with_setting(reading: MenuReading, key: str, value: str) -> MenuReading:
+    workflow, control = key.split(".", 1)
+    settings = [s.model_copy(update={"value": value, "unsure": False, "values": []})
+                if s.control == control and s.workflow in (workflow, "") and s.unsure else s for s in reading.settings]
+    if settings == reading.settings:
+        settings.append(SettingAsked(quote=value, workflow=workflow, control=control, value=value))
+    return reading.model_copy(update={"settings": settings})
+
+
+def apply_answers(reading: MenuReading, answers) -> MenuReading:
+    """The reading with each answer filled in as stated (`basis` answered); answered fields are never re-read.
+
+    An answer to the coarse result question (`artifact_group`) leaves the result open among that group's results.
+    Item index `len(reading.wanted)` is the result asked for when the request named none; -1 is the request level.
+    """
+    if not answers:
+        return reading
+    table = judgment_defaults()
+    for answer in answers:
+        if answer.item < 0:
+            if answer.dimension in ("sample_count", "feature_count"):
+                reading = reading.model_copy(update={answer.dimension: Count(
+                    status="stated", value=int(float(answer.value)), quotes=[answer.value])})
+            elif answer.dimension.startswith("setting:"):
+                reading = _with_setting(reading, answer.dimension.split(":", 1)[1], answer.value)
+            elif answer.dimension == "file":
+                reading = reading.model_copy(update={"unsure_files": []} if answer.value == "as_needed" else {
+                    "unsure_files": [], "data_absent": [*reading.data_absent, *reading.data]})
+            else:
+                reading = reading.model_copy(update={"conditions": {**reading.conditions,
+                                                                    answer.dimension: _said(answer.value)}})
+            continue
+        wanted = [item.model_copy(deep=True) for item in reading.wanted]
+        while answer.item >= len(wanted):
+            wanted.append(Wanted(quote=""))
+        item = wanted[answer.item]
+        if answer.dimension == "artifact_group":
+            names = list(table.question_groups[answer.value].artifacts)
+            item = item.model_copy(update={"artifact": Said(status="unsure", values=names, basis="answered",
+                                                            quotes=[answer.value])})
+        elif answer.dimension.startswith("requirement:"):
+            index = int(answer.dimension.split(":", 1)[1])
+            requirements = list(item.requirements)
+            requirements[index] = requirements[index].model_copy(update={"must": answer.value == "yes"})
+            item = item.model_copy(update={"requirements": requirements})
+        else:
+            item = item.model_copy(update={answer.dimension: _said(answer.value)})
+        wanted[answer.item] = item
+        reading = reading.model_copy(update={"wanted": wanted})
+    return reading
+
+
+class _Context:
+    def __init__(self, reading: MenuReading, table: JudgmentDefaults, task: str, names=None, limits=None):
+        self.reading, self.table, self.task = reading, table, task
+        self.names = names if names is not None else (
+            reading.named_workflows if reading.named_workflows is not None
+            else [name for name in workflows_in(task) if name not in reading.context_mentions])
+        known = registered_workflows()
+        named = {name for name in self.names if name in known}
+        if LIONESS_FAMILY in self.names:  # LIONESS stands for every registered LIONESS-X
+            named |= {name for name in known if name.startswith(f"{LIONESS_FAMILY}-")}
+        self.named = named
+        self.layers = len(set(reading.data) & table.omics_layers)
+        self.limits = limits if limits is not None else all_conditions()  # read once: each limit is read live
+
+    def has(self, need: str, data) -> bool:
+        return any((len(set(data) & self.table.omics_layers) >= 2) if option == "two_layers" else option in data
+                   for option in need.split("|"))
+
+    def but(self, reading: MenuReading) -> "_Context":
+        return _Context(reading, self.table, self.task, self.names, self.limits)
+
+
+def _artifact_of(table: JudgmentDefaults, key: str) -> str:
+    artifact = table.by_entry[key]
+    return table.artifacts["comparison"].of.get(key, artifact) if artifact == "comparison" else artifact
+
+
+def _scales(item) -> set[str]:
+    found = set()
+    if "aggregate" in item.granularity:
+        found |= {"whole_cohort", "per_group"}
+    if "sample_specific" in item.granularity:
+        found.add("per_sample")
+    return found
+
+
+def _label(table: JudgmentDefaults, dimension: str, value: str) -> str:
+    if dimension == "artifact":
+        return table.artifacts[value].means if value in table.artifacts else "Something NetZoo does not give"
+    if dimension == "artifact_group":
+        return table.question_groups[value].label
+    if value in ("off_menu", "three_or_more_jointly"):
+        return "Something NetZoo does not give"
+    return table.dimensions[dimension].options.get(value, value) if dimension in table.dimensions else value
+
+
+def _outcome(item: _Item) -> tuple:
+    return (item.declined is not None, tuple(item.workflows), tuple(q.dimension for q in item.questions))
+
+
+def _probe(ctx: _Context, item: _Item, dimension: str, value: str) -> tuple:
+    """What the item comes to with one more value stated -- whether an alternative decides anything."""
+    reading, wanted = ctx.reading, item.wanted
+    if dimension in ("sample_count", "feature_count"):
+        reading = reading.model_copy(update={dimension: Count(status="stated", value=int(value))})
+    elif dimension.startswith("setting:"):
+        reading = _with_setting(reading, dimension.split(":", 1)[1], value)
+    elif dimension in ctx.reading.conditions or dimension in _OFF:  # any request-level condition
+        reading = reading.model_copy(update={"conditions": {**reading.conditions, dimension: _said(value)}})
+    else:
+        wanted = wanted.model_copy(update={dimension: _said(value)})
+    probe = _Item(item.index, wanted)
+    _evaluate(ctx.but(reading), probe)
+    return _outcome(probe)
+
+
+def _decides(ctx: _Context, item: _Item, dimension: str, values) -> bool:
+    return len({_probe(ctx, item, dimension, value) for value in values}) > 1
+
+
+def _evaluate(ctx: _Context, item: _Item) -> None:
+    table, sheet, reading, w = ctx.table, sheet_entries(), ctx.reading, item.wanted
+    artifact, off_menu = w.artifact, table.dimensions["artifact"].off_menu
+    if artifact.status == "stated" and artifact.value in off_menu:
+        item.declined = Declined(quote=w.outside_name or w.quote,
+                                 reasons=[f"not a registered result: {w.outside_name or w.quote}"])
+        return
+    in_play = [value for value in artifact.values if value] if artifact.status in ("unsure", "conflicting") else []
+    if artifact.status == "stated":
+        artifacts, item.result_open = set(table.expand(artifact.value)), artifact.value in table.generic
+    elif in_play:
+        artifacts = {name for value in in_play if value not in off_menu for name in table.expand(value)}
+        item.result_open = artifact.basis == "answered" or any(value in table.generic for value in in_play)
+    else:
+        artifacts, item.result_open = set(table.artifacts) - {"comparison"}, True
+    compare = w.compare.known() or "none"
+    if compare in ("describe", "test"):
+        entries = [key for key, of in table.artifacts["comparison"].of.items() if of in artifacts
+                   and (compare == "describe" or "sample_specific" in sheet[key].granularity)]
+    else:
+        entries = [key for key, name in table.by_entry.items() if name in artifacts]
+    failed: dict[str, list[str]] = {key: [] for key in entries}
+    narrowed: list[str] = []
+
+    def keep(predicate, why: str) -> None:
+        for key in [key for key in failed if not predicate(sheet[key], key)]:
+            del failed[key]
+        if not failed:
+            narrowed.append(why)
+
+    # Named workflows restrict the candidates; one named and no result named: its direct results are the result,
+    # several named and no result named: their direct results are the choice.
+    if ctx.named:
+        if artifact.status == "not_stated":
+            failed = {key: [] for key, entry in sheet.items() if entry.kind == "produces"
+                      and entry.workflow in ctx.named and entry.level == "direct"}
+            item.result_open = len(ctx.names) > 1
+        elif restricted := {key for key in failed if sheet[key].workflow in ctx.named}:
+            keep(lambda entry, key: key in restricted, "named")
+    considered = {sheet[key].workflow for key in failed}
+    # An open result is narrowed to the workflows whose core data the user says they have.
+    if item.result_open and reading.data:
+        fitting = {key for key in failed
+                   if all(ctx.has(need, reading.data) for need in table.workflow_data[sheet[key].workflow][0])}
+        if fitting:
+            keep(lambda entry, key: key in fitting, "data")
+    # Stated values narrow; a dimension's plain value narrows too (`extra`).
+    scale = w.granularity.known()
+    if scale in ("whole_cohort", "per_group"):
+        keep(lambda entry, key: "aggregate" in entry.granularity, f"granularity={scale}")
+        plain = {_artifact_of(table, key) for key in failed if sheet[key].granularity == frozenset({"aggregate"})}
+        for key in [key for key in failed if "sample_specific" in sheet[key].granularity
+                    and _artifact_of(table, key) in plain]:
+            del failed[key]  # a per-sample workflow beside a cohort one computes networks nobody asked for
+    elif scale == "per_sample":
+        keep(lambda entry, key: "sample_specific" in entry.granularity, "granularity=per_sample")
+    regulators = w.regulators.known() or ("tf" if _plain_regulators(ctx, w) else None)
+    if regulators == "off_menu":
+        for key in failed:
+            if _artifact_of(table, key) in _REGULATION:
+                failed[key].append("near_miss:puma.no_lncrna_cerna")
+    elif regulators:
+        def regulator_fit(entry, key):
+            if _artifact_of(table, key) not in _REGULATION or entry.regulators is None:
+                return True
+            kinds = set(entry.regulators)
+            return kinds == {"tf"} if regulators == "tf" else "mirna" in kinds
+        keep(regulator_fit, f"regulators={regulators}")
+    signed = w.signed.known()
+    if signed:
+        keep(lambda entry, key: _artifact_of(table, key) not in _REGULATION or entry.signed is None
+             or entry.signed == (signed == "signed"), f"signed={signed}")
+    joint = w.integration.known()
+    if joint == "joint":
+        keep(lambda entry, key: _artifact_of(table, key) in _JOINT, "integration=joint")
+    elif joint == "per_layer":
+        keep(lambda entry, key: _artifact_of(table, key) not in _JOINT, "integration=per_layer")
+    if w.layers.known() == "three_or_more_jointly":
+        for key in failed:
+            if _artifact_of(table, key) in _JOINT:
+                failed[key].append("near_miss:dragon.no_more_layers")
+    if not failed:
+        stated = {(name, getattr(w, name).known()) for name in ("granularity", "signed", "integration", "regulators")}
+        misses = [f"near_miss:{key}" for key, (name, value) in table.ruled_by.items()
+                  if (name, value) in stated and sheet[key].workflow in considered]
+        item.declined = Declined(quote=w.quote, reasons=misses or [f"no registered result fits: {narrowed[0]}"])
+        return
+    alive_before = sorted({sheet[key].workflow for key in failed})
+    _rule_out(ctx, item, failed)
+    alive = [key for key, reasons in failed.items() if not reasons]
+    if not alive:
+        reasons = list(dict.fromkeys(reason for reasons in failed.values() for reason in reasons))
+        item.declined = Declined(quote=w.quote, reasons=reasons,
+                                 instead=alive_before if reading.unregistered_methods else [])
+        return
+    workflows = sorted({sheet[key].workflow for key in alive})
+    _ask(ctx, item, alive)
+    if not item.questions:
+        _doubts(ctx, item, workflows)
+    if not item.questions:
+        workflows = _requirements(ctx, item, workflows)
+    if item.questions:
+        return
+    item.workflows = workflows
+    if len(workflows) > 1:
+        item.ties.append(_tie(ctx, workflows))
+    for name, dimension in table.dimensions.items():
+        if dimension.kind == "condition" and dimension.policy == "default" and name not in reading.conditions:
+            if dimension.condition is None or any(_ruled_out(table, dimension.condition, sheet[key]) for key in alive):
+                item.assumptions.append(f"{name}={dimension.value}")
+    item.needs = sorted({need for workflow in workflows for need in table.workflow_data[workflow][1]
+                         if not ctx.has(need, reading.data)}
+                        | {f"declare {control}={value}" for workflow in workflows
+                           for control, value in table.required_settings.get(workflow, {}).items()
+                           if not any(s.workflow in (workflow, "") and s.control == control for s in reading.settings)})
+
+
+def _rule_out(ctx: _Context, item: _Item, failed: dict[str, list[str]]) -> None:
+    """Contract conditions: each candidate the request's stated facts rule out gets its reason."""
+    table, sheet, reading, w = ctx.table, sheet_entries(), ctx.reading, item.wanted
+    for name, said in reading.conditions.items():
+        if name == "data_stage":
+            if said.known() == "raw_files":
+                item.steps.append("process the raw files into tables outside NetZoo first")
+            continue
+        if said.known() == _OFF.get(name):
+            for key in failed:
+                if _ruled_out(table, name, sheet[key]):
+                    failed[key].append(f"{name}={said.value}")
+    for key in failed:
+        for need in table.workflow_data[sheet[key].workflow][1]:
+            if all(option in reading.data_absent for option in need.split("|")) or (
+                    reading.only_data and not ctx.has(need, reading.data)):
+                failed[key].append(f"needs {need}, which the request says is not available")
+    samples = reading.sample_count.value if reading.sample_count.status == "stated" else None
+    features = reading.feature_count.value if reading.feature_count.status == "stated" else None
+    for key in failed:
+        workflow = sheet[key].workflow
+        limits = ctx.limits.get(workflow)
+        if limits is None:
+            continue
+        if problem := data_issue(limits, samples, features, reading.single_feature_count):
+            failed[key].append(problem)
+        stated = [StatedSetting(name=f"{workflow}.{asked.control}" if asked.control in limits.settings else UNREGISTERED,
+                                quote=asked.quote, value=asked.value)
+                  for asked in reading.settings if asked.workflow in (workflow, "") and not asked.unsure]
+        for setting in stated:
+            if problem := setting_issue(limits, setting):
+                failed[key].append(problem)
+        failed[key].extend(combination_issues(limits, stated, samples))
+        for control, value in table.required_settings.get(workflow, {}).items():
+            said = next((s for s in reading.settings if s.workflow in (workflow, "") and s.control == control
+                         and not s.unsure), None)
+            if said is not None and said.value.casefold() != value:
+                failed[key].append(f"{workflow} runs only with {control}={value}")
+    for requirement in w.requirements:
+        if requirement.must is False:
+            continue
+        for key in failed:
+            if requirement.verdicts.get(sheet[key].workflow) == "contradicted":
+                failed[key].append(f'the contract contradicts "{requirement.quote}"')
+    if reading.unregistered_methods:
+        for key in failed:
+            failed[key].append(f"not a registered method: {', '.join(reading.unregistered_methods)}")
+
+
+def _question(item: _Item, dimension: str, values, table: JudgmentDefaults, quote: str, kind="intent") -> Question:
+    return Question(item=item.index, dimension=dimension, kind=kind, quote=quote,
+                    options=[(value, _label(table, dimension, value)) for value in values])
+
+
+def _plain_regulators(ctx: _Context, w: Wanted) -> bool:
+    """The `extra` rule for regulators: never mentioned -> TF only. miRNA data or a miRNA prior the user says they have
+    is a mention, so an unstated regulator kind is then asked (phase 0 missed-field check: C25, C59)."""
+    return w.regulators.status == "not_stated" and not {"mirna_prior", "mirna_expression"} & set(ctx.reading.data)
+
+
+def _ask(ctx: _Context, item: _Item, alive: list[str]) -> None:
+    """The intent questions that decide something, coarse to fine; an unsure value is asked with its alternatives."""
+    table, sheet, w = ctx.table, sheet_entries(), item.wanted
+    artifact = w.artifact
+    results = sorted({_artifact_of(table, key) for key in alive})
+    specific = [v for v in artifact.values if v not in table.generic] if artifact.status in ("unsure", "conflicting") else []
+    if specific and not item.result_open:
+        if _decides(ctx, item, "artifact", specific):
+            item.questions.append(_question(item, "artifact", specific, table, (artifact.quotes or [w.quote])[0]))
+            return
+    elif item.result_open and (len(results) > 1 or not (len(ctx.names) == 1 and ctx.named)):
+        # A result the user never named is confirmed even when the data leave one (phase 0 missed-field check: C15, C26).
+        quote = (artifact.quotes or [w.quote])[0]
+        if len(results) <= table.ask_max_options:
+            item.questions.append(_question(item, "artifact", results, table, quote))
+        else:
+            groups = [name for name, group in table.question_groups.items() if set(group.artifacts) & set(results)]
+            item.questions.append(_question(item, "artifact_group", groups, table, quote))
+        return  # the finer dimensions wait for the result
+    for dimension in ("integration", "granularity", "regulators", "layers"):
+        said: Said = getattr(w, dimension)
+        quote = (said.quotes or [w.quote])[0]
+        if said.status in ("unsure", "conflicting") or dimension == "regulators" and not said.known() \
+                and not _plain_regulators(ctx, w):
+            values = said.values or {"regulators": ["tf", "tf_mirna"]}.get(dimension, [])
+            if len(values) > 1 and _decides(ctx, item, dimension, values):
+                item.questions.append(_question(item, dimension, values, table, quote))
+            continue
+        if said.status == "stated":
+            continue
+        values = _open_values(ctx, item, dimension, alive)
+        if len(values) > 1:
+            item.questions.append(_question(item, dimension, values, table, quote))
+
+
+def _open_values(ctx: _Context, item: _Item, dimension: str, alive: list[str]) -> list[str]:
+    """The values of an unstated intent that lead to different candidates -- empty when it decides nothing."""
+    table, sheet, w = ctx.table, sheet_entries(), item.wanted
+    joint = [key for key in alive if _artifact_of(table, key) in _JOINT]
+    if dimension == "integration":
+        return ["joint", "per_layer"] if ctx.layers >= 2 and joint and len(joint) < len(alive) else []
+    if dimension == "granularity":
+        by_scale = {}
+        for scale in _SCALES:
+            if scale == "per_group" and not ctx.reading.groups:
+                continue
+            serving = frozenset(sheet[key].workflow for key in alive if scale in _scales(sheet[key]))
+            if serving:
+                by_scale[scale] = serving
+        distinct = len(set(by_scale.values())) > 1 or ("per_group" in by_scale and "whole_cohort" in by_scale)
+        return list(by_scale) if distinct else []
+    if dimension == "layers":
+        if ctx.layers >= 3 and joint and (w.integration.known() == "joint" or len(joint) == len(alive)):
+            stated = [name for name in table.omics_layers if name in ctx.reading.data]
+            return [f"{a}+{b}" for a, b in combinations(stated, 2)]
+    return []
+
+
+def _doubts(ctx: _Context, item: _Item, workflows: list[str]) -> None:
+    """A condition, count or setting the user is unsure of, asked when its alternatives lead to different outcomes;
+    a doubt about a named file is settled by the input check before a run."""
+    reading, table = ctx.reading, ctx.table
+    asked: list[Question] = []
+    for name, said in reading.conditions.items():
+        if said.status in ("unsure", "conflicting"):
+            values = said.values or [v for v in CONDITIONS.get(name, ((),))[0] if v != "not_stated"]
+            if len(values) > 1 and _decides(ctx, item, name, values):
+                asked.append(_question(item, name, values, table, (said.quotes or [""])[0], "condition"))
+    for dimension in ("sample_count", "feature_count"):
+        count = getattr(reading, dimension)
+        if count.status in ("unsure", "conflicting") and len(count.values) > 1:
+            values = [str(v) for v in count.values]
+            if _decides(ctx, item, dimension, values):
+                asked.append(_question(item, dimension, values, table, (count.quotes or [""])[0], "condition"))
+    for setting in reading.settings:
+        if setting.unsure and len(setting.values) > 1:
+            for workflow in [setting.workflow] if setting.workflow else workflows:
+                key = f"setting:{workflow}.{setting.control}"
+                if _decides(ctx, item, key, setting.values):
+                    asked.append(_question(item, key, setting.values, table, setting.quote, "condition"))
+                    break
+    if reading.unsure_files:
+        if reading.run_requested:
+            item.settled = list(reading.unsure_files)
+        else:
+            asked.append(Question(item=item.index, dimension="file", kind="condition", quote=reading.unsure_files[0],
+                                  options=[("as_needed", "It is the file the workflow needs"),
+                                           ("other", "It is the other one")]))
+    for question in asked:  # request-level doubts are answered at item -1
+        question.item = -1
+    item.questions.extend(asked)
+
+
+def _requirements(ctx: _Context, item: _Item, workflows: list[str]) -> list[str]:
+    """The user's own requirements: keep the workflows meeting at least `soft_requirements_met` of them; with none,
+    ask whether the ones not addressed are musts."""
+    counted = [r for r in item.wanted.requirements if r.must is not False]
+    if not counted:
+        return workflows
+    shares = {w: sum(r.verdicts.get(w) == "met" for r in counted) / len(counted) for w in workflows}
+    meeting = [w for w in workflows if shares[w] >= ctx.table.soft_requirements_met]
+    best = max(workflows, key=lambda w: shares[w])
+    open_ones = [(index, r) for index, r in enumerate(item.wanted.requirements)
+                 if r.must is not False and r.verdicts.get(best) != "met"]
+    if meeting:
+        item.unconfirmed = [r.quote for _, r in open_ones]
+        return meeting
+    for index, requirement in open_ones[:ctx.table.max_questions_per_turn]:
+        item.questions.append(Question(item=item.index, dimension=f"requirement:{index}", kind="requirement",
+                                       options=[("yes", "Yes, it is a must"), ("no", "No, it can be dropped")],
+                                       quote=requirement.quote))
+    return workflows
+
+
+def _tie(ctx: _Context, workflows: list[str]) -> TieChoice:
+    group = next((name for name, (_asked, options) in ctx.table.tie_options.items()
+                  if set(workflows) <= {option.workflow for option in options}), None)
+    fits = []
+    if group is not None:
+        for option in ctx.table.tie_options[group][1]:
+            if option.workflow in workflows and option.fits_when and all(
+                    value in ctx.reading.data for name, value in option.fits_when if name == "data_available"):
+                fits.append(option.workflow)
+    return TieChoice(group=group, workflows=workflows, fits=fits)
+
+
+def decide_menu(reading: MenuReading, task: str = "", answers=(), rounds_asked: int = 0,
+                table: JudgmentDefaults | None = None) -> MenuDecision:
+    """The turn's call from what the user said (and answered), by the closed menu's rules alone."""
+    table = table or judgment_defaults()
+    if reading.status == "failed":
+        return MenuDecision(kind="UNCHECKED", basis="reading_failed")
+    reading = apply_answers(reading, list(answers))
+    ctx = _Context(reading, table, task)
+    declined = []
+    for name in ("claims", "delivery"):
+        said = getattr(reading, name)
+        if said.known() in table.dimensions[name].off_menu:
+            declined.append(Declined(quote=(said.quotes or [""])[0], reasons=[f"{name}={said.value}"]))
+    deliverables = [_Item(index, wanted) for index, wanted in enumerate(reading.wanted) if wanted.form == "deliverable"]
+    if not deliverables and not (declined and not ctx.named) and not (reading.unregistered_methods and not ctx.named):
+        deliverables = [_Item(len(reading.wanted), Wanted(quote=""))]
+    if not deliverables and reading.unregistered_methods:
+        declined.append(Declined(quote=", ".join(reading.unregistered_methods), reasons=["not a registered method"]))
+    for item in deliverables:
+        _evaluate(ctx, item)
+    asked = [q for item in deliverables for q in item.questions]
+    questions = sorted(asked, key=lambda q: (q.kind != "intent", q.item))[:table.max_questions_per_turn]
+    declined += [item.declined for item in deliverables if item.declined is not None]
+    given = [item for item in deliverables if item.workflows]
+    common = dict(declined=declined, assumptions=sorted({a for i in given for a in i.assumptions}),
+                  needs=sorted({n for i in given for n in i.needs}),
+                  unconfirmed=[u for i in given for u in i.unconfirmed],
+                  steps=list(dict.fromkeys(s for i in deliverables for s in i.steps)),
+                  settled=list(dict.fromkeys(s for i in deliverables for s in i.settled)))
+    if questions:
+        open_items = {item.index for item in deliverables if item.result_open}
+        result_open = any(q.dimension in _RESULT and q.item in open_items for q in questions)
+        return MenuDecision(kind="CLARIFY" if result_open else "ASK",
+                            basis="result_open" if result_open else questions[0].kind,
+                            questions=questions, final_round=rounds_asked >= table.max_ask_rounds,
+                            workflows=sorted({w for i in given for w in i.workflows}), **common)
+    if not given:
+        return MenuDecision(kind="DECLINE", basis="nothing_fits", **common)
+    workflows = sorted({w for item in given for w in item.workflows})
+    ties = [tie for item in given for tie in item.ties]
+    partial = bool(declined)
+    return MenuDecision(kind="DO", basis="tie" if ties else "fits", workflows=workflows, ties=ties, partial=partial,
+                        run_ready=(reading.run_requested and not partial and len(workflows) == 1), **common)
