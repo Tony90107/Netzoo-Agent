@@ -37,7 +37,7 @@ from ..workflow_conditions import (
     UNREGISTERED, StatedSetting, all_conditions, combination_issues, data_issue, setting_issue,
 )
 
-__all__ = ["apply_answers", "decide_menu"]
+__all__ = ["apply_answers", "candidate_workflows", "decide_menu", "workflow_conditions"]
 
 _REGULATION = frozenset({"regulatory_network", "targeting_scores", "tf_activity"})
 _JOINT = frozenset({"multi_omic_network", "edge_significance"})
@@ -80,6 +80,8 @@ class _Item:
     unconfirmed: list[str] = field(default_factory=list)
     steps: list[str] = field(default_factory=list)
     settled: list[str] = field(default_factory=list)
+    candidates: list[str] = field(default_factory=list)
+    """Workflows still in play once the stated values narrowed them, before contract conditions are checked."""
 
 
 def _said(value: str, quote: str = "") -> Said:
@@ -290,12 +292,14 @@ def _evaluate(ctx: _Context, item: _Item) -> None:
             if _artifact_of(table, key) in _JOINT:
                 failed[key].append("near_miss:dragon.no_more_layers")
     if not failed:
+        item.candidates = sorted(considered)
         stated = {(name, getattr(w, name).known()) for name in ("granularity", "signed", "integration", "regulators")}
         misses = [f"near_miss:{key}" for key, (name, value) in table.ruled_by.items()
                   if (name, value) in stated and sheet[key].workflow in considered]
         item.declined = Declined(quote=w.quote, reasons=misses or [f"no registered result fits: {narrowed[0]}"])
         return
     alive_before = sorted({sheet[key].workflow for key in failed})
+    item.candidates = alive_before
     _rule_out(ctx, item, failed)
     alive = [key for key, reasons in failed.items() if not reasons]
     if not alive:
@@ -509,6 +513,29 @@ def _tie(ctx: _Context, workflows: list[str]) -> TieChoice:
                     value in ctx.reading.data for name, value in option.fits_when if name == "data_available"):
                 fits.append(option.workflow)
     return TieChoice(group=group, workflows=workflows, fits=fits)
+
+
+def workflow_conditions(workflow: str, table: JudgmentDefaults | None = None) -> list[str]:
+    """The data conditions whose off-menu value rules this workflow out (`_ruled_out`), in the table's order."""
+    table, sheet = table or judgment_defaults(), sheet_entries()
+    entries = [entry for entry in sheet.values() if entry.kind == "produces" and entry.workflow == workflow]
+    return [name for name in (*CONDITIONS, "input_network") if name in _OFF
+            and any(_ruled_out(table, name, entry) for entry in entries)]
+
+
+def candidate_workflows(reading: MenuReading, task: str = "", table: JudgmentDefaults | None = None) -> list[str]:
+    """The workflows in play for the things asked, once stated values narrowed them and before any contract condition
+    is checked -- what the phase-1 focused re-read reads limits and doubts for. Empty for a failed reading."""
+    table = table or judgment_defaults()
+    if reading.status == "failed":
+        return []
+    ctx = _Context(reading, table, task)
+    items = [_Item(index, wanted) for index, wanted in enumerate(reading.wanted) if wanted.form == "deliverable"]
+    found: set[str] = set()
+    for item in items or [_Item(len(reading.wanted), Wanted(quote=""))]:
+        _evaluate(ctx, item)
+        found |= set(item.candidates)
+    return sorted(found)
 
 
 def decide_menu(reading: MenuReading, task: str = "", answers=(), rounds_asked: int = 0,

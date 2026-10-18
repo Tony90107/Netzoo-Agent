@@ -44,7 +44,7 @@ def result(names="nothing", quote="", value=None, kind=None, values=(), outside=
             "outside_name": outside}
 
 
-def item(quote, form="deliverable", requirements=(), **fields) -> dict:
+def item(quote, form="asks", requirements=(), **fields) -> dict:
     return {"quote": quote, "form": form, "result": fields.pop("result", result()),
             "requirements": [{"quote": q, "about": about} for q, about in requirements],
             **{name: fields.get(name, blank_said()) for name in WANTED_FIELDS}}
@@ -286,13 +286,23 @@ def test_one_control_given_two_values_is_unsure_between_them():
 
 
 def test_a_question_naming_a_result_asks_for_it():
-    task = "Can BONOBO output a cohort-level aggregate network directly?"
-    reading, report = read(task, wanted=[item(task, form="question_to_us", granularity=said(
-        "whole_cohort", "a cohort-level aggregate network"))])
-    assert reading.wanted[0].form == "deliverable" and any("deliverable" in line for line in report.filled)
+    task = "Can BONOBO output a cohort-level aggregate network directly? Which one should I run?"
+    reading, _ = read(task, wanted=[
+        item("Can BONOBO output a cohort-level aggregate network directly?",
+             granularity=said("whole_cohort", "a cohort-level aggregate network")),
+        item("Which one should I run?")])
+    assert [w.form for w in reading.wanted] == ["deliverable", "question_to_us"]
     assert decide_menu(reading, task).kind == "DECLINE"
-    plain, _ = read(task, wanted=[item(task, form="question_to_us")])
-    assert plain.wanted[0].form == "question_to_us"
+
+
+def test_a_doubt_about_none_goes_to_the_one_field_its_values_fit():
+    task = "We want a TF network. We have not decided whether per-sample TF activity or per-sample TF networks."
+    reading, report = read(task, wanted=[item("We want a TF network", result=result(
+        "menu_result", "a TF network", value="regulatory_network"))],
+        sentences={"s2": sentence("We have not decided whether per-sample TF activity or per-sample TF networks",
+                                  "none", ["tf_activity", "regulatory_network"])})
+    assert reading.wanted[0].artifact.status == "unsure"
+    assert any("the one field" in line for line in report.filled)
 
 
 def test_an_unregistered_lioness_version_is_found_by_its_name():
@@ -340,7 +350,7 @@ def test_requirements_kept_only_about_the_result():
     task = "Build the network with a p-value for every edge from our log-transformed, centered table saved as CSV."
     reading, _ = read(task, wanted=[item("Build the network", requirements=[
         ("with a p-value for every edge", "what_it_contains"), ("log-transformed, centered table", "data_property"),
-        ("saved as CSV", "file_or_format")])])
+        ("saved as CSV", "file_or_format"), ("Build the network", "another_result")])])
     assert [r.quote for r in reading.wanted[0].requirements] == ["with a p-value for every edge"]
 
 
