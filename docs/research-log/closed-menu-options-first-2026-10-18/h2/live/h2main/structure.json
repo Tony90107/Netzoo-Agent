@@ -1,0 +1,5537 @@
+{
+  "hb-h2main-J01-1": {
+    "item": "J01",
+    "rep": 1,
+    "class": "vague",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "context",
+        "not_checked",
+        [],
+        "five time points, four replicates each, bulk RNA-seq."
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Any thoughts on how to approach it?"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "COBRA",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "I want to understand gene regulation during zebrafish fin regeneration",
+        "inputs": [
+          "expression_matrix"
+        ],
+        "missing": "result",
+        "question": "Which of these results do you want, or what question should the analysis answer?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "I want to understand gene regulation during zebrafish fin regeneration"
+        ],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002523
+  },
+  "hb-h2main-J02-1": {
+    "item": "J02",
+    "rep": 1,
+    "class": "dont",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA.",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "please use a learning rate of 0.001, 500 iterations and a stronger weight on the"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "our 52 prostate samples"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Same expression, motif and PPI files as before."
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "all_results_not_available",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [
+            "GIRAFFE"
+          ],
+          "line": "\"please use a learning rate of 0.001, 500 iterations and a stronger weight on the PPI term.\" -- not available here as asked. NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"a learning rate of 0.001\" cannot be applied. GIRAFFE itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+          "quote": "please use a learning rate of 0.001, 500 iterations and a stronger weight on the PPI term.",
+          "reasons": [
+            "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"a learning rate of 0.001\" cannot be applied",
+            "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"500 iterations\" cannot be applied",
+            "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"a stronger weight on the PPI term\" cannot be applied"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "GIRAFFE"
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "decline"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.003195
+  },
+  "hb-h2main-J03-1": {
+    "item": "J03",
+    "rep": 1,
+    "class": "do",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "panda.tf_gene_network"
+        ],
+        "Kick off PANDA with expr_kidney.tsv (it has a header row, so with_header on), mo"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "expr_kidney.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "(it has a header row, so with_header on)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "motif_kidney.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "ppi_kidney.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "cobra_out/adjusted_coexpression.tsv"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "the network",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "the network"
+        ],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.003298
+  },
+  "hb-h2main-J04-1": {
+    "item": "J04",
+    "rep": 1,
+    "class": "dont",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "each patient gets their own OTTER network"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "OTTER's graph matching per patient"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "our 64 asthma airway samples"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "expression"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a motif seed"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a TF-TF PPI"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"each patient gets their own OTTER network\" -- not available here as asked. NetZoo has no registered method or variant \"LIONESS-OTTER\". OTTER does not give it: no per-sample OTTER is registered.",
+          "quote": "each patient gets their own OTTER network",
+          "reasons": [
+            "NetZoo has no registered method or variant \"LIONESS-OTTER\""
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"OTTER's graph matching per patient\" -- not available here as asked. NetZoo has no registered method or variant \"LIONESS-OTTER\". OTTER does not give it: no per-sample OTTER is registered.",
+          "quote": "OTTER's graph matching per patient",
+          "reasons": [
+            "NetZoo has no registered method or variant \"LIONESS-OTTER\""
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "each patient gets their own OTTER network"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002369
+  },
+  "hb-h2main-J05-1": {
+    "item": "J05",
+    "rep": 1,
+    "class": "vague",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "context",
+        "not_checked",
+        [],
+        "hcc_expr.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "hcc_motif.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "hcc_ppi.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "hcc_mirna.txt"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "33 liver tumours"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "Go ahead and run the analysis; we'll work out afterwards what question it answers.",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "Go ahead and run the analysis; we'll work out afterwards what question it answers."
+        ],
+        "match_status": null,
+        "reason_code": "semantic_fallback",
+        "rows": [
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001917
+  },
+  "hb-h2main-J06-1": {
+    "item": "J06",
+    "rep": 1,
+    "class": "vague",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "context",
+        "not_checked",
+        [],
+        "expr_pdac.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "motif_hs.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "ppi_hs.tsv"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "Run PANDA or GIRAFFE on them now, whichever; I just need something to show at la"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"Run PANDA or GIRAFFE on them now, whichever; I just need something to show at lab meeting on Thursday.\" -- not available here as asked. NetZoo has no registered method or variant \"PANDA or GIRAFFE\".",
+          "quote": "Run PANDA or GIRAFFE on them now, whichever; I just need something to show at lab meeting on Thursday.",
+          "reasons": [
+            "NetZoo has no registered method or variant \"PANDA or GIRAFFE\""
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "PANDA or GIRAFFE"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "result",
+            "not_available"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001651
+  },
+  "hb-h2main-J07-1": {
+    "item": "J07",
+    "rep": 1,
+    "class": "ask",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these is right: 2 or 3?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "needs_fact",
+        [
+          "lioness_coexpression.per_sample_networks",
+          "bonobo.per_sample_networks"
+        ],
+        "Each of my pig muscle samples should get its own gene-gene co-expression network"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Each of my pig muscle samples"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "(log2 CPM, centered per gene)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "We have three samples, unless the degraded one gets excluded, in which case only"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I won't know until Monday."
+      ]
+    ],
+    "unknown_domains": {
+      "We have three samples, unless the degraded one gets excluded, in which case only two.": {
+        "kind": "choices",
+        "values": [
+          2,
+          3
+        ]
+      }
+    },
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "count_fact",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "coexpression_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "gene-gene co-expression network"
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "needs_fact"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": true,
+          "contract_quote": "",
+          "depends_on": "sample_count",
+          "if_no": "",
+          "if_yes": "",
+          "notes": {
+            "2": "LIONESS-COEXPRESSION needs at least 3 samples; the request has 2"
+          },
+          "outcomes": {
+            "2": [],
+            "3": [
+              "LIONESS-COEXPRESSION",
+              "BONOBO"
+            ]
+          },
+          "question": "Which of these is right: 2 or 3?",
+          "settled_by_input_check": false,
+          "uncertainty": "",
+          "user_quote": "We have three samples, unless the degraded one gets excluded, in which case only two.",
+          "workflows": [
+            "LIONESS-COEXPRESSION",
+            "BONOBO"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002693
+  },
+  "hb-h2main-J08-1": {
+    "item": "J08",
+    "rep": 1,
+    "class": "dont",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Can DRAGON give me a single partial-correlation network across transcriptomics, "
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "All three tables come from the same 75 patients, samples as rows."
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I want all three layers in one model rather than separate pairwise runs."
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"Can DRAGON give me a single partial-correlation network across transcriptomics, proteomics and metabolomics together?\" -- not available here: no registered workflow produces this. DRAGON does not give it: two layers only.",
+          "quote": "Can DRAGON give me a single partial-correlation network across transcriptomics, proteomics and metabolomics together?",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "single partial-correlation network across transcriptomics, proteomics and metabolomics together"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001026
+  },
+  "hb-h2main-J09-1": {
+    "item": "J09",
+    "rep": 1,
+    "class": "ask",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Do you want to use the TF's activity?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "giraffe.tf_activity",
+          "lioness_panda.per_sample_targeting"
+        ],
+        "I need one number per TF per donor for a survival model"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "giraffe.tf_activity",
+          "lioness_panda.per_sample_targeting"
+        ],
+        "I haven't settled whether that number should be the TF's activity or its out-deg"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "liver_expr.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "liver_motif.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "liver_ppi.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "our 44 donors"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "signed_regulatory_effect_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "I need one number per TF per donor for a survival model"
+        ],
+        "legacy_facts": [
+          "Which result do you want: \"the TF's activity\" or \"the TF's activity or its out-degree in the donor's own network\"?"
+        ],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "It returns the aggregate TF-by-gene R matrix and a TF-by-sample TFA matrix.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Do you want to use the TF's activity?",
+          "settled_by_input_check": false,
+          "uncertainty": "two_versions",
+          "user_quote": "I haven't settled whether that number should be the TF's activity or its out-degree in the donor's own network.",
+          "workflows": [
+            "GIRAFFE"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "GIRAFFE"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002962
+  },
+  "hb-h2main-J10-1": {
+    "item": "J10",
+    "rep": 1,
+    "class": "do",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "unknown",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "dragon.two_layer_network"
+        ],
+        "I'd like DRAGON on two tables from the same 85 plasma donors: proteomics (310 pr"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "two tables from the same 85 plasma donors: proteomics (310 proteins, log-intensi"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "fix lambda1 at 0 and lambda2 at 1 rather than estimating them"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "give me the edge_list output"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "DRAGON"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_fallback",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "DRAGON"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002099
+  },
+  "hb-h2main-J11-1": {
+    "item": "J11",
+    "rep": 1,
+    "class": "do",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "lioness_dragon.per_sample_networks"
+        ],
+        "Please start LIONESS-DRAGON now with layer 1 = rna_top400.csv (100 samples by th"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "lioness_dragon.per_sample_networks"
+        ],
+        "dragon_all.tsv"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "lioness_dragon.per_sample_networks"
+        ],
+        "lioness_dragon_samples.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "layer 1 = rna_top400.csv (100 samples by the 400 most variable genes, log-CPM)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "layer 2 = meth_top200.csv (the same 100 sample IDs by 200 CpG M-values)"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "LIONESS-DRAGON"
+        ],
+        "match_status": "exact",
+        "reason_code": "registry_guidance_fallback",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-DRAGON"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001478
+  },
+  "hb-h2main-J12-1": {
+    "item": "J12",
+    "rep": 1,
+    "class": "vague",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "panda.tf_gene_network",
+          "otter.tf_gene_network"
+        ],
+        "PANDA or OTTER: which one should I use for my 50 lung adenocarcinoma samples?"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "50 lung adenocarcinoma samples"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "expression matrix"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "human motif prior"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "STRING PPI file"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "COBRA",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "PANDA or OTTER: which one should I use for my 50 lung adenocarcinoma samples?",
+        "inputs": [
+          "expression_matrix"
+        ],
+        "missing": "result",
+        "question": "Which of these results do you want, or what question should the analysis answer?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "PANDA or OTTER: which one should I use for my 50 lung adenocarcinoma samples?"
+        ],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002575
+  },
+  "hb-h2main-J13-1": {
+    "item": "J13",
+    "rep": 1,
+    "class": "do",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {
+      "verdict": "agrees",
+      "held": false
+    },
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "lioness_puma.per_sample_networks"
+        ],
+        "Go ahead and run LIONESS-PUMA"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "expression expr_ovarian.tsv (48 tumours, genes by samples)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "prior motif_tf_mirna.tsv (TF motifs plus miRNA targets)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "ppi_string.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "mirna_ids.txt with one miRNA per line"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "out/puma_aggregate.txt"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "out/lioness_puma/"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow",
+      "routing.run_replanned"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "Aggregate network to out/puma_aggregate.txt and the per-sample networks to out/lioness_puma/.",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "run_lioness_puma",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Aggregate network to out/puma_aggregate.txt and the per-sample networks to out/lioness_puma/."
+        ],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": {
+          "held": false,
+          "verdict": "agrees"
+        }
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001134
+  },
+  "hb-h2main-J14-1": {
+    "item": "J14",
+    "rep": 1,
+    "class": "ask",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these is right: 450 or 4,500?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "needs_fact",
+        [
+          "lioness_dragon.per_sample_networks"
+        ],
+        "LIONESS-DRAGON for 40 paired RNA and miRNA profiles from the same placentas woul"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "40 paired RNA and miRNA profiles from the same placentas"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "The miRNA layer has 300 features"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "we kept 450 or 4,500 genes in the RNA layer after filtering"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "count_fact",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "LIONESS-DRAGON"
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "needs_fact"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": true,
+          "contract_quote": "",
+          "depends_on": "feature_count",
+          "if_no": "",
+          "if_yes": "",
+          "notes": {
+            "4500": "LIONESS-DRAGON writes at most 20,000,000 values (features x (features - 1) / 2 x samples); 4,800 features and 40 samples give 460,704,000"
+          },
+          "outcomes": {
+            "450": [
+              "LIONESS-DRAGON"
+            ],
+            "4500": []
+          },
+          "question": "Which of these is right: 450 or 4,500?",
+          "settled_by_input_check": false,
+          "uncertainty": "",
+          "user_quote": "450 or 4,500 genes",
+          "workflows": [
+            "LIONESS-DRAGON"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-DRAGON"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002042
+  },
+  "hb-h2main-J15-1": {
+    "item": "J15",
+    "rep": 1,
+    "class": "dont",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "unknown",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "lioness_puma.per_sample_networks",
+          "lioness_puma.per_sample_targeting",
+          "lioness_puma.association_tests"
+        ],
+        "each miRNA's activity level in every tumour, estimated apart from the miRNA's ow"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "For 55 endometrial tumours"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "each miRNA's activity level in every tumour"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "estimated apart from the miRNA's own expression"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "each miRNA's activity level in every tumour"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_fallback",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-PUMA"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001615
+  },
+  "hb-h2main-J16-1": {
+    "item": "J16",
+    "rep": 1,
+    "class": "vague",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "lioness_coexpression.per_sample_networks",
+          "bonobo.per_sample_networks"
+        ],
+        "What kind of network analysis should I be doing with this?"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I have RNA-seq from 36 mouse livers, half on a high-fat diet and half on chow."
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "COBRA",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "What kind of network analysis should I be doing with this?",
+        "inputs": [
+          "expression_matrix"
+        ],
+        "missing": "result",
+        "question": "Which of these results do you want, or what question should the analysis answer?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "What kind of network analysis should I be doing with this?"
+        ],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001599
+  },
+  "hb-h2main-J17-1": {
+    "item": "J17",
+    "rep": 1,
+    "class": "do",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Please set up SAMBAR for somatic mutation calls from 8 pancreatic tumours, with "
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "Try kmin 3 up to kmax 8, and keep the normalization by each patient's mutation b"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "somatic mutation calls from 8 pancreatic tumours"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a gene-length table"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a cancer-gene list"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a KEGG pathway GMT that is not in MSigDB format"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "all_results_not_available",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [
+            "SAMBAR"
+          ],
+          "line": "\"Please set up SAMBAR for somatic mutation calls from 8 pancreatic tumours, with a gene-length table, a cancer-gene list and a KEGG pathway GMT that is not in MSigDB format, so turn gmt_msigdb off.\" -- not available here as asked. SAMBAR's norm_patient needs an explicit true or false value; \"keep\" is unresolved. SAMBAR itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+          "quote": "Please set up SAMBAR for somatic mutation calls from 8 pancreatic tumours, with a gene-length table, a cancer-gene list and a KEGG pathway GMT that is not in MSigDB format, so turn gmt_msigdb off.",
+          "reasons": [
+            "SAMBAR's norm_patient needs an explicit true or false value; \"keep\" is unresolved"
+          ]
+        },
+        {
+          "alternatives": [
+            "SAMBAR"
+          ],
+          "line": "\"Try kmin 3 up to kmax 8, and keep the normalization by each patient's mutation burden.\" -- not available here as asked. SAMBAR's norm_patient needs an explicit true or false value; \"keep\" is unresolved. SAMBAR itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+          "quote": "Try kmin 3 up to kmax 8, and keep the normalization by each patient's mutation burden.",
+          "reasons": [
+            "SAMBAR's norm_patient needs an explicit true or false value; \"keep\" is unresolved"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "unknown",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "SAMBAR"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "decline"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001747
+  },
+  "hb-h2main-J18-1": {
+    "item": "J18",
+    "rep": 1,
+    "class": "vague",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "What could NetZoo do for us with data like this?"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "somatic mutation calls"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "RNA-seq"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "same 150 colorectal patients"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "survival data"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "What could NetZoo do for us with data like this?",
+        "inputs": [
+          "expression_matrix",
+          "mutation_matrix"
+        ],
+        "missing": "result",
+        "question": "Which of these results do you want, or what question should the analysis answer?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "What could NetZoo do for us with data like this?"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002125
+  },
+  "hb-h2main-J19-1": {
+    "item": "J19",
+    "rep": 1,
+    "class": "ask",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Do you want one network per tumour?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "dragon.two_layer_network",
+          "lioness_dragon.per_sample_networks"
+        ],
+        "want a partial-correlation network linking the two layers"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "paired proteome (250 proteins) and phosphoproteome (150 sites) tables from 46 ki"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "The aims page says one network for the whole cohort"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "the grant narrative says one per tumour"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "partial-correlation network linking the two layers"
+        ],
+        "legacy_facts": [
+          "Do you want one result for all your samples together, or one per sample?"
+        ],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "LIONESS-DRAGON estimates DRAGON's two shrinkage values once on all samples, then derives each sample's network from the all-sample network and the network refitted without that sample.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Do you want one network per tumour?",
+          "settled_by_input_check": false,
+          "uncertainty": "two_versions",
+          "user_quote": "The aims page says one network for the whole cohort, the grant narrative says one per tumour",
+          "workflows": [
+            "LIONESS-DRAGON"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-DRAGON"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002273
+  },
+  "hb-h2main-J20-1": {
+    "item": "J20",
+    "rep": 1,
+    "class": "dont",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Launch LIONESS-DRAGON on rna_all.csv (60 samples by 2,000 genes) and prot_all.cs"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "write the all-sample matrix to agg_dragon.tsv"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "the per-sample table to per_sample_edges.tsv"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "start it right away"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "rna_all.csv (60 samples by 2,000 genes)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "prot_all.csv (the same 60 samples by 500 proteins)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Estimate the lambdas automatically"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "write the all-sample matrix to agg_dragon.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "the per-sample table to per_sample_edges.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "start it right away"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"Launch LIONESS-DRAGON on rna_all.csv (60 samples by 2,000 genes) and prot_all.csv (the same 60 samples by 500 proteins).\" -- not available here as asked. NetZoo's LIONESS-DRAGON has no setting for \"Estimate the lambdas automatically\"; the settings it passes are lambda1 and lambda2. LIONESS-DRAGON writes at most 20,000,000 values (features x (features - 1) / 2 x samples); 2,500 features and 60 samples give 187,425,000.",
+          "quote": "Launch LIONESS-DRAGON on rna_all.csv (60 samples by 2,000 genes) and prot_all.csv (the same 60 samples by 500 proteins).",
+          "reasons": [
+            "NetZoo's LIONESS-DRAGON has no setting for \"Estimate the lambdas automatically\"; the settings it passes are lambda1 and lambda2",
+            "LIONESS-DRAGON writes at most 20,000,000 values (features x (features - 1) / 2 x samples); 2,500 features and 60 samples give 187,425,000"
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"write the all-sample matrix to agg_dragon.tsv\" -- not available here as asked. NetZoo's LIONESS-DRAGON has no setting for \"write the all-sample matrix to agg_dragon.tsv\"; the settings it passes are lambda1 and lambda2.",
+          "quote": "write the all-sample matrix to agg_dragon.tsv",
+          "reasons": [
+            "NetZoo's LIONESS-DRAGON has no setting for \"write the all-sample matrix to agg_dragon.tsv\"; the settings it passes are lambda1 and lambda2"
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"the per-sample table to per_sample_edges.tsv\" -- not available here as asked. NetZoo's LIONESS-DRAGON has no setting for \"the per-sample table to per_sample_edges.tsv\"; the settings it passes are lambda1 and lambda2.",
+          "quote": "the per-sample table to per_sample_edges.tsv",
+          "reasons": [
+            "NetZoo's LIONESS-DRAGON has no setting for \"the per-sample table to per_sample_edges.tsv\"; the settings it passes are lambda1 and lambda2"
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"start it right away\" -- not available here as asked. NetZoo's LIONESS-DRAGON has no setting for \"start it right away\"; the settings it passes are lambda1 and lambda2.",
+          "quote": "start it right away",
+          "reasons": [
+            "NetZoo's LIONESS-DRAGON has no setting for \"start it right away\"; the settings it passes are lambda1 and lambda2"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "LIONESS-DRAGON"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "registry_guidance_fallback",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002062
+  },
+  "hb-h2main-J21-1": {
+    "item": "J21",
+    "rep": 1,
+    "class": "ask",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Is lam set to a value between 0 and 1?",
+    "run_verdict": {
+      "verdict": "agrees",
+      "held": false
+    },
+    "check_rows": [],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "run_otter",
+        "artifact_type": "unknown",
+        "check_unconfirmed": false,
+        "goal": null,
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [],
+        "run_verdict": {
+          "held": false,
+          "verdict": "agrees"
+        }
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "setting lam (number; minimum 0; maximum 1): Weight of gene co-expression versus the TF-TF PPI network in OTTER's fit, as (lam, 1 - lam); not a sparsity penalty.",
+          "depends_on": "",
+          "if_no": "supported",
+          "if_yes": "not_supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Is lam set to a value between 0 and 1?",
+          "settled_by_input_check": false,
+          "uncertainty": "two_versions",
+          "user_quote": "lam should be 1.5, or maybe 0.15; the decimal point is smudged and I can't check with my supervisor today.",
+          "workflows": [
+            "OTTER"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "OTTER"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001732
+  },
+  "hb-h2main-J22-1": {
+    "item": "J22",
+    "rep": 1,
+    "class": "ask",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Will the final number of tumours be 5?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "sambar.subtypes"
+        ],
+        "We want to group tumours into 2 to 6 subtypes based on pathway-level somatic mut"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "gene lengths"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a cancer-gene list"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a KEGG GMT"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Pathology review is still deciding how many tumours qualify: it will end up as 5"
+      ]
+    ],
+    "unknown_domains": {
+      "Pathology review is still deciding how many tumours qualify: it will end up as 5 or 9.": {
+        "kind": "choices",
+        "values": [
+          5,
+          9
+        ]
+      }
+    },
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "group tumours into 2 to 6 subtypes"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Will the final number of tumours be 5?",
+          "settled_by_input_check": false,
+          "uncertainty": "two_versions",
+          "user_quote": "it will end up as 5 or 9.",
+          "workflows": [
+            "SAMBAR"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "SAMBAR"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001847
+  },
+  "hb-h2main-J23-1": {
+    "item": "J23",
+    "rep": 1,
+    "class": "vague",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "what would I get out of it?"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "200 TCGA breast tumour RNA-seq profiles"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "COBRA",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "what would I get out of it?",
+        "inputs": [
+          "expression_matrix"
+        ],
+        "missing": "result",
+        "question": "Which of these results do you want, or what question should the analysis answer?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "signed_regulatory_effect_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "what would I get out of it?"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001864
+  },
+  "hb-h2main-J24-1": {
+    "item": "J24",
+    "rep": 1,
+    "class": "do",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "puma.regulator_gene_network"
+        ],
+        "For 40 glioblastoma samples I want one cohort-wide regulatory network in which b"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "expression matrix"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a prior with TF motifs and miRNA target predictions"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a PPI file"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a list of the miRNAs, one per line"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Per-sample networks aren't needed."
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "one cohort-wide regulatory network"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "PUMA"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001944
+  },
+  "hb-h2main-J25-1": {
+    "item": "J25",
+    "rep": 1,
+    "class": "vague",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Please launch something"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "Not sure yet what I'm after, maybe something co-expression related?"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "expr_tpm.tsv (48 gut biopsies, genes by samples)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "batch_design.tsv (numeric batch and site columns)"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "Whatever you think fits.",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "Whatever you think fits."
+        ],
+        "match_status": "unsupported",
+        "reason_code": "research_choices_unavailable",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.000339
+  },
+  "hb-h2main-J26-1": {
+    "item": "J26",
+    "rep": 1,
+    "class": "vague",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "context",
+        "not_checked",
+        [],
+        "We measured proteomics and metabolomics on the same 90 plasma samples (continuou"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Where would you start?"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "Where would you start?",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "Where would you start?"
+        ],
+        "match_status": "ambiguous",
+        "reason_code": "research_choices_unavailable",
+        "rows": [
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.000342
+  },
+  "hb-h2main-J27-1": {
+    "item": "J27",
+    "rep": 1,
+    "class": "ask",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "needs_fact",
+        [
+          "cobra.covariate_components"
+        ],
+        "separating sex and batch effects on co-expression"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "our 640-sample blood cohort"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "the design matrix is numeric"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "The README says the filtered expression matrix has 600 genes"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "the methods draft says 6,000"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "COBRA",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "separating sex and batch effects on co-expression",
+        "inputs": [
+          "expression_matrix"
+        ],
+        "missing": "result",
+        "question": "Which of these results do you want, or what question should the analysis answer?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "expression_matrix",
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "separating sex and batch effects on co-expression"
+        ],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "needs_fact"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002372
+  },
+  "hb-h2main-J28-1": {
+    "item": "J28",
+    "rep": 1,
+    "class": "do",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "cobra.covariate_components"
+        ],
+        "see how much of the gene co-expression is associated with hospital and batch"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "cobra.covariate_components"
+        ],
+        "get an adjusted co-expression matrix out of it"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "We have 18,000 genes measured in 96 colon samples from three hospitals and two s"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "coexpression_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "I want to see how much of the gene co-expression is associated with hospital and batch, and get an adjusted co-expression matrix out of it."
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "COBRA"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001896
+  },
+  "hb-h2main-J29-1": {
+    "item": "J29",
+    "rep": 1,
+    "class": "vague",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 2,
+    "action": "run_dragon",
+    "workflow": "DRAGON",
+    "plan_status": "needs_input",
+    "intent_type": "run_analysis",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "agrees",
+      "held": false
+    },
+    "check_rows": [],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "run",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "run_dragon",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": null,
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [],
+        "run_verdict": {
+          "held": false,
+          "verdict": "agrees"
+        }
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": true,
+      "workflows": [
+        "DRAGON"
+      ]
+    },
+    "views": [
+      "needs_input"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001304
+  },
+  "hb-h2main-J30-1": {
+    "item": "J30",
+    "rep": 1,
+    "class": "do",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Both fit; to choose, tell me: (1) About how many samples do you have? (only a handful of samples → BONOBO; dozens of samples or more → LIONESS-COEXPRESSION) (2) Do you need a confidence value for each connection in each sample? (yes → BONOBO)",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "lioness_coexpression.per_sample_networks",
+          "bonobo.per_sample_networks"
+        ],
+        "a separate gene-gene co-expression network for each of 30 bulk RNA-seq samples"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "30 bulk RNA-seq samples of human skin"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "log2 CPM"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "centered per gene"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "genes on rows"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "no covariates to adjust"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "no transcription factors involved"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "coexpression_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "a separate gene-gene co-expression network"
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ]
+    },
+    "views": [
+      "outcome_clarification"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.00275
+  },
+  "hb-h2main-J31-1": {
+    "item": "J31",
+    "rep": 1,
+    "class": "dont",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "I need a network that proves which metabolites causally drive which genes, with "
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "From matched liver RNA-seq and metabolomics on 70 mice"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"I need a network that proves which metabolites causally drive which genes, with arrows showing the direction of each effect\" -- not available here: no registered workflow produces this. Registered regulatory workflows contain miRNA and TF regulators; none models other regulators.",
+          "quote": "I need a network that proves which metabolites causally drive which genes, with arrows showing the direction of each effect",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "I need a network that proves which metabolites causally drive which genes, with arrows showing the direction of each effect"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001611
+  },
+  "hb-h2main-J32-1": {
+    "item": "J32",
+    "rep": 1,
+    "class": "vague",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "These all fit; to choose, tell me: (1) Do the regulators include miRNAs, short non-coding RNAs that repress or degrade their target transcripts after transcription? (yes → PUMA, LIONESS-PUMA) (2) Is the network large enough that memory or runtime is a concern? (yes → OTTER) If none of these applies: PANDA, LIONESS-PANDA, GIRAFFE.",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Is GIRAFFE worth trying on my melanoma data?"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I have expression for 70 tumours plus motif and PPI files."
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "routed",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "Is GIRAFFE worth trying on my melanoma data?"
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "about_methods",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "PANDA",
+        "PUMA",
+        "LIONESS-PANDA",
+        "LIONESS-PUMA",
+        "OTTER",
+        "GIRAFFE"
+      ]
+    },
+    "views": [
+      "outcome_clarification"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.003172
+  },
+  "hb-h2main-J33-1": {
+    "item": "J33",
+    "rep": 1,
+    "class": "dont",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "separate TF-to-gene regulatory network for each of the two"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I have just two RNA-seq samples from one patient, tumour and matched normal"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"separate TF-to-gene regulatory network for each of the two\" -- not available here as asked. LIONESS-PANDA needs at least 3 samples; the request has 2. OTTER does not give it: no per-sample OTTER is registered.",
+          "quote": "separate TF-to-gene regulatory network for each of the two",
+          "reasons": [
+            "LIONESS-PANDA needs at least 3 samples; the request has 2"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "separate TF-to-gene regulatory network for each of the two"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.003044
+  },
+  "hb-h2main-J34-1": {
+    "item": "J34",
+    "rep": 1,
+    "class": "ask",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Does calls_30pts.csv contain somatic mutations?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "context",
+        "not_checked",
+        [],
+        "I've put calls_30pts.csv, gene_lengths.csv, cancer_genes.txt and kegg.gmt in dat"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "sambar.subtypes"
+        ],
+        "start SAMBAR into sambar_30/ now."
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "unknown",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "SAMBAR"
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "result",
+            "available"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "SAMBAR consumes a samples-by-genes somatic mutation CSV",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Does calls_30pts.csv contain somatic mutations?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "it's unclear to me whether it holds somatic mutations or germline variants.",
+          "workflows": [
+            "SAMBAR"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "SAMBAR"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002247
+  },
+  "hb-h2main-J35-1": {
+    "item": "J35",
+    "rep": 1,
+    "class": "dont",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "gap",
+      "held": true
+    },
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "please execute SAMBAR now into sambar_out/ with kmin 2 and kmax 10, so we see a "
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Our seven tumours are in mut_7tumours.csv."
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Together with exon_lengths.csv, cancer_genes.txt and c2.cp.v7.gmt"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow",
+      "routing.run_held"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [
+            "SAMBAR"
+          ],
+          "line": "\"please execute SAMBAR now into sambar_out/ with kmin 2 and kmax 10, so we see a wide range of subtype numbers.\" -- not available here as asked. SAMBAR: kmax cannot exceed the number of mutation samples when clustering is enabled. SAMBAR itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+          "quote": "please execute SAMBAR now into sambar_out/ with kmin 2 and kmax 10, so we see a wide range of subtype numbers.",
+          "reasons": [
+            "SAMBAR: kmax cannot exceed the number of mutation samples when clustering is enabled"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "sample_cluster_assignment",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "so we see a wide range of subtype numbers."
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": {
+          "held": true,
+          "verdict": "gap"
+        }
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "decline"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001515
+  },
+  "hb-h2main-J36-1": {
+    "item": "J36",
+    "rep": 1,
+    "class": "ask",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Are the small RNAs miRNAs?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "condor.communities",
+          "condor.core_scores",
+          "condor.enrichment"
+        ],
+        "needs one regulatory network for the whole cohort, with TFs and a set of small R"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "condor.communities",
+          "condor.core_scores",
+          "condor.enrichment"
+        ],
+        "with TFs and a set of small RNAs as regulators of the genes"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "cervical cancer project"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "38 samples"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "small-RNA list"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "target predictions"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": true,
+        "goal": [
+          "result_named",
+          "needs one regulatory network for the whole cohort, with TFs and a set of small RNAs as regulators of the genes."
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "Require one miRNA identifier per line and require every miRNA in prior column one.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Are the small RNAs miRNAs?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "nobody can tell me whether those small RNAs are miRNAs or piRNAs.",
+          "workflows": [
+            "PUMA"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "PUMA"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "failed"
+      ],
+      [
+        "openai/gpt-4o-mini",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.00445
+  },
+  "hb-h2main-J37-1": {
+    "item": "J37",
+    "rep": 1,
+    "class": "ask",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "unconfirmed",
+      "held": true
+    },
+    "check_rows": [],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow",
+      "routing.run_held"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "run_held_unconfirmed",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "unknown",
+        "check_unconfirmed": true,
+        "goal": [
+          "",
+          ""
+        ],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [],
+        "run_verdict": {
+          "held": true,
+          "verdict": "unconfirmed"
+        }
+      },
+      "facts": [],
+      "kind": "UNCHECKED",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "BONOBO"
+      ]
+    },
+    "views": [
+      "run_held"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "failed"
+      ],
+      [
+        "openai/gpt-4o-mini",
+        "failed"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001232
+  },
+  "hb-h2main-J38-1": {
+    "item": "J38",
+    "rep": 1,
+    "class": "vague",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Which one do I go with?"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "our 24 bladder cancer RNA-seq samples"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "batch information"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "COBRA",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "Which one do I go with?",
+        "inputs": [
+          "expression_matrix"
+        ],
+        "missing": "result",
+        "question": "Which of these results do you want, or what question should the analysis answer?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "unknown",
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "Which one do I go with?"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.0016
+  },
+  "hb-h2main-J39-1": {
+    "item": "J39",
+    "rep": 1,
+    "class": "ask",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Does the metabolite file contain finite continuous numeric measurements?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "context",
+        "not_checked",
+        [],
+        "a host transcriptome table (log CPM) and a metabolite table for the same 58 stoo"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Can we use DRAGON on our gut study: a host transcriptome table (log CPM) and a m"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "the metabolite file may hold actual intensities or just 0/1 detected/not-detecte"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "Can we use DRAGON on our gut study: a host transcriptome table (log CPM) and a metabolite table for the same 58 stool samples?"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "Values must be finite continuous numeric measurements.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Does the metabolite file contain finite continuous numeric measurements?",
+          "settled_by_input_check": false,
+          "uncertainty": "two_versions",
+          "user_quote": "the metabolite file may hold actual intensities or just 0/1 detected/not-detected calls.",
+          "workflows": [
+            "DRAGON"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "DRAGON"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002159
+  },
+  "hb-h2main-J40-1": {
+    "item": "J40",
+    "rep": 1,
+    "class": "do",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "unknown",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "condor.communities",
+          "condor.core_scores",
+          "condor.enrichment"
+        ],
+        "Run CONDOR now on results/panda_lung_edges.tsv: columns source, target and weigh"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "results/panda_lung_edges.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "columns source, target and weight"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "thresholded from my PANDA lung network so all weights are non-negative"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "/data/projects/lung/condor_results/"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "lung_v1 as the prefix"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "CONDOR"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_fallback",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "CONDOR"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001906
+  },
+  "hb-h2main-J41-1": {
+    "item": "J41",
+    "rep": 1,
+    "class": "dont",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "BONOBO should write each per-sample co-expression matrix for our 22 lung fibrobl"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "our 22 lung fibroblast samples"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "log-transformed"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "centered"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "genes on rows"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "all_results_not_available",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [
+            "BONOBO"
+          ],
+          "line": "\"BONOBO should write each per-sample co-expression matrix for our 22 lung fibroblast samples as a .parquet file.\" -- not available here as asked. NetZoo's BONOBO has no setting for \".parquet file\"; the settings it passes are bonobo_output_format, sample_names, sparsify, bonobo_confidence, save_pvals, precision, keep_in_memory, delta, genes_axis, log_transformed and centered. BONOBO itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+          "quote": "BONOBO should write each per-sample co-expression matrix for our 22 lung fibroblast samples as a .parquet file.",
+          "reasons": [
+            "NetZoo's BONOBO has no setting for \".parquet file\"; the settings it passes are bonobo_output_format, sample_names, sparsify, bonobo_confidence, save_pvals, precision, keep_in_memory, delta, genes_axis, log_transformed and centered"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "coexpression_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "each per-sample co-expression matrix"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "decline"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.00114
+  },
+  "hb-h2main-J42-1": {
+    "item": "J42",
+    "rep": 1,
+    "class": "dont",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "co-expression attributable to each covariate"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "batch-adjusted co-expression matrix"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "We profiled a targeted panel of 400 immune genes in 650 blood samples"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "have a numeric design matrix with age, sex and batch"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"co-expression attributable to each covariate\" -- not available here as asked. COBRA requires more genes than samples; the request has 400 genes and 650 samples.",
+          "quote": "co-expression attributable to each covariate",
+          "reasons": [
+            "COBRA requires more genes than samples; the request has 400 genes and 650 samples"
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"batch-adjusted co-expression matrix\" -- not available here as asked. COBRA requires more genes than samples; the request has 400 genes and 650 samples.",
+          "quote": "batch-adjusted co-expression matrix",
+          "reasons": [
+            "COBRA requires more genes than samples; the request has 400 genes and 650 samples"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "coexpression_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "the co-expression attributable to each covariate plus a batch-adjusted co-expression matrix"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001911
+  },
+  "hb-h2main-J43-1": {
+    "item": "J43",
+    "rep": 1,
+    "class": "do",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "giraffe.tf_activity"
+        ],
+        "its activity level in every tumour separately from its own mRNA level"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "giraffe.signed_regulation"
+        ],
+        "whether it activates or represses each target gene"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Across 120 breast tumours"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "RNA-seq expression"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a TF-gene motif prior"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a TF-TF PPI matrix with matching identifiers"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network_and_tf_activity",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "its activity level in every tumour separately from its own mRNA level, and also whether it activates or represses each target gene"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "GIRAFFE"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002299
+  },
+  "hb-h2main-J44-1": {
+    "item": "J44",
+    "rep": 1,
+    "class": "dont",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "partial_gap",
+      "held": true
+    },
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "output otter_pbmc.tsv as an edge list."
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "ppi_pbmc.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "our 19,000-gene matrix"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "set computing to gpu"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "precision to single"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "otter.tf_gene_network"
+        ],
+        "Time to rerun OTTER: expr_pbmc.tsv, motif_pbmc.tsv and"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow",
+      "routing.run_held"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "run_held",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [
+            "OTTER"
+          ],
+          "line": "\"output otter_pbmc.tsv as an edge list.\" -- not available here as asked. OTTER computing=gpu is not enabled by this Docker runtime; use computing=cpu. OTTER itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+          "quote": "output otter_pbmc.tsv as an edge list.",
+          "reasons": [
+            "OTTER computing=gpu is not enabled by this Docker runtime; use computing=cpu"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "OTTER"
+        ],
+        "match_status": "exact",
+        "reason_code": "semantic_fallback",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "result",
+            "available"
+          ]
+        ],
+        "run_verdict": {
+          "held": true,
+          "verdict": "partial_gap"
+        }
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": true,
+      "run_allowed": false,
+      "workflows": [
+        "OTTER"
+      ]
+    },
+    "views": [
+      "run_held"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001339
+  },
+  "hb-h2main-J45-1": {
+    "item": "J45",
+    "rep": 1,
+    "class": "do",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "unknown",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "lioness_panda.per_sample_networks"
+        ],
+        "LIONESS-PANDA to give each of the three samples its own TF-to-gene network, kept"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "three bulk RNA-seq samples of mouse retina (P7, P14 and adult)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a mouse motif prior"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a STRING PPI"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "three samples"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "each of the three samples its own TF-to-gene network, kept separate from the aggregate one."
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_fallback",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-PANDA"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001731
+  },
+  "hb-h2main-J46-1": {
+    "item": "J46",
+    "rep": 1,
+    "class": "dont",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "to find gene communities"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "expr_tpm_brain.tsv (genes by 40 cortex samples)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "We don't want any network-building step first."
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "write the output to condor_brain/ today"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"to find gene communities\" -- not available here: no registered workflow produces this. CONDOR does not meet \"We don't want any network-building step first.\".",
+          "quote": "to find gene communities",
+          "reasons": [
+            "CONDOR does not meet \"We don't want any network-building step first.\""
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"write the output to condor_brain/ today\" -- not available here: no registered workflow produces this. Every registered workflow writes result files to the output folder you give; sending, uploading, publishing or showing them is done outside NetZoo.",
+          "quote": "write the output to condor_brain/ today",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "community_assignment",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "to find gene communities"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "result",
+            "not_available"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001314
+  },
+  "hb-h2main-J47-1": {
+    "item": "J47",
+    "rep": 1,
+    "class": "do",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "otter.tf_gene_network"
+        ],
+        "set up OTTER for an aggregate TF-gene network"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "my precomputed gene-by-gene co-expression matrix"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "motif seed"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "TF-TF PPI"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "human cardiomyocytes"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Settings: lam = 1, gamma = 0, 150 iterations, single precision on CPU, matrix ou"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "aggregate TF-gene network"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "OTTER"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.002073
+  },
+  "hb-h2main-J48-1": {
+    "item": "J48",
+    "rep": 1,
+    "class": "ask",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these is right: 2 or 4?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "needs_fact",
+        [
+          "lioness_panda.per_sample_networks"
+        ],
+        "LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish."
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "our zebrafish heart regeneration study"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "either two or four libraries"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "zebrafish motif prior and PPI"
+      ]
+    ],
+    "unknown_domains": {
+      "After QC we kept either two or four libraries; the sequencing core still hasn't told me which.": {
+        "kind": "choices",
+        "values": [
+          2,
+          4
+        ]
+      }
+    },
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "count_fact",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish."
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "needs_fact"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": true,
+          "contract_quote": "",
+          "depends_on": "sample_count",
+          "if_no": "",
+          "if_yes": "",
+          "notes": {
+            "2": "LIONESS-PANDA needs at least 3 samples; the request has 2"
+          },
+          "outcomes": {
+            "2": [],
+            "4": [
+              "LIONESS-PANDA"
+            ]
+          },
+          "question": "Which of these is right: 2 or 4?",
+          "settled_by_input_check": false,
+          "uncertainty": "",
+          "user_quote": "either two or four libraries",
+          "workflows": [
+            "LIONESS-PANDA"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-PANDA"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.001895
+  }
+}
