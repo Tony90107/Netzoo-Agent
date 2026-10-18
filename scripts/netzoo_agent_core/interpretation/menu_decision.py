@@ -37,7 +37,11 @@ from ..workflow_conditions import (
     UNREGISTERED, StatedSetting, all_conditions, combination_issues, data_issue, setting_issue,
 )
 
-__all__ = ["apply_answers", "candidate_workflows", "decide_menu", "workflow_conditions"]
+__all__ = ["PROBED_INTENTS", "apply_answers", "candidate_workflows", "decide_menu", "deciding_intents",
+           "intent_values", "workflow_conditions"]
+
+PROBED_INTENTS = ("artifact", "integration", "granularity", "regulators", "layers")
+"""The intents the phase-1b intent probe may ask about (the user's decision, 2026-10-18); never any other field."""
 
 _REGULATION = frozenset({"regulatory_network", "targeting_scores", "tf_activity"})
 _JOINT = frozenset({"multi_omic_network", "edge_significance"})
@@ -542,6 +546,41 @@ def candidate_workflows(reading: MenuReading, task: str = "", table: JudgmentDef
         _evaluate(ctx, item)
         found |= set(item.candidates)
     return sorted(found)
+
+
+def intent_values(dimension: str, table: JudgmentDefaults | None = None) -> tuple[str, ...]:
+    """A probed intent's menu values: the results, kinds of result and off-menu for the artifact; else its values and
+    off-menu values."""
+    table = table or judgment_defaults()
+    dimension_ = table.dimensions[dimension]
+    if dimension == "artifact":
+        return (*dimension_.values, *table.generic, *dimension_.off_menu)
+    return (*dimension_.values, *dimension_.off_menu)
+
+
+def deciding_intents(reading: MenuReading, task: str = "",
+                     table: JudgmentDefaults | None = None) -> list[tuple[int, str]]:
+    """(item, intent) for each probed intent whose menu values lead a thing asked to different calls (`_probe`), counting
+    only the values that leave it a candidate. An
+    intent the user is already unsure of is asked anyway and never probed. With nothing asked, item
+    `len(reading.wanted)` is the result the request leaves unnamed (as in `decide_menu`)."""
+    table = table or judgment_defaults()
+    if reading.status == "failed":
+        return []
+    ctx = _Context(reading, table, task)
+    items = [_Item(index, wanted) for index, wanted in enumerate(reading.wanted) if wanted.form == "deliverable"]
+    found = []
+    for item in items or [_Item(len(reading.wanted), Wanted(quote=""))]:
+        for dimension in PROBED_INTENTS:
+            if getattr(item.wanted, dimension).status in ("unsure", "conflicting"):
+                continue
+            # As `_open_values`: only values that leave the thing asked a candidate count; a value that rules every
+            # candidate out ("joint" for a TF network) is no reading of the words, so it decides nothing here.
+            alive = {outcome for outcome in (_probe(ctx, item, dimension, value)
+                                             for value in intent_values(dimension, table)) if not outcome[0]}
+            if len(alive) > 1:
+                found.append((item.index, dimension))
+    return found
 
 
 def decide_menu(reading: MenuReading, task: str = "", answers=(), rounds_asked: int = 0,
