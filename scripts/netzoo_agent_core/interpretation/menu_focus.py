@@ -30,7 +30,7 @@ from ..workflow_conditions import all_conditions
 from .menu_decision import workflow_conditions
 from .menu_reader import _CONDITION_MEANS, _DATA_MEANS, _IDENTIFIER, ReadReport, _strict, quote_in, request_layout
 
-__all__ = ["focus_limits", "focus_model", "focus_text", "merge_focused"]
+__all__ = ["focus_limits", "focus_model", "focus_text", "gate_model", "gate_requirements", "merge_focused"]
 
 _FORBID = ConfigDict(extra="forbid")
 Mention = Literal["stated", "unsure", "not_mentioned"]
@@ -272,3 +272,34 @@ def merge_focused(first: MenuReading, payload, task: str, candidates: tuple[str,
                                       "feature_count": counts["feature_count"], "data": data, "data_absent": absent,
                                       "unsure_files": files, "conditions": conditions})
     return merged, report
+
+
+@lru_cache(maxsize=64)
+def gate_model(candidates: tuple[str, ...]) -> type[BaseModel]:
+    """The live system's hybrid gate read (2026-10-18): the focused limits of the workflows the live call chose, plus
+    the user's requirements on the result, typed as the reader types them (only how_computed / what_it_contains are
+    matched to contracts)."""
+    from .menu_reader import RequirementAbout
+
+    requirement = create_model(
+        "GateRequirement", __config__=_FORBID,
+        quote=(str, Field(description="The user's exact words.")),
+        about=(RequirementAbout, Field(description="how_computed: how the result must be computed; what_it_contains: "
+                                                   "what the result must contain; another_result: a result of its "
+                                                   "own; a_setting: a workflow setting; data_property: a property of "
+                                                   "the user's data; file_or_format: file names, formats or folders; "
+                                                   "other.")),
+    )
+    base = focus_model(candidates)
+    fields = {name: (info.annotation, info) for name, info in base.model_fields.items()}
+    fields["requirements"] = (list[requirement], Field(description=(
+        "Each requirement the user puts on the result (a convex solution, a p-value for every edge), typed.")))
+    return _strict(create_model("GateReading", __config__=_FORBID, **fields))
+
+
+def gate_requirements(payload, task: str) -> list[str]:
+    """The gate read's requirements on how the result is computed or what it contains, with verified words."""
+    raw = payload.model_dump(mode="json") if isinstance(payload, BaseModel) else dict(payload)
+    return list(dict.fromkeys(entry["quote"] for entry in raw.get("requirements") or []
+                              if entry.get("about") in ("how_computed", "what_it_contains")
+                              and quote_in(entry.get("quote") or "", task)))

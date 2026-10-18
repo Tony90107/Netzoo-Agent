@@ -37,8 +37,8 @@ from ..workflow_conditions import (
     UNREGISTERED, StatedSetting, all_conditions, combination_issues, data_issue, setting_issue,
 )
 
-__all__ = ["PROBED_INTENTS", "apply_answers", "candidate_workflows", "decide_menu", "deciding_intents",
-           "intent_values", "workflow_conditions"]
+__all__ = ["PROBED_INTENTS", "GateVerdict", "apply_answers", "candidate_workflows", "decide_menu", "deciding_intents",
+           "intent_values", "workflow_conditions", "workflow_gate"]
 
 PROBED_INTENTS = ("artifact", "integration", "granularity", "regulators", "layers")
 """The intents the phase-1b intent probe may ask about (the user's decision, 2026-10-18); never any other field."""
@@ -798,6 +798,47 @@ def deciding_intents(reading: MenuReading, task: str = "",
             if len(alive) > 1:
                 found.append((item.index, dimension))
     return found
+
+
+@dataclass
+class GateVerdict:
+    """One workflow's hard conditions on a request (the live system's hybrid gates, 2026-10-18)."""
+
+    workflow: str
+    reasons: list[str] = field(default_factory=list)
+    """Why it cannot run what was asked; empty when it can."""
+    contract: list[str] = field(default_factory=list)
+    must_ask: list[str] = field(default_factory=list)
+    """Requirements its contract does not address, asked while fewer than `soft_requirements_met` are met."""
+    unconfirmed: list[str] = field(default_factory=list)
+    """Requirements not addressed, listed for confirmation when enough of the others are met."""
+
+
+def workflow_gate(reading: MenuReading, workflow: str, task: str = "",
+                  table: JudgmentDefaults | None = None) -> GateVerdict:
+    """The contract's hard conditions for one workflow another call already chose (the live path's DO): the stated
+    settings it lacks or cannot take, data the user says is absent, counts it cannot take, off-menu conditions,
+    unregistered methods and contradicted requirements -- each a reason it cannot run -- then the 9/10 rule for
+    requirements its contract does not address. Intents are not judged here: the caller chose the result."""
+    table = table or judgment_defaults()
+    ctx = _Context(reading, table, task, names=[workflow])
+    item = _Item(0, reading.wanted[0] if reading.wanted else Wanted(quote=""))
+    failed = {key: [] for key, entry in sheet_entries().items() if entry.kind == "produces" and entry.workflow == workflow}
+    _rule_out(ctx, item, failed)
+    verdict = GateVerdict(workflow=workflow)
+    if failed and all(failed.values()):
+        verdict.reasons = list(dict.fromkeys(r for reasons in failed.values() for r in reasons))
+        verdict.contract = _contract_words(table, workflow, verdict.reasons)
+        return verdict
+    counted = [r for r in item.wanted.requirements if r.must is not False]
+    if counted:
+        met = sum(r.verdicts.get(workflow) == "met" for r in counted) / len(counted)
+        open_ones = [r.quote for r in counted if r.verdicts.get(workflow) != "met"]
+        if met >= table.soft_requirements_met:
+            verdict.unconfirmed = open_ones
+        else:
+            verdict.must_ask = open_ones[:table.max_questions_per_turn]
+    return verdict
 
 
 def decide_menu(reading: MenuReading, task: str = "", answers=(), rounds_asked: int = 0,
