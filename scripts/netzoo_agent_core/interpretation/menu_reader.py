@@ -46,7 +46,7 @@ from .capability_check import request_sentences
 __all__ = ["CONDITION_FIELDS", "DOUBT_ABOUT", "READER_SHAPE", "Layout", "NumberSpan", "ReadReport", "WANTED_FIELDS", "layout_text",
            "menu_text", "quote_in", "reader_model", "request_layout", "to_menu_reading"]
 
-READER_SHAPE = "v5"
+READER_SHAPE = "v6"
 """The schema shape the phase-1 rounds record (v1: quote lists, artifact enum with off_menu, a data list)."""
 _FORBID = ConfigDict(extra="forbid")
 Status = Literal["stated", "not_stated", "unsure", "conflicting"]
@@ -145,6 +145,8 @@ _WORD_NUMBERS = {word: index for index, word in enumerate(
 _WORD_NUMBERS.update({"thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80,
                       "ninety": 90, "hundred": 100})
 _LIONESS_VERSION = re.compile(rf"(?<![A-Za-z0-9_-]){LIONESS_FAMILY}-[A-Z][A-Za-z0-9]*(?![A-Za-z0-9_-])")
+# A file name (name.ext) or a snake_case identifier: the words name a file or a field, never a result.
+_IDENTIFIER = re.compile(r"\b\w+\.[A-Za-z][A-Za-z0-9]{1,4}\b|\b[a-z0-9]+_[a-z0-9_]+\b")
 _WORDS = re.compile(r"\b(" + "|".join(_WORD_NUMBERS) + r")\b", re.I)
 
 
@@ -372,9 +374,10 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
         "NumberWire", __config__=_FORBID,
         unit=(str, Field(description="The user's exact words for what the number counts or sets (genes, paired "
                                      "samples, lam, iterations).")),
-        what=(Literal["sample_count", "feature_count", "setting", "other"], Field(description=(
-            "sample_count: the total number of samples; feature_count: the number of features (genes, proteins, "
-            "...) of one layer; setting: a value for a workflow control; other."))),
+        what=(Literal["sample_count", "feature_count", "setting", "layers_files_or_groups", "other"], Field(
+            description=("sample_count: the total number of samples; feature_count: the number of features (genes, "
+                         "proteins, ...) of one layer; setting: a value for a workflow control; "
+                         "layers_files_or_groups: a number of layers, tables, files, groups or time points; other."))),
         layer=(layer, Field(description="feature_count: the layer the features belong to.")),
         workflow=(workflow, Field(description="setting: the workflow; unspecified when the words do not say.")),
         control=(control, Field(description="setting: the control, or unregistered.")),
@@ -543,9 +546,10 @@ def _result(raw: dict, task: str, where: str, report: ReadReport, table: Judgmen
         return Said(), ""
     if names == "off_menu_result":
         outside = next((n for n in (raw.get("outside_name"), quote) if n and quote_in(n, task)), "")
-        if outside and not workflows_in(outside):
+        if outside and not workflows_in(outside) and not _IDENTIFIER.search(outside):
             return Said(status="stated", value="off_menu", basis="explicit", quotes=[quote]), outside
-        # A registered workflow's name is on the menu: never a result off it (d1: "Run LIONESS-PANDA").
+        # A registered workflow's name is on the menu, and a file name or identifier names no result: never a result
+        # off it (d1: "Run LIONESS-PANDA"; d5: "analyze edges_release.tsv", "coexpression_file").
         report.dropped.append(f"{where}.result: off_menu_result without words naming a result off the menu")
         return Said(), ""
     report.dropped.append(f"{where}.result: {names} without its value")

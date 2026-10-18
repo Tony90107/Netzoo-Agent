@@ -70,6 +70,17 @@ def test_a_focused_doubt_replaces_a_stated_value_and_is_asked():
     assert report.filled
 
 
+def test_an_unsure_control_waits_for_its_answer_before_combination_checks():
+    task = "Can BONOBO keep save_pvals=true? The lab has not confirmed whether sparsify was set to true or false."
+    reading = MenuReading(wanted=[Wanted(quote="Can BONOBO keep save_pvals=true?")], data=["expression"],
+                          settings=[SettingAsked(quote="save_pvals=true", workflow="BONOBO", control="save_pvals",
+                                                 value="true"),
+                                    SettingAsked(quote="whether sparsify was set to true or false", workflow="BONOBO",
+                                                 control="sparsify", unsure=True, values=["true", "false"])])
+    decision = decide_menu(reading, task)
+    assert decision.kind == "ASK" and decision.questions[0].dimension == "setting:BONOBO.sparsify"
+
+
 def test_focused_limits_fill_what_the_first_reading_missed_and_never_overwrite_a_stated_one():
     task = "Can OTTER run on the GPU with 150 iterations for our 2 samples? We have no PPI network."
     first = MenuReading(wanted=[Wanted(quote="Can OTTER run on the GPU")],

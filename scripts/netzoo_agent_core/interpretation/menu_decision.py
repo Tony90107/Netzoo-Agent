@@ -361,7 +361,10 @@ def _rule_out(ctx: _Context, item: _Item, failed: dict[str, list[str]]) -> None:
         for setting in stated:
             if problem := setting_issue(limits, setting):
                 failed[key].append(problem)
-        failed[key].extend(combination_issues(limits, stated, samples))
+        doubted = any(asked.unsure and asked.workflow in (workflow, "") and asked.control in limits.settings
+                      for asked in reading.settings)
+        if not doubted:  # a control the user is unsure of is asked first; its default is never assumed (phase 1, d5)
+            failed[key].extend(combination_issues(limits, stated, samples))
         for control, value in table.required_settings.get(workflow, {}).items():
             said = next((s for s in reading.settings if s.workflow in (workflow, "") and s.control == control
                          and not s.unsure), None)
