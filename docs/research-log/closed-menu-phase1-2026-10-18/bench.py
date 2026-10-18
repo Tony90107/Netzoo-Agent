@@ -144,6 +144,20 @@ def compare(gold, model) -> dict:
     return out
 
 
+def neutral(name: str, gold_value, read_value) -> bool:
+    """A fill no decision reads: a data condition stated at a value that rules nothing out, or two layers, where the
+    gold says nothing (the default table assumes the same)."""
+    from netzoo_agent_core.contracts.capability_check import CONDITIONS
+    if gold_value != ("not_stated", None) or not read_value or read_value[0] != "stated":
+        return False
+    if name.startswith("conditions."):
+        condition = name.split(".", 1)[1]
+        off = CONDITIONS[condition][1] if condition in CONDITIONS else {"data_stage": "raw_files",
+                                                                         "input_network": "gene_gene"}[condition]
+        return read_value[1] != off
+    return name == "wanted.layers" and read_value[1] == "two"
+
+
 def limits_and_doubts(gold, model) -> dict:
     """Recall units: each gold limit and each gold doubt, read or missed; and the read's own extra ones."""
     found = {"limit": [], "doubt": [], "extra_limit": 0, "extra_doubt": 0}
@@ -208,7 +222,7 @@ def score(tag: str) -> None:
     for arm in ("first", "focused"):
         fields, recall = defaultdict(lambda: [0, 0]), {"limit": defaultdict(lambda: [0, 0]),
                                                         "doubt": defaultdict(lambda: [0, 0])}
-        extra = Counter()
+        extra, decisive = Counter(), [0, 0]
         calls, kinds, outcomes, failed = defaultdict(list), defaultdict(dict), Counter(), 0
         for row in rows:
             source = row["focus"] if arm == "focused" and row.get("focus", {}).get("ran") else row
@@ -227,9 +241,12 @@ def score(tag: str) -> None:
             kinds[row["id"]][f"right{row['rep']}"] = outcome == "correct"
             if model.status == "failed":
                 continue
-            for name, (_g, _m, match) in compare(gold, model).items():
+            for name, (g, m, match) in compare(gold, model).items():
                 fields[name][0] += match
                 fields[name][1] += 1
+                if not neutral(name, g, m):
+                    decisive[0] += match
+                    decisive[1] += 1
             found = limits_and_doubts(gold, model)
             for family in ("limit", "doubt"):
                 for name, hit in found[family]:
@@ -248,7 +265,8 @@ def score(tag: str) -> None:
         total = [sum(v[0] for v in fields.values()), sum(v[1] for v in fields.values())]
         result["arms"][arm] = {
             "failed_reads": failed,
-            "field_accuracy": {"overall": total, **{k: v for k, v in sorted(fields.items())}},
+            "field_accuracy": {"overall": total, "without_neutral_fills": decisive,
+                               **{k: v for k, v in sorted(fields.items())}},
             "limit_recall": {"overall": [sum(v[0] for v in recall["limit"].values()),
                                          sum(v[1] for v in recall["limit"].values())], **recall["limit"]},
             "doubt_recall": {"overall": [sum(v[0] for v in recall["doubt"].values()),
@@ -266,7 +284,8 @@ def score(tag: str) -> None:
         }
     write(HERE / "live" / tag / "score.json", result)
     for arm, r in result["arms"].items():
-        print(f"== {arm}: failed {r['failed_reads']}, field accuracy {r['field_accuracy']['overall']}, "
+        print(f"== {arm}: failed {r['failed_reads']}, field accuracy {r['field_accuracy']['overall']} "
+              f"(without neutral fills {r['field_accuracy']['without_neutral_fills']}), "
               f"limit recall {r['limit_recall']['overall']}, doubt recall {r['doubt_recall']['overall']}, "
               f"kind agreement {r['kind_agreement']}, do-item extras {r['do_items_extra']}")
         print("   calls (both reads):", r["calls_per_read"], "| vague declined:", r["vague_declined_per_read"],
