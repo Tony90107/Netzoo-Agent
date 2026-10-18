@@ -381,12 +381,18 @@ dimensions:
 
   data_unit:
     class: condition
+    options:  # user-facing labels (options-first renderer, 2026-10-18); no default changes
+      bulk_samples: Bulk samples (tissues, patients, cell lines, or pseudo-bulk profiles)
+      single_cells: Single cells
     condition: data_unit
     not_stated: {policy: default, value: bulk_samples}
     note: Every registered workflow takes bulk samples; single cells are off the menu (lioness.no_single_cell).
 
   data_stage:
     class: condition
+    options:  # user-facing labels (options-first renderer, 2026-10-18); no default changes
+      processed_matrix: Processed tables (matrices or counts)
+      raw_files: Raw files that still need processing (FASTQ, BAM, peak files)
     values: [processed_matrix, raw_files]
     not_stated: {policy: default, value: processed_matrix}
     serves: >-
@@ -395,41 +401,62 @@ dimensions:
 
   mutation_origin:
     class: condition
+    options:  # user-facing labels (options-first renderer, 2026-10-18); no default changes
+      somatic: Somatic (tumour) mutations
+      germline: Germline variants
     condition: mutation_origin
     not_stated: {policy: default, value: somatic}
     note: SAMBAR scores somatic mutations; germline is off the menu.
 
   value_type:
     class: condition
+    options:  # user-facing labels (options-first renderer, 2026-10-18); no default changes
+      continuous: Continuous values
+      binary: Binary (0/1) calls
     condition: value_type
     not_stated: {policy: default, value: continuous}
     note: DRAGON and LIONESS-DRAGON need continuous values; binary indicators are off the menu.
 
   mirna_driver:
     class: condition
+    options:  # user-facing labels (options-first renderer, 2026-10-18); no default changes
+      target_prior: A miRNA-target prior with a miRNA list
+      measured_expression: Measured miRNA expression
     condition: mirna_driver
     not_stated: {policy: default, value: target_prior}
     note: PUMA's miRNA edges come from a target prior; links driven by measured miRNA expression are off the menu.
 
   time_model:
     class: condition
+    options:  # user-facing labels (options-first renderer, 2026-10-18); no default changes
+      not_dynamic: Separate results per time point, compared afterwards
+      dynamic: A model of change from one time point to the next
     condition: time_model
     not_stated: {policy: default, value: not_dynamic}
     note: Comparing time points is not dynamic; a model of change from one time point to the next is off the menu.
 
   spatial:
     class: condition
+    options:  # user-facing labels (options-first renderer, 2026-10-18); no default changes
+      not_spatial: Samples treated independently of where they sit
+      uses_neighbors: Results that use neighbouring spots or samples
     condition: spatial
     not_stated: {policy: default, value: not_spatial}
 
   group_membership:
     class: condition
+    options:  # user-facing labels (options-first renderer, 2026-10-18); no default changes
+      one_group: Each item in one group
+      several_groups: Items allowed in several groups
     condition: group_membership
     not_stated: {policy: default, value: one_group}
     note: Overlapping groups are off the menu (CONDOR and SAMBAR put each item in one group).
 
   input_network:
     class: condition
+    options:  # user-facing labels (options-first renderer, 2026-10-18); no default changes
+      regulator_gene: Regulator-to-gene edges (for example TF to gene)
+      gene_gene: Gene-gene edges (for example co-expression)
     values: [regulator_gene, gene_gene]
     not_stated: {policy: input_check}
     note: >-
@@ -450,6 +477,9 @@ dimensions:
 
   samples_matched:
     class: input_check
+    options:  # user-facing labels (options-first renderer, 2026-10-18); no default changes
+      same_samples: The same samples in both layers
+      different_samples: Different samples in each layer
     condition: samples_matched
     not_stated: {policy: input_check}
     note: DRAGON and LIONESS-DRAGON compare exact sample IDs before running. Stated different samples -> FAIL.
