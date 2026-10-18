@@ -108,7 +108,6 @@ def read_many(jobs, *, workers: int = 6, focus: bool = False, requirements: bool
             arm = latest
             if probed is not None:
                 row["probe"].update(stage(item, rep, probed))
-            row["probe"]["probed"] = [[q.item, q.dimension] for q in questions]  # after the stage's own `questions`
                 if probed.reading != focused_reading:
                     arm = probed.reading
                     if requirements:
@@ -117,6 +116,7 @@ def read_many(jobs, *, workers: int = 6, focus: bool = False, requirements: bool
                         if checked is not None:
                             row["probe"]["req_usd"] = usage(checked.raw)["usd"]
                             arm = checked.reading
+            row["probe"]["probed"] = [[q.item, q.dimension] for q in questions]  # after the stage's own `questions`
             row["final_probe"] = _final(decide_menu(arm, item["prompt"]), arm)
         return row
 
