@@ -344,9 +344,13 @@ def test_a_choice_between_workflows_is_asked_as_the_goal():
     task = "Should I be using COBRA or CONDOR on our lupus nephritis cohort?"
     reading, _ = read(task, wanted=[item(task, result=result("choice_between_workflows", task))],
                       roles={"COBRA": "choice", "CONDOR": "choice"})
-    assert reading.wanted[0].artifact.status == "unsure" and reading.wanted[0].artifact.values == []
+    assert reading.wanted[0].artifact.status == "not_stated" and reading.wanted[0].method_choice == [task]
     decision = decide_menu(reading, task)
     assert decision.kind == "CLARIFY"
+    # the roles alone are the same evidence
+    reading, report = read(task, wanted=[item(task, result=result("workflow_only", "COBRA"))],
+                           roles={"COBRA": "choice", "CONDOR": "choice"})
+    assert reading.wanted[0].method_choice == [task] and decide_menu(reading, task).kind == "CLARIFY"
     # one name found: still the goal, never that workflow's run
     one = "Should I use COBRA here, or something else?"
     reading, _ = read(one, wanted=[item(one, result=result("choice_between_workflows", one))])

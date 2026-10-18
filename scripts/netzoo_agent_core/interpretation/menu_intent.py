@@ -134,10 +134,11 @@ def merge_intent(reading: MenuReading, questions: list[IntentQuestion], payload,
         first: Said = getattr(item, question.dimension)
         where = f"q{n} {question.dimension}"
         if question.dimension == "artifact" and value == CHOICE and verified:
-            # A choice between workflows leaves the result open: asked as the goal, whatever the first read said.
-            said = Said(status="unsure", values=[], quotes=[quote])
+            # A choice between workflows: the result is not stated and the words are the method-choice evidence.
             report.filled.append(f"{'unclear' if first.status == 'stated' else 'adopted'}: {where} = {CHOICE}"
                                  + (f" (first {first.value})" if first.status == "stated" else ""))
+            wanted[question.item] = item.model_copy(update={"artifact": Said(), "method_choice": [quote]})
+            continue
         elif first.status == "stated":
             if verified and value == first.value:
                 report.filled.append(f"agree: {where} = {value}")

@@ -13,8 +13,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-__all__ = ["Answer", "Count", "Declined", "MenuDecision", "MenuReading", "Question", "Requirement", "Said",
-           "SettingAsked", "TieChoice", "Wanted"]
+__all__ = ["Answer", "Count", "Declined", "Infeasible", "MenuDecision", "MenuReading", "Option", "Question",
+           "Requirement", "Said", "SettingAsked", "TieChoice", "Wanted"]
 
 Status = Literal["stated", "not_stated", "unsure", "conflicting"]
 Basis = Literal["explicit", "implied", "answered"]
@@ -72,6 +72,9 @@ class Wanted(_Model):
     outside_name: str = ""
     """artifact = off_menu: the user's own words naming the result."""
     requirements: list[Requirement] = Field(default_factory=list)
+    method_choice: list[str] = Field(default_factory=list)
+    """The user's words choosing between workflows with no result named ("COBRA or CONDOR?") -- evidence that the
+    goal is unclear (options-first decision, 2026-10-18); the result stays not stated."""
 
 
 class SettingAsked(_Model):
@@ -151,6 +154,31 @@ class TieChoice(_Model):
     """Workflows a stated field makes fit better (`tie_options.fits_when`)."""
 
 
+class Option(_Model):
+    """One feasible choice on the options card (options-first decision, 2026-10-18)."""
+
+    workflow: str
+    artifact: str
+    difference: str = ""
+    good_for: str = ""
+    fits: list[str] = Field(default_factory=list)
+    """What the user said that this option satisfies (their words where the reading has them)."""
+    to_confirm: list[str] = Field(default_factory=list)
+    """What is still open for it: a question, a requirement the contract does not address, an input the run needs."""
+    matched: int = 0
+    relevant: int = 0
+    """The user's stated points relevant to this option, and how many it satisfies ("matches 9 of your 10 points")."""
+
+
+class Infeasible(_Model):
+    """A candidate that cannot run what was asked: never among the options."""
+
+    workflow: str
+    reasons: list[str] = Field(default_factory=list)
+    contract: list[str] = Field(default_factory=list)
+    """The contract's words behind the reasons (capability-sheet why_not lines), when a reason has them."""
+
+
 class MenuDecision(_Model):
     kind: Literal["CLARIFY", "ASK", "DECLINE", "DO", "UNCHECKED"]
     basis: str
@@ -168,3 +196,11 @@ class MenuDecision(_Model):
     partial: bool = False
     run_ready: bool = False
     final_round: bool = False
+    options: list[Option] = Field(default_factory=list)
+    """At most `ask_max_options` feasible options, ranked: every hard condition passed, then the match rate, then the
+    tie order. DO has one (or a tie); ASK and CLARIFY carry them beside their questions."""
+    infeasible: list[Infeasible] = Field(default_factory=list)
+    nearest: list[Option] = Field(default_factory=list)
+    """DECLINE: the nearest registered options that can be done, with what differs from the request."""
+    evidence: list[str] = Field(default_factory=list)
+    """CLARIFY: the user's words showing the goal is unclear (no result named, only a generic word, a method choice)."""

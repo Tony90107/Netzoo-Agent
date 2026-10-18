@@ -90,7 +90,8 @@ def test_not_said_or_unverified_words_against_a_stated_value_is_unclear():
     assert decide_menu(merged, TASK).kind == "ASK"
     _q, (merged, _r) = probe(first, ("tf_activity", "TF activity per patient"), ("per_sample", "for each patient"))
     assert merged.wanted[0].artifact.status == "unsure" and merged.wanted[0].artifact.values == []
-    assert decide_menu(merged, TASK).kind == "CLARIFY"  # the result is left open and asked
+    decision = decide_menu(merged, TASK)
+    assert decision.kind == "ASK" and decision.questions[0].dimension in ("artifact", "artifact_group")  # asked
 
 
 def test_a_verified_value_fills_an_intent_the_first_read_did_not_state():
@@ -122,7 +123,7 @@ def test_a_choice_between_workflows_is_asked_as_the_goal():
     first = MenuReading(wanted=[Wanted(quote=task, artifact=said("communities", "CONDOR"))])
     questions = intent_questions(first, task)
     merged, _ = merge_intent(first, questions, answers((CHOICE, "COBRA or CONDOR")), task)
-    assert merged.wanted[0].artifact.status == "unsure" and decide_menu(merged, task).kind == "CLARIFY"
+    assert merged.wanted[0].method_choice == ["COBRA or CONDOR"] and decide_menu(merged, task).kind == "CLARIFY"
 
 
 def test_no_call_without_a_deciding_intent_and_a_failed_call_keeps_the_reading():

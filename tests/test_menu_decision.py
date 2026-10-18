@@ -73,6 +73,12 @@ def test_grid_invariants(artifact, scale, regulators, integration, data):
     # I6: several workflows for one result are a tie with its reasons written down.
     if decision.kind == "DO" and len(decision.workflows) > 1:
         assert decision.ties and all(tie.group for tie in decision.ties), decision.workflows
+    # Options-first (2026-10-18): at most ask_max_options options, none of them also listed as not possible, and
+    # no option is offered on a refusal.
+    assert len(decision.options) <= TABLE.ask_max_options
+    assert not {o.workflow for o in decision.options} & {x.workflow for x in decision.infeasible}
+    if decision.kind == "DECLINE":
+        assert not decision.options
     # A question is never empty, and asks at most ask_max_options choices (one is a confirmation).
     for question in decision.questions:
         assert 1 <= len(question.options) <= max(TABLE.ask_max_options, 4)
@@ -160,13 +166,22 @@ def test_one_named_workflow_is_its_own_result():
 
 
 def test_two_named_workflows_and_no_result_ask_the_result():
-    decision = decide_menu(MenuReading(), "Should I use COBRA or CONDOR?")
-    assert decision.kind == "CLARIFY"
+    """Options-first decision (2026-10-18): CLARIFY needs the user's words showing the goal is unclear."""
+    task = "Should I use COBRA or CONDOR?"
+    question = MenuReading(wanted=[Wanted(quote=task, form="question_to_us")])
+    choice = MenuReading(wanted=[Wanted(quote=task, method_choice=[task])])
+    for reading_ in (question, choice):
+        decision = decide_menu(reading_, task)
+        assert decision.kind == "CLARIFY" and decision.evidence == [task]
+        assert {o.workflow for o in decision.options} == {"COBRA", "CONDOR"}
+    decision = decide_menu(MenuReading(), task)  # nothing read: the result is asked, with options, never refused
+    assert decision.kind == "ASK" and decision.options
 
 
-def test_nothing_said_is_clarify_never_decline():
+def test_nothing_said_is_asked_never_declined():
     for data in DATA:
-        assert decide_menu(MenuReading(data=data)).kind == "CLARIFY"
+        decision = decide_menu(MenuReading(data=data))
+        assert decision.kind in ("ASK", "CLARIFY") and decision.questions and decision.options
 
 
 def test_an_off_menu_result_needs_the_users_words_and_declines():
@@ -260,9 +275,11 @@ def test_the_last_round_is_marked():
 
 
 def test_a_result_never_named_is_confirmed_even_when_the_data_leave_one():
-    """Phase 0 missed-field check (C15, C26): the data alone never choose the result for the user."""
+    """Phase 0 missed-field check (C15, C26): the data alone never choose the result for the user -- confirmed as an
+    options card with one option (options-first decision, 2026-10-18)."""
     decision = decide_menu(MenuReading(data=["mutation_calls"]))
-    assert decision.kind == "CLARIFY" and decision.questions[0].options[0][0] == "patient_subtypes"
+    assert decision.kind == "ASK" and decision.questions[0].options[0][0] == "patient_subtypes"
+    assert [o.workflow for o in decision.options] == ["SAMBAR"]
 
 
 def test_mirna_data_is_a_mention_so_the_regulator_kind_is_asked():
