@@ -52,6 +52,8 @@ def record(item: dict, read, decision, rep: int = 0) -> dict:
         "kind": decision.kind, "basis": decision.basis, "workflows": decision.workflows, "partial": decision.partial,
         "questions": [q.dimension for q in decision.questions], "settled": decision.settled,
         "reasons": [r for d in decision.declined for r in d.reasons],
+        "options": [o.workflow for o in decision.options], "nearest": [o.workflow for o in decision.nearest],
+        "infeasible": [x.workflow for x in decision.infeasible], "evidence": decision.evidence,
         "dropped": read.report.dropped, "filled": read.report.filled,
         "reading": read.reading.model_dump(mode="json", exclude_defaults=True), "payload": read.payload,
     }
@@ -65,6 +67,8 @@ def _final(decision, reading) -> dict:
     return {"kind": decision.kind, "basis": decision.basis, "workflows": decision.workflows,
             "partial": decision.partial, "questions": [q.dimension for q in decision.questions],
             "settled": decision.settled, "reasons": [r for d in decision.declined for r in d.reasons],
+            "options": [o.workflow for o in decision.options], "nearest": [o.workflow for o in decision.nearest],
+            "infeasible": [x.workflow for x in decision.infeasible], "evidence": decision.evidence,
             "reading": reading.model_dump(mode="json", exclude_defaults=True), "status": reading.status}
 
 

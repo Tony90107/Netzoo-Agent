@@ -1,0 +1,437 @@
+{
+  "reviewer_note": "Read in full only items-author.json (48 items), the 13 contracts in .worktrees/netzoo-core-p0-run/workflows/*.yaml and .worktrees/netzoo-core-p0-run/scripts/workflow_registry.py (all 2,676 lines: controls, output capabilities, conventions, input_checks, CLAIM_SUPPORT, UNSUPPORTED_CLAIMS, EXTERNAL_REFERENCES, REQUEST_CONCERNS). Nothing else was opened and the assistant was not run. Each gold was checked against the verbatim contract text: class, workflow set (for do: fitting workflows missing or extra), deciding fact or missing core. Limits were recomputed by hand: sample minimums (LIONESS-PANDA/PUMA/COEXPRESSION, BONOBO, LIONESS-DRAGON >= 3), OTTER lam in [0, 1], gamma >= 0, iterations >= 1, BONOBO delta in (0, 1/3) with sparsify, SAMBAR 2 <= kmin <= kmax <= samples, COBRA genes > samples, DRAGON two layers and both lambdas in [0, 1], GIRAFFE controls: []. LIONESS-DRAGON values = n(n-1)/2 feature pairs over both layers x samples; every verdict is the same if the diagonal is counted (n(n+1)/2): J11 17,970,000 (18,030,000), J14 11,235,000 vs 460,704,000, J19 3,670,800, J20 187,425,000, J29 11,500,800, against the 20,000,000 cap. file_checkable is set only for ask items of form run (J09, J21, J34, J37); null elsewhere. No gold was changed; borderline points are noted in reason.",
+  "items": {
+    "J01": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["PANDA", "LIONESS-PANDA", "OTTER", "GIRAFFE"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "'Understand gene regulation' and 'any thoughts on how to approach it' name no result; the missing core is right. The candidate list is only indicative for a vague item.",
+      "evidence": ""
+    },
+    "J02": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["GIRAFFE"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "GIRAFFE exposes no controls, so learning rate, iterations and the PPI loss weight cannot be set. The registry also says the agent sets none of these.",
+      "evidence": "giraffe.yaml: \"controls: []\" | giraffe.yaml: \"the agent calls only the required three positional arrays and uses the package defaults for all optional parameters.\" | workflow_registry.py (REQUEST_CONCERNS run_giraffe): \"How far it moves is set by the optimizer's learning rate, its iteration limits and the loss weights, none of which this agent sets\""
+    },
+    "J03": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["PANDA"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "PANDA takes coexpression_file while keeping expression_file, and with_header is its control. Whether the COBRA matrix's gene IDs and order match is a file-level check, not a request-level limit. PUMA and OTTER also accept COBRA's artifact, but the user names PANDA and uses its with_header control.",
+      "evidence": "panda.yaml: \"optional_inputs: [with_header, coexpression_file, taxon]\" | panda.yaml: \"When coexpression_file is supplied, it must be a labeled symmetric gene-by-gene matrix whose IDs and dimensions match PANDA's filtered gene axis.\""
+    },
+    "J04": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["OTTER"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "Per-patient OTTER (LIONESS-OTTER) is not registered: the registered OTTER action is aggregate only. The user rules out PANDA-based per-sample networks.",
+      "evidence": "otter.yaml: \"This agent's registered OTTER action is aggregate only and does not silently label its output LIONESS-OTTER.\" | workflow_registry.py (EXTERNAL_REFERENCES LIONESS-OTTER): \"netZooPy, not registered in this agent\""
+    },
+    "J05": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["PUMA", "LIONESS-PUMA", "PANDA", "LIONESS-PANDA", "OTTER", "GIRAFFE"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "The user says outright that there is no question yet, and the files fit several workflows with different results. The missing core is right.",
+      "evidence": ""
+    },
+    "J06": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["PANDA", "GIRAFFE"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "The user leaves a choice between two methods with different outputs and states no result, which is the vague case.",
+      "evidence": ""
+    },
+    "J07": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["LIONESS-COEXPRESSION", "BONOBO"],
+      "deciding_fact": "Whether three samples or only two will be available.",
+      "file_checkable": null,
+      "reason": "Both per-sample co-expression workflows need at least 3 samples: 3 fits, 2 does not. BONOBO's log-transformed and centered declarations are stated.",
+      "evidence": "lioness-coexpression.yaml: \"Require at least three samples and validate expression inside the execution wrapper.\" | bonobo.yaml: \"at least three total samples so each leave-one-out background has at least two samples.\""
+    },
+    "J08": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["DRAGON"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "DRAGON takes exactly two layers and has no three-layer argument.",
+      "evidence": "dragon.yaml: \"The verified API has no sample_metadata, motif, PPI, expression-matrix, or three-layer argument.\""
+    },
+    "J09": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["GIRAFFE", "LIONESS-PANDA"],
+      "deciding_fact": "Whether the per-donor TF value is TF activity or TF out-degree (wiring).",
+      "file_checkable": false,
+      "reason": "The result (one value per TF per donor) is stated two ways, activity or out-degree, which is the registry's per_sample_quantity axis. Borderline with vague, but ask fits the definition. No file check can settle a choice of quantity.",
+      "evidence": "workflow_registry.py (SELECTION_AXES per_sample_quantity): \"For each sample, do you need each regulator's wiring to its targets (edge weights, summarised for example as targeting scores), or each regulator's activity level?\""
+    },
+    "J10": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["DRAGON"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "Both lambdas are supplied and 0 and 1 lie in the closed [0, 1] range, and edge_list is an allowed format. LIONESS-DRAGON does not fit: it is sample-specific only and has no output_format control.",
+      "evidence": "dragon.yaml: \"Manual shrinkage is allowed only when both values are supplied in [0, 1].\" | dragon.yaml: \"minimum: 0 maximum: 1\""
+    },
+    "J11": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["LIONESS-DRAGON"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "600 features give 179,700 pairs x 100 samples = 17,970,000 values (18,030,000 with the diagonal), under 20,000,000. Empty lambdas are estimated.",
+      "evidence": "lioness-dragon.yaml: \"runs above 20,000,000 values are refused before they start.\""
+    },
+    "J12": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["PANDA", "OTTER"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "A choice between methods with no stated result. Borderline: both give an aggregate TF-gene network from the same inputs, but the user names no result or question, so vague follows the class definition.",
+      "evidence": ""
+    },
+    "J13": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["LIONESS-PUMA"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "All six required inputs are named, 48 samples is at least 3, and the miRNA list has one ID per line.",
+      "evidence": "lioness-puma.yaml: \"Require at least three expression samples and a validated one-ID-per-line miRNA list.\""
+    },
+    "J14": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["LIONESS-DRAGON"],
+      "deciding_fact": "How many genes the RNA layer has (450 or 4,500), which decides whether the per-sample table stays under 20,000,000 values.",
+      "file_checkable": null,
+      "reason": "750 features x 40 samples = 11,235,000 values (allowed). 4,800 features = 460,704,000 (refused). The arithmetic is correct.",
+      "evidence": "lioness-dragon.yaml: \"The per-sample table holds one value per feature pair per sample; runs above 20,000,000 values are refused before they start.\""
+    },
+    "J15": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["GIRAFFE"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "Only GIRAFFE estimates regulator activity, and its regulators are TFs only. The miRNA workflows output networks, not activity.",
+      "evidence": "giraffe.yaml: \"regulator_types: [tf]\""
+    },
+    "J16": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["PANDA", "LIONESS-PANDA", "COBRA", "LIONESS-COEXPRESSION", "GIRAFFE"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "A 'what kind of analysis should I do' question with no result named. The candidate list is indicative only (OTTER and BONOBO could also be listed).",
+      "evidence": ""
+    },
+    "J17": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["SAMBAR"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "2 <= kmin 3 <= kmax 8 <= 8 samples holds at the boundary. gmt_msigdb=false and norm_patient (default true) are exposed boolean controls.",
+      "evidence": "sambar.yaml: \"cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.\""
+    },
+    "J18": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["SAMBAR", "PANDA", "LIONESS-PANDA", "COBRA"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "An open 'what could NetZoo do' question with no result named.",
+      "evidence": ""
+    },
+    "J19": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["DRAGON", "LIONESS-DRAGON"],
+      "deciding_fact": "Whether they need one cohort-wide network or one network per tumour.",
+      "file_checkable": null,
+      "reason": "The granularity is stated two ways. 400 features x 46 samples = 3,670,800 values, under the cap, so both workflows are feasible and only the granularity decides.",
+      "evidence": "dragon.yaml: \"DRAGON output is aggregate, not sample-specific.\" | lioness-dragon.yaml: \"granularities: [sample_specific]\""
+    },
+    "J20": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["LIONESS-DRAGON"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "2,500 features give 3,123,750 pairs x 60 samples = 187,425,000 values, above 20,000,000.",
+      "evidence": "lioness-dragon.yaml: \"runs above 20,000,000 values are refused before they start.\""
+    },
+    "J21": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["OTTER"],
+      "deciding_fact": "The intended lam value (0.15 or 1.5).",
+      "file_checkable": false,
+      "reason": "lam must be in [0, 1]: 0.15 fits and 1.5 does not. lam is a request setting, and OTTER's input checks cover only file shape and IDs, so the files cannot settle it.",
+      "evidence": "otter.yaml: \"name: lam type: number default: 0.035 minimum: 0 maximum: 1\""
+    },
+    "J22": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["SAMBAR"],
+      "deciding_fact": "Whether the cohort has at least 6 tumours (5 or 9) for kmax 6.",
+      "file_checkable": null,
+      "reason": "kmax 6 needs at least 6 mutation samples: 9 fits and 5 does not.",
+      "evidence": "sambar.yaml: \"cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.\""
+    },
+    "J23": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["LIONESS-PANDA", "LIONESS-PUMA", "LIONESS-COEXPRESSION"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "Only a method family is named, with no per-sample result or question.",
+      "evidence": ""
+    },
+    "J24": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["PUMA"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "An aggregate TF/miRNA-to-gene network is PUMA's output. Borderline on the workflow set: LIONESS-PUMA also declares an aggregate output, but it requires lioness_output (per-sample networks), which the user says are not needed. Not changed.",
+      "evidence": "puma.yaml: \"Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA.\" | lioness-puma.yaml: \"granularities: [aggregate, sample_specific]\" | lioness-puma.yaml: \"required_inputs: [expression_file, motif_file, ppi_file, mirna_file, output_file, lioness_output]\""
+    },
+    "J25": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["COBRA", "LIONESS-COEXPRESSION", "BONOBO"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "Files are given but no result: 'maybe something co-expression related, whatever you think fits' is a broad aim.",
+      "evidence": ""
+    },
+    "J26": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["DRAGON", "LIONESS-DRAGON"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "'A systems-level angle' with no hypothesis is a broad aim; no network or result is named.",
+      "evidence": ""
+    },
+    "J27": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["COBRA"],
+      "deciding_fact": "Whether the filtered matrix has more genes than its 640 samples (600 versus 6,000 genes).",
+      "file_checkable": null,
+      "reason": "6,000 > 640 fits and 600 < 640 does not. The user states both counts.",
+      "evidence": "cobra.yaml: \"Expression must be a labeled gene-by-sample matrix with more genes than samples.\""
+    },
+    "J28": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["COBRA"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "18,000 genes > 96 samples, the covariates are numeric and keyed by the same sample IDs, and covariate-associated plus adjusted co-expression is COBRA's output.",
+      "evidence": "cobra.yaml: \"Design rows must use exactly the expression sample IDs and numeric covariates.\""
+    },
+    "J29": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["DRAGON", "LIONESS-DRAGON"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "The choice of method is delegated with no stated result. Both are feasible: 600 features x 64 samples = 11,500,800 values, under the cap.",
+      "evidence": ""
+    },
+    "J30": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["LIONESS-COEXPRESSION", "BONOBO"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "Both produce one gene-gene co-expression network per sample. 30 samples is at least 3, and BONOBO's log/centered declarations are given.",
+      "evidence": "bonobo.yaml: \"The agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression.\""
+    },
+    "J31": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["DRAGON"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "A causal, directed claim is beyond DRAGON's undirected association output. The registry's UNSUPPORTED_CLAIMS 'causal' applies.",
+      "evidence": "dragon.yaml: \"This is an association network, not a causal graph.\""
+    },
+    "J32": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["GIRAFFE"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "A method is named, but 'something interesting' is not a result.",
+      "evidence": ""
+    },
+    "J33": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["LIONESS-PANDA"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "Two samples is below the 3-sample minimum for per-sample TF-gene networks (LIONESS-PUMA has the same minimum).",
+      "evidence": "lioness-panda.yaml: \"Require at least three expression samples before execution.\""
+    },
+    "J34": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["SAMBAR"],
+      "deciding_fact": "Whether calls_30pts.csv contains somatic mutations or germline variants.",
+      "file_checkable": false,
+      "reason": "SAMBAR accepts somatic mutations only. Its file checks verify only unique IDs, non-negative numeric values and four-way gene overlap, which germline calls would also pass, so the files cannot settle it.",
+      "evidence": "sambar.yaml: \"accepted_input_modalities: [somatic_mutation]\" | sambar.yaml: \"Mutation rows are unique sample IDs and mutation columns are unique gene IDs with non-negative numeric values.\""
+    },
+    "J35": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["SAMBAR"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "kmax 10 is more than the 7 mutation samples.",
+      "evidence": "sambar.yaml: \"cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.\""
+    },
+    "J36": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["PUMA"],
+      "deciding_fact": "Whether the small-RNA regulators are miRNAs (or piRNAs).",
+      "file_checkable": null,
+      "reason": "PUMA's non-TF regulators are miRNAs only, and whether the small RNAs are miRNAs or piRNAs is unknown.",
+      "evidence": "puma.yaml: \"regulator_types: [tf, mirna]\""
+    },
+    "J37": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["BONOBO"],
+      "deciding_fact": "The intended delta value (0.2 or 0.5) given sparsify is on.",
+      "file_checkable": false,
+      "reason": "With sparsify, delta must be in (0, 1/3): 0.2 fits and 0.5 does not. delta is a request setting that no file check reads.",
+      "evidence": "bonobo.yaml: \"With sparsify it must be above 0 and below 1/3 (Log 224).\""
+    },
+    "J38": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": ["BONOBO", "COBRA"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "A choice between two methods with different outputs and no stated result.",
+      "evidence": ""
+    },
+    "J39": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["DRAGON"],
+      "deciding_fact": "Whether the metabolite layer is continuous intensities or binary 0/1 detection calls.",
+      "file_checkable": null,
+      "reason": "DRAGON needs continuous numeric values. 0/1 calls are numeric but not continuous, so its non-numeric check would not catch them.",
+      "evidence": "dragon.yaml: \"Values must be finite continuous numeric measurements.\""
+    },
+    "J40": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["CONDOR"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "A thresholded, non-negative source-target-weight edge list from a PANDA network is CONDOR's input. output_dir and prefix are given.",
+      "evidence": "condor.yaml: \"Require source and target columns and accept an optional numeric weight column.\""
+    },
+    "J41": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["BONOBO"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "Parquet is not an allowed BONOBO output format.",
+      "evidence": "bonobo.yaml: \"output formats are exactly .h5/.hdf (HDF5), .txt, and .csv.\""
+    },
+    "J42": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["COBRA"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "400 genes is not more than 650 samples.",
+      "evidence": "cobra.yaml: \"Expression must be a labeled gene-by-sample matrix with more genes than samples.\""
+    },
+    "J43": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["GIRAFFE"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "TF-by-sample activity plus signed activating/repressing TF-gene effects are GIRAFFE's two outputs.",
+      "evidence": "giraffe.yaml: \"It returns the aggregate TF-by-gene R matrix and a TF-by-sample TFA matrix.\""
+    },
+    "J44": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["OTTER"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "GPU execution is not enabled in the agent runtime. Borderline: the computing control lists gpu as an allowed value, but the conventions validate only cpu and say outright that GPU is not enabled.",
+      "evidence": "otter.yaml: \"allowed_values: [cpu, gpu]\" | otter.yaml: \"computing=cpu and precision=single/double are validated controls. The current agent runtime does not enable OTTER GPU execution.\""
+    },
+    "J45": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["LIONESS-PANDA"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "Exactly three samples meets the minimum of three.",
+      "evidence": "lioness-panda.yaml: \"Require at least three expression samples before execution.\""
+    },
+    "J46": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": ["CONDOR"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "CONDOR does not take a raw expression matrix, and the user refuses a network-building step.",
+      "evidence": "condor.yaml: \"CONDOR does not consume the raw expression matrix directly.\""
+    },
+    "J47": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": ["OTTER"],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "reason": "A precomputed co-expression matrix alone satisfies the either-or input group. lam = 1 (max 1), gamma = 0 (min 0) and iterations 150 (min 1) are in range, and cpu, single precision and matrix output are validated. The expression_file sample-count check does not apply without an expression file.",
+      "evidence": "otter.yaml: \"required_input_groups: [[expression_file, coexpression_file]]\" | otter.yaml: \"name: gamma type: number default: 0.335 minimum: 0\""
+    },
+    "J48": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": ["LIONESS-PANDA"],
+      "deciding_fact": "Whether at least three samples remain after QC (two or four).",
+      "file_checkable": null,
+      "reason": "Four samples meets the minimum of three and two does not, and the user does not know which they have.",
+      "evidence": "lioness-panda.yaml: \"Require at least three expression samples before execution.\""
+    }
+  }
+}
