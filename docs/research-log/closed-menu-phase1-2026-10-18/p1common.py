@@ -57,21 +57,32 @@ def record(item: dict, read, decision, rep: int = 0) -> dict:
     }
 
 
-def read_many(jobs, *, workers: int = 6, reader=None) -> list[dict]:
-    """jobs: (item, rep) pairs. Each is read once with `read_menu` (or `reader(item, llm)`) and decided."""
-    from netzoo_agent_core.graph.menu_reading_call import read_menu
+def read_many(jobs, *, workers: int = 6, focus: bool = False) -> list[dict]:
+    """jobs: (item, rep) pairs. Each is read once with `read_menu` and decided; with `focus`, the focused re-read of
+    the candidates follows and its merged reading is decided too (recorded under `focus`)."""
+    from netzoo_agent_core.graph.menu_reading_call import read_focused, read_menu
     from netzoo_agent_core.interpretation.menu_decision import decide_menu
     llm = build_reader_llm()
 
     def one(job):
         item, rep = job
-        read = reader(item, llm) if reader else read_menu(item["prompt"], llm)
-        return record(item, read, decide_menu(read.reading, item["prompt"]), rep)
+        read = read_menu(item["prompt"], llm)
+        row = record(item, read, decide_menu(read.reading, item["prompt"]), rep)
+        if focus:
+            focused, candidates = read_focused(item["prompt"], read.reading, llm)
+            row["focus"] = {"candidates": list(candidates), "ran": focused is not None}
+            if focused is not None:
+                sub = record(item, focused, decide_menu(focused.reading, item["prompt"]), rep)
+                row["focus"].update({k: sub[k] for k in ("status", "error", "seconds", "input_tokens",
+                                                          "output_tokens", "usd", "kind", "basis", "workflows",
+                                                          "partial", "questions", "settled", "reasons", "dropped",
+                                                          "filled", "reading", "payload")})
+        return row
 
     started = time.time()
     with ThreadPoolExecutor(workers) as pool:
         rows = list(pool.map(one, jobs))
-    spent = sum(row["usd"] for row in rows)
+    spent = sum(row["usd"] + row.get("focus", {}).get("usd", 0) for row in rows)
     failed = sum(row["status"] == "failed" for row in rows)
     print(f"{len(rows)} reads in {time.time() - started:.0f}s, failed {failed}, US${spent:.3f}")
     return rows

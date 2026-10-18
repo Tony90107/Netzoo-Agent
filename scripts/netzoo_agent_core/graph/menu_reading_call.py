@@ -19,10 +19,16 @@ from ..contracts.menu_reading import MenuReading
 from ..interpretation.menu_reader import (
     ReadReport, layout_text, menu_text, reader_model, request_layout, to_menu_reading,
 )
+from ..interpretation.menu_decision import candidate_workflows, decide_menu
+from ..interpretation.menu_focus import focus_model, focus_text, merge_focused
 from ..interpretation.semantic_repair import semantic_payload
 from ..settings import ROUTER_CONTEXT_MAX_CHARS
 
-__all__ = ["MenuRead", "build_menu_reading_messages", "menu_reading_system", "read_menu"]
+__all__ = ["MAX_FOCUS", "MenuRead", "build_focused_messages", "build_menu_reading_messages", "menu_reading_system",
+           "read_focused", "read_menu"]
+
+MAX_FOCUS = 6
+"""More candidates than this means the result is still open: the focused re-read waits for it."""
 
 _SHAPE = (
     "Return only the MenuReadingWire for the user's request: what the user said, field by field, read against the "
@@ -36,6 +42,14 @@ _SHAPE = (
 )
 
 
+_FOCUS_SHAPE = (
+    "Return only the FocusedReading for the user's request. The workflows below are the candidates its first reading "
+    "left. For each listed control, count, kind of data and data condition, give what the user's words say about "
+    "it: stated (the value the words give), unsure (the user does not know, has not decided, or gives several "
+    "possibilities: values), or not_mentioned. Every quote is the user's exact words, copied from the request."
+)
+
+
 def menu_reading_system() -> str:
     return f"{_SHAPE}\n\n{menu_text()}"
 
@@ -44,6 +58,12 @@ def build_menu_reading_messages(user_task: str) -> list:
     task = user_task[-ROUTER_CONTEXT_MAX_CHARS:]
     return [SystemMessage(content=menu_reading_system()),
             HumanMessage(content=f"Request:\n{task}\n\n{layout_text(request_layout(task))}")]
+
+
+def build_focused_messages(user_task: str, candidates: tuple[str, ...]) -> list:
+    task = user_task[-ROUTER_CONTEXT_MAX_CHARS:]
+    return [SystemMessage(content=f"{_FOCUS_SHAPE}\n\n{focus_text(candidates)}"),
+            HumanMessage(content=f"Request:\n{task}")]
 
 
 @dataclass
@@ -77,3 +97,22 @@ def read_menu(user_task: str, llm, *, messages=None, schema=None, convert=None) 
                         error=f"{type(error).__name__}: {str(error)[:200]}")
     reading, report = convert(data, task)
     return MenuRead(reading=reading, report=report, payload=data, seconds=round(time.time() - started, 1), raw=raw)
+
+
+def read_focused(user_task: str, first: MenuReading, llm) -> tuple[MenuRead | None, tuple[str, ...]]:
+    """The focused re-read of the first reading's candidates (phase 1, step 4), merged into it.
+
+    None when there is nothing to focus on: a failed first reading, a result still open (CLARIFY), no candidates or
+    more than `MAX_FOCUS`. A failed focused call leaves the first reading as it was, with the error recorded.
+    """
+    task = user_task[-ROUTER_CONTEXT_MAX_CHARS:]
+    if first.status == "failed" or decide_menu(first, task).kind == "CLARIFY":
+        return None, ()
+    candidates = tuple(candidate_workflows(first, task))
+    if not candidates or len(candidates) > MAX_FOCUS:
+        return None, candidates
+    read = read_menu(task, llm, messages=build_focused_messages(task, candidates), schema=focus_model(candidates),
+                     convert=lambda data, words: merge_focused(first, data, words, candidates))
+    if read.reading.status == "failed":
+        read.reading = first
+    return read, candidates

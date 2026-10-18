@@ -10,9 +10,11 @@ limits read as limits.
   do    supported items (plain, needs_input or with_step): DECLINE or a partial DO is a false refusal; ASK/CLARIFY is
         counted apart (the new design asks unstated intents the old labels assumed)
 
-Usage: dev.py select                 -> dev_items.json (seeded, written once)
-       dev.py read TAG [--only ids]  -> live/TAG/dev.json   (one gpt-4o-mini read per item)
-       dev.py score TAG [TAG2]       -> summary (and the items whose call changed between two rounds)
+Usage: dev.py select                         -> dev_items.json (seeded, written once)
+       dev.py read TAG [--only ids] [--focus]  -> live/TAG/dev.json (one gpt-4o-mini read per item; --focus: then
+                                                  the focused re-read of the candidates, recorded beside it)
+       dev.py score TAG [TAG2] [--focused]   -> summary (--focused: the merged reading where the re-read ran), and
+                                                  the items whose call changed between two rounds
 """
 from __future__ import annotations
 
@@ -95,12 +97,12 @@ def doubt_read(reading: dict) -> list[str]:
     return found
 
 
-def read(tag: str, only=None) -> None:
+def read(tag: str, only=None, focus=False) -> None:
     items = json.loads((HERE / "dev_items.json").read_text())["items"]
     if only:
         items = [i for i in items if i["id"] in only]
     from netzoo_agent_core.interpretation.menu_reader import READER_SHAPE
-    rows = read_many([(item, 0) for item in items])
+    rows = read_many([(item, 0) for item in items], focus=focus)
     write(HERE / "live" / tag / "dev.json", {"commit": git_head(), "shape": READER_SHAPE, "rows": rows})
 
 
@@ -119,6 +121,9 @@ def outcome(cls: str, row: dict) -> str:
 
 def score(tag: str, other: str | None = None) -> None:
     rows = json.loads((HERE / "live" / tag / "dev.json").read_text())["rows"]
+    if "--focused" in sys.argv:  # the merged reading of the focused arm, where it ran; the first reading elsewhere
+        rows = [{**row, **row["focus"]} if row.get("focus", {}).get("ran") and row["focus"].get("status") == "read"
+                else row for row in rows]
     items = {i["id"]: i for i in json.loads((HERE / "dev_items.json").read_text())["items"]}
     table: dict[str, dict[str, int]] = {}
     for row in rows:
@@ -157,6 +162,7 @@ if __name__ == "__main__":
         select()
     elif command == "read":
         only = sys.argv[sys.argv.index("--only") + 1].split(",") if "--only" in sys.argv else None
-        read(sys.argv[2], only)
+        read(sys.argv[2], only, "--focus" in sys.argv)
     else:
-        score(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
+        args = [a for a in sys.argv[2:] if not a.startswith("--")]
+        score(args[0], args[1] if len(args) > 1 else None)

@@ -46,18 +46,22 @@ from .capability_check import request_sentences
 __all__ = ["CONDITION_FIELDS", "DOUBT_ABOUT", "READER_SHAPE", "Layout", "NumberSpan", "ReadReport", "WANTED_FIELDS", "layout_text",
            "menu_text", "quote_in", "reader_model", "request_layout", "to_menu_reading"]
 
-READER_SHAPE = "v4"
+READER_SHAPE = "v5"
 """The schema shape the phase-1 rounds record (v1: quote lists, artifact enum with off_menu, a data list)."""
 _FORBID = ConfigDict(extra="forbid")
 Status = Literal["stated", "not_stated", "unsure", "conflicting"]
 Basis = Literal["explicit", "implied"]
-Form = Literal["deliverable", "question_to_us", "purpose", "data_description", "context"]
+WireForm = Literal["asks", "purpose", "data_description", "context"]
+"""v5: a question is not its own form -- d4 read "which method gives a separate TF-gene network for each sample?" as a
+question naming nothing. Code calls an `asks` item naming no result and stating nothing a question to us."""
 Names = Literal["menu_result", "kind_of_result", "workflow_only", "off_menu_result", "unsure_between_results",
                 "nothing"]
 Have = Literal["has", "lacks", "not_mentioned"]
-RequirementAbout = Literal["how_computed", "what_it_contains", "data_property", "file_or_format", "other"]
-# A property of the user's data or a file name or format is no requirement on the result (d2: "log-transformed").
-_NOT_REQUIREMENTS = ("data_property", "file_or_format")
+RequirementAbout = Literal["how_computed", "what_it_contains", "another_result", "a_setting", "data_property",
+                           "file_or_format", "other"]
+# Only how the result is computed or what it holds is matched to contracts (d4: another result, a setting, a data
+# property and a file format were each read as requirements and asked about).
+_REQUIREMENT_KINDS = ("how_computed", "what_it_contains")
 
 # The intent fields of a wanted item, in the order the menu shows them.
 WANTED_FIELDS = ("integration", "granularity", "regulators", "layers", "signed", "compare")
@@ -332,17 +336,18 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
         "RequirementWire", __config__=_FORBID,
         quote=(str, Field(description="The user's exact words.")),
         about=(RequirementAbout, Field(description="how_computed: how the result must be computed; "
-                                                   "what_it_contains: what the result must contain; data_property: a "
-                                                   "property of the user's data; file_or_format: file names, formats "
-                                                   "or folders; other.")),
+                                                   "what_it_contains: what the result must contain; another_result: "
+                                                   "a result of its own; a_setting: a workflow setting; data_property: "
+                                                   "a property of the user's data; file_or_format: file names, "
+                                                   "formats or folders; other.")),
     )
     wanted_fields: dict[str, tuple] = {
         "quote": (str, Field(description="The user's exact words for this item.")),
-        "form": (Form, Field(description="deliverable: a result the user wants produced, or asks whether or which "
-                                         "method produces, or a workflow to run; question_to_us: a question to us "
-                                         "naming no result (which method, what can we do); purpose: why they want "
-                                         "it or what they will do with it later; data_description: what their data "
-                                         "is; context: anything else.")),
+        "form": (WireForm, Field(description="asks: a request or a question about results or methods (a result to "
+                                             "produce, whether or which method produces one, a workflow to run, "
+                                             "which method to use, what can be done); purpose: why they want it or "
+                                             "what they will do with it later; data_description: what their data "
+                                             "is; context: anything else.")),
         "result": (result, Field(description="What the item's words name.")),
     }
     for name in WANTED_FIELDS:
@@ -607,6 +612,18 @@ def _numbers(raw: dict, layout: Layout, report: ReadReport, doubtful: set[int] =
     return sample, feature, single, asked
 
 
+def _field_of(values) -> str | None:
+    """The one field whose menu values include every value named (d4: 10 doubts typed about none)."""
+    table, values = judgment_defaults(), {str(v) for v in values}
+    if len(values) < 2:
+        return None
+    menus = {"artifact": (*table.dimensions["artifact"].values, "off_menu"),
+             **{name: _values(table, name) for name in WANTED_FIELDS},
+             **{name: _condition_values(table, name) for name in CONDITION_FIELDS}}
+    fits = [name for name, menu in menus.items() if values <= set(menu)]
+    return fits[0] if len(fits) == 1 else None
+
+
 def _apply_doubts(raw: dict, task: str, layout: Layout, reading: dict, report: ReadReport,
                   table: JudgmentDefaults) -> None:
     """Each sentence's doubt, with verified words, sets its field to unsure with the values it leaves open."""
@@ -615,6 +632,10 @@ def _apply_doubts(raw: dict, task: str, layout: Layout, reading: dict, report: R
         about = typed.get("about") or "none"
         if typed.get("doubt") and about in ("none", "other") and typed.get("control") not in (None, "none"):
             about = "setting"  # the typed control says what the doubt is about (d3: U13, about none)
+        elif typed.get("doubt") and about in ("none", "other") and (named := _field_of(typed.get("values") or [])):
+            about = named
+            report.filled.append(f"sentences.s{index}: doubt about {about}, the one field with values "
+                                 f"{typed.get('values')}")
         if not typed.get("doubt") or about == "none":
             continue
         where = f"sentences.s{index}"
@@ -685,16 +706,17 @@ def to_menu_reading(payload, task: str, layout: Layout | None = None) -> tuple[M
             quote = stated[0].quotes[0]
         requirements = []
         for number, entry in enumerate(item.get("requirements") or []):
-            if entry.get("about") not in _NOT_REQUIREMENTS and _verified(entry.get("quote"), task,
+            if entry.get("about") in _REQUIREMENT_KINDS and _verified(entry.get("quote"), task,
                                                                        f"{where}.requirements[{number}]", report):
                 requirements.append(Requirement(quote=entry["quote"]))
-        form = item.get("form") or "deliverable"
-        if form == "question_to_us" and (artifact.status != "not_stated" or any(
-                said.status != "not_stated" for said in fields.values())):
-            # The form says no result is named, the fields name one: the typed fields win (d2: "Can BONOBO output
-            # a cohort-level aggregate network?" typed a question with nothing read).
-            report.filled.append(f"{where}: a question naming a result -> deliverable")
-            form = "deliverable"
+        form = item.get("form") or "asks"
+        if form == "asks":
+            # An item that names no result, no workflow and states nothing is a question to us (which method, what
+            # can we do); one that names any of them asks for that result (d2: "Can BONOBO output a cohort-level
+            # aggregate network?").
+            named = (item.get("result") or {}).get("names") not in (None, "nothing")
+            stated = artifact.status != "not_stated" or any(s.status != "not_stated" for s in fields.values())
+            form = "deliverable" if named or stated or requirements else "question_to_us"
         wanted.append(Wanted(quote=quote, form=form, artifact=artifact, outside_name=outside,
                              requirements=requirements, **fields))
 
