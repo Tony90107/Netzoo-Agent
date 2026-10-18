@@ -61,11 +61,21 @@ _SUB = ("status", "error", "seconds", "input_tokens", "output_tokens", "usd", "k
         "questions", "settled", "reasons", "dropped", "filled", "reading", "payload")
 
 
-def read_many(jobs, *, workers: int = 6, focus: bool = False, requirements: bool = False) -> list[dict]:
+def _final(decision, reading) -> dict:
+    return {"kind": decision.kind, "basis": decision.basis, "workflows": decision.workflows,
+            "partial": decision.partial, "questions": [q.dimension for q in decision.questions],
+            "settled": decision.settled, "reasons": [r for d in decision.declined for r in d.reasons],
+            "reading": reading.model_dump(mode="json", exclude_defaults=True), "status": reading.status}
+
+
+def read_many(jobs, *, workers: int = 6, focus: bool = False, requirements: bool = False,
+              probe: bool = False) -> list[dict]:
     """jobs: (item, rep) pairs. Each is read once with `read_menu` and decided; with `focus`, the focused re-read of
     the candidates follows (recorded under `focus`); with `requirements`, the requirement contract check runs on the
-    latest reading (under `req`). `final` holds the call on the last reading the stages left."""
-    from netzoo_agent_core.graph.menu_reading_call import read_focused, read_menu, read_requirements
+    latest reading (under `req`). `final` holds the call on the last reading the stages left. With `probe`, the
+    focused intent probe (phase 1b variant) runs on the reading the focused re-read left, then the requirement check
+    again where the probe changed it; `final_probe` holds that arm's call (the first read and re-read are shared)."""
+    from netzoo_agent_core.graph.menu_reading_call import read_focused, read_intent, read_menu, read_requirements
     from netzoo_agent_core.interpretation.menu_decision import decide_menu
     llm = build_reader_llm()
 
@@ -84,23 +94,36 @@ def read_many(jobs, *, workers: int = 6, focus: bool = False, requirements: bool
             if focused is not None:
                 row["focus"].update(stage(item, rep, focused))
                 latest = focused.reading
+        focused_reading = latest
         if requirements:
             checked, pairs = read_requirements(item["prompt"], latest, llm)
             row["req"] = {"pairs": len(pairs), "ran": checked is not None}
             if checked is not None:
                 row["req"].update(stage(item, rep, checked))
                 latest = checked.reading
-        final = decide_menu(latest, item["prompt"])
-        row["final"] = {"kind": final.kind, "basis": final.basis, "workflows": final.workflows,
-                        "partial": final.partial, "questions": [q.dimension for q in final.questions],
-                        "settled": final.settled, "reasons": [r for d in final.declined for r in d.reasons],
-                        "reading": latest.model_dump(mode="json", exclude_defaults=True), "status": latest.status}
+        row["final"] = _final(decide_menu(latest, item["prompt"]), latest)
+        if probe:
+            probed, questions = read_intent(item["prompt"], focused_reading, llm)
+            row["probe"] = {"questions": [[q.item, q.dimension] for q in questions], "ran": probed is not None}
+            arm = latest
+            if probed is not None:
+                row["probe"].update(stage(item, rep, probed))
+                if probed.reading != focused_reading:
+                    arm = probed.reading
+                    if requirements:
+                        checked, pairs = read_requirements(item["prompt"], arm, llm)
+                        row["probe"]["req_pairs"] = len(pairs)
+                        if checked is not None:
+                            row["probe"]["req_usd"] = usage(checked.raw)["usd"]
+                            arm = checked.reading
+            row["final_probe"] = _final(decide_menu(arm, item["prompt"]), arm)
         return row
 
     started = time.time()
     with ThreadPoolExecutor(workers) as pool:
         rows = list(pool.map(one, jobs))
-    spent = sum(row["usd"] + row.get("focus", {}).get("usd", 0) + row.get("req", {}).get("usd", 0) for row in rows)
+    spent = sum(row["usd"] + row.get("focus", {}).get("usd", 0) + row.get("req", {}).get("usd", 0)
+                + row.get("probe", {}).get("usd", 0) + row.get("probe", {}).get("req_usd", 0) for row in rows)
     failed = sum(row["status"] == "failed" for row in rows)
     print(f"{len(rows)} reads in {time.time() - started:.0f}s, failed {failed}, US${spent:.3f}")
     return rows

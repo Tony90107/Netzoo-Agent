@@ -14,6 +14,7 @@ Usage: dev.py select                         -> dev_items.json (seeded, written 
        dev.py read TAG [--only ids] [--focus]  -> live/TAG/dev.json (one gpt-4o-mini read per item; --focus: then
                                                   the focused re-read of the candidates, recorded beside it)
        dev.py read TAG --focus --requirements  -> also the requirement contract check on the latest reading
+       dev.py read TAG --focus --requirements --probe -> and the intent-probe arm beside it (--final-probe)
        dev.py score TAG [TAG2] [--focused|--final] -> summary (--focused: the merged reading where the re-read ran;
                                                   --final: every stage), and the items whose call changed
 """
@@ -98,12 +99,12 @@ def doubt_read(reading: dict) -> list[str]:
     return found
 
 
-def read(tag: str, only=None, focus=False, requirements=False) -> None:
+def read(tag: str, only=None, focus=False, requirements=False, probe=False) -> None:
     items = json.loads((HERE / "dev_items.json").read_text())["items"]
     if only:
         items = [i for i in items if i["id"] in only]
     from netzoo_agent_core.interpretation.menu_reader import READER_SHAPE
-    rows = read_many([(item, 0) for item in items], focus=focus, requirements=requirements)
+    rows = read_many([(item, 0) for item in items], focus=focus, requirements=requirements, probe=probe)
     write(HERE / "live" / tag / "dev.json", {"commit": git_head(), "shape": READER_SHAPE, "rows": rows})
 
 
@@ -127,6 +128,8 @@ def score(tag: str, other: str | None = None) -> None:
                 else row for row in rows]
     if "--final" in sys.argv:  # the last reading every stage left (first read, focused re-read, requirement check)
         rows = [{**row, **row["final"]} if "final" in row else row for row in rows]
+    if "--final-probe" in sys.argv:  # the intent-probe arm (first read, re-read, intent probe, requirement check)
+        rows = [{**row, **row["final_probe"]} if "final_probe" in row else row for row in rows]
     items = {i["id"]: i for i in json.loads((HERE / "dev_items.json").read_text())["items"]}
     table: dict[str, dict[str, int]] = {}
     for row in rows:
@@ -165,7 +168,7 @@ if __name__ == "__main__":
         select()
     elif command == "read":
         only = sys.argv[sys.argv.index("--only") + 1].split(",") if "--only" in sys.argv else None
-        read(sys.argv[2], only, "--focus" in sys.argv, "--requirements" in sys.argv)
+        read(sys.argv[2], only, "--focus" in sys.argv, "--requirements" in sys.argv, "--probe" in sys.argv)
     else:
         args = [a for a in sys.argv[2:] if not a.startswith("--")]
         score(args[0], args[1] if len(args) > 1 else None)

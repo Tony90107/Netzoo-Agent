@@ -21,12 +21,13 @@ from ..interpretation.menu_reader import (
 )
 from ..interpretation.menu_decision import candidate_workflows, decide_menu
 from ..interpretation.menu_focus import focus_model, focus_text, merge_focused
+from ..interpretation.menu_intent import intent_model, intent_questions, intent_text, merge_intent
 from ..interpretation.menu_requirements import apply_verdicts, requirement_model, requirement_pairs, requirement_text
 from ..interpretation.semantic_repair import semantic_payload
 from ..settings import ROUTER_CONTEXT_MAX_CHARS
 
 __all__ = ["MAX_FOCUS", "MenuRead", "build_focused_messages", "build_menu_reading_messages", "menu_reading_system",
-           "read_focused", "read_menu", "read_requirements"]
+           "read_focused", "read_intent", "read_menu", "read_requirements"]
 
 MAX_FOCUS = 6
 """More candidates than this means the result is still open: the focused re-read waits for it."""
@@ -56,6 +57,13 @@ _REQUIREMENT_SHAPE = (
     "and one registered workflow, whose contract is listed. For each pair, copy the clause of that workflow's "
     "contract that speaks to the requirement, in its exact words (empty when none does), then say whether the "
     "contract says the workflow's result meets the requirement, contradicts it, or does not address it."
+)
+
+
+_INTENT_SHAPE = (
+    "Return only the IntentProbe structure. Each numbered question asks what the user's request says about one "
+    "thing. For each, copy the request's exact words that say it (empty when nothing does), then give the option "
+    "those words say, or not_said when the words do not say it."
 )
 
 
@@ -143,3 +151,21 @@ def read_requirements(user_task: str, reading: MenuReading, llm):
     if read.reading.status == "failed":
         read.reading = reading
     return read, pairs
+
+
+def read_intent(user_task: str, reading: MenuReading, llm):
+    """The focused intent probe (phase 1b variant): one closed question per intent that changes the call, merged by
+    `merge_intent`. None when no intent changes the call; a failed call leaves the reading as it was."""
+    task = user_task[-ROUTER_CONTEXT_MAX_CHARS:]
+    if reading.status == "failed":
+        return None, []
+    questions = intent_questions(reading, task)
+    if not questions:
+        return None, []
+    messages = [SystemMessage(content=_INTENT_SHAPE), HumanMessage(content=intent_text(task, questions))]
+    schema = intent_model(tuple((q.dimension, q.values) for q in questions))
+    read = read_menu(task, llm, messages=messages, schema=schema,
+                     convert=lambda data, words: merge_intent(reading, questions, data, words))
+    if read.reading.status == "failed":
+        read.reading = reading
+    return read, questions
