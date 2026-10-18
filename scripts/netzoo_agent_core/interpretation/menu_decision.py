@@ -402,8 +402,11 @@ def _ask(ctx: _Context, item: _Item, alive: list[str]) -> None:
         if _decides(ctx, item, "artifact", specific):
             item.questions.append(_question(item, "artifact", specific, table, (artifact.quotes or [w.quote])[0]))
             return
-    elif item.result_open and (len(results) > 1 or not (len(ctx.names) == 1 and ctx.named)):
+    elif item.result_open and (len(results) > 1 or not (len(ctx.names) == 1 and ctx.named)
+                               or (artifact.status in ("unsure", "conflicting") and not artifact.values)):
         # A result the user never named is confirmed even when the data leave one (phase 0 missed-field check: C15, C26).
+        # A result open with no values in play is the user choosing between workflows (phase 1b): asked even when one
+        # workflow is named ("COBRA, or something else?").
         quote = (artifact.quotes or [w.quote])[0]
         if len(results) <= table.ask_max_options:
             item.questions.append(_question(item, "artifact", results, table, quote))
