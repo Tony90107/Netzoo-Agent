@@ -30,6 +30,7 @@ from plan import CLASSES, HERE, SEED, load_items, write_json
 from score_core import EXPECTED, outcome
 
 sys.path.insert(0, str(HERE.parents[1] / "closed-menu-phase1-2026-10-18"))
+import p1common  # noqa: E402,F401 -- puts this branch's scripts/ on the path for the reader arms
 
 
 def read_menu_arm(tag: str) -> None:

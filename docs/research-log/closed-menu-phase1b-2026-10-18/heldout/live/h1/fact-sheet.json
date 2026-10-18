@@ -1,0 +1,136 @@
+{
+  "Q839555": {
+    "request": "I'd like DRAGON on liver proteomics (1,100 proteins) and VST RNA-seq (3,000 genes) from our diet study. What I can't tell you is whether the proteomics came from the same 40 mice as the RNA-seq; the core may have used a separate cohort fed the same diets.",
+    "deciding_fact": "whether both omics layers were measured on the same mice (same samples)",
+    "answer": [
+      "Asks: Did the proteomics and RNA-seq come from the same 40 mice?",
+      "Asks: Was a separate cohort used for the proteomics?"
+    ]
+  },
+  "Q790504": {
+    "request": "I want SAMBAR to subtype our cholangiocarcinoma cohort from somatic mutations, trying between 2 and 6 subtypes. The catch: either 5 or 9 tumours passed sequencing QC, and I'm still waiting on the core's report to know which.",
+    "deciding_fact": "how many tumours passed QC (5 or 9), i.e. whether the sample count is at least kmax = 6",
+    "answer": [
+      "Asks: Which of these is right: 5 or 9?"
+    ]
+  },
+  "Q342534": {
+    "request": "We want a separate network per patient in which both transcription factors and miRNAs regulate target genes, using matched mRNA and small-RNA sequencing from a pilot study. Motif, PPI and miRNA-target priors plus a one-per-line miRNA list are ready. I'm unsure whether the pilot has three patients or only two, since one library may have failed.",
+    "deciding_fact": "whether the pilot has three patients or two (at least three samples required)",
+    "answer": [
+      "Asks: Which of these is right: 2 or 3?"
+    ]
+  },
+  "Q260699": {
+    "request": "For 90 melanoma patients I want each patient's transcription factor activity - or, according to my co-author's note, each patient's own TF-to-target-gene network. Those sound like different things and I'm not sure which she means. We have expression, a motif prior and a PPI file.",
+    "deciding_fact": "whether they need per-patient TF activity or per-patient TF-to-gene networks (wiring)",
+    "answer": [
+      "Asks which result they want (quoting \"each patient's transcription factor activity\"). Options: Each TF's activity in each sample, estimated apart from its own mRNA level. / A weighted regulator-to-gene network (TF, or TF and miRNA).",
+      "Asks which result they want (quoting \"each patient's own TF-to-target-gene network\"). Options: A weighted regulator-to-gene network (TF, or TF and miRNA). / Each TF's activity in each sample, estimated apart from its own mRNA level."
+    ]
+  },
+  "Q109702": {
+    "request": "We have blood transcriptomics and urine metabolomics from the same visits for 45 kidney-transplant recipients, and I'd like one partial-correlation network per recipient across both layers. We'll keep 500 transcripts; whether we keep only the 300 annotated metabolites or all 1,800 detected features hasn't been decided, and I can't say which yet.",
+    "deciding_fact": "whether 300 or 1,800 metabolite features are kept, which decides whether pairs x 45 samples stays under 20,000,000 values",
+    "answer": [
+      "Asks: Which of these is right: 300 or 1,800?"
+    ]
+  },
+  "Q935162": {
+    "request": "I need PANDA - or PUMA, if miRNAs belong in it - run on kidney_expr.tsv, motif.tsv, ppi.tsv and mirna_list.txt for our 70 kidney biopsies, one network for the cohort. My notes say TF regulators only, but the grant aim says TFs and miRNAs, and I can't remember which we promised.",
+    "deciding_fact": "whether the regulators must include miRNAs (TF-only vs TF plus miRNA)",
+    "answer": [
+      "Asks: Do you want to include miRNAs in the analysis?",
+      "Asks: Do you want to analyze only TF regulators?"
+    ]
+  },
+  "Q579803": {
+    "request": "Please run BONOBO on core_expr.tsv (genes by 16 samples, header present) and write .h5 files to bonobo_runs/. The sequencing core never said whether the values are log-transformed or centred, and I don't know either.",
+    "deciding_fact": "whether core_expr.tsv is log-transformed and centred",
+    "answer": [
+      "Asks: Are the values log-transformed?"
+    ]
+  },
+  "Q493225": {
+    "request": "We have blood transcriptomics and urine metabolomics from the same visits for 45 kidney-transplant recipients, and I'd like one partial-correlation network per recipient across both layers. We'll keep 500 transcripts; whether we keep only the 300 annotated metabolites or all 1,800 detected features hasn't been decided, and I can't say which yet.",
+    "deciding_fact": "whether 300 or 1,800 metabolite features are kept, which decides whether pairs x 45 samples stays under 20,000,000 values",
+    "answer": [
+      "Asks one result for all samples, one per group, or one per sample (quoting \"whether we keep only the 300 annotated metabolites or all 1,800 detected features hasn't been decided, and I can't say which yet.\"). Options: One result for each group or condition -- pick it to put groups side by side. / A separate result for each sample, such as each patient -- pick it to test or compare samples one by one."
+    ]
+  },
+  "Q319596": {
+    "request": "Can CONDOR find modules in the network a collaborator emailed me? It's a three-column weighted edge list, but I genuinely have no idea whether it's a TF-to-gene regulatory network or a gene-gene co-expression network - she only called it 'the network'.",
+    "deciding_fact": "whether the edge list is a regulator-to-gene (bipartite) network or a gene-gene co-expression network",
+    "answer": [
+      "Asks: Is the network a TF-to-gene regulatory network?"
+    ]
+  },
+  "Q496959": {
+    "request": "We have blood transcriptomics and urine metabolomics from the same visits for 45 kidney-transplant recipients, and I'd like one partial-correlation network per recipient across both layers. We'll keep 500 transcripts; whether we keep only the 300 annotated metabolites or all 1,800 detected features hasn't been decided, and I can't say which yet.",
+    "deciding_fact": "whether 300 or 1,800 metabolite features are kept, which decides whether pairs x 45 samples stays under 20,000,000 values",
+    "answer": [
+      "Asks whether this requirement is a must (quoting \"keep 500 transcripts\"). Options: Yes, it is a must / No, it can be dropped"
+    ]
+  },
+  "Q179993": {
+    "request": "Run SAMBAR on brca_variant_matrix.csv (310 patients by genes), exon_lengths.csv, cancer_genes.txt and c2.cp.kegg.gmt to get mutation-based subtypes. The matrix came from an old lab pipeline and I can't tell whether those are somatic calls or germline variants.",
+    "deciding_fact": "whether the variant matrix holds somatic or germline variants",
+    "answer": [
+      "Asks mutation origin (quoting \"I can't tell whether those are somatic calls or germline variants.\"). Options: somatic / germline",
+      "Asks mutation origin (quoting \"I can't tell whether those are somatic calls or germline variants.\"). Options: somatic / germline",
+      "States that the input check will settle, before running: I can't tell whether those are somatic calls or germline variants."
+    ]
+  },
+  "Q862606": {
+    "request": "I'm planning to use OTTER for an aggregate TF-to-gene network from zebrafish fin RNA-seq, with a motif seed and a TF-TF PPI edge list. Honestly, I don't know yet whether we'll have one sample or two - the second library is being re-sequenced after a failed run.",
+    "deciding_fact": "whether the expression data will contain at least two samples (one vs two)",
+    "answer": [
+      "Asks: Which of these is right: 1 or 2?"
+    ]
+  },
+  "Q776633": {
+    "request": "Set up per-sample networks on hnscc_expr.tsv (52 tumours); hs_motif.tsv and hs_ppi.tsv are in the same folder. My supervisor wrote 'one network per tumour', and it isn't clear to me whether she wants gene-gene co-expression networks or TF-to-gene regulatory networks. I'd like it running today.",
+    "deciding_fact": "whether the per-tumour networks should be gene-gene co-expression or TF-to-gene regulatory networks",
+    "answer": [
+      "Asks: Which result do you want: \"gene-gene co-expression networks\" or \"TF-to-gene regulatory networks\"?",
+      "Asks: Which result do you want: \"gene-gene co-expression networks\" or \"TF-to-gene regulatory networks\"?"
+    ]
+  },
+  "Q767071": {
+    "request": "Run SAMBAR on brca_variant_matrix.csv (310 patients by genes), exon_lengths.csv, cancer_genes.txt and c2.cp.kegg.gmt to get mutation-based subtypes. The matrix came from an old lab pipeline and I can't tell whether those are somatic calls or germline variants.",
+    "deciding_fact": "whether the variant matrix holds somatic or germline variants",
+    "answer": [
+      "Asks mutation origin (quoting \"I can't tell whether those are somatic calls or germline variants.\"). Options: somatic / germline",
+      "Asks mutation origin (quoting \"I can't tell whether those are somatic calls or germline variants.\"). Options: somatic / germline"
+    ]
+  },
+  "Q789234": {
+    "request": "I'd like DRAGON on liver proteomics (1,100 proteins) and VST RNA-seq (3,000 genes) from our diet study. What I can't tell you is whether the proteomics came from the same 40 mice as the RNA-seq; the core may have used a separate cohort fed the same diets.",
+    "deciding_fact": "whether both omics layers were measured on the same mice (same samples)",
+    "answer": [
+      "Asks data unit (quoting \"What I can't tell you is whether the proteomics came from the same 40 mice as the RNA-seq; the core may have used a separate cohort fed the same diets.\"). Options: bulk_samples / single_cells",
+      "Asks samples matched (quoting \"What I can't tell you is whether the proteomics came from the same 40 mice as the RNA-seq; the core may have used a separate cohort fed the same diets.\"). Options: same_samples / different_samples"
+    ]
+  },
+  "Q956207": {
+    "request": "Across 400 rheumatoid arthritis synovial biopsies from three clinics, I want the part of gene co-expression associated with clinic, plus an adjusted co-expression matrix. My lab hasn't told me whether we're using the 250-gene targeted panel or the full ~20,000-gene RNA-seq, so which table I'll hand over is still open.",
+    "deciding_fact": "whether the expression table is the 250-gene panel or the ~20,000-gene RNA-seq (genes must exceed 400 samples)",
+    "answer": [
+      "Asks which result they want (quoting \"the part of gene co-expression associated with clinic, plus an adjusted co-expression matrix.\"). Options: Co-expression split by, or adjusted for, covariates in a design matrix (and a network built from it). / An undirected gene-gene co-expression network."
+    ]
+  },
+  "Q385737": {
+    "request": "I'm planning to use OTTER for an aggregate TF-to-gene network from zebrafish fin RNA-seq, with a motif seed and a TF-TF PPI edge list. Honestly, I don't know yet whether we'll have one sample or two - the second library is being re-sequenced after a failed run.",
+    "deciding_fact": "whether the expression data will contain at least two samples (one vs two)",
+    "answer": [
+      "Asks how many samples there are (quoting \"I don't know yet whether we'll have one sample or two - the second library is being re-sequenced after a failed run.\"). Options: 1 / 2"
+    ]
+  },
+  "Q171676": {
+    "request": "Run SAMBAR on brca_variant_matrix.csv (310 patients by genes), exon_lengths.csv, cancer_genes.txt and c2.cp.kegg.gmt to get mutation-based subtypes. The matrix came from an old lab pipeline and I can't tell whether those are somatic calls or germline variants.",
+    "deciding_fact": "whether the variant matrix holds somatic or germline variants",
+    "answer": [
+      "Asks: Are the mutations in the brca_variant_matrix.csv somatic?"
+    ]
+  }
+}
