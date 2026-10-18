@@ -133,6 +133,9 @@ def test_an_unsupported_setting_for_a_workflow_without_controls_is_a_reason():
         {"quote": "a learning rate of 1e-4", "workflow": "GIRAFFE", "value": "1e-4", "asks_to_set": True},
         {"quote": "our 52 samples", "workflow": "GIRAFFE", "value": "52", "asks_to_set": False},
         {"quote": "a momentum of 0.9", "workflow": "GIRAFFE", "value": "0.9", "asks_to_set": True}]
+    task += " Use prior_v2.tsv as motif_file."
+    payload["unsupported_settings"].append({"quote": "prior_v2.tsv as motif_file", "workflow": "GIRAFFE",
+                                            "value": "", "asks_to_set": True})
     merged, report = merge_focused(first, payload, task, ("GIRAFFE",))
     assert [(s.workflow, s.control, s.quote) for s in merged.settings] == [
         ("GIRAFFE", "unregistered", "a learning rate of 1e-4")]

@@ -28,7 +28,7 @@ from ..judgment_defaults import judgment_defaults
 from ..method_names import UNREGISTERED
 from ..workflow_conditions import all_conditions
 from .menu_decision import workflow_conditions
-from .menu_reader import _CONDITION_MEANS, _DATA_MEANS, ReadReport, _strict, quote_in, request_layout
+from .menu_reader import _CONDITION_MEANS, _DATA_MEANS, _IDENTIFIER, ReadReport, _strict, quote_in, request_layout
 
 __all__ = ["focus_limits", "focus_model", "focus_text", "merge_focused"]
 
@@ -212,6 +212,11 @@ def merge_focused(first: MenuReading, payload, task: str, candidates: tuple[str,
         quote = words({**entry, "status": "unsupported"}, f"unsupported_settings[{index}]")
         if not quote or any(quote_in(quote, s.quote) or quote_in(s.quote, quote) for s in settings if s.quote):
             continue  # words not in the request, or a setting the reading already has
+        if _IDENTIFIER.search(quote):
+            # A file name or an input field names an input, not a setting (d8 m3:U18: "covariance_bundle.tsv as
+            # coexpression_file" refused PANDA as a setting it lacks).
+            report.dropped.append(f"focus.unsupported_settings[{index}]: names a file or field, not a setting")
+            continue
         workflow = entry.get("workflow") if entry.get("workflow") in candidates else ""
         settings.append(SettingAsked(quote=quote, workflow=workflow, control=UNREGISTERED,
                                      value=str(entry.get("value") or "")))
