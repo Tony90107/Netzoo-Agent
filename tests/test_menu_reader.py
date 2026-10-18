@@ -18,7 +18,7 @@ from netzoo_agent_core.contracts.capability_check import CONDITIONS  # noqa: E40
 from netzoo_agent_core.graph.menu_reading_call import build_menu_reading_messages, read_menu  # noqa: E402
 from netzoo_agent_core.interpretation.menu_decision import decide_menu  # noqa: E402
 from netzoo_agent_core.interpretation.menu_reader import (  # noqa: E402
-    CONDITION_FIELDS, WANTED_FIELDS, menu_text, quote_in, reader_model, request_layout, to_menu_reading,
+    CONDITION_FIELDS, WANTED_FIELDS, menu_text, name_key, quote_in, reader_model, request_layout, to_menu_reading,
 )
 from netzoo_agent_core.judgment_defaults import judgment_defaults  # noqa: E402
 from netzoo_agent_core.workflow_conditions import all_conditions  # noqa: E402
@@ -61,11 +61,12 @@ def sentence(doubt_quote="", about="none", values=(), workflow="unspecified", co
             "control": control, "values": list(values)}
 
 
-def payload(task: str, *, data=None, numbers=None, sentences=None, conditions=None, **fields) -> dict:
+def payload(task: str, *, data=None, numbers=None, sentences=None, conditions=None, roles=None, **fields) -> dict:
     """A wire payload for the task: every field blank unless given; numbers and sentences by position."""
     layout = request_layout(task)
     base = {
-        "wanted": [], "groups": [], "settings": [], "unregistered_methods": [], "background_methods": [],
+        "wanted": [], "groups": [], "settings": [], "unregistered_methods": [],
+        "names": {name_key(name): {"role": (roles or {}).get(name, "target")} for name in layout.names},
         "claims": blank_said(), "delivery": blank_said(), "run_requested": {"quote": "", "value": False},
         "data": {name: {"quote": "", "status": "not_mentioned"} for name in DATA},
         "conditions": {name: blank_said() for name in CONDITION_FIELDS},
@@ -78,7 +79,7 @@ def payload(task: str, *, data=None, numbers=None, sentences=None, conditions=No
     base["sentences"].update(sentences or {})
     base["conditions"].update(conditions or {})
     base.update(fields)
-    reader_model(len(layout.sentences), len(layout.numbers)).model_validate(base)  # every test payload is valid wire
+    reader_model(len(layout.sentences), len(layout.numbers), layout.names).model_validate(base)  # valid wire
     return base
 
 
@@ -125,7 +126,8 @@ def _enum_values(node, defs) -> int:
 
 def test_wire_schema_stays_under_the_providers_enum_limit():
     """OpenAI strict mode takes at most 1000 enum values in one schema (d6: m3:U12 sent 1020 and was refused)."""
-    schema = reader_model(16, 16).model_json_schema()
+    from netzoo_agent_core.method_names import method_names
+    schema = reader_model(16, 16, tuple(method_names())).model_json_schema()
     assert _enum_values(schema, schema["$defs"]) <= 1000
 
 
@@ -338,6 +340,30 @@ def test_a_question_naming_a_result_asks_for_it():
     assert decide_menu(reading, task).kind == "DECLINE"
 
 
+def test_a_choice_between_workflows_is_asked_as_the_goal():
+    task = "Should I be using COBRA or CONDOR on our lupus nephritis cohort?"
+    reading, _ = read(task, wanted=[item(task, result=result("choice_between_workflows", task))],
+                      roles={"COBRA": "choice", "CONDOR": "choice"})
+    assert reading.wanted[0].artifact.status == "unsure" and reading.wanted[0].artifact.values == []
+    decision = decide_menu(reading, task)
+    assert decision.kind == "CLARIFY"
+    # one name found: still the goal, never that workflow's run
+    one = "Should I use COBRA here, or something else?"
+    reading, _ = read(one, wanted=[item(one, result=result("choice_between_workflows", one))])
+    assert decide_menu(reading, one).kind == "CLARIFY"
+
+
+def test_names_found_by_code_get_roles_and_background_ones_are_not_counted():
+    task = "Run PANDA on expr_ipf.tsv with motif.tsv, ppi.tsv and the adjusted matrix from COBRA."
+    reading, _ = read(task, wanted=[item("Run PANDA on expr_ipf.tsv", result=result("workflow_only", "Run PANDA"))],
+                      roles={"PANDA": "target", "COBRA": "background"},
+                      data={"expression": ("expr_ipf.tsv", "has"), "motif_prior": ("motif.tsv", "has"),
+                            "ppi": ("ppi.tsv", "has")})
+    assert reading.context_mentions == ["COBRA"]
+    decision = decide_menu(reading, task)
+    assert decision.kind == "DO" and decision.workflows == ["PANDA"]
+
+
 def test_a_doubt_about_none_goes_to_the_one_field_its_values_fit():
     task = "We want a TF network. We have not decided whether per-sample TF activity or per-sample TF networks."
     reading, report = read(task, wanted=[item("We want a TF network", result=result(
@@ -406,9 +432,9 @@ def test_settings_background_and_unregistered_methods():
         {"quote": "not in the request", "workflow": "unspecified", "control": "gamma", "value": "2", "asks_to_set": True},
         {"quote": "the matrix from our earlier LIONESS run", "workflow": "OTTER", "control": "unregistered",
          "value": "", "asks_to_set": False}],
-        background_methods=["LIONESS", "CONDOR"], unregistered_methods=["TIGER", "PANDA"])
+        roles={"LIONESS": "background", "OTTER": "target", "PANDA": "choice"}, unregistered_methods=["TIGER", "PANDA"])
     assert [(s.workflow, s.control, s.value) for s in reading.settings] == [("OTTER", "output_format", "edge_list")]
-    assert reading.context_mentions == ["LIONESS"]          # CONDOR is not in the words
+    assert reading.context_mentions == ["LIONESS"]          # the one name typed background
     assert reading.unregistered_methods == ["TIGER"]        # PANDA is registered
     assert reading.named_workflows is None                  # code counts names from the words
 
@@ -464,7 +490,9 @@ def test_a_decoded_call_is_checked_and_converted():
     class Model:
         def with_structured_output(self, schema, **kwargs):
             assert kwargs == {"method": "function_calling", "include_raw": True, "strict": True}
-            assert set(schema.model_json_schema()["$defs"]["SentencesWire"]["properties"]) == {"s1"}
+            defs = schema.model_json_schema()["$defs"]
+            assert set(defs["SentencesWire"]["properties"]) == {"s1"} and set(defs["NamesWire"]["properties"]) == {
+                "PANDA"}
             return type("Adapter", (), {"invoke": lambda self, messages: {
                 "parsed": schema.model_validate(data), "raw": None}})()
 

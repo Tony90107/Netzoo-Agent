@@ -30,6 +30,7 @@ def blank(candidates) -> dict:
         "counts": {name: {**empty, "value": None, "values": []} for name in limits["counts"]},
         "data": {kind: dict(empty) for kind in limits["data"]},
         "conditions": {name: {**empty, "value": None, "values": []} for name in limits["conditions"]},
+        "unsupported_settings": [],
     }
 
 
@@ -122,6 +123,20 @@ def test_a_focused_count_doubt_and_condition_doubt():
     merged, _ = merge_focused(first, payload, task, ("DRAGON",))
     assert merged.sample_count.status == "conflicting" and merged.sample_count.values == [2, 10]
     assert merged.conditions["samples_matched"].values == ["same_samples", "different_samples"]
+
+
+def test_an_unsupported_setting_for_a_workflow_without_controls_is_a_reason():
+    task = "Can GIRAFFE be run with a learning rate of 1e-4 and 2,000 iterations on our 52 samples?"
+    first = MenuReading(wanted=[Wanted(quote="Can GIRAFFE be run")], data=["expression", "motif_prior", "ppi"])
+    payload = blank(("GIRAFFE",))
+    payload["unsupported_settings"] = [
+        {"quote": "a learning rate of 1e-4", "workflow": "GIRAFFE", "value": "1e-4", "asks_to_set": True},
+        {"quote": "our 52 samples", "workflow": "GIRAFFE", "value": "52", "asks_to_set": False},
+        {"quote": "a momentum of 0.9", "workflow": "GIRAFFE", "value": "0.9", "asks_to_set": True}]
+    merged, report = merge_focused(first, payload, task, ("GIRAFFE",))
+    assert [(s.workflow, s.control, s.quote) for s in merged.settings] == [
+        ("GIRAFFE", "unregistered", "a learning rate of 1e-4")]
+    assert decide_menu(merged, task).kind == "DECLINE"
 
 
 def test_no_focused_read_while_the_result_is_open():

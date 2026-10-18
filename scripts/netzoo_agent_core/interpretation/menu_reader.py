@@ -46,7 +46,7 @@ from .capability_check import request_sentences
 __all__ = ["CONDITION_FIELDS", "DOUBT_ABOUT", "READER_SHAPE", "Layout", "NumberSpan", "ReadReport", "WANTED_FIELDS", "layout_text",
            "menu_text", "quote_in", "reader_model", "request_layout", "to_menu_reading"]
 
-READER_SHAPE = "v7"
+READER_SHAPE = "v8"
 """The schema shape the phase-1 rounds record (v1: quote lists, artifact enum with off_menu, a data list)."""
 _FORBID = ConfigDict(extra="forbid")
 Status = Literal["stated", "not_stated", "unsure", "conflicting"]
@@ -54,8 +54,9 @@ Basis = Literal["explicit", "implied"]
 WireForm = Literal["asks", "purpose", "data_description", "context"]
 """v5: a question is not its own form -- d4 read "which method gives a separate TF-gene network for each sample?" as a
 question naming nothing. Code calls an `asks` item naming no result and stating nothing a question to us."""
-Names = Literal["menu_result", "kind_of_result", "workflow_only", "off_menu_result", "unsure_between_results",
-                "nothing"]
+Names = Literal["menu_result", "kind_of_result", "workflow_only", "choice_between_workflows", "off_menu_result",
+                "unsure_between_results", "nothing"]
+Role = Literal["target", "choice", "background"]
 Have = Literal["has", "lacks", "not_mentioned"]
 RequirementAbout = Literal["how_computed", "what_it_contains", "another_result", "a_setting", "data_property",
                            "file_or_format", "other"]
@@ -78,8 +79,10 @@ MAX_NUMBERS = 16
 _STATED_WHEN = {
     "artifact": "What the item's words name: menu_result (a result on the menu: value), kind_of_result (only a kind "
                 "of result -- network, regulation: kind), workflow_only (a registered workflow is named and no "
+                "result), choice_between_workflows (the user is choosing between two or more workflows and names no "
                 "result), off_menu_result (a result no registered workflow gives: outside_name), "
-                "unsure_between_results (the user does not know which result: values), nothing.",
+                "unsure_between_results (the user names two or more results and does not know which: values), "
+                "nothing.",
     "integration": "stated only by words linking the layers to each other (between miRNAs and cytokines, within "
                    "and across the two layers, one integrated network across all layers) or asking for each layer "
                    "on its own; having two layers states nothing.",
@@ -166,6 +169,8 @@ class Layout:
     numbers: tuple[NumberSpan, ...]
     spans: tuple[tuple[int, int], ...] = ()
     """Each sentence's (start, end) in the request."""
+    names: tuple[str, ...] = ()
+    """The registered names the words name (`workflows_in`), each typed with a role by the model."""
 
     def sentence_of(self, number: NumberSpan) -> int:
         """The 1-based sentence the number is in (0 when none is)."""
@@ -197,11 +202,19 @@ def request_layout(task: str) -> Layout:
     found += [(m.start(), m.end(), m.group(), float(_WORD_NUMBERS[m.group().casefold()])) for m in _WORDS.finditer(task)]
     numbers = tuple(NumberSpan(text, value, start, end, _context(task, start, end))
                     for start, end, text, value in sorted(found)[:MAX_NUMBERS])
-    return Layout(sentences=tuple(task[s:e].strip() for s, e in spans), numbers=numbers, spans=tuple(spans))
+    return Layout(sentences=tuple(task[s:e].strip() for s, e in spans), numbers=numbers, spans=tuple(spans),
+                  names=tuple(workflows_in(task)))
+
+
+def name_key(name: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "_", name)
 
 
 def layout_text(layout: Layout) -> str:
     lines = ["Sentences (sentences.sN):", *(f"s{i}. {text}" for i, text in enumerate(layout.sentences, 1))]
+    if layout.names:
+        lines += ["", "Registered names in the request (names.<NAME>):", *(f"- {name_key(n)} = {n}"
+                                                                       for n in layout.names)]
     if layout.numbers:
         lines += ["", "Numbers (numbers.nN):"]
         lines += [f"n{i} = {number.text}: \"{number.context}\"" for i, number in enumerate(layout.numbers, 1)]
@@ -319,7 +332,7 @@ def _enum(values) -> object:
 
 
 @lru_cache(maxsize=64)
-def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
+def reader_model(sentences: int = 1, numbers: int = 0, names: tuple[str, ...] = ()) -> type[BaseModel]:
     """The provider-facing schema for a request with this many sentences and numbers: every field required, every
     value an enum from the menu (strict mode), one field per sentence and per number so none is skipped."""
     table = judgment_defaults()
@@ -412,7 +425,11 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
                                              "describe their data.")),
     )
     flag = create_model("Flag", __config__=_FORBID, value=(bool, ...), quote=(str, _QUOTE))
-    names = _enum((*sorted(registered_workflows()), LIONESS_FAMILY))
+    role = create_model("NameRole", __config__=_FORBID, role=(Role, Field(description=(
+        "target: the workflow the user asks to run or asks about; choice: one of two or more workflows the user is "
+        "choosing between; background: mentioned only as background (an earlier run, where an input came from)."))))
+    name_fields = create_model("NamesWire", __config__=_FORBID, **{
+        name_key(name): (role, Field(description=name)) for name in names})
     sentence_fields = create_model("SentencesWire", __config__=_FORBID, **{
         f"s{index}": (sentence, Field(description=f"Sentence {index}.")) for index in range(1, max(1, sentences) + 1)})
     number_fields = create_model("NumbersWire", __config__=_FORBID, **{
@@ -432,9 +449,9 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
         "unregistered_methods": (list[str], Field(description=(
             "The user's exact words naming a method or variant to use that no registered workflow is "
             "(TIGER, LIONESS-OTTER, DESeq2)."))),
-        "background_methods": (list[names], Field(description=(
-            "Registered names the user mentions only as background (a past run, where an input came from), never "
-            "as the method to run or a choice."))),
+        # Phase 1b step 3: a list of background names was never filled (bench context_mentions 0/4); each name code
+        # finds now gets a role, so none is skipped.
+        "names": (name_fields, Field(description="Each registered name listed after the request, with its role.")),
         "claims": _said("Claims", _values(table, "claims"), "association: links between features; causal: proof of "
                                                              "causation; prediction: a trained predictive model."),
         "delivery": _said("Delivery", _values(table, "delivery"), "files: results written to the output folder; "
@@ -530,7 +547,8 @@ def _result(raw: dict, task: str, where: str, report: ReadReport, table: Judgmen
     if names in ("nothing", "workflow_only"):
         return Said(), ""  # a named workflow is counted by code from the words
     quote = _verified(raw.get("quote"), task, f"{where}.result", report)
-    if not quote and names in ("menu_result", "kind_of_result") and quote_in(item_quote, task):
+    if not quote and names in ("menu_result", "kind_of_result", "choice_between_workflows") and quote_in(
+            item_quote, task):
         quote = item_quote
         report.filled.append(f"{where}.result: {names} rests on the item's words")
     if not quote:
@@ -540,6 +558,10 @@ def _result(raw: dict, task: str, where: str, report: ReadReport, table: Judgmen
         return Said(status="stated", value=raw["value"], basis="explicit", quotes=[quote]), ""
     if names == "kind_of_result" and raw.get("kind"):
         return Said(status="stated", value=raw["kind"], basis="explicit", quotes=[quote]), ""
+    if names == "choice_between_workflows":
+        # Phase 1b step 2 (bench C10, C26: "COBRA or CONDOR?" read as a doubt between two results, asked as ASK): the
+        # result is open among the named workflows' results, so decide_menu asks the goal (CLARIFY).
+        return Said(status="unsure", values=[], quotes=[quote]), ""
     if names == "unsure_between_results":
         values = list(dict.fromkeys(raw.get("values") or []))
         if len(values) >= 2:
@@ -771,8 +793,8 @@ def to_menu_reading(payload, task: str, layout: Layout | None = None) -> tuple[M
         value = str(entry.get("value") or "")
         settings.append(SettingAsked(quote=entry["quote"], workflow=workflow, control=control,
                                      value="" if value == UNSPECIFIED else value))
-    named = set(workflows_in(task))
-    background = [name for name in raw.get("background_methods") or [] if name in named]
+    roles = raw.get("names") or {}
+    background = [name for name in layout.names if (roles.get(name_key(name)) or {}).get("role") == "background"]
     registered = {_norm(name) for name in (*registered_workflows(), LIONESS_FAMILY)}
     unregistered = [name for index, name in enumerate(raw.get("unregistered_methods") or [])
                     if _verified(name, task, f"unregistered_methods[{index}]", report)

@@ -21,11 +21,12 @@ from ..interpretation.menu_reader import (
 )
 from ..interpretation.menu_decision import candidate_workflows, decide_menu
 from ..interpretation.menu_focus import focus_model, focus_text, merge_focused
+from ..interpretation.menu_requirements import apply_verdicts, requirement_model, requirement_pairs, requirement_text
 from ..interpretation.semantic_repair import semantic_payload
 from ..settings import ROUTER_CONTEXT_MAX_CHARS
 
 __all__ = ["MAX_FOCUS", "MenuRead", "build_focused_messages", "build_menu_reading_messages", "menu_reading_system",
-           "read_focused", "read_menu"]
+           "read_focused", "read_menu", "read_requirements"]
 
 MAX_FOCUS = 6
 """More candidates than this means the result is still open: the focused re-read waits for it."""
@@ -47,6 +48,14 @@ _FOCUS_SHAPE = (
     "left. For each listed control, count, kind of data and data condition, give what the user's words say about "
     "it: stated (the value the words give), unsure (the user does not know, has not decided, or gives several "
     "possibilities: values), or not_mentioned. Every quote is the user's exact words, copied from the request."
+)
+
+
+_REQUIREMENT_SHAPE = (
+    "Return only the RequirementVerdicts structure. Each numbered pair gives a requirement from the user's request "
+    "and one registered workflow, whose contract is listed. For each pair, copy the clause of that workflow's "
+    "contract that speaks to the requirement, in its exact words (empty when none does), then say whether the "
+    "contract says the workflow's result meets the requirement, contradicts it, or does not address it."
 )
 
 
@@ -83,7 +92,7 @@ def read_menu(user_task: str, llm, *, messages=None, schema=None, convert=None) 
     `schema` and `convert` default to this module's (the focused re-read passes its own)."""
     task = user_task[-ROUTER_CONTEXT_MAX_CHARS:]
     layout = request_layout(task)
-    schema = schema or reader_model(len(layout.sentences), len(layout.numbers))
+    schema = schema or reader_model(len(layout.sentences), len(layout.numbers), layout.names)
     messages = messages or build_menu_reading_messages(task)
     convert = convert or (lambda data, words: to_menu_reading(data, words, layout))
     started = time.time()
@@ -116,3 +125,21 @@ def read_focused(user_task: str, first: MenuReading, llm) -> tuple[MenuRead | No
     if read.reading.status == "failed":
         read.reading = first
     return read, candidates
+
+
+def read_requirements(user_task: str, reading: MenuReading, llm):
+    """The requirement contract check (phase 1b, step 1): a verdict per (requirement, candidate workflow), merged into
+    the reading. None when no thing asked carries a requirement or nothing is a candidate; a failed call leaves the
+    reading as it was (every requirement not addressed, so asked)."""
+    task = user_task[-ROUTER_CONTEXT_MAX_CHARS:]
+    if reading.status == "failed":
+        return None, []
+    pairs = requirement_pairs(reading, candidate_workflows(reading, task))
+    if not pairs:
+        return None, []
+    messages = [SystemMessage(content=_REQUIREMENT_SHAPE), HumanMessage(content=requirement_text(task, pairs))]
+    read = read_menu(task, llm, messages=messages, schema=requirement_model(len(pairs)),
+                     convert=lambda data, words: apply_verdicts(reading, pairs, data))
+    if read.reading.status == "failed":
+        read.reading = reading
+    return read, pairs

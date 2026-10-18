@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 from ..contracts.capability_check import CONDITIONS
 from ..contracts.menu_reading import Count, MenuReading, Said, SettingAsked
 from ..judgment_defaults import judgment_defaults
+from ..method_names import UNREGISTERED
 from ..workflow_conditions import all_conditions
 from .menu_decision import workflow_conditions
 from .menu_reader import _CONDITION_MEANS, _DATA_MEANS, ReadReport, _strict, quote_in, request_layout
@@ -89,6 +90,8 @@ def focus_text(candidates: tuple[str, ...]) -> str:
         lines.append(f"- {key} = {workflow} {name} ({kind}): {description}")
     if not limits["controls"]:
         lines.append("- none: the candidates take no settings.")
+    lines.append("UNSUPPORTED SETTINGS (unsupported_settings): a setting the user asks to run with that none of the "
+                 "controls above is, for example a learning rate, a penalty or a solver no candidate takes.")
     lines += ["", "COUNTS (counts.<name>):"]
     lines += [f"- {name}: {'; '.join(parts) or 'the total number of samples'}" for name, parts in limits["counts"].items()]
     lines += ["", "DATA (data.<kind>: has, lacks, unsure, not_mentioned):"]
@@ -144,6 +147,15 @@ def focus_model(candidates: tuple[str, ...]) -> type[BaseModel]:
     def group(name: str, fields: dict):
         return create_model(name, __config__=_FORBID, **fields)
 
+    unsupported = create_model(
+        "UnsupportedSetting", __config__=_FORBID,
+        quote=(str, Field(description="The user's exact words asking for the setting.")),
+        workflow=(str, Field(description="The candidate workflow it is asked for; empty when the words do not say.")),
+        value=(str, Field(description="The value the words give; empty when none.")),
+        asks_to_set=(bool, Field(description="true when the user asks to run with it; false when the words only "
+                                             "describe their data.")),
+    )
+
     fields = {
         "settings": (group("FocusedSettings", {key: (setting, Field(description=f"{workflow} {control}"))
                                                for key, (workflow, control, _limit) in limits["controls"].items()}), ...),
@@ -152,6 +164,9 @@ def focus_model(candidates: tuple[str, ...]) -> type[BaseModel]:
                                             for kind in limits["data"]}), ...),
         "conditions": (group("FocusedConditions", {name: (condition(name), Field(description=_CONDITION_MEANS[name]))
                                                    for name in limits["conditions"]}), ...),
+        # Phase 1b step 4 (bench C08: GIRAFFE takes no settings, so a learning rate had no field to land in).
+        "unsupported_settings": (list[unsupported], Field(description=(
+            "Each setting the user asks to run with that no listed control is."))),
     }
     return _strict(create_model("FocusedReading", __config__=_FORBID, **fields))
 
@@ -191,6 +206,16 @@ def merge_focused(first: MenuReading, payload, task: str, candidates: tuple[str,
             settings = [s for s in settings if s not in same] + [SettingAsked(
                 quote=quote, workflow=workflow, control=control, value=str(entry["value"]))]
             report.filled.append(f"focus: {workflow}.{control} = {entry['value']}")
+    for index, entry in enumerate(raw.get("unsupported_settings") or []):
+        if not entry.get("asks_to_set"):
+            continue
+        quote = words({**entry, "status": "unsupported"}, f"unsupported_settings[{index}]")
+        if not quote or any(quote_in(quote, s.quote) or quote_in(s.quote, quote) for s in settings if s.quote):
+            continue  # words not in the request, or a setting the reading already has
+        workflow = entry.get("workflow") if entry.get("workflow") in candidates else ""
+        settings.append(SettingAsked(quote=quote, workflow=workflow, control=UNREGISTERED,
+                                     value=str(entry.get("value") or "")))
+        report.filled.append(f"focus: unsupported setting {quote[:50]!r} for {workflow or 'every candidate'}")
     counts = {"sample_count": first.sample_count, "feature_count": first.feature_count}
     for name, entry in (raw.get("counts") or {}).items():
         if name not in counts or entry.get("status") == "not_mentioned":
