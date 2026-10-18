@@ -1,0 +1,477 @@
+# Closed-menu judgment, phase 0 (spec docs/superpowers/specs/2026-10-18-closed-menu-judgment-design.md, sections 3.3
+# and 3.8). DRAFT 5, confirmed by the user (2026-10-18). Nothing reads this file at runtime yet.
+#
+# What it holds:
+# - `artifacts`: the closed vocabulary of results a request can ask for. Every `produces` entry of
+#   scripts/capability_sheet.yaml is in exactly one artifact; `generic` words ("a network", "regulation")
+#   stand for several artifacts and are expanded by code.
+# - `question_groups`: the coarse choices asked first when more than `ask_max_options` results remain.
+# - `dimensions`: for each thing a request may or may not say, what code does when it is not stated.
+#
+# "Not stated" means the user's words give no clue at all. Said outright (explicit) and inferable from the user's
+# words (implied, quoting the words it rests on) are both stated; so is an answer to a question (answered).
+# Draft 3 (the user's decision, 2026-10-18): an intent is implied only by words as clear as saying it -- "a network"
+# says the result is a network, never that it is one network for every sample or every layer.
+#
+# Dimension classes (draft 2, the user's decision 2026-10-18: an unclear intent is asked, never guessed):
+#   intent      -- what result the user wants; not stated -> asked when it splits the remaining candidates
+#   condition   -- a data condition; not stated -> its default, said in the reply; asked only when the user is
+#                  unsure or says two things, and the values lead to different outcomes
+#   input_check -- never asked; the run's input check verifies it, or a DO reply lists it as a need
+#   setting     -- a workflow control; not stated -> the YAML default
+#
+# Rules shared by every dimension (spec section 3.4), so they are not repeated below:
+# - stated, with a value on the menu: filters the candidates.
+# - stated, with a value off the menu (single cells, germline, three layers jointly, a setting the workflow
+#   does not have): a positive reason; the candidates it rules out FAIL with the contract's words.
+# - unsure or conflicting: asked only when its possible values lead to different results or to FIT vs FAIL.
+# Policies when not stated:
+#   ask         -- nothing is assumed; asked when the dimension splits the candidates into different results
+#   extra       -- the dimension's non-plain values are extras a user asks for (miRNA regulators, a comparison):
+#                  the topic never mentioned -> `plain`; mentioned without saying which -> asked (draft 4, measured
+#                  on 108 dev requests: spec section 9.5)
+#   default     -- treated as if the user had stated `value`
+#   no_filter   -- does not narrow the candidates; workflows that differ only here are a tie
+#   input_check -- never asked; the run's input check verifies it before anything runs
+#   needs_input -- never asked; a DO reply lists it as something the run will need
+
+version: 1
+
+thresholds:
+  # Options in one question (besides "not sure, suggest one" and "none of these"); with more results left, the
+  # coarser question_groups question comes first.
+  ask_max_options: 3
+  max_questions_per_turn: 2
+  # After this many asking turns, the remaining results are listed for the user to pick from directly.
+  max_ask_rounds: 3
+  # Draft 5 (the user's rule, spec section 3.10): a run may go ahead when at least this share of the user's own
+  # stated requirements is met by the contract; below it, the ones not addressed are asked about until the share is
+  # reached. Never applied to a FAIL, which rules its part out alone, or to an intent still open.
+  soft_requirements_met: 0.9
+
+artifacts:
+  regulatory_network:
+    means: A weighted regulator-to-gene network (TF, or TF and miRNA).
+    entries: [panda.tf_gene_network, puma.regulator_gene_network, lioness_panda.per_sample_networks,
+              lioness_puma.per_sample_networks, otter.tf_gene_network, giraffe.signed_regulation]
+  targeting_scores:
+    means: Each regulator's out-degree or each gene's in-degree in a regulatory network.
+    entries: [panda.targeting_scores, puma.targeting_scores, lioness_panda.per_sample_targeting,
+              lioness_puma.per_sample_targeting, otter.targeting_scores]
+  tf_activity:
+    means: Each TF's activity in each sample, estimated apart from its own mRNA level.
+    entries: [giraffe.tf_activity]
+  coexpression_network:
+    means: An undirected gene-gene co-expression network.
+    entries: [lioness_coexpression.per_sample_networks, bonobo.per_sample_networks]
+  covariate_adjustment:
+    means: Co-expression split by, or adjusted for, covariates in a design matrix (and a network built from it).
+    entries: [cobra.covariate_components, cobra.adjusted_input_to_regulation]
+  multi_omic_network:
+    means: An undirected partial-correlation network within and between two matched omics layers.
+    entries: [dragon.two_layer_network, lioness_dragon.per_sample_networks]
+  edge_significance:
+    means: A p-value per edge, to filter a network by significance.
+    entries: [dragon.edge_pvalues]
+  communities:
+    means: Communities in a regulator-gene network, with memberships and each node's core score.
+    entries: [condor.communities, condor.core_scores]
+  community_enrichment:
+    means: Pathway enrichment of each community's genes.
+    entries: [condor.enrichment]
+  patient_subtypes:
+    means: Patient subtypes from somatic mutations, with gene and pathway mutation scores.
+    entries: [sambar.subtypes]
+  comparison:
+    # A comparison is asked about one of the results above; `of` names it, so code matches the object, not the word.
+    means: A result compared between groups, time points or clinical variables (a step outside NetZoo).
+    entries:
+      panda.condition_comparison: regulatory_network
+      lioness_panda.association_tests: regulatory_network
+      lioness_puma.association_tests: regulatory_network
+      giraffe.activity_tests: tf_activity
+      dragon.group_comparison: multi_omic_network
+      lioness_dragon.association_tests: multi_omic_network
+      lioness_coexpression.comparisons: coexpression_network
+      sambar.clinical_comparison: patient_subtypes
+
+generic:
+  # Words that name a kind of result but not which one; code expands them.
+  network: [regulatory_network, coexpression_network, covariate_adjustment, multi_omic_network]
+  regulation: [regulatory_network, targeting_scores, tf_activity]
+
+question_groups:
+  # User-facing labels (agent output is English). Every artifact but `comparison` is in exactly one group; a
+  # comparison belongs to the group of the result it compares.
+  gene_gene:
+    label: How genes relate to each other (co-expression)
+    artifacts: [coexpression_network, covariate_adjustment]
+  regulator_gene:
+    label: How regulators such as TFs or miRNAs control genes
+    artifacts: [regulatory_network, targeting_scores, tf_activity]
+  across_omics:
+    label: How features of two omics layers relate (for example transcripts and metabolites)
+    artifacts: [multi_omic_network, edge_significance]
+  groups:
+    label: Groups of genes or of patients
+    artifacts: [communities, community_enrichment, patient_subtypes]
+
+# Completeness (spec section 3.9), checked by tests/test_judgment_defaults.py:
+# - every pair of produces entries from different workflows differs in some intent dimension, or is a method tie
+#   listed here (the reply offers both; nothing runs until the user picks);
+# - every near_miss and registry_wide entry is ruled out by a dimension value (`ruled_by`);
+# - every request-scope limit in the workflow YAMLs is judged by a dimension (`limit_fields`);
+# - every dimension serves at least one of these, or reads a CONDITIONS condition, or says what else it decides.
+method_ties:
+  - [PANDA, OTTER]
+
+tie_options:
+  # Draft 5 (the user's decision, 2026-10-18): when candidates give the same kind of result, every option is offered
+  # and nothing is chosen for the user. Shown: how the options differ for the user's question and which need each
+  # serves better -- never how the algorithm works. `logic` is the contract reasoning behind those lines, kept for
+  # review and never shown; `source` cites it. `fits_when`: stated fields that make one option fit the request
+  # better, said as "you said ..., so X fits better" (computed from fields, never from free text).
+  whole_cohort_tf_network:
+    asked: One TF-to-gene network across all samples.
+    options:
+      PANDA:
+        difference: The standard NetZoo network; each edge says how strongly your motif, PPI and expression data agree on that TF regulating that gene.
+        good_for: Comparing with published PANDA networks, or building per-sample networks (LIONESS-PANDA) or communities (CONDOR) from the same network later.
+        logic: Message passing that reconciles the motif prior, PPI and co-expression; unsigned support scores.
+        source: "capability_sheet panda.tf_gene_network reading; panda.no_sign; lioness-panda guidance_predecessors; PANDA->CONDOR handoff"
+      OTTER:
+        difference: You can set how much the co-expression counts against the PPI, and it works from a co-expression matrix when you have no expression file.
+        good_for: Data that is only a co-expression matrix, or a study where you want to control that balance yourself.
+        logic: Explicit graph-matching optimization (lam weights C vs P, gamma regularizes); non-convex; binary PPI projection; own weight scale.
+        source: "workflows/otter.yaml description, conventions; capability_sheet otter.tf_gene_network reading"
+        fits_when: [data_available=coexpression_matrix]
+      GIRAFFE:
+        difference: Tells you whether each TF activates or represses each gene, and also gives each TF's activity in every sample; it takes no settings.
+        good_for: Questions about activation versus repression, or studies that also need per-sample TF activity.
+        logic: Matrix factorization Y ~ R x |TFA|; R holds signed partial linear effects; package defaults only.
+        source: "workflows/giraffe.yaml description, conventions; capability_sheet giraffe.signed_regulation reading, giraffe.tf_activity"
+  whole_cohort_targeting:
+    asked: Each TF's (or gene's) targeting score across all samples.
+    options:
+      PANDA:
+        difference: Scores on the standard NetZoo basis, comparable with published PANDA targeting analyses.
+        good_for: Comparing with other PANDA studies, or with per-sample targeting from LIONESS-PANDA later.
+        logic: Sum of PANDA edge weights (a step after NetZoo); unsigned.
+        source: "capability_sheet panda.targeting_scores (with_step); panda.tf_gene_network reading"
+      OTTER:
+        difference: You can set the balance between co-expression and the PPI, and it can start from a co-expression matrix; scores compare only with other OTTER runs.
+        good_for: Data that is only a co-expression matrix, or when you want to control that balance.
+        logic: Sum of OTTER edge weights (a step after NetZoo); OTTER's own scale.
+        source: "capability_sheet otter.targeting_scores (with_step); otter.tf_gene_network reading; workflows/otter.yaml conventions"
+        fits_when: [data_available=coexpression_matrix]
+  per_sample_coexpression:
+    asked: A separate gene-gene co-expression network for each sample.
+    options:
+      LIONESS-COEXPRESSION:
+        difference: Gives the cohort network too, with every sample's network on the same scale, so a sample can be read against the whole cohort; no data preparation is required beyond the matrix.
+        good_for: Studies that put individual samples next to the cohort, or data that is not log-transformed and centered.
+        logic: Leave-one-out N_k = n*N_all - (n-1)*N_without_k; per-sample networks are relative to the cohort and not independent.
+        source: "workflows/lioness-coexpression.yaml conventions; capability_sheet lioness_coexpression.per_sample_networks; workflows/bonobo.yaml conventions (log_transformed, centered)"
+      BONOBO:
+        difference: Can give every edge in every sample a p-value, so you keep only significant edges; it gives no cohort network and needs log-transformed, centered data.
+        good_for: Studies that need per-sample edge significance or sparse per-sample networks.
+        logic: Bayesian per-sample co-expression with leave-one-out background; sparsify and save_pvals; at least three samples.
+        source: "capability_sheet bonobo.per_sample_networks; workflows/bonobo.yaml conventions"
+
+workflow_data:
+  # What each workflow's result is computed from, as data_available values. `core` is the data that defines it: an
+  # open result is narrowed to the workflows whose core data the user says they have (never by data not mentioned).
+  # `needs` lists what a run reads; a need the user says they lack rules the workflow out. "a|b" is either one;
+  # two_layers is two or more distinct omics layers.
+  PANDA: {core: [expression], needs: [expression, motif_prior, ppi]}
+  PUMA: {core: [expression], needs: [expression, motif_prior, ppi, mirna_prior]}
+  LIONESS-PANDA: {core: [expression], needs: [expression, motif_prior, ppi]}
+  LIONESS-PUMA: {core: [expression], needs: [expression, motif_prior, ppi, mirna_prior]}
+  OTTER: {core: [expression|coexpression_matrix], needs: [motif_prior, ppi, expression|coexpression_matrix]}
+  GIRAFFE: {core: [expression], needs: [expression, motif_prior, ppi]}
+  LIONESS-COEXPRESSION: {core: [expression], needs: [expression]}
+  BONOBO: {core: [expression], needs: [expression]}
+  COBRA: {core: [expression], needs: [expression, design_matrix]}
+  DRAGON: {core: [two_layers], needs: [two_layers]}
+  LIONESS-DRAGON: {core: [two_layers], needs: [two_layers]}
+  CONDOR: {core: [regulator_gene_network], needs: [regulator_gene_network]}
+  SAMBAR: {core: [mutation_calls], needs: [mutation_calls]}
+
+required_settings:
+  # Settings a workflow runs only with: stated otherwise -> FAIL; unsure -> asked; not stated -> listed as a need.
+  BONOBO:
+    log_transformed: "true"
+    centered: "true"
+  # source: scripts/netzoo_agent_core/data/bonobo.py (log_transformed and centered must be declared true)
+
+omics_layers: [expression, methylation, protein, metabolite, mirna_expression, chromatin, other_omics]
+
+entry_attributes:
+  # capability-sheet attribute -> the dimension that compares it with the request
+  artifact: artifact
+  granularity: granularity
+  regulators: regulators
+  signed: signed
+  layers: integration
+  input_network: input_network
+  groups: group_membership
+  compared: compare
+
+ruled_by:
+  causal_proof: claims=causal
+  outcome_prediction: claims=prediction
+  delivery: delivery=outside_netzoo
+  panda.no_complexes: artifact=off_menu
+  panda.no_sign: signed=signed
+  panda.no_motif_discovery: artifact=off_menu
+  panda.no_dynamics: time_model=dynamic
+  puma.no_lncrna_cerna: regulators=off_menu
+  puma.no_mirna_expression_use: mirna_driver=measured_expression
+  lioness.no_single_cell: data_unit=single_cells
+  lioness_panda.no_sign: signed=signed
+  lioness_panda.no_complexes: artifact=off_menu
+  lioness_puma.no_single_cell: data_unit=single_cells
+  lioness_puma.no_lncrna_cerna: regulators=off_menu
+  otter.no_per_sample: granularity=per_sample
+  otter.no_global_optimum: requirements=contradicted
+  otter.no_complexes: artifact=off_menu
+  otter.no_sign: signed=signed
+  giraffe.no_protein_level: artifact=off_menu
+  giraffe.no_per_sample_wiring: granularity=per_sample
+  dragon.no_flux_or_pathway_activity: artifact=off_menu
+  dragon.no_more_layers: layers=three_or_more_jointly
+  lioness_dragon.no_pvalues: granularity=per_sample
+  lioness_dragon.no_flux_or_pathway_activity: artifact=off_menu
+  lioness_dragon.no_single_cell: data_unit=single_cells
+  coexpression.no_regulation: artifact=regulatory_network
+  lioness_coexpression.no_single_cell: data_unit=single_cells
+  bonobo.no_regulation: artifact=regulatory_network
+  bonobo.no_single_cell: data_unit=single_cells
+  cobra.no_differential_expression: artifact=off_menu
+  cobra.no_pair_significance: compare=test
+  condor.no_two_network_comparison: compare=describe
+  condor.no_variant_mapping: artifact=off_menu
+  sambar.no_expression_subtypes: data_available=no_mutation_calls
+  sambar.no_driver_calls: artifact=off_menu
+
+limit_fields:
+  # the `limit` of a request-scope input_check (its prefix before ":") -> the dimension that judges it
+  min_samples: sample_count
+  relation: feature_count
+  max_values: feature_count
+  setting: settings
+
+dimensions:
+
+  # --- Intent: what result the user wants. Never assumed: asked when it splits the candidates -------------------------
+  # Implied only by words as clear as saying it (draft 3). Nothing runs until every intent that splits the
+  # candidates is stated, implied, answered, or left to a method tie the user picks from.
+
+  artifact:
+    class: intent
+    values: [regulatory_network, targeting_scores, tf_activity, coexpression_network, covariate_adjustment,
+             multi_omic_network, edge_significance, communities, community_enrichment, patient_subtypes]
+    off_menu: [off_menu]
+    not_stated: {policy: ask}
+    note: >-
+      Not stated, or only a generic word ("a network", "regulation"): the candidates are every result the stated data
+      can give. One result left -> go on. Several -> ask; with more than ask_max_options left, the question_groups
+      question first. Recorded as CLARIFY when this is the dimension asked. off_menu needs the user's own words
+      naming the result (a filtered VCF, a pseudotime ordering).
+
+  named_workflows:
+    class: intent
+    off_menu: [unregistered]
+    not_stated: {policy: no_filter}
+    serves: >-
+      Registered names are counted by code (method_names.workflows_in). One named and no result -> its direct
+      results. Two or more named and no result -> the artifact question, offering only theirs. A method or variant
+      NetZoo does not register (TIGER, LIONESS-OTTER, DESeq2) is off the menu.
+
+  integration:
+    class: intent
+    values: [joint, per_layer]
+    not_stated: {policy: ask}
+    options:
+      joint: One network that links the features of both layers to each other -- pick it to see how the layers relate.
+      per_layer: A separate network for each layer -- pick it to study each layer on its own.
+    note: >-
+      Asked only when the user has two or more omics layers and both answers leave candidates. Implied only by words
+      that link the layers ("between miRNAs and cytokines", "within and across the two layers", "one integrated
+      network across all layers"); having two layers implies nothing.
+
+  granularity:
+    class: intent
+    values: [whole_cohort, per_group, per_sample]
+    not_stated: {policy: ask}
+    options:
+      whole_cohort: One result for all your samples together -- pick it to describe the cohort as a whole.
+      per_group: One result for each group or condition -- pick it to put groups side by side.
+      per_sample: A separate result for each sample, such as each patient -- pick it to test or compare samples one by one.
+    note: >-
+      whole_cohort and per_group take aggregate entries (per_group runs one per group); per_sample takes
+      sample-specific entries. Asked only when the candidates leave more than one of these. Implied only by words as
+      clear as "that patient's own network", "one network per diagnostic group", "one network for the whole cohort";
+      "a network" implies nothing.
+
+  regulators:
+    class: intent
+    values: [tf, tf_mirna]
+    off_menu: [off_menu]
+    not_stated: {policy: extra, plain: tf}
+    options:
+      tf: Transcription factors only.
+      tf_mirna: Transcription factors and miRNAs (needs a miRNA-target prior).
+    note: >-
+      Applies to regulatory_network, targeting_scores and tf_activity. miRNAs never mentioned (no miRNA data, prior or
+      regulator) -> TF only: 0 of 93 dev requests without a miRNA mention needed a miRNA workflow, and all 15 that
+      mentioned miRNAs did. miRNAs mentioned without saying they are regulators -> asked. lncRNAs, RBPs and splicing
+      factors are off the menu.
+
+  layers:
+    class: intent
+    values: [two]
+    off_menu: [three_or_more_jointly]
+    not_stated: {policy: ask}
+    note: >-
+      For a joint network: with exactly two layers stated, the two; with three or more, asked which pair. Stated that
+      all of them must be in one model -> off the menu (dragon.no_more_layers).
+
+  signed:
+    class: intent
+    values: [signed, unsigned]
+    not_stated: {policy: no_filter}
+    note: >-
+      Not asked for activation versus repression: a signed and an unsigned network of the same kind are offered side
+      by side and the user picks, so nothing is decided for them.
+
+  compare:
+    class: intent
+    values: [none, describe, test]
+    not_stated: {policy: extra, plain: none}
+    note: >-
+      No comparison mentioned is none asked for, not an unclear one. describe: results put side by side. test: a
+      statistical test, which needs per-sample results (aggregate networks give no spread). A comparison said only as
+      a later purpose ("so we can compare responders later") is a purpose, not a deliverable.
+
+  requirements:
+    class: intent
+    values: [met, contradicted, not_addressed]
+    not_stated: {policy: no_filter}
+    serves: >-
+      How a result must be computed or what it must contain ("a convex solution", "edges weighted by our miRNA
+      expression"). Each is matched to the candidate's contract: contradicted -> FAIL with the contract's words;
+      not_addressed -> asked whether it is a must, never assumed met.
+
+  claims:
+    class: intent
+    values: [association]
+    off_menu: [causal, prediction]
+    not_stated: {policy: no_filter}
+    note: Proof of causation or a trained predictive model are off the menu for every workflow.
+
+  delivery:
+    class: intent
+    values: [files]
+    off_menu: [outside_netzoo]
+    not_stated: {policy: no_filter}
+    note: Results are written to the output folder; e-mail, upload, a dashboard or a schedule is done outside NetZoo.
+
+  # --- Data conditions: a default, said in the reply; asked only when the user is unsure ------------------------------
+
+  data_unit:
+    class: condition
+    condition: data_unit
+    not_stated: {policy: default, value: bulk_samples}
+    note: Every registered workflow takes bulk samples; single cells are off the menu (lioness.no_single_cell).
+
+  data_stage:
+    class: condition
+    values: [processed_matrix, raw_files]
+    not_stated: {policy: default, value: processed_matrix}
+    serves: >-
+      Every workflow reads processed tables. Reads, alignments or peak files (FASTQ, BAM, bigWig) need a processing
+      step outside NetZoo first: said as an outside step before the workflow, never done or invented here.
+
+  mutation_origin:
+    class: condition
+    condition: mutation_origin
+    not_stated: {policy: default, value: somatic}
+    note: SAMBAR scores somatic mutations; germline is off the menu.
+
+  value_type:
+    class: condition
+    condition: value_type
+    not_stated: {policy: default, value: continuous}
+    note: DRAGON and LIONESS-DRAGON need continuous values; binary indicators are off the menu.
+
+  mirna_driver:
+    class: condition
+    condition: mirna_driver
+    not_stated: {policy: default, value: target_prior}
+    note: PUMA's miRNA edges come from a target prior; links driven by measured miRNA expression are off the menu.
+
+  time_model:
+    class: condition
+    condition: time_model
+    not_stated: {policy: default, value: not_dynamic}
+    note: Comparing time points is not dynamic; a model of change from one time point to the next is off the menu.
+
+  spatial:
+    class: condition
+    condition: spatial
+    not_stated: {policy: default, value: not_spatial}
+
+  group_membership:
+    class: condition
+    condition: group_membership
+    not_stated: {policy: default, value: one_group}
+    note: Overlapping groups are off the menu (CONDOR and SAMBAR put each item in one group).
+
+  input_network:
+    class: condition
+    values: [regulator_gene, gene_gene]
+    not_stated: {policy: input_check}
+    note: >-
+      CONDOR partitions a bipartite regulator-gene network; its input inspection warns when source and target IDs
+      overlap. Stated gene-gene -> FAIL.
+
+  # --- Never asked: checked before the run, or listed as what the run needs -----------------------------------------
+
+  sample_count:
+    class: input_check
+    not_stated: {policy: input_check}
+    note: A stated number is judged now (minimum samples per workflow, SAMBAR kmax).
+
+  feature_count:
+    class: input_check
+    not_stated: {policy: input_check}
+    note: A stated number is judged now (LIONESS-DRAGON value cap, COBRA genes > samples).
+
+  samples_matched:
+    class: input_check
+    condition: samples_matched
+    not_stated: {policy: input_check}
+    note: DRAGON and LIONESS-DRAGON compare exact sample IDs before running. Stated different samples -> FAIL.
+
+  data_available:
+    class: input_check
+    values: [expression, coexpression_matrix, motif_prior, ppi, mirna_prior, mutation_calls, design_matrix,
+             regulator_gene_network, methylation, protein, metabolite, mirna_expression, chromatin, other_omics]
+    off_menu: [no_mutation_calls]
+    not_stated: {policy: needs_input}
+    note: >-
+      What the user says they have narrows the results offered when the result is asked about (patient subtypes
+      need mutation calls). Not mentioned is not missing: a DO reply lists what the run needs. Stated absent
+      ("no motif prior", "only expression") rules out the entries that need it, with the contract's words.
+
+  # --- Settings ----------------------------------------------------------------------------------------------------
+
+  settings:
+    class: setting
+    not_stated: {policy: default, value: workflow YAML control defaults}
+    note: >-
+      A stated setting must name one of that workflow's YAML controls and one of its allowed values, chosen by the
+      reader from the list it is shown. Not a control, a value out of range, or a combination the contract forbids
+      (lambda1 without lambda2) -> FAIL, and the reply lists the controls the workflow has. A file type that is not a
+      control value is an outside step (conversion), said, not refused.
