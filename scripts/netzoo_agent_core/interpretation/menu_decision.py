@@ -29,7 +29,7 @@ from itertools import combinations
 from ..capability_sheet import sheet_entries
 from ..contracts.capability_check import CONDITIONS
 from ..contracts.menu_reading import (
-    Count, Declined, MenuDecision, MenuReading, Question, Said, SettingAsked, TieChoice, Wanted,
+    Count, Declined, Infeasible, MenuDecision, MenuReading, Option, Question, Said, SettingAsked, TieChoice, Wanted,
 )
 from ..judgment_defaults import JudgmentDefaults, judgment_defaults
 from ..method_names import LIONESS_FAMILY, registered_workflows, workflows_in
@@ -86,6 +86,11 @@ class _Item:
     settled: list[str] = field(default_factory=list)
     candidates: list[str] = field(default_factory=list)
     """Workflows still in play once the stated values narrowed them, before contract conditions are checked."""
+    evidence: list[str] = field(default_factory=list)
+    """The user's words showing the goal is unclear; a result question is CLARIFY only with them (2026-10-18)."""
+    options: list[Option] = field(default_factory=list)
+    infeasible: list[Infeasible] = field(default_factory=list)
+    nearest: list[Option] = field(default_factory=list)
 
 
 def _said(value: str, quote: str = "") -> Said:
@@ -147,6 +152,9 @@ def apply_answers(reading: MenuReading, answers) -> MenuReading:
 class _Context:
     def __init__(self, reading: MenuReading, table: JudgmentDefaults, task: str, names=None, limits=None):
         self.reading, self.table, self.task = reading, table, task
+        # The words of what the request says that is no result: a question to us, a purpose, a context.
+        self.loose = [w.quote for w in reading.wanted
+                      if w.form in ("question_to_us", "purpose", "context") and w.quote]
         self.names = names if names is not None else (
             reading.named_workflows if reading.named_workflows is not None
             else [name for name in workflows_in(task) if name not in reading.context_mentions])
@@ -222,13 +230,29 @@ def _evaluate(ctx: _Context, item: _Item) -> None:
                                  reasons=[f"not a registered result: {w.outside_name or w.quote}"])
         return
     in_play = [value for value in artifact.values if value] if artifact.status in ("unsure", "conflicting") else []
+    choosing = bool(w.method_choice)
     if artifact.status == "stated":
         artifacts, item.result_open = set(table.expand(artifact.value)), artifact.value in table.generic
+        if item.result_open:  # only a generic word ("a network analysis"): the goal is unclear
+            item.evidence += artifact.quotes[:1] or [w.quote]
     elif in_play:
         artifacts = {name for value in in_play if value not in off_menu for name in table.expand(value)}
         item.result_open = artifact.basis == "answered" or any(value in table.generic for value in in_play)
+        if any(value in table.generic for value in in_play):
+            item.evidence += artifact.quotes[:1]
     else:
+        # Not stated, or read as unsure with no alternatives: that alone is no ambiguity (options-first decision,
+        # 2026-10-18). The result is inferred from the named workflows, the data and the other fields; it is asked
+        # as the goal (CLARIFY) only with words showing the goal is unclear.
         artifacts, item.result_open = set(table.artifacts) - {"comparison"}, True
+        if choosing:
+            item.evidence += w.method_choice
+        elif not w.quote:
+            # Nothing in the request asks for a result: its questions to us and purposes are the evidence, workflow
+            # names or not ("Should I use COBRA or CONDOR?" names methods, no result).
+            item.evidence += ctx.loose
+        elif not ctx.named and not _states_any(w):
+            item.evidence += [*ctx.loose, w.quote]  # an item naming nothing, and no workflow named
     compare = w.compare.known() or "none"
     if compare in ("describe", "test"):
         entries = [key for key, of in table.artifacts["comparison"].of.items() if of in artifacts
@@ -247,10 +271,10 @@ def _evaluate(ctx: _Context, item: _Item) -> None:
     # Named workflows restrict the candidates; one named and no result named: its direct results are the result,
     # several named and no result named: their direct results are the choice.
     if ctx.named:
-        if artifact.status == "not_stated":
+        if artifact.status == "not_stated" or (artifact.status in ("unsure", "conflicting") and not in_play):
             failed = {key: [] for key, entry in sheet.items() if entry.kind == "produces"
                       and entry.workflow in ctx.named and entry.level == "direct"}
-            item.result_open = len(ctx.names) > 1
+            item.result_open = True
         elif restricted := {key for key in failed if sheet[key].workflow in ctx.named}:
             keep(lambda entry, key: key in restricted, "named")
     considered = {sheet[key].workflow for key in failed}
@@ -301,15 +325,22 @@ def _evaluate(ctx: _Context, item: _Item) -> None:
         misses = [f"near_miss:{key}" for key, (name, value) in table.ruled_by.items()
                   if (name, value) in stated and sheet[key].workflow in considered]
         item.declined = Declined(quote=w.quote, reasons=misses or [f"no registered result fits: {narrowed[0]}"])
+        item.infeasible = [Infeasible(workflow=workflow, reasons=[m for m in misses if sheet[m.split(":", 1)[1]].workflow
+                                                                   in (workflow, None)] or item.declined.reasons,
+                                      contract=_contract_words(table, workflow, misses))
+                           for workflow in sorted(considered)]
+        item.nearest = _nearest(ctx, item, misses)
         return
     alive_before = sorted({sheet[key].workflow for key in failed})
     item.candidates = alive_before
     _rule_out(ctx, item, failed)
     alive = [key for key, reasons in failed.items() if not reasons]
+    item.infeasible = _infeasible(table, failed)
     if not alive:
         reasons = list(dict.fromkeys(reason for reasons in failed.values() for reason in reasons))
         item.declined = Declined(quote=w.quote, reasons=reasons,
                                  instead=alive_before if reading.unregistered_methods else [])
+        item.nearest = _nearest(ctx, item, reasons)
         return
     workflows = sorted({sheet[key].workflow for key in alive})
     _ask(ctx, item, alive)
@@ -317,6 +348,7 @@ def _evaluate(ctx: _Context, item: _Item) -> None:
         _doubts(ctx, item, workflows)
     if not item.questions:
         workflows = _requirements(ctx, item, workflows)
+    item.options = _options(ctx, item, [key for key in alive if sheet[key].workflow in workflows])
     if item.questions:
         return
     item.workflows = workflows
@@ -359,9 +391,13 @@ def _rule_out(ctx: _Context, item: _Item, failed: dict[str, list[str]]) -> None:
             continue
         if problem := data_issue(limits, samples, features, reading.single_feature_count):
             failed[key].append(problem)
+        # Settings only from this candidate's controls (options-first decision, 2026-10-18): words read as another
+        # workflow's control describe the data or the output ("header present", "put everything in X/"), never a
+        # setting this one lacks. Only an `unregistered` setting -- one no control takes -- rules it out.
         stated = [StatedSetting(name=f"{workflow}.{asked.control}" if asked.control in limits.settings else UNREGISTERED,
                                 quote=asked.quote, value=asked.value)
-                  for asked in reading.settings if asked.workflow in (workflow, "") and not asked.unsure]
+                  for asked in reading.settings if asked.workflow in (workflow, "") and not asked.unsure
+                  and (asked.control in limits.settings or asked.control == UNREGISTERED)]
         for setting in stated:
             if problem := setting_issue(limits, setting):
                 failed[key].append(problem)
@@ -396,8 +432,22 @@ def _plain_regulators(ctx: _Context, w: Wanted) -> bool:
     return w.regulators.status == "not_stated" and not {"mirna_prior", "mirna_expression"} & set(ctx.reading.data)
 
 
+_INTENTS = ("integration", "granularity", "regulators", "layers")
+
+
+def _states_any(w: Wanted) -> bool:
+    """The item states an intent beyond the result, or a requirement (then it names what it wants)."""
+    return any(getattr(w, name).status != "not_stated" for name in (*_INTENTS, "signed", "compare")) \
+        or bool(w.requirements)
+
+
 def _ask(ctx: _Context, item: _Item, alive: list[str]) -> None:
-    """The intent questions that decide something, coarse to fine; an unsure value is asked with its alternatives."""
+    """The intent questions that decide something, coarse to fine; an unsure value is asked with its alternatives.
+
+    Options-first decision (2026-10-18): a result question never hides a doubt read correctly -- the doubts that
+    decide something for one of the results still open are asked beside it (two questions a turn at most). One
+    result left by the named workflows or the stated fields is no question; one left by the data alone is confirmed.
+    """
     table, sheet, w = ctx.table, sheet_entries(), item.wanted
     artifact = w.artifact
     results = sorted({_artifact_of(table, key) for key in alive})
@@ -405,20 +455,20 @@ def _ask(ctx: _Context, item: _Item, alive: list[str]) -> None:
     if specific and not item.result_open:
         if _decides(ctx, item, "artifact", specific):
             item.questions.append(_question(item, "artifact", specific, table, (artifact.quotes or [w.quote])[0]))
+            item.questions += _result_doubts(ctx, item, alive, [v for v in specific if v in results] or results)
             return
-    elif item.result_open and (len(results) > 1 or not (len(ctx.names) == 1 and ctx.named)
-                               or (artifact.status in ("unsure", "conflicting") and not artifact.values)):
-        # A result the user never named is confirmed even when the data leave one (phase 0 missed-field check: C15, C26).
-        # A result open with no values in play is the user choosing between workflows (phase 1b): asked even when one
-        # workflow is named ("COBRA, or something else?").
-        quote = (artifact.quotes or [w.quote])[0]
-        if len(results) <= table.ask_max_options:
-            item.questions.append(_question(item, "artifact", results, table, quote))
-        else:
-            groups = [name for name, group in table.question_groups.items() if set(group.artifacts) & set(results)]
-            item.questions.append(_question(item, "artifact_group", groups, table, quote))
-        return  # the finer dimensions wait for the result
-    for dimension in ("integration", "granularity", "regulators", "layers"):
+    elif item.result_open:
+        determined = (ctx.named and not w.method_choice) or _states_any(w)
+        if len(results) > 1 or not determined or item.evidence:
+            quote = (item.evidence or artifact.quotes or [w.quote])[0]
+            if len(results) <= table.ask_max_options:
+                item.questions.append(_question(item, "artifact", results, table, quote))
+            else:
+                groups = [name for name, group in table.question_groups.items() if set(group.artifacts) & set(results)]
+                item.questions.append(_question(item, "artifact_group", groups, table, quote))
+            item.questions += _result_doubts(ctx, item, alive, results)
+            return  # the unstated finer dimensions wait for the result; read doubts were asked beside it
+    for dimension in _INTENTS:
         said: Said = getattr(w, dimension)
         quote = (said.quotes or [w.quote])[0]
         if said.status in ("unsure", "conflicting") or dimension == "regulators" and not said.known() \
@@ -432,6 +482,25 @@ def _ask(ctx: _Context, item: _Item, alive: list[str]) -> None:
         values = _open_values(ctx, item, dimension, alive)
         if len(values) > 1:
             item.questions.append(_question(item, dimension, values, table, quote))
+
+
+def _result_doubts(ctx: _Context, item: _Item, alive: list[str], results: list[str]) -> list[Question]:
+    """The doubts read correctly that decide something for one of the results still open (each probed with that
+    result stated): an unsure intent, condition, count, setting or file."""
+    found: dict[str, Question] = {}
+    w = item.wanted
+    probes = [_Item(item.index, w.model_copy(update={"artifact": _said(result)})) for result in results]
+    for dimension in _INTENTS:
+        said = getattr(w, dimension)
+        if said.status in ("unsure", "conflicting") and len(said.values) > 1 and dimension not in found:
+            if any(_decides(ctx, probe, dimension, said.values) for probe in probes):
+                found[dimension] = _question(item, dimension, said.values, ctx.table, (said.quotes or [w.quote])[0])
+    workflows = sorted({sheet_entries()[key].workflow for key in alive})
+    for probe in probes:
+        _doubts(ctx, probe, workflows)
+        for question in probe.questions:
+            found.setdefault(question.dimension, question)
+    return list(found.values())
 
 
 def _open_values(ctx: _Context, item: _Item, dimension: str, alive: list[str]) -> list[str]:
@@ -548,6 +617,154 @@ def candidate_workflows(reading: MenuReading, task: str = "", table: JudgmentDef
     return sorted(found)
 
 
+def _contract_words(table: JudgmentDefaults, workflow: str, reasons) -> list[str]:
+    """The capability sheet's words behind each reason: a near miss's why-not line, or the why-not lines of the
+    entries the stated off-menu value rules out for this workflow."""
+    sheet, found = sheet_entries(), []
+    for reason in reasons:
+        keys = []
+        if reason.startswith("near_miss:"):
+            keys = [reason.split(":", 1)[1]]
+        elif "=" in reason and " " not in reason.split("=", 1)[0]:
+            name, value = reason.split("=", 1)
+            keys = [key for key, ruled in table.ruled_by.items() if ruled == (name, value)
+                    and key in sheet and sheet[key].workflow in (workflow, None)]
+        for key in keys:
+            entry = sheet.get(key)
+            if entry is not None:
+                words = f"{entry.text} -- {entry.why_not}" if entry.why_not else entry.text
+                if words not in found:
+                    found.append(words)
+    return found
+
+
+def _infeasible(table: JudgmentDefaults, failed: dict[str, list[str]]) -> list[Infeasible]:
+    sheet, by_workflow = sheet_entries(), {}
+    for key, reasons in failed.items():
+        if reasons:
+            merged = by_workflow.setdefault(sheet[key].workflow, [])
+            merged += [reason for reason in reasons if reason not in merged]
+    return [Infeasible(workflow=workflow, reasons=reasons, contract=_contract_words(table, workflow, reasons))
+            for workflow, reasons in sorted(by_workflow.items())]
+
+
+def _tie_order(table: JudgmentDefaults, workflow: str) -> tuple[int, int]:
+    for rank, (_group, (_asked, options)) in enumerate(table.tie_options.items()):
+        names = [option.workflow for option in options]
+        if workflow in names:
+            return rank, names.index(workflow)
+    return 99, 0
+
+
+def _option_lines(table: JudgmentDefaults, workflow: str, keys: list[str]) -> tuple[str, str]:
+    """difference / good_for: the tie options' lines where the workflow is in a tie group, else the sheet's words."""
+    sheet = sheet_entries()
+    for _group, (_asked, options) in table.tie_options.items():
+        for option in options:
+            if option.workflow == workflow:
+                return option.difference, option.good_for
+    entry = sheet[sorted(keys, key=lambda key: sheet[key].level != "direct")[0]]
+    return entry.text, entry.reading or ""
+
+
+def _points(ctx: _Context, w: Wanted, workflow: str, keys: list[str]) -> list[tuple[str, bool]]:
+    """The user's stated points relevant to this option, each with whether it satisfies them."""
+    table, sheet, reading = ctx.table, sheet_entries(), ctx.reading
+    points = []
+    if w.artifact.status == "stated" and w.artifact.value not in table.generic:
+        points.append(((w.artifact.quotes or [w.artifact.value])[0], True))
+    for name in (*_INTENTS, "signed", "compare"):
+        said = getattr(w, name)
+        if said.status == "stated":
+            points.append(((said.quotes or [f"{name}={said.value}"])[0], True))
+    core, needs = table.workflow_data.get(workflow, ((), ()))
+    used = {option for need in (*core, *needs) for option in need.split("|")}
+    for kind in reading.data:
+        if kind in used or ("two_layers" in used and kind in table.omics_layers):
+            points.append((f"you have {kind.replace('_', ' ')}", True))
+    for name, said in reading.conditions.items():
+        if said.status == "stated" and any(_ruled_out(table, name, sheet[key]) for key in keys if name in _OFF):
+            points.append(((said.quotes or [f"{name}={said.value}"])[0], True))
+    for asked in reading.settings:
+        if asked.workflow in (workflow, "") and not asked.unsure and asked.control in (
+                ctx.limits[workflow].settings if workflow in ctx.limits else {}):
+            points.append((asked.quote or asked.control, True))
+    for requirement in w.requirements:
+        if requirement.must is not False:
+            points.append((requirement.quote, requirement.verdicts.get(workflow) == "met"))
+    return points
+
+
+def _options(ctx: _Context, item: _Item, alive: list[str]) -> list[Option]:
+    """The feasible options, ranked: the match rate, then the tie order; at most `ask_max_options`."""
+    table, sheet, reading = ctx.table, sheet_entries(), ctx.reading
+    by_workflow: dict[str, list[str]] = {}
+    for key in alive:
+        by_workflow.setdefault(sheet[key].workflow, []).append(key)
+    built = []
+    for workflow, keys in by_workflow.items():
+        points = _points(ctx, item.wanted, workflow, keys)
+        matched = sum(ok for _quote, ok in points)
+        difference, good_for = _option_lines(table, workflow, keys)
+        to_confirm = [q.dimension for q in item.questions]
+        to_confirm += [f'requirement not addressed by the contract: "{r.quote}"' for r in item.wanted.requirements
+                       if r.must is not False and r.verdicts.get(workflow) != "met"]
+        to_confirm += [f"input needed: {need.replace('|', ' or ')}" for need in table.workflow_data[workflow][1]
+                       if not ctx.has(need, reading.data)]
+        artifacts = sorted({_artifact_of(table, key) for key in keys})
+        built.append(Option(workflow=workflow, artifact=", ".join(artifacts), difference=difference,
+                            good_for=good_for, fits=list(dict.fromkeys(q for q, ok in points if ok))[:4],
+                            to_confirm=to_confirm, matched=matched, relevant=len(points)))
+    built.sort(key=lambda o: (-(o.matched / o.relevant if o.relevant else 1.0), _tie_order(table, o.workflow),
+                              o.workflow))
+    return built[:table.ask_max_options]
+
+
+def _nearest(ctx: _Context, item: _Item, reasons) -> list[Option]:
+    """DECLINE: the nearest registered options that can be done. A near miss's registered alternative first; then the
+    same request without the constraints the contracts rule out (off-menu conditions, settings, requirements,
+    methods), each option saying what it leaves out."""
+    table, sheet, reading, w = ctx.table, sheet_entries(), ctx.reading, item.wanted
+    found: list[Option] = []
+    known = {action: name for name, action in registered_workflows().items()}
+    for reason in reasons:
+        key = reason.split(":", 1)[1] if reason.startswith("near_miss:") else None
+        alternative = known.get(sheet[key].instead_registered) if key in sheet and sheet[key].instead_registered else None
+        if alternative and alternative not in {o.workflow for o in found}:
+            keys = [k for k, e in sheet.items() if e.kind == "produces" and e.workflow == alternative]
+            difference, good_for = _option_lines(table, alternative, keys)
+            found.append(Option(workflow=alternative, artifact=_artifact_of(table, keys[0]), difference=difference,
+                                good_for=good_for, to_confirm=[f"instead of: {sheet[key].text}"]))
+    dropped, conditions = [], {}
+    for name, said in reading.conditions.items():
+        if said.known() == _OFF.get(name):
+            dropped.append(f"{name.replace('_', ' ')}: {said.value.replace('_', ' ')}")
+        else:
+            conditions[name] = said
+    settings = [s for s in reading.settings if s.control != UNREGISTERED]
+    dropped += [f"setting: {s.quote}" for s in reading.settings if s.control == UNREGISTERED]
+    wanted = w.model_copy(update={
+        "requirements": [r for r in w.requirements if "contradicted" not in r.verdicts.values()],
+        **({"regulators": Said()} if w.regulators.known() == "off_menu" else {}),
+        **({"layers": Said()} if w.layers.known() == "three_or_more_jointly" else {})})
+    dropped += [f'requirement: "{r.quote}"' for r in w.requirements if "contradicted" in r.verdicts.values()]
+    dropped += [f"method: {name}" for name in reading.unregistered_methods]
+    if w.regulators.known() == "off_menu":
+        dropped.append("regulators NetZoo does not model")
+    if w.layers.known() == "three_or_more_jointly":
+        dropped.append("three or more layers in one model")
+    if not dropped or (w.artifact.status == "stated" and w.artifact.value in table.dimensions["artifact"].off_menu):
+        return found[:table.ask_max_options]
+    relaxed = reading.model_copy(update={"conditions": conditions, "settings": settings, "unregistered_methods": []})
+    probe = _Item(item.index, wanted)
+    _evaluate(ctx.but(relaxed), probe)
+    for option in probe.options or [o for o in []]:
+        if option.workflow not in {o.workflow for o in found}:
+            found.append(option.model_copy(update={"to_confirm": [*(f"leaves out {d}" for d in dropped),
+                                                                  *option.to_confirm]}))
+    return found[:table.ask_max_options]
+
+
 def intent_values(dimension: str, table: JudgmentDefaults | None = None) -> tuple[str, ...]:
     """A probed intent's menu values: the results, kinds of result and off-menu for the artifact; else its values and
     off-menu values."""
@@ -607,14 +824,25 @@ def decide_menu(reading: MenuReading, task: str = "", answers=(), rounds_asked: 
     questions = sorted(asked, key=lambda q: (q.kind != "intent", q.item))[:table.max_questions_per_turn]
     declined += [item.declined for item in deliverables if item.declined is not None]
     given = [item for item in deliverables if item.workflows]
+    options = [option for item in deliverables for option in item.options]
+    seen_options: set[str] = set()
+    options = [o for o in options if not (o.workflow in seen_options or seen_options.add(o.workflow))]
     common = dict(declined=declined, assumptions=sorted({a for i in given for a in i.assumptions}),
                   needs=sorted({n for i in given for n in i.needs}),
                   unconfirmed=[u for i in given for u in i.unconfirmed],
                   steps=list(dict.fromkeys(s for i in deliverables for s in i.steps)),
-                  settled=list(dict.fromkeys(s for i in deliverables for s in i.settled)))
+                  settled=list(dict.fromkeys(s for i in deliverables for s in i.settled)),
+                  options=options[:table.ask_max_options * max(1, len(deliverables))],
+                  # a workflow that can run one of the results asked is an option, never also "not possible"
+                  infeasible=[x for item in deliverables for x in item.infeasible if x.workflow not in seen_options],
+                  nearest=[o for item in deliverables for o in item.nearest])
     if questions:
-        open_items = {item.index for item in deliverables if item.result_open}
-        result_open = any(q.dimension in _RESULT and q.item in open_items for q in questions)
+        # CLARIFY needs the user's words showing the goal is unclear (options-first decision, 2026-10-18); a result
+        # question without them is an ASK with options.
+        evidence = [quote for item in deliverables if any(q.dimension in _RESULT and q.item == item.index
+                                                           for q in questions) for quote in item.evidence]
+        result_open = bool(evidence)
+        common["evidence"] = list(dict.fromkeys(evidence))
         return MenuDecision(kind="CLARIFY" if result_open else "ASK",
                             basis="result_open" if result_open else questions[0].kind,
                             questions=questions, final_round=rounds_asked >= table.max_ask_rounds,

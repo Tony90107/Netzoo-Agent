@@ -559,9 +559,10 @@ def _result(raw: dict, task: str, where: str, report: ReadReport, table: Judgmen
     if names == "kind_of_result" and raw.get("kind"):
         return Said(status="stated", value=raw["kind"], basis="explicit", quotes=[quote]), ""
     if names == "choice_between_workflows":
-        # Phase 1b step 2 (bench C10, C26: "COBRA or CONDOR?" read as a doubt between two results, asked as ASK): the
-        # result is open among the named workflows' results, so decide_menu asks the goal (CLARIFY).
-        return Said(status="unsure", values=[], quotes=[quote]), ""
+        # Phase 1b step 2 (bench C10, C26: "COBRA or CONDOR?" read as a doubt between two results, asked as ASK). The
+        # result stays not stated; the caller records the words as `method_choice`, the evidence that the goal is
+        # unclear (options-first decision, 2026-10-18).
+        return Said(status="not_stated", quotes=[quote]), ""
     if names == "unsure_between_results":
         values = list(dict.fromkeys(raw.get("values") or []))
         if len(values) >= 2:
@@ -742,6 +743,8 @@ def to_menu_reading(payload, task: str, layout: Layout | None = None) -> tuple[M
                                    () if name in ("signed", "compare") else table.dimensions[name].values)
                   for name in WANTED_FIELDS}
         artifact, outside = _result(item.get("result") or {}, task, where, report, table, item.get("quote") or "")
+        choice = artifact.quotes if artifact.status == "not_stated" and artifact.quotes else []
+        artifact = Said() if choice else artifact
         quote = item.get("quote") or ""
         if not quote_in(quote, task):
             report.dropped.append(f"{where}.quote: not in the request: {quote!r}")
@@ -764,7 +767,7 @@ def to_menu_reading(payload, task: str, layout: Layout | None = None) -> tuple[M
             stated = artifact.status != "not_stated" or any(s.status != "not_stated" for s in fields.values())
             form = "deliverable" if named or stated or requirements else "question_to_us"
         wanted.append(Wanted(quote=quote, form=form, artifact=artifact, outside_name=outside,
-                             requirements=requirements, **fields))
+                             requirements=requirements, method_choice=choice, **fields))
 
     have, lack = [], []
     for name, entry in (raw.get("data") or {}).items():
@@ -795,6 +798,14 @@ def to_menu_reading(payload, task: str, layout: Layout | None = None) -> tuple[M
                                      value="" if value == UNSPECIFIED else value))
     roles = raw.get("names") or {}
     background = [name for name in layout.names if (roles.get(name_key(name)) or {}).get("role") == "background"]
+    choices = [name for name in layout.names if (roles.get(name_key(name)) or {}).get("role") == "choice"]
+    if len(choices) >= 2:
+        # Two or more names typed as a choice, on an item naming no result: the user is choosing between methods.
+        for index, item in enumerate(wanted):
+            if item.form == "deliverable" and item.artifact.status == "not_stated" and not item.method_choice \
+                    and any(name in item.quote for name in choices):
+                wanted[index] = item.model_copy(update={"method_choice": [item.quote]})
+                report.filled.append(f"wanted[{index}]: names {choices} typed as a choice -> method choice")
     registered = {_norm(name) for name in (*registered_workflows(), LIONESS_FAMILY)}
     unregistered = [name for index, name in enumerate(raw.get("unregistered_methods") or [])
                     if _verified(name, task, f"unregistered_methods[{index}]", report)
