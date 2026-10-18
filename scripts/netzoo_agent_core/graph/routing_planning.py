@@ -16,6 +16,7 @@ from ..interpretation.semantic_goal import publish_routing_progress
 from ..llm import latest_user_message, latest_user_task
 from ..planning import build_workflow_plan, render_plan
 from .context import _GraphContext, record_event
+from .hybrid_gate_call import apply_hybrid_gates
 from .operation_authority import with_operation_authority
 from .router_invocation import invoke_router
 from .planning_mapper import PlanningMapper
@@ -47,9 +48,11 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
             update={"request_sha256": requirements.source_sha256})})
     # Core decision spec: the turn's four-way call; phase 1 acts on CLARIFY (nothing selected or run), the rest shadow.
     core = decide_core(decision, user_task, reason_code=invocation.reason_code)
+    # Options-first decision step 7 (2026-10-18): the hard gates judge a DO's workflows before any is runnable.
+    core, usage, budget_warnings = apply_hybrid_gates(
+        context, state, decision, core, user_task, invocation.usage, invocation.budget_warnings)
     decision = with_core(decision, core)
     record_event(context, state, "core.decision", "classify", core.model_dump(mode="json"))
-    usage = invocation.usage
     routing_state = invocation.routing_state
     previous_call_count = (
         len(LLMUsage.model_validate(current_usage).calls) if current_usage else 0
@@ -84,7 +87,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         "workflow_continuation": None,
         "method_comparison": None,
         "token_usage": usage.model_dump(),
-        "budget_warnings": invocation.budget_warnings,
+        "budget_warnings": budget_warnings,
         **routing_state,
     }
 

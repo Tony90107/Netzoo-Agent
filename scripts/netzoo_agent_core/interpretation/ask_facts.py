@@ -29,8 +29,9 @@ def ask_reply(core) -> str:
                          + "\n".join(f"  - {line}" for line in count_outcome_lines(fact.outcomes, fact.notes)))
             continue
         workflow = fact.workflows[0] if fact.workflows else "the workflow"
-        lines.append(f"- {fact.question}\n  You wrote: \"{fact.user_quote.rstrip('. ')}\". "
-                     f"{workflow}'s contract: \"{fact.contract_quote.rstrip('. ')}\".")
+        contract = (f" {workflow}'s contract: \"{fact.contract_quote.rstrip('. ')}\"." if fact.contract_quote
+                    else "")  # the hybrid gate's requirement questions quote no clause: none addresses it
+        lines.append(f"- {fact.question}\n  You wrote: \"{fact.user_quote.rstrip('. ')}\".{contract}")
     return "\n\n".join([
         "Before I choose a workflow, please tell me:\n" + "\n".join(lines),
         "No workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no "
@@ -43,7 +44,7 @@ def ask_result(state, reply) -> dict | None:
     from ..contracts import TaskDecision
 
     core = TaskDecision.model_validate(state["decision"]).core
-    if core is None or core.kind != "ASK" or core.basis not in ("fact_agent", "count_fact"):
+    if core is None or core.kind != "ASK" or core.basis not in ("fact_agent", "count_fact", "hybrid_requirement"):
         return None
     return reply(ask_reply(core), ASK_KIND)
 
