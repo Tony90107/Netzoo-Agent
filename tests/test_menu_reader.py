@@ -199,6 +199,22 @@ def test_a_named_workflow_is_never_an_off_menu_result():
     assert only.wanted[0].artifact.status == "not_stated"
 
 
+def test_a_file_name_or_identifier_is_never_an_off_menu_result():
+    task = "Can CONDOR analyze edges_release.tsv? Can OTTER take it as coexpression_file?"
+    reading, _ = read(task, wanted=[
+        item("Can CONDOR analyze edges_release.tsv?", result=result("off_menu_result", "analyze edges_release.tsv",
+                                                                     outside="analyze edges_release.tsv")),
+        item("Can OTTER take it as coexpression_file?", result=result("off_menu_result", "coexpression_file",
+                                                                       outside="coexpression_file"))])
+    assert [w.artifact.status for w in reading.wanted] == ["not_stated", "not_stated"]
+
+
+def test_a_number_of_tables_is_no_sample_count():
+    task = "Run DRAGON on the two cell-culture tables."
+    reading, _ = read(task, numbers={"n1": number("layers_files_or_groups", unit="tables")})
+    assert reading.sample_count.status == "not_stated"
+
+
 def test_off_menu_needs_the_users_words_naming_the_result():
     task = "Call somatic SNVs from our BAM files and give me a filtered VCF."
     named, _ = read(task, wanted=[item("give me a filtered VCF", result=result(
