@@ -46,7 +46,7 @@ from .capability_check import request_sentences
 __all__ = ["CONDITION_FIELDS", "DOUBT_ABOUT", "READER_SHAPE", "Layout", "NumberSpan", "ReadReport", "WANTED_FIELDS", "layout_text",
            "menu_text", "quote_in", "reader_model", "request_layout", "to_menu_reading"]
 
-READER_SHAPE = "v3"
+READER_SHAPE = "v4"
 """The schema shape the phase-1 rounds record (v1: quote lists, artifact enum with off_menu, a data list)."""
 _FORBID = ConfigDict(extra="forbid")
 Status = Literal["stated", "not_stated", "unsure", "conflicting"]
@@ -320,13 +320,13 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
     results = table.dimensions["artifact"].values
     result = create_model(
         "ResultWire", __config__=_FORBID,
+        quote=(str, _QUOTE),
         names=(Names, Field(description=_STATED_WHEN["artifact"])),
         value=(_enum(results) | None, Field(description="menu_result: the result.")),
         kind=(_enum(table.generic) | None, Field(description="kind_of_result: the kind.")),
         values=(list[_enum((*results, "off_menu"))], Field(description="unsure_between_results: the results the "
                                                                         "words leave open (off_menu for one off it).")),
         outside_name=(str, Field(description="off_menu_result: the user's exact words naming the result.")),
-        quote=(str, _QUOTE),
     )
     requirement = create_model(
         "RequirementWire", __config__=_FORBID,
@@ -398,6 +398,8 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
                                             "it.")),
         value=(str, Field(description="The value as the control's allowed values spell it (true/false, a listed "
                                       "choice, a number); empty when the words give none.")),
+        asks_to_set=(bool, Field(description="true when the user asks to run with it; false when the words only "
+                                             "describe their data.")),
     )
     flag = create_model("Flag", __config__=_FORBID, value=(bool, ...), quote=(str, _QUOTE))
     names = _enum((*sorted(registered_workflows()), LIONESS_FAMILY))
@@ -510,12 +512,17 @@ def _doubt(status: str, values, quote: str, where: str, report: ReadReport, all_
     return Said(status=status, values=kept, quotes=[quote])
 
 
-def _result(raw: dict, task: str, where: str, report: ReadReport, table: JudgmentDefaults) -> tuple[Said, str]:
-    """What the item names, as the artifact `Said` and its outside name."""
+def _result(raw: dict, task: str, where: str, report: ReadReport, table: JudgmentDefaults,
+            item_quote: str = "") -> tuple[Said, str]:
+    """What the item names, as the artifact `Said` and its outside name. A result on the menu or a kind of result
+    read with no words of its own rests on the item's words, which it was read from (d3)."""
     names = (raw or {}).get("names") or "nothing"
     if names in ("nothing", "workflow_only"):
         return Said(), ""  # a named workflow is counted by code from the words
     quote = _verified(raw.get("quote"), task, f"{where}.result", report)
+    if not quote and names in ("menu_result", "kind_of_result") and quote_in(item_quote, task):
+        quote = item_quote
+        report.filled.append(f"{where}.result: {names} rests on the item's words")
     if not quote:
         report.dropped.append(f"{where}.result: {names} without verified words")
         return Said(), ""
@@ -606,6 +613,8 @@ def _apply_doubts(raw: dict, task: str, layout: Layout, reading: dict, report: R
     for index in range(1, len(layout.sentences) + 1):
         typed = (raw or {}).get(f"s{index}") or {}
         about = typed.get("about") or "none"
+        if typed.get("doubt") and about in ("none", "other") and typed.get("control") not in (None, "none"):
+            about = "setting"  # the typed control says what the doubt is about (d3: U13, about none)
         if not typed.get("doubt") or about == "none":
             continue
         where = f"sentences.s{index}"
@@ -665,7 +674,7 @@ def to_menu_reading(payload, task: str, layout: Layout | None = None) -> tuple[M
         fields = {name: _said_from(item.get(name), task, f"{where}.{name}", report,
                                    () if name in ("signed", "compare") else table.dimensions[name].values)
                   for name in WANTED_FIELDS}
-        artifact, outside = _result(item.get("result") or {}, task, where, report, table)
+        artifact, outside = _result(item.get("result") or {}, task, where, report, table, item.get("quote") or "")
         quote = item.get("quote") or ""
         if not quote_in(quote, task):
             report.dropped.append(f"{where}.quote: not in the request: {quote!r}")
@@ -708,10 +717,14 @@ def to_menu_reading(payload, task: str, layout: Layout | None = None) -> tuple[M
             continue
         workflow = "" if entry.get("workflow") == UNSPECIFIED else entry.get("workflow") or ""
         control = entry.get("control") or UNREGISTERED
+        if control == UNREGISTERED and entry.get("asks_to_set") is False:
+            report.dropped.append(f"settings[{index}]: describes the data, not a setting to use")
+            continue  # d3: "The expression table has a header" refused BONOBO as a setting it lacks
         if any(s.control == control and s.workflow in (workflow, "") and control != UNREGISTERED for s in settings):
             continue  # already given by a typed number
+        value = str(entry.get("value") or "")
         settings.append(SettingAsked(quote=entry["quote"], workflow=workflow, control=control,
-                                     value=str(entry.get("value") or "")))
+                                     value="" if value == UNSPECIFIED else value))
     named = set(workflows_in(task))
     background = [name for name in raw.get("background_methods") or [] if name in named]
     registered = {_norm(name) for name in (*registered_workflows(), LIONESS_FAMILY)}
