@@ -348,13 +348,34 @@ def test_settings_background_and_unregistered_methods():
     task = ("Run OTTER with edge-list output on the matrix from our earlier LIONESS run, or TIGER if OTTER cannot; "
             "maybe use PANDA instead.")
     reading, _ = read(task, settings=[
-        {"quote": "edge-list output", "workflow": "OTTER", "control": "output_format", "value": "edge_list"},
-        {"quote": "not in the request", "workflow": "unspecified", "control": "gamma", "value": "2"}],
+        {"quote": "edge-list output", "workflow": "OTTER", "control": "output_format", "value": "edge_list",
+         "asks_to_set": True},
+        {"quote": "not in the request", "workflow": "unspecified", "control": "gamma", "value": "2", "asks_to_set": True},
+        {"quote": "the matrix from our earlier LIONESS run", "workflow": "OTTER", "control": "unregistered",
+         "value": "", "asks_to_set": False}],
         background_methods=["LIONESS", "CONDOR"], unregistered_methods=["TIGER", "PANDA"])
     assert [(s.workflow, s.control, s.value) for s in reading.settings] == [("OTTER", "output_format", "edge_list")]
     assert reading.context_mentions == ["LIONESS"]          # CONDOR is not in the words
     assert reading.unregistered_methods == ["TIGER"]        # PANDA is registered
     assert reading.named_workflows is None                  # code counts names from the words
+
+
+def test_a_result_without_words_rests_on_the_items_words():
+    task = "We have expression. We want subtypes from pathway mutation scores."
+    reading, report = read(task, wanted=[item("We want subtypes from pathway mutation scores.", result=result(
+        "menu_result", "", value="patient_subtypes"))])
+    assert reading.wanted[0].artifact.value == "patient_subtypes"
+    assert reading.wanted[0].artifact.quotes == ["We want subtypes from pathway mutation scores."]
+
+
+def test_a_doubt_with_a_control_is_about_that_setting():
+    task = "Run OTTER on our files. I have not checked whether CPU is allowed or GPU is mandatory."
+    reading, _ = read(task, settings=[{"quote": "I have not checked whether CPU is allowed or GPU is mandatory",
+                                       "workflow": "OTTER", "control": "computing", "value": "unspecified",
+                                       "asks_to_set": True}],
+                      sentences={"s2": sentence("I have not checked whether CPU is allowed or GPU is mandatory",
+                                                "none", ["cpu", "gpu"], workflow="OTTER", control="computing")})
+    assert [(s.control, s.unsure, s.values) for s in reading.settings] == [("computing", True, ["cpu", "gpu"])]
 
 
 def test_an_item_with_no_words_from_the_request_is_dropped():
