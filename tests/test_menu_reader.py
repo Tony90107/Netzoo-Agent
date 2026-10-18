@@ -50,8 +50,10 @@ def item(quote, form="deliverable", requirements=(), **fields) -> dict:
             **{name: fields.get(name, blank_said()) for name in WANTED_FIELDS}}
 
 
-def number(what="other", layer="unspecified", workflow="unspecified", control="unregistered", alternative=False):
-    return {"what": what, "layer": layer, "workflow": workflow, "control": control, "alternative": alternative}
+def number(what="other", layer="unspecified", workflow="unspecified", control="unregistered", alternative=False,
+           unit=""):
+    return {"unit": unit, "what": what, "layer": layer, "workflow": workflow, "control": control,
+            "alternative": alternative}
 
 
 def sentence(doubt_quote="", about="none", values=(), workflow="unspecified", control="none") -> dict:
@@ -254,6 +256,49 @@ def test_one_layer_count_is_the_single_feature_count_and_alternatives_conflict()
                                      "n3": number("sample_count", alternative=True)})
     assert reading.single_feature_count == 18000 and reading.feature_count.value == 18000
     assert reading.sample_count.status == "conflicting" and reading.sample_count.values == [2, 12]
+
+
+def test_numbers_in_a_doubt_sentence_are_alternatives():
+    task = "Run LIONESS-PANDA on the acorn panel. I am waiting to learn whether it has two independent samples or five."
+    reading, report = read(task, numbers={"n1": number("sample_count"), "n2": number("sample_count")},
+                           sentences={"s2": sentence("I am waiting to learn", "other")})
+    assert reading.sample_count.status == "conflicting" and reading.sample_count.values == [2, 5]
+    plain, _ = read(task, numbers={"n1": number("sample_count"), "n2": number("sample_count")})
+    assert plain.sample_count.status == "stated" and plain.sample_count.value == 5
+
+
+def test_a_count_doubt_with_number_words():
+    task = "Run LIONESS-PANDA on the acorn panel. I do not know whether it has two samples or five."
+    reading, _ = read(task, numbers={"n1": number("sample_count"), "n2": number("sample_count")},
+                      sentences={"s2": sentence("I do not know whether it has two samples or five", "sample_count",
+                                                ["two", "five"])})
+    assert reading.sample_count.status == "conflicting" and reading.sample_count.values == [2, 5]
+    assert decide_menu(reading, task).kind == "ASK"
+
+
+def test_one_control_given_two_values_is_unsure_between_them():
+    task = "Can OTTER run with our approved lam setting? The note could be 0.3 or 3.0."
+    reading, _ = read(task, numbers={"n1": number("setting", workflow="OTTER", control="lam"),
+                                     "n2": number("setting", workflow="OTTER", control="lam")})
+    assert [(s.control, s.unsure, s.values) for s in reading.settings] == [("lam", True, ["0.3", "3.0"])]
+    decision = decide_menu(reading, task)
+    assert decision.kind == "ASK" and decision.questions[0].dimension == "setting:OTTER.lam"
+
+
+def test_a_question_naming_a_result_asks_for_it():
+    task = "Can BONOBO output a cohort-level aggregate network directly?"
+    reading, report = read(task, wanted=[item(task, form="question_to_us", granularity=said(
+        "whole_cohort", "a cohort-level aggregate network"))])
+    assert reading.wanted[0].form == "deliverable" and any("deliverable" in line for line in report.filled)
+    assert decide_menu(reading, task).kind == "DECLINE"
+    plain, _ = read(task, wanted=[item(task, form="question_to_us")])
+    assert plain.wanted[0].form == "question_to_us"
+
+
+def test_an_unregistered_lioness_version_is_found_by_its_name():
+    task = "Can registered OTTER produce a network per individual using LIONESS-OTTER, or LIONESS-PANDA?"
+    reading, _ = read(task)
+    assert reading.unregistered_methods == ["LIONESS-OTTER"]
 
 
 def test_sentence_doubts_set_their_field():

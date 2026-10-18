@@ -46,7 +46,7 @@ from .capability_check import request_sentences
 __all__ = ["CONDITION_FIELDS", "DOUBT_ABOUT", "READER_SHAPE", "Layout", "NumberSpan", "ReadReport", "WANTED_FIELDS", "layout_text",
            "menu_text", "quote_in", "reader_model", "request_layout", "to_menu_reading"]
 
-READER_SHAPE = "v2"
+READER_SHAPE = "v3"
 """The schema shape the phase-1 rounds record (v1: quote lists, artifact enum with off_menu, a data list)."""
 _FORBID = ConfigDict(extra="forbid")
 Status = Literal["stated", "not_stated", "unsure", "conflicting"]
@@ -56,8 +56,8 @@ Names = Literal["menu_result", "kind_of_result", "workflow_only", "off_menu_resu
                 "nothing"]
 Have = Literal["has", "lacks", "not_mentioned"]
 RequirementAbout = Literal["how_computed", "what_it_contains", "data_property", "file_or_format", "other"]
-# Requirements on how a result is computed or what it holds are matched to contracts; the others are no requirement.
-_REQUIREMENT_KINDS = ("how_computed", "what_it_contains")
+# A property of the user's data or a file name or format is no requirement on the result (d2: "log-transformed").
+_NOT_REQUIREMENTS = ("data_property", "file_or_format")
 
 # The intent fields of a wanted item, in the order the menu shows them.
 WANTED_FIELDS = ("integration", "granularity", "regulators", "layers", "signed", "compare")
@@ -140,6 +140,7 @@ _WORD_NUMBERS = {word: index for index, word in enumerate(
     "seventeen eighteen nineteen twenty".split()) if index >= 2}
 _WORD_NUMBERS.update({"thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80,
                       "ninety": 90, "hundred": 100})
+_LIONESS_VERSION = re.compile(rf"(?<![A-Za-z0-9_-]){LIONESS_FAMILY}-[A-Z][A-Za-z0-9]*(?![A-Za-z0-9_-])")
 _WORDS = re.compile(r"\b(" + "|".join(_WORD_NUMBERS) + r")\b", re.I)
 
 
@@ -157,6 +158,12 @@ class NumberSpan:
 class Layout:
     sentences: tuple[str, ...]
     numbers: tuple[NumberSpan, ...]
+    spans: tuple[tuple[int, int], ...] = ()
+    """Each sentence's (start, end) in the request."""
+
+    def sentence_of(self, number: NumberSpan) -> int:
+        """The 1-based sentence the number is in (0 when none is)."""
+        return next((i for i, (start, end) in enumerate(self.spans, 1) if start <= number.start < end), 0)
 
 
 def _context(task: str, start: int, end: int, width: int = 40) -> str:
@@ -184,7 +191,7 @@ def request_layout(task: str) -> Layout:
     found += [(m.start(), m.end(), m.group(), float(_WORD_NUMBERS[m.group().casefold()])) for m in _WORDS.finditer(task)]
     numbers = tuple(NumberSpan(text, value, start, end, _context(task, start, end))
                     for start, end, text, value in sorted(found)[:MAX_NUMBERS])
-    return Layout(sentences=tuple(task[s:e].strip() for s, e in spans), numbers=numbers)
+    return Layout(sentences=tuple(task[s:e].strip() for s, e in spans), numbers=numbers, spans=tuple(spans))
 
 
 def layout_text(layout: Layout) -> str:
@@ -285,12 +292,12 @@ def _said(name: str, values: tuple[str, ...], description: str) -> tuple[type, o
     Value = Literal[values]  # type: ignore[valid-type]
     model = create_model(
         f"{name}Said", __config__=_FORBID,
-        quote=(str, _QUOTE),
         status=(Status, Field(description="stated, not_stated, unsure (the user does not know or has not decided) or "
                                           "conflicting (the words say two things).")),
         basis=(Basis | None, Field(description="When stated: explicit, or implied by words as clear as saying it.")),
         value=(Value | None, Field(description="The value, when stated.")),
         values=(list[Value], Field(description="When unsure or conflicting: the values the words leave open.")),
+        quote=(str, _QUOTE),
     )
     return model, Field(description=description)
 
@@ -313,13 +320,13 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
     results = table.dimensions["artifact"].values
     result = create_model(
         "ResultWire", __config__=_FORBID,
-        quote=(str, _QUOTE),
         names=(Names, Field(description=_STATED_WHEN["artifact"])),
         value=(_enum(results) | None, Field(description="menu_result: the result.")),
         kind=(_enum(table.generic) | None, Field(description="kind_of_result: the kind.")),
         values=(list[_enum((*results, "off_menu"))], Field(description="unsure_between_results: the results the "
                                                                         "words leave open (off_menu for one off it).")),
         outside_name=(str, Field(description="off_menu_result: the user's exact words naming the result.")),
+        quote=(str, _QUOTE),
     )
     requirement = create_model(
         "RequirementWire", __config__=_FORBID,
@@ -345,7 +352,7 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
         "by our miRNA expression), typed by what it is about.")))
     wanted = create_model("WantedWire", __config__=_FORBID, **wanted_fields)
 
-    have = create_model("HaveWire", __config__=_FORBID, quote=(str, _QUOTE), status=(Have, ...))
+    have = create_model("HaveWire", __config__=_FORBID, status=(Have, ...), quote=(str, _QUOTE))
     data = create_model("DataWire", __config__=_FORBID, **{
         name: (have, Field(description=_DATA_MEANS[name])) for name in table.dimensions["data_available"].values})
     conditions = create_model("ConditionsWire", __config__=_FORBID, **{
@@ -358,6 +365,8 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
     layer = _enum((*sorted(table.omics_layers), UNSPECIFIED))
     number = create_model(
         "NumberWire", __config__=_FORBID,
+        unit=(str, Field(description="The user's exact words for what the number counts or sets (genes, paired "
+                                     "samples, lam, iterations).")),
         what=(Literal["sample_count", "feature_count", "setting", "other"], Field(description=(
             "sample_count: the total number of samples; feature_count: the number of features (genes, proteins, "
             "...) of one layer; setting: a value for a workflow control; other."))),
@@ -390,7 +399,7 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
         value=(str, Field(description="The value as the control's allowed values spell it (true/false, a listed "
                                       "choice, a number); empty when the words give none.")),
     )
-    flag = create_model("Flag", __config__=_FORBID, quote=(str, _QUOTE), value=(bool, ...))
+    flag = create_model("Flag", __config__=_FORBID, value=(bool, ...), quote=(str, _QUOTE))
     names = _enum((*sorted(registered_workflows()), LIONESS_FAMILY))
     sentence_fields = create_model("SentencesWire", __config__=_FORBID, **{
         f"s{index}": (sentence, Field(description=f"Sentence {index}.")) for index in range(1, max(1, sentences) + 1)})
@@ -531,21 +540,39 @@ def _result(raw: dict, task: str, where: str, report: ReadReport, table: Judgmen
     return Said(), ""
 
 
-def _numbers(raw: dict, layout: Layout, report: ReadReport) -> tuple[Count, Count, int | None, list[SettingAsked]]:
+def _numbers(raw: dict, layout: Layout, report: ReadReport, doubtful: set[int] = frozenset()
+             ) -> tuple[Count, Count, int | None, list[SettingAsked]]:
+    """Counts and settings from the typed numbers. Two numbers of one count in a sentence that states a doubt are
+    alternatives (d2: "two independent samples or five" typed as two plain counts); a control given two values is
+    unsure between them, since a control takes one (d2: "it could be 0.3 or 3.0", both typed OTTER.lam)."""
     samples: dict[bool, list[NumberSpan]] = {False: [], True: []}
     layers: dict[str, dict[bool, list[NumberSpan]]] = {}
-    settings = []
-    for index, number in enumerate(layout.numbers, 1):
-        typed = (raw or {}).get(f"n{index}") or {}
+    settings: dict[tuple[str, str], list[NumberSpan]] = {}
+    typed_all = [((raw or {}).get(f"n{index}") or {}, number) for index, number in enumerate(layout.numbers, 1)]
+    for typed, number in typed_all:
         what, alternative = typed.get("what", "other"), bool(typed.get("alternative"))
+        if what in ("sample_count", "feature_count") and not alternative and layout.sentence_of(number) in doubtful:
+            same = [n for t, n in typed_all if t.get("what") == what and t.get("layer") == typed.get("layer")
+                    and layout.sentence_of(n) == layout.sentence_of(number)]
+            if len({n.value for n in same}) >= 2:
+                alternative = True
+                report.filled.append(f"numbers: {number.text} is one of several {what} values in a doubt")
         if what == "sample_count":
             samples[alternative].append(number)
         elif what == "feature_count":
             layers.setdefault(typed.get("layer") or UNSPECIFIED, {False: [], True: []})[alternative].append(number)
         elif what == "setting":
             workflow = "" if typed.get("workflow") in (None, UNSPECIFIED) else typed["workflow"]
-            settings.append(SettingAsked(quote=number.context, workflow=workflow,
-                                         control=typed.get("control") or UNREGISTERED, value=number.text))
+            settings.setdefault((workflow, typed.get("control") or UNREGISTERED), []).append(number)
+    asked = []
+    for (workflow, control), numbers in settings.items():
+        values = list(dict.fromkeys(n.text for n in numbers))
+        if control != UNREGISTERED and len(values) >= 2:
+            report.filled.append(f"numbers: {workflow or 'any'}.{control} given {values} -> unsure between them")
+            asked.append(SettingAsked(quote=numbers[0].context, workflow=workflow, control=control, unsure=True,
+                                      values=values))
+        else:
+            asked += [SettingAsked(quote=n.context, workflow=workflow, control=control, value=n.text) for n in numbers]
 
     def options(found: dict[bool, list[NumberSpan]]) -> list[int]:
         doubtful = sorted({int(n.value) for n in found[True]})
@@ -570,7 +597,7 @@ def _numbers(raw: dict, layout: Layout, report: ReadReport) -> tuple[Count, Coun
         feature = count(totals, [n.context for found in layers.values() for n in (*found[False], *found[True])])
         if len(per_layer) == 1 and len(per_layer[0]) == 1:
             single = per_layer[0][0]
-    return sample, feature, single, settings
+    return sample, feature, single, asked
 
 
 def _apply_doubts(raw: dict, task: str, layout: Layout, reading: dict, report: ReadReport,
@@ -609,9 +636,11 @@ def _apply_doubts(raw: dict, task: str, layout: Layout, reading: dict, report: R
             reading["conditions"][about] = _doubt("unsure", values, quote, where, report,
                                                   _condition_values(table, about))
         elif about in ("sample_count", "feature_count"):
-            numbers = sorted({int(v) for value in values for v in re.findall(r"\d+", value.replace(",", ""))})
-            if len(numbers) >= 2 and reading[about].status == "stated":
+            numbers = sorted({int(n.value) for value in values for n in request_layout(value).numbers})
+            if len(numbers) >= 2 and reading[about].status != "conflicting":
                 reading[about] = Count(status="conflicting", values=numbers, quotes=[quote])
+            elif len(numbers) < 2:
+                report.dropped.append(f"{where}: count doubt without two numbers")
         elif about == "setting":
             control = typed.get("control") or "none"
             if control != "none" and len(values) >= 2:
@@ -647,11 +676,18 @@ def to_menu_reading(payload, task: str, layout: Layout | None = None) -> tuple[M
             quote = stated[0].quotes[0]
         requirements = []
         for number, entry in enumerate(item.get("requirements") or []):
-            if entry.get("about") in _REQUIREMENT_KINDS and _verified(entry.get("quote"), task,
+            if entry.get("about") not in _NOT_REQUIREMENTS and _verified(entry.get("quote"), task,
                                                                        f"{where}.requirements[{number}]", report):
                 requirements.append(Requirement(quote=entry["quote"]))
-        wanted.append(Wanted(quote=quote, form=item.get("form") or "deliverable", artifact=artifact,
-                             outside_name=outside, requirements=requirements, **fields))
+        form = item.get("form") or "deliverable"
+        if form == "question_to_us" and (artifact.status != "not_stated" or any(
+                said.status != "not_stated" for said in fields.values())):
+            # The form says no result is named, the fields name one: the typed fields win (d2: "Can BONOBO output
+            # a cohort-level aggregate network?" typed a question with nothing read).
+            report.filled.append(f"{where}: a question naming a result -> deliverable")
+            form = "deliverable"
+        wanted.append(Wanted(quote=quote, form=form, artifact=artifact, outside_name=outside,
+                             requirements=requirements, **fields))
 
     have, lack = [], []
     for name, entry in (raw.get("data") or {}).items():
@@ -664,7 +700,9 @@ def to_menu_reading(payload, task: str, layout: Layout | None = None) -> tuple[M
                           _condition_values(table, name))
         if said.status != "not_stated":
             conditions[name] = said
-    sample, feature, single, settings = _numbers(raw.get("numbers") or {}, layout, report)
+    doubtful = {index for index in range(1, len(layout.sentences) + 1)
+                 if ((raw.get("sentences") or {}).get(f"s{index}") or {}).get("doubt")}
+    sample, feature, single, settings = _numbers(raw.get("numbers") or {}, layout, report, doubtful)
     for index, entry in enumerate(raw.get("settings") or []):
         if not _verified(entry.get("quote"), task, f"settings[{index}]", report):
             continue
@@ -680,6 +718,9 @@ def to_menu_reading(payload, task: str, layout: Layout | None = None) -> tuple[M
     unregistered = [name for index, name in enumerate(raw.get("unregistered_methods") or [])
                     if _verified(name, task, f"unregistered_methods[{index}]", report)
                     and _norm(name).strip(_EDGE) not in registered]
+    for match in _LIONESS_VERSION.finditer(task):
+        if match.group() not in registered_workflows() and match.group() not in unregistered:
+            unregistered.append(match.group())  # method_names: a LIONESS version not registered names none
     run = raw.get("run_requested") or {}
     parts = {"wanted": wanted, "conditions": conditions, "settings": settings, "sample_count": sample,
              "feature_count": feature, "unsure_files": []}
