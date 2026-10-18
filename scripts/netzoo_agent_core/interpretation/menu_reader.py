@@ -46,7 +46,7 @@ from .capability_check import request_sentences
 __all__ = ["CONDITION_FIELDS", "DOUBT_ABOUT", "READER_SHAPE", "Layout", "NumberSpan", "ReadReport", "WANTED_FIELDS", "layout_text",
            "menu_text", "quote_in", "reader_model", "request_layout", "to_menu_reading"]
 
-READER_SHAPE = "v6"
+READER_SHAPE = "v7"
 """The schema shape the phase-1 rounds record (v1: quote lists, artifact enum with off_menu, a data list)."""
 _FORBID = ConfigDict(extra="forbid")
 Status = Literal["stated", "not_stated", "unsure", "conflicting"]
@@ -379,8 +379,10 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
                          "proteins, ...) of one layer; setting: a value for a workflow control; "
                          "layers_files_or_groups: a number of layers, tables, files, groups or time points; other."))),
         layer=(layer, Field(description="feature_count: the layer the features belong to.")),
-        workflow=(workflow, Field(description="setting: the workflow; unspecified when the words do not say.")),
-        control=(control, Field(description="setting: the control, or unregistered.")),
+        # Plain strings that code checks against the registry: as enums, one per number and per sentence, a long
+        # request passed OpenAI's 1000-enum-value limit for one schema (d6: m3:U12, 1020 values).
+        workflow=(str, Field(description="setting: the workflow's name; unspecified when the words do not say.")),
+        control=(str, Field(description="setting: the control's name from WORKFLOW CONTROLS, or unregistered.")),
         alternative=(bool, Field(description="The user gives this number as one of two or more possibilities "
                                              "(2 or 20) or does not know which applies.")),
     )
@@ -392,8 +394,8 @@ def reader_model(sentences: int = 1, numbers: int = 0) -> type[BaseModel]:
         about=(_enum(DOUBT_ABOUT), Field(description="doubt: the field it is about (a wanted field, a data "
                                                      "condition, a count, a setting, what a named file holds, or "
                                                      "other); none otherwise.")),
-        workflow=(workflow, Field(description="about setting: the workflow.")),
-        control=(_enum((*controls, UNREGISTERED, "none")), Field(description="about setting: the control.")),
+        workflow=(str, Field(description="about setting: the workflow's name.")),
+        control=(str, Field(description="about setting: the control's name; none otherwise.")),
         values=(list[str], Field(description="doubt: the values the words leave open, spelled as the field's values "
                                              "on the menu (numbers for counts).")),
     )
@@ -556,6 +558,21 @@ def _result(raw: dict, task: str, where: str, report: ReadReport, table: Judgmen
     return Said(), ""
 
 
+def _registered(workflow, control, where: str, report: ReadReport) -> tuple[str, str] | None:
+    """A workflow and control the model wrote as plain strings, as the registry spells them; None when the control
+    is no registered control and not `unregistered` (a slip of the pen never becomes a refusal reason)."""
+    workflows = {name.casefold(): name for name in registered_workflows()}
+    controls = {name.casefold(): name for limits in _controls().values() for name in limits}
+    workflow = workflows.get(str(workflow or "").strip().casefold(), "")
+    name = str(control or "").strip().casefold()
+    if name == UNREGISTERED:
+        return workflow, UNREGISTERED
+    if name in controls:
+        return workflow, controls[name]
+    report.dropped.append(f"{where}: {control!r} is no control")
+    return None
+
+
 def _numbers(raw: dict, layout: Layout, report: ReadReport, doubtful: set[int] = frozenset()
              ) -> tuple[Count, Count, int | None, list[SettingAsked]]:
     """Counts and settings from the typed numbers. Two numbers of one count in a sentence that states a doubt are
@@ -578,8 +595,10 @@ def _numbers(raw: dict, layout: Layout, report: ReadReport, doubtful: set[int] =
         elif what == "feature_count":
             layers.setdefault(typed.get("layer") or UNSPECIFIED, {False: [], True: []})[alternative].append(number)
         elif what == "setting":
-            workflow = "" if typed.get("workflow") in (None, UNSPECIFIED) else typed["workflow"]
-            settings.setdefault((workflow, typed.get("control") or UNREGISTERED), []).append(number)
+            found = _registered(typed.get("workflow"), typed.get("control") or UNREGISTERED, f"number {number.text}",
+                                report)
+            if found is not None:
+                settings.setdefault(found, []).append(number)
     asked = []
     for (workflow, control), numbers in settings.items():
         values = list(dict.fromkeys(n.text for n in numbers))
@@ -634,7 +653,8 @@ def _apply_doubts(raw: dict, task: str, layout: Layout, reading: dict, report: R
     for index in range(1, len(layout.sentences) + 1):
         typed = (raw or {}).get(f"s{index}") or {}
         about = typed.get("about") or "none"
-        if typed.get("doubt") and about in ("none", "other") and typed.get("control") not in (None, "none"):
+        if typed.get("doubt") and about in ("none", "other") and str(typed.get("control") or "none").strip().casefold() \
+                not in ("", "none"):
             about = "setting"  # the typed control says what the doubt is about (d3: U13, about none)
         elif typed.get("doubt") and about in ("none", "other") and (named := _field_of(typed.get("values") or [])):
             about = named
@@ -676,9 +696,9 @@ def _apply_doubts(raw: dict, task: str, layout: Layout, reading: dict, report: R
             elif len(numbers) < 2:
                 report.dropped.append(f"{where}: count doubt without two numbers")
         elif about == "setting":
-            control = typed.get("control") or "none"
-            if control != "none" and len(values) >= 2:
-                workflow = "" if typed.get("workflow") in (None, UNSPECIFIED) else typed["workflow"]
+            found = _registered(typed.get("workflow"), typed.get("control"), where, report)
+            if found is not None and found[1] != UNREGISTERED and len(values) >= 2:
+                workflow, control = found
                 reading["settings"] = [s for s in reading["settings"] if s.control != control] + [SettingAsked(
                     quote=quote, workflow=workflow, control=control, unsure=True, values=values)]
             else:

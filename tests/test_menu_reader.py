@@ -112,6 +112,33 @@ def test_wire_schema_is_strict(sentences, numbers):
     assert set(defs["NumbersWire"]["properties"]) == {f"n{i}" for i in range(1, numbers + 1)}
 
 
+def _enum_values(node, defs) -> int:
+    """Enum values as OpenAI counts them for one schema: every occurrence, with each $ref expanded."""
+    if isinstance(node, dict):
+        if "$ref" in node:
+            return _enum_values(defs[node["$ref"].rsplit("/", 1)[1]], defs)
+        return len(node.get("enum", ())) + sum(_enum_values(v, defs) for k, v in node.items() if k != "$defs")
+    if isinstance(node, list):
+        return sum(_enum_values(v, defs) for v in node)
+    return 0
+
+
+def test_wire_schema_stays_under_the_providers_enum_limit():
+    """OpenAI strict mode takes at most 1000 enum values in one schema (d6: m3:U12 sent 1020 and was refused)."""
+    schema = reader_model(16, 16).model_json_schema()
+    assert _enum_values(schema, schema["$defs"]) <= 1000
+
+
+def test_a_number_or_doubt_naming_no_control_is_dropped_not_refused():
+    task = "Run OTTER with lamda 0.4. I am not sure whether the gamma is 0.3 or 0.5."
+    reading, report = read(task, numbers={"n1": number("setting", workflow="otter", control="lamda"),
+                                          "n2": number("other"), "n3": number("other")},
+                           sentences={"s2": sentence("I am not sure whether the gamma is 0.3 or 0.5", "setting",
+                                                     ["0.3", "0.5"], workflow="OTTER", control="Gamma")})
+    assert [(s.workflow, s.control, s.unsure) for s in reading.settings] == [("OTTER", "gamma", True)]
+    assert any("'lamda' is no control" in line for line in report.dropped)
+
+
 def test_wire_schema_offers_only_menu_values():
     enums = {tuple(node["enum"]) for node in _walk(reader_model(2, 2).model_json_schema()) if "enum" in node}
     assert tuple(TABLE.dimensions["artifact"].values) in enums
