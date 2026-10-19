@@ -11,7 +11,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
-from netzoo_agent_core.contracts.menu_reading import MenuReading, Requirement, Said, Wanted  # noqa: E402
+from netzoo_agent_core.contracts.menu_reading import (  # noqa: E402
+    MenuReading, Requirement, Said, SettingAsked, Wanted,
+)
 from netzoo_agent_core.graph.menu_reading_call import read_requirements  # noqa: E402
 from netzoo_agent_core.interpretation.menu_decision import decide_menu  # noqa: E402
 from netzoo_agent_core.interpretation.menu_requirements import (  # noqa: E402
@@ -31,7 +33,10 @@ def bonobo_reading() -> MenuReading:
                                       artifact=said("coexpression_network", "a gene co-expression network"),
                                       granularity=said("per_sample", "for each of our 9 biopsies"),
                                       requirements=[Requirement(quote="with a p-value for every edge")])],
-                       data=["expression"])
+                       data=["expression"],
+                       settings=[SettingAsked(quote="log2-transformed", workflow="BONOBO", control="log_transformed",
+                                              value="true"),
+                                 SettingAsked(quote="centered", workflow="BONOBO", control="centered", value="true")])
 
 
 def test_a_workflow_contract_holds_its_policy_text_and_sheet_lines():
@@ -68,7 +73,9 @@ def test_a_verdict_stands_only_on_a_clause_of_that_workflows_contract():
     assert any("p2" in line for line in report.dropped)
     assert reading.wanted[0].requirements[0].verdicts == {}  # the first reading is left as it was
     decision = decide_menu(merged, BONOBO_TASK)
-    assert decision.kind == "DO" and decision.workflows == ["BONOBO"]
+    # slim reading 4.3: LIONESS-COEXPRESSION's contract does not address it -> asked once whether it is a must
+    assert decision.kind == "ASK" and "requirement:0" in [q.dimension for q in decision.questions]
+    assert decision.options[0].workflow == "BONOBO"  # meets it: ranked first on the card
 
 
 def test_a_contradicted_requirement_rules_its_workflow_out():

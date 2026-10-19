@@ -128,9 +128,20 @@ def test_two_layers_without_linking_words_ask_integrated_or_per_layer():
     assert any(q.dimension in ("integration", "artifact", "artifact_group") for q in decision.questions)
 
 
+DRAGON_FACTS = {"samples_matched": said("same_samples"), "value_type": said("continuous")}
+
+
+def _dragon(read: MenuReading) -> MenuReading:
+    """DRAGON's B4 conditions stated (slim reading spec 2026-10-19: asked when not stated)."""
+    return read.model_copy(update={"conditions": {**DRAGON_FACTS, **read.conditions}})
+
+
 def test_linking_words_give_the_joint_network():
-    decision = decide_menu(reading("multi_omic_network", "whole_cohort", None, "joint", ["expression", "methylation"]))
+    read = reading("multi_omic_network", "whole_cohort", None, "joint", ["expression", "methylation"])
+    decision = decide_menu(_dragon(read))
     assert (decision.kind, decision.workflows) == ("DO", ["DRAGON"])
+    unstated = decide_menu(read)  # B4: the same samples and continuous values are asked, never assumed
+    assert unstated.kind == "ASK" and unstated.questions[0].dimension in ("samples_matched", "value_type")
 
 
 def test_three_layers_ask_which_pair():
@@ -203,7 +214,7 @@ def test_an_unsure_condition_is_asked_only_when_it_decides():
     asked = decide_menu(read.model_copy(update={"conditions": {"data_unit": unsure("bulk_samples", "single_cells")}}))
     assert asked.kind == "ASK" and asked.questions[0].dimension == "data_unit"
     ignored = decide_menu(read.model_copy(update={"conditions": {"mutation_origin": unsure("somatic", "germline")}}))
-    assert ignored.kind == "DO"
+    assert "mutation_origin" not in {q.dimension for q in ignored.questions}  # SAMBAR is no candidate here
 
 
 def test_one_failed_condition_vetoes_however_much_else_fits():
@@ -215,7 +226,7 @@ def test_one_failed_condition_vetoes_however_much_else_fits():
 
 
 def test_a_setting_the_workflow_has_is_kept():
-    read = reading("multi_omic_network", "whole_cohort", None, "joint", ["expression", "methylation"])
+    read = _dragon(reading("multi_omic_network", "whole_cohort", None, "joint", ["expression", "methylation"]))
     read = read.model_copy(update={"settings": [SettingAsked(quote="as an edge list", workflow="DRAGON",
                                                              control="output_format", value="edge list")]})
     assert decide_menu(read).workflows == ["DRAGON"]
@@ -234,21 +245,26 @@ def test_counts_judged_now_and_an_unsure_count_asked_when_it_decides():
 def _with_requirements(met: int, open_: int) -> MenuReading:
     requirements = ([Requirement(quote=f"met {i}", verdicts={"DRAGON": "met"}) for i in range(met)]
                     + [Requirement(quote=f"open {i}", verdicts={"DRAGON": "not_addressed"}) for i in range(open_)])
-    read = reading("multi_omic_network", "whole_cohort", None, "joint", ["expression", "methylation"])
+    read = _dragon(reading("multi_omic_network", "whole_cohort", None, "joint", ["expression", "methylation"]))
     return read.model_copy(update={"wanted": [read.wanted[0].model_copy(update={"requirements": requirements})]})
 
 
-def test_nine_of_ten_requirements_met_goes_ahead_and_lists_the_tenth():
+def test_requirements_every_contract_meets_go_ahead_with_nothing_asked():
+    decision = decide_menu(_with_requirements(10, 0))
+    assert decision.kind == "DO" and decision.unconfirmed == []
+    assert decision.options[0].matched == decision.options[0].relevant
+
+
+def test_a_requirement_the_contract_does_not_address_is_asked_once_whether_it_is_a_must():
+    """Slim reading spec 4.3: nine of ten met no longer goes ahead on its own; the share is only the card's match rate."""
     decision = decide_menu(_with_requirements(9, 1))
-    assert decision.kind == "DO" and decision.unconfirmed == ["open 0"]
-
-
-def test_fewer_than_nine_of_ten_asks_whether_the_rest_are_musts():
-    decision = decide_menu(_with_requirements(8, 2))
-    assert decision.kind == "ASK" and all(q.kind == "requirement" for q in decision.questions)
-    answered = decide_menu(_with_requirements(8, 2), answers=[
-        Answer(item=0, dimension="requirement:8", value="no"), Answer(item=0, dimension="requirement:9", value="no")])
-    assert answered.kind == "DO"
+    assert decision.kind == "ASK" and [q.dimension for q in decision.questions] == ["requirement:9"]
+    must = decide_menu(_with_requirements(9, 1), answers=[Answer(item=0, dimension="requirement:9", value="yes")])
+    assert must.kind == "DO" and must.unconfirmed == ["open 0"]  # kept, with "the contract does not say"
+    dropped = decide_menu(_with_requirements(9, 1), answers=[Answer(item=0, dimension="requirement:9", value="no")])
+    assert dropped.kind == "DO" and dropped.unconfirmed == []
+    two = decide_menu(_with_requirements(8, 2))
+    assert two.kind == "ASK" and all(q.kind == "requirement" for q in two.questions)
 
 
 def test_a_contradicted_requirement_rules_the_workflow_out():

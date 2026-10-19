@@ -150,8 +150,12 @@ def apply_answers(reading: MenuReading, answers) -> MenuReading:
 
 
 class _Context:
-    def __init__(self, reading: MenuReading, table: JudgmentDefaults, task: str, names=None, limits=None):
+    def __init__(self, reading: MenuReading, table: JudgmentDefaults, task: str, names=None, limits=None,
+                 probing: bool = False):
         self.reading, self.table, self.task = reading, table, task
+        self.probing = probing
+        """A what-if evaluation (`_probe`, `_nearest`): it compares outcomes only -- no nearest options and no unstated
+        B4 questions, which would re-probe without end (a probe's off-menu value relaxed away by `_nearest`)."""
         # The words of what the request says that is no result: a question to us, a purpose, a context.
         self.loose = [w.quote for w in reading.wanted
                       if w.form in ("question_to_us", "purpose", "context") and w.quote]
@@ -170,8 +174,9 @@ class _Context:
         return any((len(set(data) & self.table.omics_layers) >= 2) if option == "two_layers" else option in data
                    for option in need.split("|"))
 
-    def but(self, reading: MenuReading) -> "_Context":
-        return _Context(reading, self.table, self.task, self.names, self.limits)
+    def but(self, reading: MenuReading, probing: bool | None = None) -> "_Context":
+        return _Context(reading, self.table, self.task, self.names, self.limits,
+                        self.probing if probing is None else probing)
 
 
 def _artifact_of(table: JudgmentDefaults, key: str) -> str:
@@ -199,7 +204,11 @@ def _label(table: JudgmentDefaults, dimension: str, value: str) -> str:
 
 
 def _outcome(item: _Item) -> tuple:
-    return (item.declined is not None, tuple(item.workflows), tuple(q.dimension for q in item.questions))
+    """What a probe comes to: refused, the workflows given, the questions -- and the workflows still possible, so a
+    value that takes a workflow away decides even while the same question is pending either way (slim reading D4:
+    C50's log transform decides BONOBO, beside the requirement asked in both branches)."""
+    return (item.declined is not None, tuple(item.workflows), tuple(q.dimension for q in item.questions),
+            tuple(o.workflow for o in item.options))
 
 
 def _probe(ctx: _Context, item: _Item, dimension: str, value: str) -> tuple:
@@ -214,7 +223,7 @@ def _probe(ctx: _Context, item: _Item, dimension: str, value: str) -> tuple:
     else:
         wanted = wanted.model_copy(update={dimension: _said(value)})
     probe = _Item(item.index, wanted)
-    _evaluate(ctx.but(reading), probe)
+    _evaluate(ctx.but(reading, probing=True), probe)
     return _outcome(probe)
 
 
@@ -329,7 +338,7 @@ def _evaluate(ctx: _Context, item: _Item) -> None:
                                                                    in (workflow, None)] or item.declined.reasons,
                                       contract=_contract_words(table, workflow, misses))
                            for workflow in sorted(considered)]
-        item.nearest = _nearest(ctx, item, misses)
+        item.nearest = [] if ctx.probing else _nearest(ctx, item, misses)
         return
     alive_before = sorted({sheet[key].workflow for key in failed})
     item.candidates = alive_before
@@ -340,7 +349,7 @@ def _evaluate(ctx: _Context, item: _Item) -> None:
         reasons = list(dict.fromkeys(reason for reasons in failed.values() for reason in reasons))
         item.declined = Declined(quote=w.quote, reasons=reasons,
                                  instead=alive_before if reading.unregistered_methods else [])
-        item.nearest = _nearest(ctx, item, reasons)
+        item.nearest = [] if ctx.probing else _nearest(ctx, item, reasons)
         return
     workflows = sorted({sheet[key].workflow for key in alive})
     _ask(ctx, item, alive)
@@ -497,7 +506,7 @@ def _result_doubts(ctx: _Context, item: _Item, alive: list[str], results: list[s
                 found[dimension] = _question(item, dimension, said.values, ctx.table, (said.quotes or [w.quote])[0])
     workflows = sorted({sheet_entries()[key].workflow for key in alive})
     for probe in probes:
-        _doubts(ctx, probe, workflows)
+        _doubts(ctx, probe, workflows, unstated=False)
         for question in probe.questions:
             found.setdefault(question.dimension, question)
     return list(found.values())
@@ -526,7 +535,7 @@ def _open_values(ctx: _Context, item: _Item, dimension: str, alive: list[str]) -
     return []
 
 
-def _doubts(ctx: _Context, item: _Item, workflows: list[str]) -> None:
+def _doubts(ctx: _Context, item: _Item, workflows: list[str], unstated: bool = True) -> None:
     """A condition, count or setting the user is unsure of, asked when its alternatives lead to different outcomes;
     a doubt about a named file is settled by the input check before a run."""
     reading, table = ctx.reading, ctx.table
@@ -549,6 +558,8 @@ def _doubts(ctx: _Context, item: _Item, workflows: list[str]) -> None:
                 if _decides(ctx, item, key, setting.values):
                     asked.append(_question(item, key, setting.values, table, setting.quote, "condition"))
                     break
+    if unstated:  # B4 not stated waits for the result: beside a result question only the user's own doubts are asked
+        asked += _unstated_b4(ctx, item, workflows, {q.dimension for q in asked})
     if reading.unsure_files:
         if reading.run_requested:
             item.settled = list(reading.unsure_files)
@@ -561,24 +572,47 @@ def _doubts(ctx: _Context, item: _Item, workflows: list[str]) -> None:
     item.questions.extend(asked)
 
 
+def _unstated_b4(ctx: _Context, item: _Item, workflows: list[str], asked: set[str]) -> list[Question]:
+    """B4 (slim reading spec 2026-10-19): the condition a candidate workflow's contract turns on, not stated -> asked
+    when its values lead to different calls. A condition the user was unsure of is already asked above."""
+    found, reading, table = [], ctx.reading, ctx.table
+    if ctx.probing:
+        return found
+    for workflow in workflows:
+        for name in table.b4_conditions.get(workflow, ()):
+            if name.startswith("setting:"):
+                control = name.split(":", 1)[1]
+                key = f"setting:{workflow}.{control}"
+                if key in asked or any(s.control == control and s.workflow in (workflow, "") for s in reading.settings):
+                    continue
+                values = ["true", "false"]
+            else:
+                key = name
+                if key in asked or name in reading.conditions:
+                    continue
+                values = [v for v in CONDITIONS.get(name, (table.dimensions[name].values,))[0] if v != "not_stated"]
+            if _decides(ctx, item, key, values):
+                found.append(_question(item, key, values, table, "", "condition"))
+                asked.add(key)
+    return found
+
+
 def _requirements(ctx: _Context, item: _Item, workflows: list[str]) -> list[str]:
-    """The user's own requirements: keep the workflows meeting at least `soft_requirements_met` of them; with none,
-    ask whether the ones not addressed are musts."""
+    """D4 (slim reading spec 2026-10-19, 4.3): each requirement against each candidate's contract. Contradicted ones
+    already ruled their workflow out; one a candidate's contract does not address is asked once, whether it is a
+    must. A must is kept with a warning ("the contract does not say; it cannot be guaranteed"); one dropped is gone.
+    The share met is only the match rate the options card shows -- it decides nothing."""
     counted = [r for r in item.wanted.requirements if r.must is not False]
     if not counted:
         return workflows
-    shares = {w: sum(r.verdicts.get(w) == "met" for r in counted) / len(counted) for w in workflows}
-    meeting = [w for w in workflows if shares[w] >= ctx.table.soft_requirements_met]
-    best = max(workflows, key=lambda w: shares[w])
     open_ones = [(index, r) for index, r in enumerate(item.wanted.requirements)
-                 if r.must is not False and r.verdicts.get(best) != "met"]
-    if meeting:
-        item.unconfirmed = [r.quote for _, r in open_ones]
-        return meeting
+                 if r.must is None and any(r.verdicts.get(w) != "met" for w in workflows)]
     for index, requirement in open_ones[:ctx.table.max_questions_per_turn]:
         item.questions.append(Question(item=item.index, dimension=f"requirement:{index}", kind="requirement",
                                        options=[("yes", "Yes, it is a must"), ("no", "No, it can be dropped")],
                                        quote=requirement.quote))
+    if not open_ones:
+        item.unconfirmed = [r.quote for r in counted if any(r.verdicts.get(w) != "met" for w in workflows)]
     return workflows
 
 
@@ -757,7 +791,7 @@ def _nearest(ctx: _Context, item: _Item, reasons) -> list[Option]:
         return found[:table.ask_max_options]
     relaxed = reading.model_copy(update={"conditions": conditions, "settings": settings, "unregistered_methods": []})
     probe = _Item(item.index, wanted)
-    _evaluate(ctx.but(relaxed), probe)
+    _evaluate(ctx.but(relaxed, probing=True), probe)
     for option in probe.options or [o for o in []]:
         if option.workflow not in {o.workflow for o in found}:
             found.append(option.model_copy(update={"to_confirm": [*(f"leaves out {d}" for d in dropped),

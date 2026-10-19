@@ -44,7 +44,8 @@ def probe(first: MenuReading, *pairs):
 
 def test_only_intents_that_change_the_call_are_probed():
     questions = intent_questions(reading(), TASK)
-    assert [(q.item, q.dimension) for q in questions] == [(0, "artifact"), (0, "granularity")]
+    # regulators decide too: TF only (PANDA) or TF and miRNA (PUMA) leave different options
+    assert [(q.item, q.dimension) for q in questions] == [(0, "artifact"), (0, "granularity"), (0, "regulators")]
     assert all(q.dimension in PROBED_INTENTS for q in questions)
     unsure = reading(granularity=Said(status="unsure", values=["per_group", "per_sample"], quotes=["?"]))
     assert "granularity" not in [q.dimension for q in intent_questions(unsure, TASK)]  # asked anyway, never probed
