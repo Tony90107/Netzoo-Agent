@@ -63,3 +63,11 @@ worktree at this branch's head): the trace has `core.contract_veto` and the repl
 - hybrid: the veto reads for the DO sessions, about US$0.02.
 - smoke: about 5 sessions, about US$0.02.
 - Labellers are subagents (no API cost).
+
+## Deviation 1 (declared after the main run, before anything was scored)
+
+Two main sessions finished their output and then hung until the 900 s timeout: M01 printed the input-wizard stop
+("Run the command again with --resume ..."), M09 printed its whole reply. Both captures are complete and record the
+`core.decision` the round scores. `collect.py` (`effective_exit`) counts such a turn as the exit its output shows -- the
+wizard stop as exit 2, a recorded core call as exit 0 -- instead of rerunning them (a rerun is a different live sample).
+Nothing else in the round changes.

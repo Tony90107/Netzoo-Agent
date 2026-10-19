@@ -23,9 +23,20 @@ def sanitize(text, sid='', root='', sha='', secrets=()):
         if value: text = text.replace(value, replacement)
     return text
 
+def effective_exit(path, code):
+    """h4 deviation 1 (declared after the run, ROUND.md): a turn that finished its output and then hung until the
+    timeout -- the input-wizard stop printed (as exit 2) or the core call recorded in its trace (as exit 0)."""
+    if code != 'timeout':
+        return code
+    if WIZARD_STOP in (path / 'stdout.txt').read_text(errors='replace'):
+        return WAITING
+    events = (path / 'events.jsonl').read_text(errors='replace') if (path / 'events.jsonl').exists() else ''
+    return 0 if '"core.decision"' in events else code
+
 def read_turn(folder, n, task):
     path = folder / f't{n}'
     m = json.loads((path / 'manifest.json').read_text())
+    m['exit'] = effective_exit(path, m['exit'])
     if m['turn'] != n or m['request'] != task or m['mode'] != ('--session' if n == 1 else '--resume'):
         raise ValueError(f'Wrong turn identity: {folder.name}/{n}')
     required = {'stdout.txt', 'stderr.txt', 'cards.json', 'session.json', 'events.jsonl'}
@@ -46,6 +57,7 @@ def read_turn(folder, n, task):
 
 def collect_session(folder, item, rep, meta, secrets=()):
     job = json.loads((folder / 'job.json').read_text())
+    job['codes'] = [effective_exit(folder / 't1', c) for c in job['codes']]
     if len(job['codes']) != 1 or job['codes'][0] not in (0, WAITING):
         raise ValueError(f'Incomplete job: {folder.name}')
     if (job['item'], job['rep'], job['session']) != (item['id'], rep, folder.name):

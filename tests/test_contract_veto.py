@@ -257,3 +257,23 @@ def test_core_data_step_one_missed_is_read_once_in_step_three():
     assert [(d.name, d.value) for d in slim.data] == [("expression", "has")]
     assert not any(q.dimension.startswith("data:") for q in contract_veto(slim, ["PANDA"], task).questions)
     assert limit_needs(slim, ["PANDA"]).data == ()  # read once: mentioned now, never read again
+
+
+def test_the_vetos_questions_are_answered_by_the_ask_view():
+    """h4 smoke run: the veto's ASK was answered by a DO renderer (workflow_contract) and its question never shown."""
+    from netzoo_agent_core.contracts import TaskDecision
+    from netzoo_agent_core.interpretation.ask_facts import ask_result
+    unsure = SlimReading(data=[fact("A3", "mutation_calls", "has", "mut.csv")],
+                         stated=[fact("B5", "kmax", "10", "2 to 10 subtypes", workflow="SAMBAR"),
+                                 fact("B6", "sample_count", quote="either 8 or 15 tumours", values=("8", "15"))])
+    core = vetoed_core(do("SAMBAR"), contract_veto(unsure, ["SAMBAR"], "x"))
+    assert core.kind == "ASK" and core.basis == "contract_veto_fact"
+    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, reason="r", confidence=0.0,
+                            core=core)
+    result = ask_result({"decision": decision.model_dump(mode="json")}, lambda text, kind: {"text": text, "kind": kind})
+    assert result["kind"] == "ask_facts" and "How many samples are there: 8 or 15?" in result["text"]
+    core_data = vetoed_core(do("SAMBAR"), contract_veto(SlimReading(), ["SAMBAR"], "x"))
+    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, reason="r", confidence=0.0,
+                            core=core_data)
+    text = ask_result({"decision": decision.model_dump(mode="json")}, lambda text, kind: {"text": text})["text"]
+    assert "Do you have somatic mutation calls" in text and 'You wrote: ""' not in text
