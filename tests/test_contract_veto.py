@@ -276,4 +276,4 @@ def test_the_vetos_questions_are_answered_by_the_ask_view():
     decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, reason="r", confidence=0.0,
                             core=core_data)
     text = ask_result({"decision": decision.model_dump(mode="json")}, lambda text, kind: {"text": text})["text"]
-    assert "Do you have somatic mutation calls" in text and 'You wrote: ""' not in text
+    assert "Do you have somatic mutation calls" in text and 'You wrote: ""' not in text and "contract:" not in text

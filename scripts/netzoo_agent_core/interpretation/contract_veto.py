@@ -397,11 +397,10 @@ def _core_data_question(menu: MenuReading, workflows: list[str], table: Judgment
             needs.setdefault(need, []).append(workflow)
     if not needs:
         return None
+    # No contract quote: the reply shows one as the contract's own words, and this need is the registry's
+    # (workflow_data), said in the question itself ("... cannot run without it").
     return VetoQuestion(workflow=", ".join(dict.fromkeys(w for ws in needs.values() for w in ws)),
-                        dimension="data:" + "+".join(needs), values=("yes", "no"), quote="", infeasible=("no",),
-                        contract_quote="; ".join(f"{', '.join(ws)} needs " + " or ".join(
-                            _CORE_LABEL.get(o, o.replace("_", " ")) for o in need.split("|"))
-                                                 for need, ws in needs.items()))
+                        dimension="data:" + "+".join(needs), values=("yes", "no"), quote="", infeasible=("no",))
 
 
 def _nearest(menu: MenuReading, vetoed: list[str], kept: list[str], task: str, table: JudgmentDefaults,
