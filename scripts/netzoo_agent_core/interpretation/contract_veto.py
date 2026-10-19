@@ -22,6 +22,7 @@ question (`questions`).
 from __future__ import annotations
 
 import dataclasses
+import re
 from dataclasses import dataclass, field
 
 from ..capability_sheet import sheet_entries
@@ -237,9 +238,8 @@ def _violations(slim: SlimReading, menu: MenuReading, workflow: str, task: str, 
             if words and quote:
                 found.append(Violation(workflow, "C2" if name == "claims" else "C3", f"{name}={value}", quote, words,
                                        "sheet"))
-    if menu.unregistered_methods:
-        found.append(Violation(workflow, "C5", f"not a registered method: {', '.join(menu.unregistered_methods)}",
-                               menu.unregistered_methods[0],
+    if methods := _methods(menu, [workflow]):
+        found.append(Violation(workflow, "C5", f"not a registered method: {', '.join(methods)}", methods[0],
                                "NetZoo registers: " + ", ".join(sorted(registered_workflows())) + ".", "registry"))
     for reason, words, quote in _count_violations(workflow, menu):
         found.append(Violation(workflow, "B6", reason, quote, words))
@@ -247,7 +247,8 @@ def _violations(slim: SlimReading, menu: MenuReading, workflow: str, task: str, 
     count_reason = data_issue(limits, menu.sample_count.value if menu.sample_count.status == "stated" else None,
                               menu.feature_count.value if menu.feature_count.status == "stated" else None,
                               menu.single_feature_count) if limits is not None else None
-    for reason in workflow_gate(menu, workflow, task, table).reasons:
+    gated = menu.model_copy(update={"unregistered_methods": _methods(menu, [workflow])})
+    for reason in workflow_gate(gated, workflow, task, table).reasons:
         if reason.startswith("not a registered method") or reason == count_reason:
             continue  # said above, each with its own contract words
         violation = _gate_violation(slim, menu, workflow, reason, clauses, table)
@@ -260,6 +261,22 @@ def _violations(slim: SlimReading, menu: MenuReading, workflow: str, task: str, 
                                                                                 for v in found):
             found.append(Violation(workflow, pair.kind, f'the contract contradicts "{pair.quote}"', pair.quote, clause))
     return found, unverified
+
+
+def _methods(menu: MenuReading, workflows=()) -> list[str]:
+    """Unregistered methods (C5) that are not settings: words naming one of these workflows' controls (a whole word),
+    or read as a setting, are the setting's (read once; H1 debug: BONOBO's sparsify and save_pvals read as an
+    unregistered method)."""
+    controls = {name.casefold() for w in workflows if w in all_conditions() for name in all_conditions()[w].settings}
+    settings = [_norm(s.quote) for s in menu.settings if s.quote]
+    found = []
+    for method in menu.unregistered_methods:
+        words = _norm(method)
+        if any(re.search(rf"(?<![\w]){re.escape(control)}(?![\w])", words) for control in controls) or any(
+                words in quote or quote in words for quote in settings):
+            continue
+        found.append(method)
+    return found
 
 
 def _gate_violation(slim, menu, workflow, reason, clauses, table) -> Violation | None:
