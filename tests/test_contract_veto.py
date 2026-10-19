@@ -23,6 +23,7 @@ from netzoo_agent_core.interpretation.contract_veto import (  # noqa: E402
 )
 from netzoo_agent_core.interpretation.core_views import decline_reply  # noqa: E402
 from netzoo_agent_core.interpretation.menu_requirements import workflow_contract  # noqa: E402
+from netzoo_agent_core.interpretation.slim_reader import Needs  # noqa: E402
 
 
 def fact(field: str, name: str, value: str = "", quote: str = "", values=(), workflow: str = "") -> Stated:
@@ -187,3 +188,28 @@ def test_the_hook_is_off_by_default_and_vetoes_a_live_do_when_on(monkeypatch):
 
     core, *_ = contract_veto_call.apply_contract_veto(_context(Broken()), state, None, do("GIRAFFE"), task, usage, [])
     assert core.kind == "DO"  # a failed read leaves the live call as it was
+
+
+def test_words_that_set_nothing_are_no_setting_and_settings_are_no_method():
+    """H1 debug on the seen h1-h3 live DOs: five false refusals came from settings the words never set."""
+    from netzoo_agent_core.interpretation.slim_reader import merge_focus
+    task = ("Go ahead and run it now. Leave lambda1 and lambda2 empty so they're estimated; output in modules/brain/. "
+            "Sparsify with bonobo_confidence 0.01.")
+    needs = Needs(candidates=("DRAGON", "CONDOR", "BONOBO"))
+    slim, report = merge_focus(SlimReading(), {"settings": [
+        {"quote": "Go ahead and run it now", "workflow": "DRAGON", "control": "unregistered", "value": "",
+         "values": [], "asks_to_set": True},
+        {"quote": "Leave lambda1 and lambda2 empty", "workflow": "DRAGON", "control": "lambda1", "value": "",
+         "values": [], "asks_to_set": True},
+        {"quote": "output in modules/brain/", "workflow": "CONDOR", "control": "unregistered", "value": "modules/brain/",
+         "values": [], "asks_to_set": True},
+        {"quote": "Sparsify with bonobo_confidence 0.01", "workflow": "BONOBO", "control": "bonobo_confidence",
+         "value": "0.01", "values": [], "asks_to_set": True}]}, task, needs)
+    assert [(f.name, f.value) for f in slim.stated] == [("bonobo_confidence", "0.01")] and len(report.dropped) == 3
+    with_method = slim.model_copy(update={"unregistered_methods": ["Sparsify with bonobo_confidence 0.01"]})
+    assert not any(v.kind == "C5" for v in contract_veto(with_method, ["BONOBO"], task).violations.get("BONOBO", []))
+    real = SlimReading(unregistered_methods=["TIGER"])
+    assert contract_veto(real, ["PANDA"]).violations["PANDA"][0].kind == "C5"
+    # another workflow's control ("iterations" is OTTER's) does not make GIRAFFE's optimizer change a setting of its own
+    optimizer = SlimReading(unregistered_methods=["change the optimizer: learning rate 0.0005, 5,000 iterations"])
+    assert contract_veto(optimizer, ["GIRAFFE"]).violations["GIRAFFE"][0].kind == "C5"

@@ -869,6 +869,18 @@ def merge_focus(slim: SlimReading, payload, task: str, needs: Needs) -> tuple[Sl
         values = [] if value else _quoted_values(entry.get("values") or [], quote, limits.get(control))
         if len(values) == 1:
             value, values = values[0], []
+        # Hybrid H1 debug (h1-h3 live DOs, 5 false refusals): a setting sets a value. None given sets nothing ("leave
+        # lambda1 and lambda2 empty"); a path is where results go, not a setting (spec 3, B5); a setting no control
+        # takes counts only with a value its own words hold ("Go ahead and run it now" set nothing).
+        if not value and not values:
+            report.dropped.append(f"{where}: {control} without a value sets nothing")
+            continue
+        if re.search(r"[/\\]", value):
+            report.dropped.append(f"{where}: {value!r} is a location, not a setting value")
+            continue
+        if control == UNREGISTERED and not _quoted_values([value], quote):
+            report.dropped.append(f"{where}: unregistered setting {value!r} is not in its own words")
+            continue
         facts.append(Stated(field="B5", name=control, workflow=workflow, quote=quote, value=value,
                             values=values if control != UNREGISTERED else []))
     samples, layers = [], {}
