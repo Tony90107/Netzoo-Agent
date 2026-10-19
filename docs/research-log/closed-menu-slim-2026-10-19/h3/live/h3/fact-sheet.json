@@ -1,0 +1,135 @@
+{
+  "Q331324": {
+    "request": "We measured transcriptomics and lipidomics on the same 52 mouse livers (chow versus high-fat diet). I want partial-correlation networks connecting transcripts and lipids, but I'm unsure whether my PI expects a single network for the whole cohort or one network per mouse.",
+    "deciding_fact": "Whether one network for the whole cohort (DRAGON) or one network per mouse (LIONESS-DRAGON) is wanted.",
+    "answer": [
+      "Asks: Does your PI expect a single network for the whole cohort?"
+    ]
+  },
+  "Q205207": {
+    "request": "I'd like a separate gene co-expression network for each pig in our liver transplant study. Either two or three pigs made it into the dataset (the third library may have failed and nobody has checked yet). Expression is a gene-by-sample matrix with sample IDs in the header.",
+    "deciding_fact": "Whether three samples (pigs) are in the dataset, the minimum for per-sample co-expression networks.",
+    "answer": [
+      "Asks: Which of these is right: 2 or 3?"
+    ]
+  },
+  "Q432301": {
+    "request": "I need the per-sample DRAGON networks run today on 60 matched samples: transcripts.tsv and metabolites.tsv (100 metabolites), outputs to ld_out/. For the transcript layer my co-author kept either the top 300 variable genes or all 1,500 that passed filtering, and I have no idea which version she uploaded.",
+    "deciding_fact": "Whether the transcript layer has 300 or 1,500 features, which decides whether the per-sample table stays under 20,000,000 values.",
+    "answer": [
+      "Asks: Which of these is right: 300 or 1,500?"
+    ]
+  },
+  "Q773208": {
+    "request": "We have exome variant calls for 85 pediatric sarcomas as a samples-by-genes count table, and I'd like to group the patients into subtypes from pathway-level mutation scores. One problem: I don't know if these are tumor somatic calls or germline variants, because the pipeline output just says 'variants'.",
+    "deciding_fact": "Whether the variant calls are somatic tumor mutations or germline variants.",
+    "answer": [
+      "Asks: Are the variants tumor somatic calls?"
+    ]
+  },
+  "Q652270": {
+    "request": "Please start COBRA on targeted_expr.tsv and design.tsv (sample IDs plus numeric batch and age) for our 380 patients, results to cobra_out/. It's a targeted panel: I think around 400 genes, but after the low-count filter it might be fewer than 350, and I haven't looked.",
+    "deciding_fact": "How many genes remain after filtering (must exceed the 380 samples).",
+    "answer": [
+      "States that the input check settles: Do you have more than 350 genes after filtering?"
+    ]
+  },
+  "Q843507": {
+    "request": "Is BONOBO OK for my 14 Drosophila wing-disc samples? I need one co-expression network per sample. The matrix came from a collaborator as 'normalized values', and I can't tell whether it was log-transformed or centered; the README doesn't say either way.",
+    "deciding_fact": "Whether the expression matrix is log-transformed and centered.",
+    "answer": [
+      "Asks the value of BONOBO setting log_transformed (quoting \"I can't tell whether it was log-transformed\"). Options: true / false",
+      "Asks the value of BONOBO setting centered (quoting \"I can't tell whether it was...centered\"). Options: true / false"
+    ]
+  },
+  "Q513110": {
+    "request": "Fire off an OTTER run with expr_yeast.tsv, seed_w.tsv and ppi_tf.tsv, output to otter/yeast_W.txt. For lam, my lab notebook says 0.35 but the methods draft says 3.5, and I can't tell which one we actually used before. Everything else can stay at the defaults.",
+    "deciding_fact": "Which lam value is intended: 0.35 (allowed) or 3.5 (outside [0, 1]).",
+    "answer": [
+      "Asks: Did you use 0.35 as the lam value?"
+    ]
+  },
+  "Q872574": {
+    "request": "For each of 120 COPD patients I need one number per transcription factor describing its 'regulatory strength' in that patient, to test against lung function. I'm unsure whether I mean how strongly the TF is wired to its targets in that patient's network or how active the TF is regardless of its own expression.",
+    "deciding_fact": "Whether 'regulatory strength' means each TF's wiring to its targets in each patient's network (LIONESS-PANDA) or each TF's activity per patient (GIRAFFE).",
+    "answer": [
+      "Asks: Are you interested in how active the TF is regardless of its own expression?"
+    ]
+  },
+  "Q718635": {
+    "request": "I want DRAGON on serum proteomics and stool metabolomics from our IBD study, 60 profiles in each table. I'm not sure the two tables cover the same people, though: the proteomics came from the 2023 visit and the metabolomics may be a different subset of patients.",
+    "deciding_fact": "Whether the proteomics and metabolomics tables come from the same samples (identical sample-ID sets).",
+    "answer": [
+      "Asks which result they want (quoting \"DRAGON\"). Options: A p-value per edge, to filter a network by significance. / An undirected partial-correlation network within and between two matched omics layers.",
+      "Asks samples matched (quoting \"I'm not sure the two tables cover the same people\"). Options: The same samples in both layers / Different samples in each layer"
+    ]
+  },
+  "Q908493": {
+    "request": "We have exome variant calls for 85 pediatric sarcomas as a samples-by-genes count table, and I'd like to group the patients into subtypes from pathway-level mutation scores. One problem: I don't know if these are tumor somatic calls or germline variants, because the pipeline output just says 'variants'.",
+    "deciding_fact": "Whether the variant calls are somatic tumor mutations or germline variants.",
+    "answer": [
+      "Asks mutation origin (quoting \"the pipeline output just says 'variants'\"). Options: Somatic (tumour) mutations / Germline variants",
+      "Asks what the named file holds (quoting \"I don't know if these are tumor somatic calls or germline variants, because the pipeline output just says 'variants'.\"). Options: It is the file the workflow needs / It is the other one"
+    ]
+  },
+  "Q924579": {
+    "request": "I want DRAGON on serum proteomics and stool metabolomics from our IBD study, 60 profiles in each table. I'm not sure the two tables cover the same people, though: the proteomics came from the 2023 visit and the metabolomics may be a different subset of patients.",
+    "deciding_fact": "Whether the proteomics and metabolomics tables come from the same samples (identical sample-ID sets).",
+    "answer": [
+      "Asks: Do the two tables cover the same set of sample IDs?"
+    ]
+  },
+  "Q857524": {
+    "request": "Can we run LIONESS-PANDA on our rhesus macaque lymph node RNA-seq? The motif prior and PPI are already prepared. The catch is that I honestly don't know whether two or four of the libraries passed QC; the sequencing core hasn't sent the final report yet.",
+    "deciding_fact": "How many samples passed QC (at least three are required; two would rule LIONESS-PANDA out).",
+    "answer": [
+      "Asks: Do you have at least three libraries that passed QC?"
+    ]
+  },
+  "Q880916": {
+    "request": "Can we run LIONESS-PANDA on our rhesus macaque lymph node RNA-seq? The motif prior and PPI are already prepared. The catch is that I honestly don't know whether two or four of the libraries passed QC; the sequencing core hasn't sent the final report yet.",
+    "deciding_fact": "How many samples passed QC (at least three are required; two would rule LIONESS-PANDA out).",
+    "answer": [
+      "Asks how many samples there are (quoting \"I honestly don't know whether two or four of the libraries passed QC\"). Options: 2 / 4"
+    ]
+  },
+  "Q330962": {
+    "request": "Could CONDOR find communities in net_ko.tsv? It's a three-column source/target/weight file my student made from our knockout mice, but I'm not sure whether it's the TF-to-gene network or the gene-gene correlation edges. She made both, and the file names got mixed up.",
+    "deciding_fact": "Whether net_ko.tsv is the bipartite TF-to-gene network or the gene-gene correlation edge list.",
+    "answer": [
+      "Asks: Is the file a TF-to-gene network?"
+    ]
+  },
+  "Q295926": {
+    "request": "Could you run SAMBAR straight away on mut_hnscc.csv, exon_len.csv, cancer_genes.txt and c2.cp.kegg.gmt with kmin 2 and kmax 8, output to sambar_hnscc/? The mutation file holds either 6 or 10 tumors; I can't remember whether the pilot or the full batch got exported.",
+    "deciding_fact": "Whether the mutation file holds 6 or 10 samples (kmax 8 needs at least 8).",
+    "answer": [
+      "Asks: Which of these is right: 6 or 10?",
+      "States that the input check settles: Do you know if the mutation file has 10 tumors?"
+    ]
+  },
+  "Q513787": {
+    "request": "Is BONOBO OK for my 14 Drosophila wing-disc samples? I need one co-expression network per sample. The matrix came from a collaborator as 'normalized values', and I can't tell whether it was log-transformed or centered; the README doesn't say either way.",
+    "deciding_fact": "Whether the expression matrix is log-transformed and centered.",
+    "answer": [
+      "Asks: Is the expression data numeric, finite, complete, and gene-by-sample with at least three samples?",
+      "Asks: Is the expression log-transformed and centered?"
+    ]
+  },
+  "Q809554": {
+    "request": "I'd like a separate gene co-expression network for each pig in our liver transplant study. Either two or three pigs made it into the dataset (the third library may have failed and nobody has checked yet). Expression is a gene-by-sample matrix with sample IDs in the header.",
+    "deciding_fact": "Whether three samples (pigs) are in the dataset, the minimum for per-sample co-expression networks.",
+    "answer": [
+      "Asks how many samples there are (quoting \"Either two or three pigs made it into the dataset\"). Options: 2 / 3",
+      "Asks the value of BONOBO setting log_transformed. Options: true / false"
+    ]
+  },
+  "Q944808": {
+    "request": "For each of 120 COPD patients I need one number per transcription factor describing its 'regulatory strength' in that patient, to test against lung function. I'm unsure whether I mean how strongly the TF is wired to its targets in that patient's network or how active the TF is regardless of its own expression.",
+    "deciding_fact": "Whether 'regulatory strength' means each TF's wiring to its targets in each patient's network (LIONESS-PANDA) or each TF's activity per patient (GIRAFFE).",
+    "answer": [
+      "Asks which result they want (quoting \"one number per transcription factor describing its 'regulatory strength' in that patient\"). Options: Each regulator's out-degree or each gene's in-degree in a regulatory network. / Each TF's activity in each sample, estimated apart from its own mRNA level.",
+      "Asks which regulators (quoting \"I'm unsure whether I mean how strongly the TF is wired to its targets in that patient's network or how active the TF is regardless of its own expression\"). Options: Transcription factors only. / Transcription factors and miRNAs (needs a miRNA-target prior). / Something NetZoo does not give"
+    ]
+  }
+}
