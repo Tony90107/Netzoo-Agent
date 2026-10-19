@@ -346,12 +346,13 @@ def _condition_key(name: str) -> str:
 
 
 def slim_needs(slim: SlimReading, task: str = "") -> Needs:
-    """Step 2: none when the core read failed, its call is CLARIFY (the result is asked first), DECLINE or UNCHECKED,
-    or more than `MAX_FOCUS` candidates are left."""
+    """Step 2: none when the core read failed, its call is CLARIFY (the result is asked first) or UNCHECKED, or more
+    than `MAX_FOCUS` candidates are left. A DECLINE at step 1 still reads the B fields: one may rest on a B field's
+    plain value, and a field not read never refuses (spec 4.2; S2: LIONESS-PUMA named, regulators plain TF)."""
     if slim.status == "failed":
         return Needs()
     menu = to_menu(slim)
-    if decide_menu(menu, task).kind in ("CLARIFY", "DECLINE", "UNCHECKED"):
+    if decide_menu(menu, task).kind in ("CLARIFY", "UNCHECKED"):
         return Needs()
     intents, conditions, candidates = b_fields(menu, task)
     if not candidates or len(candidates) > MAX_FOCUS:
@@ -388,11 +389,14 @@ def chosen(fact: Stated, needs: Needs) -> bool:
 # --- step 1: the core read -------------------------------------------------------------------------------------------
 
 _ASKS = (
-    "menu_result: a result on the menu (result); kind_of_result: only a kind of result -- network, regulation "
-    "(result); workflow_only: a registered workflow or a run, and no result; method_choice: a choice between two or "
-    "more methods, and no result; purpose_or_topic: only why they want it or a topic, and no result; "
-    "off_menu_result: a result no registered workflow gives (outside_name); unsure_between_results: two or more "
-    "results and the user does not know which (results); question_to_us: a question about what can be done.")
+    "menu_result: a result on the menu, asked for or asked about (result); kind_of_result: only a kind of result -- "
+    "network, regulation (result); workflow_only: a registered workflow or a run, and no result; method_choice: a "
+    "choice between two or more methods, and no result; purpose_or_topic: no result -- only why they want it, a "
+    "topic, or what can be done; off_menu_result: a result no registered workflow gives (outside_name); "
+    "unsure_between_results: two or more results and the user does not know which (results).")
+_WIRE_ASKS = tuple(value for value in RESULT_SAID if value != "question_to_us")
+"""S2 (dev, 10 items): a question to us typed apart from the result it asks about ("Can PANDA give per-sample
+networks?") named no result, and each went to CLARIFY -- v5's lesson again; the spec's A1 has no such value."""
 
 
 @lru_cache(maxsize=1)
@@ -442,7 +446,7 @@ def core_model(names: tuple[str, ...] = ()) -> type[BaseModel]:
     item = create_model(
         "SlimItem", __config__=_FORBID,
         quote=(str, Field(description="The user's exact words for this thing.")),
-        asks=(Literal[RESULT_SAID], Field(description=_ASKS)),  # type: ignore[valid-type]
+        asks=(Literal[_WIRE_ASKS], Field(description=_ASKS)),  # type: ignore[valid-type]
         result=(str, Field(description="menu_result: the result's name; kind_of_result: network or regulation; "
                                        "empty otherwise.")),
         results=(list[str], Field(description="unsure_between_results: the results the words leave open.")),
@@ -696,14 +700,15 @@ def focus_model(needs: Needs) -> type[BaseModel]:
 
     def cell(key: str, values: tuple[str, ...]):
         Value = Literal[values]  # type: ignore[valid-type]
+        # The quote first, as every field of phase 1's v2+ shape (d1): S2 wrote a scale "stated" on words naming none.
         return create_model(
             f"Cell_{key}", __config__=_FORBID,
-            status=(Literal["stated", "unsure", "not_said"], Field(description=(
-                "stated: the words give the value; unsure: the user does not know, or gives several (values); "
-                "not_said."))),
+            quote=(str, Field(description="The user's exact words that say it; empty when not said.")),
+            status=(Literal["not_said", "stated", "unsure"], Field(description=(
+                "not_said; stated: the words give the value; unsure: the user does not know, or gives several "
+                "(values)."))),
             value=(Value | None, Field(description="stated: the value.")),
             values=(list[Value], Field(description="unsure: the values the words leave open.")),
-            quote=(str, Field(description="The user's exact words; empty when not said.")),
         )
 
     fields: dict[str, tuple] = {}
@@ -803,6 +808,7 @@ def merge_focus(slim: SlimReading, payload, task: str, needs: Needs) -> tuple[Sl
         facts += _cell_facts(key, item, dimension, entry, quote, report)
     controls = _controls(needs.candidates, needs.conditions)
     names = {name.casefold(): name for found in controls.values() for name, _limit in found}
+    read_before = [_norm(q) for q in (*(r.quote for r in slim.results), *(d.quote for d in slim.data)) if q]
     workflows = {w.casefold(): w for w in needs.candidates}
     for index, entry in enumerate(raw.get("settings") or []):
         where = f"focus.settings[{index}]"
@@ -817,6 +823,11 @@ def merge_focus(slim: SlimReading, payload, task: str, needs: Needs) -> tuple[Sl
                 continue
             if _IDENTIFIER.search(quote):
                 report.dropped.append(f"{where}: names a file or field, not a setting")  # phase 1, d8 m3:U18
+                continue
+            if any(words in _norm(quote) for words in read_before):
+                # Words step 1 read as a thing asked or as data are read once (spec 4.4): no setting (S2: "Run SAMBAR
+                # using the provided four reference/data files" refused SAMBAR as a setting it lacks).
+                report.dropped.append(f"{where}: holds words step 1 read as a thing asked or data, not a setting")
                 continue
             control = UNREGISTERED
         elif control in names:

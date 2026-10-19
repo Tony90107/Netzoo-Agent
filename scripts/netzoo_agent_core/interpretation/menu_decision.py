@@ -439,8 +439,13 @@ def _question(item: _Item, dimension: str, values, table: JudgmentDefaults, quot
 
 def _plain_regulators(ctx: _Context, w: Wanted) -> bool:
     """The `extra` rule for regulators: never mentioned -> TF only. miRNA data or a miRNA prior the user says they have
-    is a mention, so an unstated regulator kind is then asked (phase 0 missed-field check: C25, C59)."""
-    return w.regulators.status == "not_stated" and not {"mirna_prior", "mirna_expression"} & set(ctx.reading.data)
+    is a mention, so an unstated regulator kind is then asked (phase 0 missed-field check: C25, C59); so is naming a
+    workflow that models miRNAs -- the plain value never refuses the workflow the user named (slim reading spec 4.2;
+    S2: "Can LIONESS-PUMA handle ...?" declined on regulators=tf)."""
+    mirna_named = any(entry.kind == "produces" and entry.workflow in ctx.named and entry.regulators
+                      and "mirna" in entry.regulators for entry in sheet_entries().values())
+    return w.regulators.status == "not_stated" and not mirna_named \
+        and not {"mirna_prior", "mirna_expression"} & set(ctx.reading.data)
 
 
 _INTENTS = ("integration", "granularity", "regulators", "layers")
