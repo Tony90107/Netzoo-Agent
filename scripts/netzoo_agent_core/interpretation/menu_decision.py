@@ -219,6 +219,8 @@ def _probe(ctx: _Context, item: _Item, dimension: str, value: str) -> tuple:
     reading, wanted = ctx.reading, item.wanted
     if dimension in ("sample_count", "feature_count"):
         reading = reading.model_copy(update={dimension: Count(status="stated", value=int(value))})
+        if dimension == "feature_count" and reading.features_one_type:
+            reading = reading.model_copy(update={"single_feature_count": int(value)})
     elif dimension.startswith("setting:"):
         reading = _with_setting(reading, dimension.split(":", 1)[1], value)
     elif dimension in ctx.reading.conditions or dimension in _OFF:  # any request-level condition
@@ -992,6 +994,10 @@ def decide_menu(reading: MenuReading, task: str = "", answers=(), rounds_asked: 
         said = getattr(reading, name)
         if said.known() in table.dimensions[name].off_menu:
             declined.append(Declined(quote=(said.quotes or [""])[0], reasons=[f"{name}={said.value}"]))
+    if any(d.reasons[0].startswith("claims=") for d in declined):
+        # A claim no workflow supports (C2) qualifies the whole analysis: it cannot be done, and nothing else is asked
+        # (hybrid spec 3.4; h3 L29 asked B4 questions beside a causal claim).
+        return MenuDecision(kind="DECLINE", basis="claim", declined=declined)
     deliverables = [_Item(index, wanted) for index, wanted in enumerate(reading.wanted) if wanted.form == "deliverable"]
     if not deliverables and not (declined and not ctx.named) and not (reading.unregistered_methods and not ctx.named):
         deliverables = [_Item(len(reading.wanted), Wanted(quote=""))]

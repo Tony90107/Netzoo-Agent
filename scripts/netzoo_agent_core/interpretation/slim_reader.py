@@ -203,7 +203,10 @@ def to_menu(slim: SlimReading) -> MenuReading:
         elif name in ("sample_count", "feature_count"):
             parts[name] = _count_of(fact)
         elif name == "single_feature_count":
-            parts["single_feature_count"] = int(fact.value)
+            if fact.values:
+                parts["features_one_type"] = True
+            else:
+                parts["single_feature_count"] = int(fact.value)
         elif fact.field in ("B4", "B5") and (name.startswith("setting:") or fact.field == "B5"):
             control = name.split(":", 1)[1] if name.startswith("setting:") else name
             parts["settings"].append(SettingAsked(quote=fact.quote, workflow=fact.workflow, control=control,
@@ -226,7 +229,7 @@ def to_menu(slim: SlimReading) -> MenuReading:
         only_data=slim.only_these, groups=parts["groups"], sample_count=parts["sample_count"],
         feature_count=parts["feature_count"], single_feature_count=parts["single_feature_count"],
         settings=parts["settings"], unsure_files=parts["unsure_files"], run_requested=slim.run == "run",
-        covariates=parts["covariates"])
+        covariates=parts["covariates"], features_one_type=bool(parts.get("features_one_type")))
 
 
 def _fact_of(field: str, name: str, said: Said, item: int = -1) -> Stated:
@@ -800,6 +803,25 @@ def _cell_facts(key: str, item: int, dimension: str, entry: dict, quote: str, re
     return facts
 
 
+def _quoted_values(values, quote: str, limit=None) -> list[str]:
+    """A setting's alternatives as the user gave them (hybrid spec 3.4; h3 L28, L02): a number counts only when the
+    setting's own words hold it, a word only when they say it -- never the control's whole allowed range. A boolean's
+    two values are its doubt."""
+    found = [str(v).strip() for v in dict.fromkeys(values) if str(v).strip()]
+    if limit is not None and limit.control_type == "boolean":
+        return [v for v in found if v.casefold() in ("true", "false")]
+    numbers = {n.value for n in request_layout(quote).numbers}
+    words = _norm(quote)
+
+    def said(value: str) -> bool:
+        try:
+            return float(value) in numbers
+        except ValueError:
+            return re.search(rf"(?<![\w.]){re.escape(_norm(value))}(?![\w])", words) is not None
+
+    return [v for v in found if said(v)]
+
+
 def merge_focus(slim: SlimReading, payload, task: str, needs: Needs) -> tuple[SlimReading, ReadReport]:
     """The core reading with the B facts the focused read states, every quote and value checked."""
     raw, report = _as_dict(payload), ReadReport()
@@ -815,6 +837,7 @@ def merge_focus(slim: SlimReading, payload, task: str, needs: Needs) -> tuple[Sl
         facts += _cell_facts(key, item, dimension, entry, quote, report)
     controls = _controls(needs.candidates, needs.conditions)
     names = {name.casefold(): name for found in controls.values() for name, _limit in found}
+    limits = {name: limit for found in controls.values() for name, limit in found}
     read_before = [_norm(q) for q in (*(r.quote for r in slim.results), *(d.quote for d in slim.data)) if q]
     workflows = {w.casefold(): w for w in needs.candidates}
     for index, entry in enumerate(raw.get("settings") or []):
@@ -842,10 +865,12 @@ def merge_focus(slim: SlimReading, payload, task: str, needs: Needs) -> tuple[Sl
         else:
             report.dropped.append(f"{where}: {entry.get('control')!r} is no candidate's control")
             continue
-        values = [str(v) for v in dict.fromkeys(entry.get("values") or []) if str(v).strip()]
-        unsure = control != UNREGISTERED and len(values) >= 2
-        facts.append(Stated(field="B5", name=control, workflow=workflow, quote=quote,
-                            value="" if unsure else str(entry.get("value") or ""), values=values if unsure else []))
+        value = str(entry.get("value") or "").strip()
+        values = [] if value else _quoted_values(entry.get("values") or [], quote, limits.get(control))
+        if len(values) == 1:
+            value, values = values[0], []
+        facts.append(Stated(field="B5", name=control, workflow=workflow, quote=quote, value=value,
+                            values=values if control != UNREGISTERED else []))
     samples, layers = [], {}
     for index, entry in enumerate(raw.get("counts") or []):
         quote = _verified(entry.get("quote"), task, f"focus.counts[{index}]", report)
@@ -878,6 +903,9 @@ def merge_focus(slim: SlimReading, payload, task: str, needs: Needs) -> tuple[Sl
                                 quote=quote))
         if len(per_layer) == 1 and len(per_layer[0]) == 1:
             facts.append(Stated(field="B6", name="single_feature_count", value=str(per_layer[0][0]), quote=quote))
+        elif len(per_layer) == 1:  # one data type, unsure: its count is the one COBRA's genes > samples reads (h3 L40)
+            facts.append(Stated(field="B6", name="single_feature_count", values=[str(v) for v in per_layer[0]],
+                                quote=quote))
     return slim.model_copy(update={"stated": [*slim.stated, *facts]}), report
 
 
