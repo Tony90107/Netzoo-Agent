@@ -1,0 +1,81 @@
+{
+  "Q206150": {
+    "request": "I want to see how gene co-expression depends on sequencing batch and on disease status across roughly 650 samples, using a numeric design table keyed by sample ID. What I don't know is whether the expression table my analyst exported is the full 19,000-gene transcriptome or the 500-gene filtered panel.",
+    "deciding_fact": "Whether the expression table has more genes than samples (19,000-gene transcriptome versus 500-gene panel for about 650 samples).",
+    "answer": [
+      "Asks: Which of these is right: 500 or 19,000?"
+    ]
+  },
+  "Q351931": {
+    "request": "Please use DRAGON to relate plasma proteomics to whole-blood RNA-seq for our 40 participants. Both tables label rows P01 to P40, but I've just learned the proteomics may come from a different study cohort that reused the same participant codes, and I can't confirm whether they are the same people.",
+    "deciding_fact": "Whether the proteomics and RNA-seq rows come from the same 40 individuals or from different cohorts sharing codes.",
+    "answer": [
+      "Asks: Are the participant codes in the proteomics data the same individuals as in the RNA-seq data?"
+    ]
+  },
+  "Q739548": {
+    "request": "For each of 85 colorectal tumours I want a patient-specific regulatory network from bulk RNA-seq, and motif, PPI and miRNA-target priors are on hand. Our protocol says 'TF-to-gene regulation only' but the grant says 'include microRNA regulators', and I can't tell which one we actually committed to.",
+    "deciding_fact": "Whether the regulators are TFs only or TFs plus miRNAs.",
+    "answer": [
+      "Asks: Did you commit to including microRNA regulators in your analysis?"
+    ]
+  },
+  "Q135926": {
+    "request": "Queue a LIONESS-DRAGON job on rna_85.csv (85 samples x 300 genes) and cpg_85.csv for the same 85 samples, aggregate matrix to ldr/all.tsv and the per-sample table to ldr/edges.tsv. I can't remember whether cpg_85.csv is the filtered 300-probe version or the unfiltered 5,000-probe export.",
+    "deciding_fact": "How many CpG features cpg_85.csv holds: 300 probes (600 features, 179,700 pairs x 85 = 15,274,500 values) or 5,000 probes (5,300 features, 14,042,350 pairs x 85 = 1,193,599,750 values).",
+    "answer": [
+      "Asks: Which applies: Continuous values or Binary (0/1) calls?",
+      "Asks: How many features are there: 600 or 5300?"
+    ]
+  },
+  "Q665627": {
+    "request": "Time to run SAMBAR: mut_hnscc.csv, exon_size.csv, cancer_genes.txt and kegg.gmt, trying 2 to 10 subtypes, output to sambar_hnscc/. After the purity filter the matrix has either 8 or 15 tumours, and I'm not sure which version of the file I exported.",
+    "deciding_fact": "Whether the mutation matrix has at least 10 tumours (15 passes, 8 fails for kmax = 10).",
+    "answer": [
+      "States that the input check settles: Is the number of tumors in the matrix 8 or 15?",
+      "States that the input check settles: Do the four input files have a non-empty four-way gene identifier overlap?"
+    ]
+  },
+  "Q448213": {
+    "request": "Could I get LIONESS co-expression networks, one per sample, for our zebrafish fin-regeneration RNA-seq? The matrix has four libraries right now, but the sequencing core flagged one, possibly two, as failed, and I don't yet know how many will have to be dropped.",
+    "deciding_fact": "Whether at least three libraries remain after the failed ones are dropped (dropping one leaves 3, dropping two leaves 2).",
+    "answer": [
+      "Asks: Will at least three samples remain after dropping the failed ones?"
+    ]
+  },
+  "Q324585": {
+    "request": "SAMBAR pathway-based subtypes are what we want for 210 tumours, from a mutation matrix our core facility produced. I honestly don't know whether their calls are somatic (tumour versus matched normal) or germline variants; the README doesn't say and the analyst has left.",
+    "deciding_fact": "Whether the mutation calls are somatic (tumour versus matched normal) or germline.",
+    "answer": [
+      "Asks: Are the calls somatic variants?"
+    ]
+  },
+  "Q339257": {
+    "request": "Please run OTTER today on expr_heart.tsv, motif_seed.tsv and ppi_tf.tsv, writing otter_heart.tsv. My notes from the methods meeting say lam = 0.35, but the slide we presented says lam = 3.5, and I don't know which one the group intended. Everything else can stay at defaults.",
+    "deciding_fact": "Whether lam is 0.35 (inside [0, 1]) or 3.5 (outside the allowed range).",
+    "answer": [
+      "Asks: Is the intended value of lam 0.35?"
+    ]
+  },
+  "Q810201": {
+    "request": "We want TF-to-gene networks for 30 ALS and 30 control spinal cord samples, one per group, with the sequencing-center effect removed first. I'm not sure whether every ALS sample went to center A and every control to center B; the old tracking sheet is lost.",
+    "deciding_fact": "Whether sequencing center is completely confounded with disease group.",
+    "answer": [
+      "Asks: Did every ALS sample go to center A and every control to center B?"
+    ]
+  },
+  "Q568250": {
+    "request": "With 120 AML bone-marrow RNA-seq samples and motif and PPI priors, I need one number per transcription factor per patient to correlate with relapse. I'm genuinely unsure whether that number should describe how strongly the TF is wired to its targets in that patient, or how active the TF is regardless of its own mRNA.",
+    "deciding_fact": "Whether the per-patient TF value is targeting strength (wiring) or TF activity.",
+    "answer": [
+      "Asks: Do you want the number to describe how active the TF is regardless of its own mRNA?"
+    ]
+  },
+  "Q915195": {
+    "request": "BONOBO is the plan for 7 placenta samples, one co-expression network per sample. Our collaborator's note says the matrix is log2-transformed and gene-centered, but the file header calls it raw_TPM, and I have no way to tell which statement is true.",
+    "deciding_fact": "Whether the expression matrix is log-transformed and gene-centered, or raw TPM.",
+    "answer": [
+      "Asks: Is the expression matrix log2-transformed and gene-centered?"
+    ]
+  }
+}
