@@ -505,3 +505,53 @@ dimensions:
       reader from the list it is shown. Not a control, a value out of range, or a combination the contract forbids
       (lambda1 without lambda2) -> FAIL, and the reply lists the controls the workflow has. A file type that is not a
       control value is an outside step (conversion), said, not refused.
+
+# --- Slim reading (spec docs/superpowers/specs/2026-10-19-slim-reading-fields-design.md, user decision 2026-10-19) ---
+# The fields the reader fills, in four classes; an unstated field is not written. `fills` names what each field sets
+# in the decision table's state (a dimension above, or a reading slot: run, groups, unsure_files). The decision table
+# reads only these; tests/test_judgment_defaults.py checks every dimension the decision uses is filled by one field,
+# every near miss is blocked by an A1/B/C field, every request-scope limit is judged by B5/B6, and no field is idle.
+#   A mandatory (read every time, step 1)   B conditionally mandatory (code picks them from the candidates, step 3)
+#   C prohibitions (written only when stated, with a quote; one hit rules a workflow out)
+#   D auxiliary (never blocks; D4 is checked against the contracts one requirement at a time)
+slim_fields:
+  A1: {class: A, fills: [artifact], values: [menu_result, kind_of_result, workflow_only, method_choice, purpose_or_topic,
+       off_menu_result, unsure_between_results, question_to_us, data_or_context],
+       means: "What each thing the request says asks for: a result on the menu, only a kind of result, only a workflow, a choice between methods, only a purpose or topic, a result off the menu, a doubt between results, a question to us, or data or context."}
+  A2: {class: A, fills: [named_workflows], values: [target, choice, background],
+       means: "The role of each registered name code finds in the words."}
+  A3: {class: A, fills: [data_available], values: [has, lacks],
+       means: "Each kind of data the user says they have or lack; and whether these are all they have."}
+  A4: {class: A, fills: [run], values: [run, ask], means: "Whether the user asks to run it now or only asks."}
+  B1: {class: B, fills: [granularity], means: "One result for all samples, one per group, or one per sample."}
+  B2: {class: B, fills: [regulators, mirna_driver], means: "Which regulators: TFs only, TFs and miRNAs from a target prior, or ones NetZoo does not model."}
+  B3: {class: B, fills: [integration, layers], means: "How several omics layers are modeled: one joint model of two layers, one per layer, or three or more jointly."}
+  B4: {class: B, fills: [mutation_origin, samples_matched, value_type, input_network],
+       means: "The condition a candidate workflow's contract turns on (somatic mutations, the same samples, continuous values, a regulator-gene network, declared log-transformed and centered data)."}
+  B5: {class: B, fills: [settings], means: "A value for one of the candidate workflows' controls."}
+  B6: {class: B, fills: [sample_count, feature_count], means: "A number of samples or features; read from the files at run time, asked only when the user is unsure and it changes the call."}
+  C1: {class: C, fills: [artifact], values: [off_menu], means: "A result no registered workflow gives (taken from A1)."}
+  C2: {class: C, fills: [claims], values: [causal, prediction], means: "A claim beyond association: proof of causation, a trained predictive model."}
+  C3: {class: C, fills: [delivery], values: [outside_netzoo], means: "An action outside the analysis: sending, uploading, a dashboard, a schedule."}
+  C4: {class: C, fills: [data_unit, value_type, time_model, spatial, group_membership],
+       values: [single_cells, binary_values, dynamic_model, spatial_neighbors, overlapping_groups],
+       means: "A special data situation: single cells, binary values, a dynamic model, spatial neighbours, overlapping groups."}
+  C5: {class: C, fills: [named_workflows], values: [unregistered], means: "A method or variant to use that no registered workflow is (taken from A2)."}
+  C6: {class: C, fills: [data_available], values: [no_mutation_calls], means: "Required data the user says they lack (taken from A3)."}
+  C7: {class: C, fills: [settings, sample_count, feature_count], means: "A setting or number the contract does not support (code checks B5 and B6)."}
+  D1: {class: D, fills: [groups], means: "Groups or conditions among the samples; they add the one-per-group choice to B1."}
+  D2: {class: D, fills: [compare], values: [later, describe, test], means: "A comparison: later (a purpose), or required as part of the result (describe, test)."}
+  D3: {class: D, fills: [signed], values: [signed, unsigned], means: "Whether the user wants activation versus repression."}
+  D4: {class: D, fills: [requirements], means: "A requirement on how the result is computed or what it contains; checked against each candidate's contract."}
+  D5: {class: D, fills: [data_stage], values: [raw_files], means: "Raw files that need processing outside NetZoo first."}
+  D6: {class: D, fills: [unsure_files], means: "A doubt about what a named file holds."}
+
+# B4: the condition each workflow's contract turns on. Not stated while the workflow is a candidate -> asked when its
+# values lead to different calls (spec 3, B4; 4.2). BONOBO's declared log transform and centering are its required
+# settings (B5 controls), asked the same way.
+b4_conditions:
+  SAMBAR: [mutation_origin]
+  DRAGON: [samples_matched, value_type]
+  LIONESS-DRAGON: [samples_matched, value_type]
+  CONDOR: [input_network]
+  BONOBO: [setting:log_transformed, setting:centered]

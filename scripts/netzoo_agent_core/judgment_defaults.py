@@ -29,14 +29,29 @@ import yaml
 from .capability_sheet import sheet_entries
 from .contracts.capability_check import CONDITIONS
 
-__all__ = ["CLASSES", "DEFAULTS_PATH", "POLICIES", "Artifact", "Dimension", "JudgmentDefaults", "QuestionGroup",
-           "TieOption", "judgment_defaults", "load_defaults"]
+__all__ = ["CLASSES", "DEFAULTS_PATH", "POLICIES", "SLIM_CLASSES", "Artifact", "Dimension", "JudgmentDefaults",
+           "QuestionGroup", "SlimField", "TieOption", "judgment_defaults", "load_defaults"]
 
 DEFAULTS_PATH = Path(__file__).resolve().parents[1] / "judgment_defaults.yaml"
 POLICIES = frozenset({"ask", "extra", "default", "no_filter", "input_check", "needs_input"})
 CLASSES = frozenset({"intent", "condition", "input_check", "setting"})
 _INTENT_POLICIES = frozenset({"ask", "extra", "no_filter"})
 _OPTION_PARTS = ("difference", "good_for", "logic", "source")
+SLIM_CLASSES = frozenset({"A", "B", "C", "D"})
+_READING_SLOTS = frozenset({"run", "groups", "unsure_files"})
+"""What a slim field may fill beside a dimension: reading slots the decision reads directly."""
+
+
+@dataclass(frozen=True, slots=True)
+class SlimField:
+    """One field of the slim reading (spec 2026-10-19, section 3)."""
+
+    name: str
+    kind: str
+    """A, B, C or D."""
+    fills: tuple[str, ...]
+    values: tuple[str, ...] = ()
+    means: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +128,9 @@ class JudgmentDefaults:
     """Workflow -> (core data, needs); each item is a data_available value, "a|b", or two_layers."""
     omics_layers: frozenset[str] = frozenset()
     required_settings: Mapping[str, Mapping[str, str]] = MappingProxyType({})
+    slim_fields: Mapping[str, SlimField] = MappingProxyType({})
+    b4_conditions: Mapping[str, tuple[str, ...]] = MappingProxyType({})
+    """Workflow -> the conditions (or `setting:control`) its contract turns on, asked when not stated (B4)."""
 
     def expand(self, artifact: str) -> tuple[str, ...]:
         """The artifacts a word stands for: a generic word's list, or the artifact itself."""
@@ -233,6 +251,24 @@ def load_defaults(path: Path = DEFAULTS_PATH) -> JudgmentDefaults:
     layers = frozenset(data.get("omics_layers") or ())
     if layers - data_values:
         raise ValueError("judgment defaults: omics_layers names unknown data")
+    slim = {}
+    for name, raw in (data.get("slim_fields") or {}).items():
+        kind, fills = raw.get("class"), tuple(raw.get("fills") or ())
+        if kind not in SLIM_CLASSES or not fills or any(
+                item not in dimensions and item not in _READING_SLOTS for item in fills):
+            raise ValueError(f"judgment defaults: slim field {name} has an unknown class or fills unknown slots")
+        slim[name] = SlimField(name=name, kind=kind, fills=fills, values=tuple(raw.get("values") or ()),
+                               means=raw.get("means", ""))
+    b4 = {}
+    for workflow, names in (data.get("b4_conditions") or {}).items():
+        if workflow not in known_workflows:
+            raise ValueError(f"judgment defaults: b4_conditions names unknown workflow {workflow}")
+        for name in names:
+            control = name.split(":", 1)[1] if name.startswith("setting:") else None
+            if control is None and (name not in dimensions or dimensions[name].kind not in ("condition",
+                                                                                              "input_check")):
+                raise ValueError(f"judgment defaults: b4 condition {name} of {workflow} is no condition")
+        b4[workflow] = tuple(names)
     share = thresholds.get("soft_requirements_met")
     if not isinstance(share, (int, float)) or not 0 < share <= 1:
         raise ValueError("judgment defaults: thresholds.soft_requirements_met must be in (0, 1]")
@@ -247,7 +283,8 @@ def load_defaults(path: Path = DEFAULTS_PATH) -> JudgmentDefaults:
                             limit_fields=MappingProxyType(dict(data.get("limit_fields") or {})),
                             tie_options=MappingProxyType(ties), soft_requirements_met=float(share),
                             workflow_data=MappingProxyType(workflow_data), omics_layers=layers,
-                            required_settings=MappingProxyType(required))
+                            required_settings=MappingProxyType(required), slim_fields=MappingProxyType(slim),
+                            b4_conditions=MappingProxyType(b4))
 
 
 @lru_cache(maxsize=1)

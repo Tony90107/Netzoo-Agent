@@ -128,9 +128,13 @@ def test_options_rank_by_the_share_of_the_users_points_met():
 
 
 def test_one_option_left_and_everything_confirmed_is_do():
-    reading = MenuReading(wanted=[Wanted(quote="Run SAMBAR")], data=["mutation_calls"], run_requested=True)
-    decision = decide_menu(reading, "Run SAMBAR on mut.csv")
+    reading = MenuReading(wanted=[Wanted(quote="Run SAMBAR")], data=["mutation_calls"], run_requested=True,
+                          conditions={"mutation_origin": said("somatic", "somatic mutation calls")})
+    decision = decide_menu(reading, "Run SAMBAR on our somatic mutation calls in mut.csv")
     assert decision.kind == "DO" and [o.workflow for o in decision.options] == ["SAMBAR"] and decision.run_ready
+    # slim reading B4: unstated, SAMBAR's mutation origin is asked, never assumed
+    unstated = decide_menu(reading.model_copy(update={"conditions": {}}), "Run SAMBAR on mut.csv")
+    assert unstated.kind == "ASK" and unstated.questions[0].dimension == "mutation_origin"
 
 
 # --- settings only from the candidates' controls -------------------------------------------------------------------
@@ -143,7 +147,8 @@ def test_words_read_as_another_workflows_control_are_no_setting():
         SettingAsked(quote="centered", workflow="BONOBO", control="centered", value="true")])
     assert decide_menu(bonobo, "Run BONOBO on core_expr.tsv").kind == "DO"
     sambar = MenuReading(wanted=[Wanted(quote="Run SAMBAR")], data=["mutation_calls"], settings=[
-        SettingAsked(quote="put everything in sambar_uterine/", workflow="SAMBAR", control="output_format", value="")])
+        SettingAsked(quote="put everything in sambar_uterine/", workflow="SAMBAR", control="output_format", value="")],
+        conditions={"mutation_origin": said("somatic", "somatic")})
     assert decide_menu(sambar, "Run SAMBAR on mut.csv").kind == "DO"
     giraffe = MenuReading(wanted=[Wanted(quote="Run GIRAFFE")], data=PRIORS, settings=[
         SettingAsked(quote="a learning rate of 0.001", workflow="GIRAFFE", control="unregistered", value="0.001")])
