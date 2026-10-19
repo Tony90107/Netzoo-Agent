@@ -217,6 +217,8 @@ def test_words_that_set_nothing_are_no_setting_and_settings_are_no_method():
     assert not any(v.kind == "C5" for v in contract_veto(with_method, ["BONOBO"], task).violations.get("BONOBO", []))
     real = SlimReading(unregistered_methods=["TIGER"])
     assert contract_veto(real, ["PANDA"]).violations["PANDA"][0].kind == "C5"
+    # a listed value of the workflow's own control names that setting (OTTER's output_format edge_list)
+    assert contract_veto(SlimReading(unregistered_methods=["edge-list output"]), ["OTTER"]).violations == {}
     # another workflow's control ("iterations" is OTTER's) does not make GIRAFFE's optimizer change a setting of its own
     optimizer = SlimReading(unregistered_methods=["change the optimizer: learning rate 0.0005, 5,000 iterations"])
     assert contract_veto(optimizer, ["GIRAFFE"]).violations["GIRAFFE"][0].kind == "C5"

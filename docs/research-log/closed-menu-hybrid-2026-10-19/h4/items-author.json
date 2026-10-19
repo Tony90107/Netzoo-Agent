@@ -1,0 +1,737 @@
+{
+  "author_note": "Read only the 13 workflow contracts in .worktrees/netzoo-core-p0-run/workflows/*.yaml and scripts/workflow_registry.py from that worktree; nothing else was opened and the assistant was not run. Every gold was decided from contract text: do items use only inputs, sizes and control values the YAML accepts (including boundary values such as OTTER lam = 1, DRAGON lambda1 = 0 with lambda2 = 1, LIONESS-PANDA with exactly three samples, LIONESS-DRAGON at 19,767,000 of the 20,000,000 allowed values); dont items fail one quoted condition (layer count, value cap, setting combination, unexposed setting, unregistered method or handoff, or a result such as causal direction, prediction or differential modularity that no contract produces); ask items turn on one fact the user says they do not know or states two ways, where the two answers lead to different contract outcomes; vague items name no concrete result. Multi-line YAML quotes are given with line breaks and indentation collapsed to single spaces; three items also quote workflow_registry.py (named as such) where the YAML is silent on single-cell data, prediction or differential modularity. LIONESS-DRAGON value counts use F(F-1)/2 feature pairs times samples, F being the features of both layers together.",
+  "items": [
+    {
+      "id": "M01",
+      "class": "ask",
+      "form": "run",
+      "prompt": "Queue a LIONESS-DRAGON job on rna_85.csv (85 samples x 300 genes) and cpg_85.csv for the same 85 samples, aggregate matrix to ldr/all.tsv and the per-sample table to ldr/edges.tsv. I can't remember whether cpg_85.csv is the filtered 300-probe version or the unfiltered 5,000-probe export.",
+      "workflows": [
+        "LIONESS-DRAGON"
+      ],
+      "reason": "With 300 probes the run has 15,274,500 values (allowed); with 5,000 probes it has about 1.19 billion (refused).",
+      "evidence": "lioness-dragon.yaml: \"The per-sample table holds one value per feature pair per sample; runs above 20,000,000 values are refused before they start.\"",
+      "deciding_fact": "How many CpG features cpg_85.csv holds: 300 probes (600 features, 179,700 pairs x 85 = 15,274,500 values) or 5,000 probes (5,300 features, 14,042,350 pairs x 85 = 1,193,599,750 values).",
+      "interpretation_facts": [
+        "Each sample's network is relative to the 85-sample cohort; RNA and CpG methylation are the two layers"
+      ]
+    },
+    {
+      "id": "M02",
+      "class": "vague",
+      "form": "goal",
+      "prompt": "Our lab has somatic mutation calls and RNA-seq for the same 150 endometrial tumours. Making sense of them with network methods appeals to us, but I'm not sure where to start or which output would be most useful.",
+      "workflows": [
+        "SAMBAR",
+        "PANDA",
+        "LIONESS-PANDA"
+      ],
+      "reason": "Only a broad aim is given, with two data types and no result named.",
+      "evidence": "sambar.yaml: \"incompatible_input_artifacts: [expression_matrix]\" | panda.yaml: \"incompatible_input_artifacts: [mutation_matrix]\" | sambar.yaml: \"description: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\"",
+      "missing_core": "Which result is wanted (mutation-based subtypes, expression-based regulatory networks, or both) and from which data.",
+      "interpretation_facts": [
+        "No workflow models mutations and expression together; whether the two data types are analysed jointly or separately is left open"
+      ]
+    },
+    {
+      "id": "M03",
+      "class": "ask",
+      "form": "named",
+      "prompt": "Could I get LIONESS co-expression networks, one per sample, for our zebrafish fin-regeneration RNA-seq? The matrix has four libraries right now, but the sequencing core flagged one, possibly two, as failed, and I don't yet know how many will have to be dropped.",
+      "workflows": [
+        "LIONESS-COEXPRESSION"
+      ],
+      "reason": "Whether the run is allowed depends on how many libraries remain against the three-sample minimum.",
+      "evidence": "lioness-coexpression.yaml: \"Require at least three samples and validate expression inside the execution wrapper.\"",
+      "deciding_fact": "Whether at least three libraries remain after the failed ones are dropped (dropping one leaves 3, dropping two leaves 2).",
+      "interpretation_facts": [
+        "Each library's network is relative to the libraries kept in the cohort"
+      ]
+    },
+    {
+      "id": "M04",
+      "class": "vague",
+      "form": "run",
+      "prompt": "Process counts_synovium_140.tsv and covariates_140.csv now (batch, age, sex and disease activity score for each of the 140 patients) and put the results in out/ra/. Let me know when it's done.",
+      "workflows": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "reason": "The files are named but neither the result nor the role of the covariates is stated.",
+      "evidence": "cobra.yaml: \"COBRA consumes a gene-by-sample expression matrix and numeric sample covariates\" | lioness-coexpression.yaml: \"prefer_when: [cohort_size:many, covariates:no]\"",
+      "missing_core": "What result is wanted and whether the covariates are to be adjusted away or studied.",
+      "interpretation_facts": [
+        "Whether batch, age and sex are nuisance covariates and disease activity the variable of interest is not stated",
+        "Whether a cohort-wide result or per-patient networks are wanted is not stated"
+      ]
+    },
+    {
+      "id": "M05",
+      "class": "dont",
+      "form": "named",
+      "prompt": "For GIRAFFE on our 36 pancreatic islet samples, I'd like to change the optimizer: learning rate 1e-4, 2,000 iterations, and double the weight on the PPI agreement term. Expression, motif prior and PPI are ready with matching identifiers.",
+      "workflows": [
+        "GIRAFFE"
+      ],
+      "reason": "GIRAFFE exposes no controls and always runs with the package defaults, so none of the requested optimizer settings can be set.",
+      "evidence": "giraffe.yaml: \"controls: []\" | giraffe.yaml: \"the agent calls only the required three positional arrays and uses the package defaults for all optional parameters.\"",
+      "interpretation_facts": []
+    },
+    {
+      "id": "M06",
+      "class": "ask",
+      "form": "named",
+      "prompt": "SAMBAR pathway-based subtypes are what we want for 210 tumours, from a mutation matrix our core facility produced. I honestly don't know whether their calls are somatic (tumour versus matched normal) or germline variants; the README doesn't say and the analyst has left.",
+      "workflows": [
+        "SAMBAR"
+      ],
+      "reason": "SAMBAR accepts somatic mutation data only, so the origin of the calls decides whether it fits.",
+      "evidence": "sambar.yaml: \"description: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\" | sambar.yaml: \"accepted_input_modalities: [somatic_mutation]\"",
+      "deciding_fact": "Whether the mutation calls are somatic (tumour versus matched normal) or germline.",
+      "interpretation_facts": [
+        "Germline calls would make pathway scores reflect inherited variation rather than tumour mutations"
+      ]
+    },
+    {
+      "id": "M07",
+      "class": "dont",
+      "form": "run",
+      "prompt": "I need COBRA run today: expr_panel.tsv is a 400-gene targeted panel across 520 samples, design_520.csv has an intercept plus smoker (0/1) and batch (0/1) columns for exactly those samples, and outputs should go to cobra_panel/.",
+      "workflows": [
+        "COBRA"
+      ],
+      "reason": "COBRA requires more genes than samples, and 400 genes for 520 samples fails that.",
+      "evidence": "cobra.yaml: \"Expression must be a labeled gene-by-sample matrix with more genes than samples.\"",
+      "interpretation_facts": []
+    },
+    {
+      "id": "M08",
+      "class": "dont",
+      "form": "goal",
+      "prompt": "For every one of our 60 donors I want that donor's own partial-correlation network linking 2,500 CpG methylation features with 1,500 transcripts, from two complete tables measured on the same donors. Please keep all 4,000 features; we explicitly do not want any filtering.",
+      "workflows": [
+        "LIONESS-DRAGON"
+      ],
+      "reason": "4,000 features give 7,998,000 pairs x 60 samples = 479,880,000 values, far above the 20,000,000 cap, and the user rules out filtering.",
+      "evidence": "lioness-dragon.yaml: \"The per-sample table holds one value per feature pair per sample; runs above 20,000,000 values are refused before they start.\" | lioness-dragon.yaml: \"description: Infer one sample-specific two-layer multi-omic partial-correlation network per sample with LIONESS-DRAGON.\"",
+      "interpretation_facts": [
+        "One network per donor relative to the 60-donor cohort; methylation and expression are the two layers"
+      ]
+    },
+    {
+      "id": "M09",
+      "class": "ask",
+      "form": "goal",
+      "prompt": "I want to see how gene co-expression depends on sequencing batch and on disease status across roughly 650 samples, using a numeric design table keyed by sample ID. What I don't know is whether the expression table my analyst exported is the full 19,000-gene transcriptome or the 500-gene filtered panel.",
+      "workflows": [
+        "COBRA"
+      ],
+      "reason": "COBRA needs more genes than samples: 19,000 genes for about 650 samples passes, 500 genes fails.",
+      "evidence": "cobra.yaml: \"Expression must be a labeled gene-by-sample matrix with more genes than samples.\" | cobra.yaml: \"description: Model covariate-associated gene co-expression with COBRA.\"",
+      "deciding_fact": "Whether the expression table has more genes than samples (19,000-gene transcriptome versus 500-gene panel for about 650 samples).",
+      "interpretation_facts": [
+        "Batch and disease status are both covariates whose co-expression components are of interest, not only nuisances"
+      ]
+    },
+    {
+      "id": "M10",
+      "class": "vague",
+      "form": "named",
+      "prompt": "We have RNA-seq, ATAC-seq, proteomics and metabolomics on the same 50 mice. Is DRAGON the right tool for this, or would something else be better? We haven't settled on what we want to get out of the integration.",
+      "workflows": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "reason": "No result is named, and with four layers the pair to model and the granularity are both open, while two-layer runs remain possible.",
+      "evidence": "dragon.yaml: \"DRAGON consumes exactly two paired sample-by-feature continuous omics tables\" | lioness-dragon.yaml: \"description: Infer one sample-specific two-layer multi-omic partial-correlation network per sample with LIONESS-DRAGON.\"",
+      "missing_core": "Which two layers to relate and what result (one cohort-wide network or one per mouse) the integration should give.",
+      "interpretation_facts": [
+        "Which two of the four layers are modeled together is not stated",
+        "Whether one cohort-wide network or one per mouse is wanted is not stated"
+      ]
+    },
+    {
+      "id": "M11",
+      "class": "vague",
+      "form": "named",
+      "prompt": "Can COBRA or CONDOR do anything useful with our liver fibrosis RNA-seq? It's 88 patients recruited at three hospitals, with fibrosis stage recorded for each. I'm open to suggestions on what to look at.",
+      "workflows": [
+        "COBRA",
+        "CONDOR",
+        "PANDA"
+      ],
+      "reason": "No concrete result is named; the user only asks whether two methods could help.",
+      "evidence": "cobra.yaml: \"description: Model covariate-associated gene co-expression with COBRA.\" | condor.yaml: \"Build the source-target-weight edge list from a validated regulator-gene network; CONDOR does not consume the raw expression matrix directly.\" | panda.yaml: \"handoff_targets: [run_condor]\"",
+      "missing_core": "Which result is wanted (covariate-associated co-expression, network communities, or another output) and what it should show about fibrosis.",
+      "interpretation_facts": [
+        "Whether the hospital effect is to be adjusted away or studied is not stated",
+        "Whether fibrosis stage is the variable of interest is not stated"
+      ]
+    },
+    {
+      "id": "M12",
+      "class": "dont",
+      "form": "run",
+      "prompt": "Please execute BONOBO on liver_log2_centered.tsv immediately (gene rows, 14 donor columns, log2-transformed and gene-centered). Sparsify at a 0.05 confidence level and fix delta at 0.4 rather than estimating it. HDF5 output into bonobo_liver/.",
+      "workflows": [
+        "BONOBO"
+      ],
+      "reason": "With sparsify on, delta must be above 0 and below 1/3, so delta = 0.4 is not allowed.",
+      "evidence": "bonobo.yaml: \"With sparsify it must be above 0 and below 1/3 (Log 224).\" | bonobo.yaml: \"name: delta type: number default: null minimum: 0 maximum: 1\"",
+      "interpretation_facts": []
+    },
+    {
+      "id": "M13",
+      "class": "do",
+      "form": "named",
+      "prompt": "Our paired proteomics and phosphoproteomics tables from the same 48 ovarian tumours should go through DRAGON. Rows are tumour IDs, columns are proteins or phosphosites, and there are no missing values. I want manual shrinkage, lambda1 = 0 for the proteome layer and lambda2 = 1 for the phosphoproteome layer, with the edge_list output. One network for the whole cohort is what I'm after.",
+      "workflows": [
+        "DRAGON"
+      ],
+      "reason": "Both shrinkage values are supplied together and lie at the inclusive ends of [0, 1], edge_list is an allowed format, and DRAGON gives one aggregate two-layer network.",
+      "evidence": "dragon.yaml: \"Manual shrinkage is allowed only when both values are supplied in [0, 1].\" | dragon.yaml: \"allowed_values: [matrix, edge_list]\" | dragon.yaml: \"produces one aggregate undirected multi-omic network\"",
+      "interpretation_facts": [
+        "Layer 1 is the proteome and layer 2 the phosphoproteome, so lambda1 and lambda2 attach to those layers respectively",
+        "One aggregate network across all 48 tumours, not one per tumour",
+        "Edges are conditional associations, not causal effects"
+      ]
+    },
+    {
+      "id": "M14",
+      "class": "do",
+      "form": "run",
+      "prompt": "Run LIONESS-PANDA now: the expression file is pilot_expr.tsv with exactly three mouse retina samples, plus motif_mm10.txt and ppi_mm10.txt. Save the aggregate PANDA network to out/panda_all.txt and the per-sample networks to out/lioness_samples.txt. Three samples is all we will ever have from this pilot, so please don't wait for more.",
+      "workflows": [
+        "LIONESS-PANDA"
+      ],
+      "reason": "Exactly three samples meets LIONESS-PANDA's minimum, and separate aggregate and per-sample outputs are given.",
+      "evidence": "lioness-panda.yaml: \"Require at least three expression samples before execution.\" | lioness-panda.yaml: \"Keep aggregate and sample-specific outputs distinct from every input.\" | lioness-panda.yaml: \"required_inputs: [expression_file, motif_file, ppi_file, output_file, lioness_output]\"",
+      "interpretation_facts": [
+        "Each sample's network comes from the all-three-sample PANDA network and the network without that sample, so it is relative to this three-sample cohort"
+      ]
+    },
+    {
+      "id": "M15",
+      "class": "vague",
+      "form": "run",
+      "prompt": "Go ahead and start a run on pbmc_bulk_60donors.tsv and write the outputs to out/pbmc/. I just want to see something network-like before Thursday's lab meeting; there's no particular question yet.",
+      "workflows": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "reason": "Only an expression file and an output folder are given, and the user says there is no question yet.",
+      "evidence": "lioness-coexpression.yaml: \"required_inputs: [expression_file, output_file, lioness_output]\" | bonobo.yaml: \"required_inputs: [expression_file, output_dir]\"",
+      "missing_core": "What network result is wanted from the 60 donors.",
+      "interpretation_facts": []
+    },
+    {
+      "id": "M16",
+      "class": "do",
+      "form": "named",
+      "prompt": "Can you set up BONOBO for 5 endometrial biopsies? The gene-by-sample table is already log2-transformed and mean-centered per gene. I need one co-expression network per biopsy plus a p-value for every edge, so turn on sparsify and save_pvals to keep the full matrices; I'll threshold at 0.01 myself afterwards. CSV files, please.",
+      "workflows": [
+        "BONOBO"
+      ],
+      "reason": "Five samples meet BONOBO's three-sample minimum, the data are declared log-transformed and centered, sparsify with save_pvals is a valid combination that keeps full matrices plus p-values, and .csv is an allowed format.",
+      "evidence": "bonobo.yaml: \"at least three total samples\" | bonobo.yaml: \"The agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression.\" | bonobo.yaml: \"With both sparsify=true and save_pvals=true, upstream retains the full co-expression matrix and writes p-values for downstream thresholding\" | bonobo.yaml: \"allowed_values: [.h5, .hdf, .txt, .csv]\"",
+      "interpretation_facts": [
+        "One network per biopsy, each estimated with the other biopsies as background, not one pooled network",
+        "With save_pvals the saved networks are not thresholded; the 0.01 cut is applied afterwards by the user"
+      ]
+    },
+    {
+      "id": "M17",
+      "class": "do",
+      "form": "run",
+      "prompt": "Start COBRA right away on vst_counts.tsv (18,000 genes by 210 samples) with design.csv, whose rows are exactly those 210 sample IDs and whose numeric columns are an intercept, disease status (0/1) and two 0/1 dummy columns for the three recruiting sites. Disease is what we study; site should be adjusted for. Write everything to /scratch/cobra_run1/.",
+      "workflows": [
+        "COBRA"
+      ],
+      "reason": "18,000 genes exceed 210 samples, the design uses the expression sample IDs with numeric covariates, and the folder is just the output_dir.",
+      "evidence": "cobra.yaml: \"Expression must be a labeled gene-by-sample matrix with more genes than samples.\" | cobra.yaml: \"Design rows must use exactly the expression sample IDs and numeric covariates.\" | cobra.yaml: \"required_inputs: [expression_file, design_file, output_dir]\"",
+      "interpretation_facts": [
+        "Disease status is the covariate of interest; recruiting site is a nuisance covariate to adjust for",
+        "Whether site is completely confounded with disease status matters for reading the disease component",
+        "/scratch/cobra_run1/ is the output folder, not a setting"
+      ]
+    },
+    {
+      "id": "M18",
+      "class": "dont",
+      "form": "goal",
+      "prompt": "I have a control and a disease TF-gene network written as one edge table over the same TF-gene pairs. I want each node's differential modularity score, with the control network as the null model, so that I can quantify directly how the disease network's module structure differs from the control's.",
+      "workflows": [
+        "CONDOR"
+      ],
+      "reason": "No registered workflow computes differential modularity between two networks; CONDOR, the closest, partitions a single network.",
+      "evidence": "condor.yaml: \"description: Detect communities in a validated bipartite network with CONDOR.\" | condor.yaml: \"returns community assignments with regulator-side and gene-side partitions\" | workflow_registry.py: \"CONDOR finds modules in one network at a time; it does not compare two.\"",
+      "interpretation_facts": [
+        "The control network is the null model for the disease network; separate community runs on each network would be a different analysis"
+      ]
+    },
+    {
+      "id": "M19",
+      "class": "do",
+      "form": "named",
+      "prompt": "We want SAMBAR subtypes for 120 lung adenocarcinomas from a somatic mutation matrix (samples by genes, non-negative mutation counts), with exon lengths, a cancer-gene list and an MSigDB-format GMT. Try between 3 and 8 subtypes, use average linkage, and switch off the per-patient mutation-burden normalization. The distance can stay at its default.",
+      "workflows": [
+        "SAMBAR"
+      ],
+      "reason": "kmin 3 and kmax 8 satisfy 2 <= kmin <= kmax <= 120 samples, and linkage and norm_patient are exposed SAMBAR controls.",
+      "evidence": "sambar.yaml: \"cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.\" | sambar.yaml: \"Hierarchical-clustering linkage method (a scipy name).\" | sambar.yaml: \"Normalize gene mutation scores by each patient's mutation burden.\" | sambar.yaml: \"accepted_input_modalities: [somatic_mutation]\"",
+      "interpretation_facts": [
+        "Turning norm_patient off means gene scores are not scaled by each patient's mutation burden",
+        "Subtypes are clusters of the whole 120-tumour cohort"
+      ]
+    },
+    {
+      "id": "M20",
+      "class": "dont",
+      "form": "goal",
+      "prompt": "From 140 melanoma patients treated with anti-PD-1, with pre-treatment RNA-seq and responder labels, I want a trained model that predicts whether a new patient will respond, reported with an AUC on held-out patients.",
+      "workflows": [],
+      "reason": "No registered workflow trains a predictive model; they infer networks, co-expression, activities or mutation subtypes.",
+      "evidence": "lioness-panda.yaml: \"artifact_type: regulatory_network\" | bonobo.yaml: \"artifact_type: coexpression_network\" | sambar.yaml: \"scientific_objectives: [cancer_subtyping]\" | workflow_registry.py: \"No registered workflow builds a model that predicts an outcome for new samples.\"",
+      "interpretation_facts": []
+    },
+    {
+      "id": "M21",
+      "class": "do",
+      "form": "run",
+      "prompt": "Go ahead and run PUMA with kidney_expr.tsv (gene-by-sample, 52 biopsies), prior_tf_mir.txt (TF motif plus miRNA-target edges), ppi_tf.txt, and mirna_ids.txt, which lists one miRNA per line, every one of them present in the prior's first column. Output goes to results/puma_kidney.txt. A single network for all 52 biopsies is fine.",
+      "workflows": [
+        "PUMA"
+      ],
+      "reason": "All five required PUMA inputs are given, the miRNA list follows the one-per-line, in-prior-column-one rule, and one aggregate network is wanted.",
+      "evidence": "puma.yaml: \"required_inputs: [expression_file, motif_file, ppi_file, mirna_file, output_file]\" | puma.yaml: \"Require one miRNA identifier per line and require every miRNA in prior column one.\" | puma.yaml: \"description: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA.\"",
+      "interpretation_facts": [
+        "One aggregate network across all 52 biopsies, not one per biopsy"
+      ]
+    },
+    {
+      "id": "M22",
+      "class": "ask",
+      "form": "named",
+      "prompt": "BONOBO is the plan for 7 placenta samples, one co-expression network per sample. Our collaborator's note says the matrix is log2-transformed and gene-centered, but the file header calls it raw_TPM, and I have no way to tell which statement is true.",
+      "workflows": [
+        "BONOBO"
+      ],
+      "reason": "BONOBO requires log-transformed, centered expression to be declared, and the user gives two conflicting descriptions.",
+      "evidence": "bonobo.yaml: \"The agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression.\" | bonobo.yaml: \"The expression is declared log-transformed; BONOBO requires it.\"",
+      "deciding_fact": "Whether the expression matrix is log-transformed and gene-centered, or raw TPM.",
+      "interpretation_facts": []
+    },
+    {
+      "id": "M23",
+      "class": "do",
+      "form": "run",
+      "prompt": "Launch LIONESS-DRAGON with metab_110.csv (110 samples x 250 metabolites) and rna_110.csv (the same 110 sample IDs x 350 genes); both are complete numeric tables with no constant columns. Let it estimate both shrinkage values itself. Aggregate matrix to ld/all_samples.tsv, per-sample edge table to ld/per_sample.tsv. Leave everything else at defaults and start it now.",
+      "workflows": [
+        "LIONESS-DRAGON"
+      ],
+      "reason": "600 features give 179,700 pairs x 110 samples = 19,767,000 values, just under the 20,000,000 cap, and estimated shrinkage is the default.",
+      "evidence": "lioness-dragon.yaml: \"The per-sample table holds one value per feature pair per sample; runs above 20,000,000 values are refused before they start.\" | lioness-dragon.yaml: \"Require at least three samples.\" | lioness-dragon.yaml: \"The shrinkage values lambda1 and lambda2 are estimated once on all samples by estimate_penalty_parameters_dragon unless both are supplied in [0, 1].\"",
+      "interpretation_facts": [
+        "Each sample's network is relative to the 110-sample cohort it is built from",
+        "Metabolites and genes are the two modeled layers; shrinkage is estimated once on all samples"
+      ]
+    },
+    {
+      "id": "M24",
+      "class": "do",
+      "form": "goal",
+      "prompt": "Across 80 breast tumours I want to estimate how active each transcription factor is in each tumour, separately from the TF's own mRNA level, and also whether each TF tends to activate or repress its target genes. The gene-by-sample expression, a TF-by-gene motif prior and a TF-TF protein interaction matrix with matching identifiers are ready.",
+      "workflows": [
+        "GIRAFFE"
+      ],
+      "reason": "GIRAFFE returns a TF-by-sample activity matrix and a signed TF-by-gene effect matrix from expression, motif and PPI.",
+      "evidence": "giraffe.yaml: \"It returns the aggregate TF-by-gene R matrix and a TF-by-sample TFA matrix.\" | giraffe.yaml: \"R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression\" | giraffe.yaml: \"prefer_when: [tf_activity_vs_expression:yes, per_sample_quantity:activity]\"",
+      "interpretation_facts": [
+        "The per-tumour quantity is TF activity, not each tumour's TF-to-target wiring",
+        "Activation or repression signs come from one cohort-wide matrix, not from each tumour"
+      ]
+    },
+    {
+      "id": "M25",
+      "class": "dont",
+      "form": "run",
+      "prompt": "Set SAMBAR going on mut_pilot.csv (6 tumours x 900 genes, non-negative counts), exon_sizes.csv, cancer_genes.txt and h.all.v2023.gmt, trying anywhere from 2 to 8 subtypes. Results go to sambar_pilot/ and the job can begin straight away.",
+      "workflows": [
+        "SAMBAR"
+      ],
+      "reason": "kmax = 8 exceeds the 6 mutation samples, violating kmax <= number of samples.",
+      "evidence": "sambar.yaml: \"cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.\" | sambar.yaml: \"Largest number of sample subtypes (clusters) tried; at least kmin and at most the number of samples.\"",
+      "interpretation_facts": []
+    },
+    {
+      "id": "M26",
+      "class": "ask",
+      "form": "named",
+      "prompt": "Please use DRAGON to relate plasma proteomics to whole-blood RNA-seq for our 40 participants. Both tables label rows P01 to P40, but I've just learned the proteomics may come from a different study cohort that reused the same participant codes, and I can't confirm whether they are the same people.",
+      "workflows": [
+        "DRAGON"
+      ],
+      "reason": "DRAGON needs two paired tables from the same samples, and matching codes cannot show whether the rows are the same people.",
+      "evidence": "dragon.yaml: \"DRAGON consumes exactly two paired sample-by-feature continuous omics tables\" | dragon.yaml: \"Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven.\"",
+      "deciding_fact": "Whether the proteomics and RNA-seq rows come from the same 40 individuals or from different cohorts sharing codes.",
+      "interpretation_facts": [
+        "Identical IDs do not prove pairing; cross-layer edges mean something only if each row is the same person in both layers"
+      ]
+    },
+    {
+      "id": "M27",
+      "class": "vague",
+      "form": "named",
+      "prompt": "Should I be using BONOBO or LIONESS for my 30 kidney transplant biopsies? I keep reading about both and can't decide which one to run; I have bulk RNA-seq plus some motif and PPI files left over from a previous project.",
+      "workflows": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION",
+        "LIONESS-PANDA"
+      ],
+      "reason": "The user asks to choose between methods without naming the result they need.",
+      "evidence": "bonobo.yaml: \"description: Infer sample-specific gene-gene co-expression networks with netZooPy BONOBO.\" | lioness-coexpression.yaml: \"description: Infer aggregate and sample-specific co-expression networks with LIONESS.\" | lioness-panda.yaml: \"description: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.\"",
+      "missing_core": "What result the biopsies should yield (per-sample co-expression, per-sample TF-gene networks, or something else) and for which question.",
+      "interpretation_facts": [
+        "Whether per-biopsy co-expression or per-biopsy TF-gene regulation is wanted is left open"
+      ]
+    },
+    {
+      "id": "M28",
+      "class": "vague",
+      "form": "goal",
+      "prompt": "We have primary tumour RNA-seq and overall survival for 200 pancreatic cancer patients, and we downloaded human motif and PPI priors that we have not used yet. What kind of network analysis would make sense here?",
+      "workflows": [
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "reason": "The user asks what to do without naming a result.",
+      "evidence": "lioness-panda.yaml: \"prefer_when: [cohort_size:many, per_sample_quantity:wiring]\" | giraffe.yaml: \"TFA provides the sample-varying predictors\" | lioness-coexpression.yaml: \"produces sample-specific co-expression networks.\"",
+      "missing_core": "What result the analysis should produce for the survival question.",
+      "interpretation_facts": [
+        "Whether survival is to be related to per-patient values or used to define groups is left open"
+      ]
+    },
+    {
+      "id": "M29",
+      "class": "dont",
+      "form": "named",
+      "prompt": "We profiled 70 patients with RNA-seq, DNA methylation arrays and plasma metabolomics. Please use DRAGON to build a single partial-correlation network spanning all three layers at once, so that the cross-layer edges among methylation, expression and metabolites are estimated jointly in one model.",
+      "workflows": [
+        "DRAGON"
+      ],
+      "reason": "DRAGON takes exactly two omics layers and has no three-layer argument.",
+      "evidence": "dragon.yaml: \"DRAGON consumes exactly two paired sample-by-feature continuous omics tables\" | dragon.yaml: \"The verified API has no sample_metadata, motif, PPI, expression-matrix, or three-layer argument.\"",
+      "interpretation_facts": [
+        "All three layers are to be modeled jointly; separate two-layer runs would condition on different feature sets and mean something else"
+      ]
+    },
+    {
+      "id": "M30",
+      "class": "ask",
+      "form": "goal",
+      "prompt": "With 120 AML bone-marrow RNA-seq samples and motif and PPI priors, I need one number per transcription factor per patient to correlate with relapse. I'm genuinely unsure whether that number should describe how strongly the TF is wired to its targets in that patient, or how active the TF is regardless of its own mRNA.",
+      "workflows": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "reason": "Per-patient wiring comes from LIONESS-PANDA networks and per-patient activity from GIRAFFE's TFA matrix, and the user cannot say which is meant.",
+      "evidence": "lioness-panda.yaml: \"prefer_when: [cohort_size:many, per_sample_quantity:wiring]\" | giraffe.yaml: \"prefer_when: [tf_activity_vs_expression:yes, per_sample_quantity:activity]\" | giraffe.yaml: \"It returns the aggregate TF-by-gene R matrix and a TF-by-sample TFA matrix.\"",
+      "deciding_fact": "Whether the per-patient TF value is targeting strength (wiring) or TF activity.",
+      "interpretation_facts": [
+        "Wiring (targeting strength in each patient's network) and activity (TFA) are different quantities",
+        "LIONESS per-patient values are relative to the 120-sample cohort"
+      ]
+    },
+    {
+      "id": "M31",
+      "class": "do",
+      "form": "named",
+      "prompt": "We need an OTTER network for our 64 mouse liver RNA-seq samples, pooled into one cohort-wide TF-to-gene network. The motif seed and the TF-TF PPI edge list use the same TF identifiers. Set lam to 1 so the fit relies entirely on co-expression rather than the PPI, with gamma 0.6 and 150 iterations, and write the edge_list format so I can pass it to community detection later.",
+      "workflows": [
+        "OTTER"
+      ],
+      "reason": "OTTER produces an aggregate TF-to-gene network and every requested value is inside its declared ranges, lam = 1 being the allowed maximum.",
+      "evidence": "otter.yaml: \"name: lam type: number default: 0.035 minimum: 0 maximum: 1\" | otter.yaml: \"lam weights C versus P as (lam, 1-lam)\" | otter.yaml: \"name: gamma type: number default: 0.335 minimum: 0\" | otter.yaml: \"name: iterations type: integer default: 60 minimum: 1\" | otter.yaml: \"allowed_values: [matrix, edge_list]\"",
+      "interpretation_facts": [
+        "One aggregate network pooled over all 64 samples, not one per group or per sample",
+        "lam = 1 gives co-expression full weight and the PPI zero weight; it is not a sparsity setting"
+      ]
+    },
+    {
+      "id": "M32",
+      "class": "dont",
+      "form": "goal",
+      "prompt": "Using matched DNA methylation and RNA-seq from 60 colon biopsies, I need a directed network showing whether each methylation site drives its gene's expression or the other way round, so we can claim causal regulation in the paper rather than mere correlation.",
+      "workflows": [
+        "DRAGON"
+      ],
+      "reason": "The closest workflow, DRAGON, gives an undirected association network and explicitly not a causal graph.",
+      "evidence": "dragon.yaml: \"This is an association network, not a causal graph.\" | dragon.yaml: \"produces one aggregate undirected multi-omic network\"",
+      "interpretation_facts": [
+        "The requested claim is causal direction, which an undirected partial-correlation network cannot support"
+      ]
+    },
+    {
+      "id": "M33",
+      "class": "vague",
+      "form": "named",
+      "prompt": "What could GIRAFFE tell me about our T-cell exhaustion time course? We have RNA-seq at six time points from four donors, plus human motif and PPI priors, but I'm not sure what question to put to it.",
+      "workflows": [
+        "GIRAFFE",
+        "PANDA",
+        "LIONESS-PANDA"
+      ],
+      "reason": "The user names a method but no result or question.",
+      "evidence": "giraffe.yaml: \"It returns the aggregate TF-by-gene R matrix and a TF-by-sample TFA matrix.\" | panda.yaml: \"description: Infer an aggregate TF-to-gene regulatory network with PANDA.\" | lioness-panda.yaml: \"description: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.\"",
+      "missing_core": "What the time course analysis should produce (TF activity over time, networks per time point, or something else).",
+      "interpretation_facts": [
+        "Whether samples from the same donor are treated as paired across time points is left open",
+        "Whether one network across all time points or one per time point is wanted is left open"
+      ]
+    },
+    {
+      "id": "M34",
+      "class": "dont",
+      "form": "named",
+      "prompt": "Can you run LIONESS-OTTER on our 40 lupus patients? I want one OTTER-style TF-to-gene network per patient from the expression matrix, motif seed and PPI file, using the relaxed graph-matching objective rather than PANDA's message passing.",
+      "workflows": [
+        "OTTER"
+      ],
+      "reason": "The registered OTTER action is aggregate only and LIONESS-OTTER is not registered.",
+      "evidence": "otter.yaml: \"This agent's registered OTTER action is aggregate only and does not silently label its output LIONESS-OTTER.\" | otter.yaml: \"output is aggregate, not sample-specific.\"",
+      "interpretation_facts": [
+        "The user wants per-patient networks from OTTER's objective specifically, not PANDA-based LIONESS networks"
+      ]
+    },
+    {
+      "id": "M35",
+      "class": "ask",
+      "form": "goal",
+      "prompt": "For each of 85 colorectal tumours I want a patient-specific regulatory network from bulk RNA-seq, and motif, PPI and miRNA-target priors are on hand. Our protocol says 'TF-to-gene regulation only' but the grant says 'include microRNA regulators', and I can't tell which one we actually committed to.",
+      "workflows": [
+        "LIONESS-PANDA",
+        "LIONESS-PUMA"
+      ],
+      "reason": "TF-only per-sample networks come from LIONESS-PANDA and TF plus miRNA ones from LIONESS-PUMA, and the user states both scopes.",
+      "evidence": "lioness-panda.yaml: \"regulator_types: [tf]\" | lioness-puma.yaml: \"regulator_types: [tf, mirna]\" | lioness-puma.yaml: \"prefer_when: [cohort_size:many, per_sample_quantity:wiring, regulator_class:mirna]\"",
+      "deciding_fact": "Whether the regulators are TFs only or TFs plus miRNAs.",
+      "interpretation_facts": [
+        "One network per tumour derived against the 85-tumour cohort, not one per group"
+      ]
+    },
+    {
+      "id": "M36",
+      "class": "ask",
+      "form": "run",
+      "prompt": "Fire off LIONESS-PUMA on islet_expr.tsv (48 columns), prior_tf_mir.txt, ppi.txt and mir_ids.txt now; aggregate to lp/aggregate.txt and per-sample networks to lp/samples.txt. One snag: my student says the 48 columns are individual FACS-sorted beta cells, while the sample sheet lists them as 48 bulk islet preparations from different donors.",
+      "workflows": [
+        "LIONESS-PUMA"
+      ],
+      "reason": "Per-sample LIONESS networks fit bulk samples from different donors, and the user gives conflicting accounts of whether the columns are single cells.",
+      "evidence": "lioness-puma.yaml: \"For sample k, LIONESS uses the all-sample PUMA network and the PUMA network recomputed after removing k: N_k = n * N_all - (n - 1) * N_without_k.\" | workflow_registry.py: \"The registered workflows are built for bulk samples.\" | workflow_registry.py: \"Not on single cells: run it on pseudo-bulk profiles, one per donor and state\"",
+      "deciding_fact": "Whether the 48 columns are single cells or bulk preparations from different donors.",
+      "interpretation_facts": [
+        "Each column's network is derived against the other 47 columns; whether the units are cells or donors changes what a per-sample network means"
+      ]
+    },
+    {
+      "id": "M37",
+      "class": "vague",
+      "form": "goal",
+      "prompt": "My Arabidopsis drought experiment has leaf RNA-seq at four time points with six plants each. I'm curious what network approaches could reveal about the response, but I don't really know what to ask for yet.",
+      "workflows": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "reason": "The user states only curiosity about network approaches, with no result named.",
+      "evidence": "panda.yaml: \"description: Infer an aggregate TF-to-gene regulatory network with PANDA.\" | lioness-coexpression.yaml: \"description: Infer aggregate and sample-specific co-expression networks with LIONESS.\" | bonobo.yaml: \"description: Infer sample-specific gene-gene co-expression networks with netZooPy BONOBO.\"",
+      "missing_core": "What result the drought time course should yield.",
+      "interpretation_facts": [
+        "Whether time points are analysed separately or pooled is left open"
+      ]
+    },
+    {
+      "id": "M38",
+      "class": "ask",
+      "form": "run",
+      "prompt": "Time to run SAMBAR: mut_hnscc.csv, exon_size.csv, cancer_genes.txt and kegg.gmt, trying 2 to 10 subtypes, output to sambar_hnscc/. After the purity filter the matrix has either 8 or 15 tumours, and I'm not sure which version of the file I exported.",
+      "workflows": [
+        "SAMBAR"
+      ],
+      "reason": "kmax = 10 must not exceed the number of mutation samples, which the user says is either 8 or 15.",
+      "evidence": "sambar.yaml: \"cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.\"",
+      "deciding_fact": "Whether the mutation matrix has at least 10 tumours (15 passes, 8 fails for kmax = 10).",
+      "interpretation_facts": []
+    },
+    {
+      "id": "M39",
+      "class": "ask",
+      "form": "goal",
+      "prompt": "We want TF-to-gene networks for 30 ALS and 30 control spinal cord samples, one per group, with the sequencing-center effect removed first. I'm not sure whether every ALS sample went to center A and every control to center B; the old tracking sheet is lost.",
+      "workflows": [
+        "COBRA",
+        "PANDA"
+      ],
+      "reason": "The route is COBRA adjustment handed to PANDA, but it is only valid if sequencing center is not completely confounded with disease.",
+      "evidence": "panda.yaml: \"Preserve biological covariates in the correction design and verify that hospital or sequencing batch is not completely confounded with the phenotype before inference.\" | cobra.yaml: \"PANDA, PUMA, or OTTER may consume the adjusted artifact through coexpression_file only after the downstream identifier/order contract is revalidated\"",
+      "deciding_fact": "Whether sequencing center is completely confounded with disease group.",
+      "interpretation_facts": [
+        "Sequencing center is to be adjusted away while disease group is studied",
+        "If center is fully confounded with group, removing it removes the disease difference too",
+        "One network per group, not one pooled network"
+      ]
+    },
+    {
+      "id": "M40",
+      "class": "dont",
+      "form": "run",
+      "prompt": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv (54 matched samples, identical IDs in both). Set lambda1 to 0.3 by hand but let lambda2 be estimated from the data. Matrix output to dragon/rna_mirna.tsv, please.",
+      "workflows": [
+        "DRAGON"
+      ],
+      "reason": "A manual DRAGON shrinkage value needs lambda1 and lambda2 together; one manual and one estimated is not allowed.",
+      "evidence": "dragon.yaml: \"Empty estimates it; a manual value needs lambda1 and lambda2 together, both in [0, 1].\" | dragon.yaml: \"Manual shrinkage is allowed only when both values are supplied in [0, 1].\"",
+      "interpretation_facts": [
+        "Layer 1 is RNA and layer 2 is miRNA, so lambda1 would apply to the RNA layer"
+      ]
+    },
+    {
+      "id": "M41",
+      "class": "do",
+      "form": "goal",
+      "prompt": "For each of our 90 glioma patients, the goal is that patient's own regulatory network in which both transcription factors and microRNAs regulate target genes. We have bulk RNA-seq for all 90, a combined TF motif and miRNA-target prior, a TF interaction file, and a one-per-line list of the miRNAs that appear in the prior.",
+      "workflows": [
+        "LIONESS-PUMA"
+      ],
+      "reason": "LIONESS-PUMA derives sample-specific TF/miRNA-to-gene networks and 90 samples exceed its three-sample minimum.",
+      "evidence": "lioness-puma.yaml: \"description: Infer aggregate PUMA and sample-specific LIONESS-PUMA networks.\" | lioness-puma.yaml: \"derive sample-specific TF/miRNA-to-gene networks\" | lioness-puma.yaml: \"Require at least three expression samples and a validated one-ID-per-line miRNA list.\"",
+      "interpretation_facts": [
+        "One network per patient, each derived against the full 90-patient cohort (leave-one-out), not one per group",
+        "Regulators are TFs and miRNAs, not TFs only"
+      ]
+    },
+    {
+      "id": "M42",
+      "class": "vague",
+      "form": "run",
+      "prompt": "Here are expr_brca_160.tsv, motif_hg38.txt and ppi_string_hs.txt. Please run whatever is appropriate now and put the results in runs/brca/; I'll look at the output tomorrow morning.",
+      "workflows": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE",
+        "LIONESS-PANDA"
+      ],
+      "reason": "The files fit several workflows with different results and no result is named.",
+      "evidence": "panda.yaml: \"required_inputs: [expression_file, motif_file, ppi_file, output_file]\" | giraffe.yaml: \"required_inputs: [expression_file, motif_file, ppi_file, output_file]\" | lioness-panda.yaml: \"required_inputs: [expression_file, motif_file, ppi_file, output_file, lioness_output]\" | otter.yaml: \"required_inputs: [motif_file, ppi_file, output_file]\"",
+      "missing_core": "Which result: one cohort-wide TF-gene network, one network per sample, or TF activity per sample.",
+      "interpretation_facts": [
+        "Whether one cohort-wide network or one network per sample is wanted is left open"
+      ]
+    },
+    {
+      "id": "M43",
+      "class": "vague",
+      "form": "goal",
+      "prompt": "A reviewer asked us to 'add a regulatory network perspective' to our heart failure paper. We have left-ventricle RNA-seq from 24 failing and 24 non-failing hearts. How should we respond to that comment?",
+      "workflows": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE",
+        "LIONESS-PANDA"
+      ],
+      "reason": "The aim is a broad reviewer request with no concrete result.",
+      "evidence": "panda.yaml: \"description: Infer an aggregate TF-to-gene regulatory network with PANDA.\" | otter.yaml: \"It produces an aggregate TF-to-gene network whose edge weight is the optimized OTTER W score.\" | lioness-panda.yaml: \"description: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.\"",
+      "missing_core": "What concrete network result would answer the reviewer.",
+      "interpretation_facts": [
+        "Whether one network across all 48 hearts, one per group, or one per heart is wanted is left open"
+      ]
+    },
+    {
+      "id": "M44",
+      "class": "ask",
+      "form": "run",
+      "prompt": "Please run OTTER today on expr_heart.tsv, motif_seed.tsv and ppi_tf.tsv, writing otter_heart.tsv. My notes from the methods meeting say lam = 0.35, but the slide we presented says lam = 3.5, and I don't know which one the group intended. Everything else can stay at defaults.",
+      "workflows": [
+        "OTTER"
+      ],
+      "reason": "lam must lie in [0, 1], so 0.35 runs and 3.5 does not, and the user gives both values.",
+      "evidence": "otter.yaml: \"name: lam type: number default: 0.035 minimum: 0 maximum: 1\" | otter.yaml: \"lam weights C versus P as (lam, 1-lam)\"",
+      "deciding_fact": "Whether lam is 0.35 (inside [0, 1]) or 3.5 (outside the allowed range).",
+      "interpretation_facts": [
+        "lam sets the co-expression versus PPI weighting, not sparsity"
+      ]
+    },
+    {
+      "id": "M45",
+      "class": "do",
+      "form": "goal",
+      "prompt": "I already have a cohort-wide TF-to-gene network saved as a source, target, weight edge list; weights were thresholded so all are non-negative, and TF and gene IDs never overlap. What I want now are communities in which groups of TFs and groups of genes cluster together, with separate TF-side and gene-side memberships.",
+      "workflows": [
+        "CONDOR"
+      ],
+      "reason": "CONDOR takes a source-target-weight bipartite edge list from a regulator-gene network and returns regulator-side and gene-side community partitions.",
+      "evidence": "condor.yaml: \"Require source and target columns and accept an optional numeric weight column.\" | condor.yaml: \"returns community assignments with regulator-side and gene-side partitions\" | condor.yaml: \"Build the source-target-weight edge list from a validated regulator-gene network\"",
+      "interpretation_facts": [
+        "Communities are found in one aggregate bipartite TF-gene network, not per sample"
+      ]
+    },
+    {
+      "id": "M46",
+      "class": "dont",
+      "form": "named",
+      "prompt": "COBRA already gave us adjusted_coexpression.tsv with the sequencing batch removed across our 75 patients. Next, feed that adjusted matrix into LIONESS-PANDA as its co-expression input, so that every patient-specific TF-gene network comes out batch-corrected. The motif and PPI priors are the same ones we used before.",
+      "workflows": [
+        "LIONESS-PANDA"
+      ],
+      "reason": "LIONESS-PANDA accepts no co-expression input and an aggregate COBRA artifact is explicitly not a LIONESS handoff.",
+      "evidence": "lioness-panda.yaml: \"An aggregate COBRA adjusted co-expression artifact is not a direct LIONESS handoff; sample-specific COBRA adjustment would need to be recomputed inside each leave-one-out construction.\" | lioness-panda.yaml: \"optional_inputs: [taxon]\"",
+      "interpretation_facts": [
+        "Batch is to be adjusted away, not studied",
+        "Per-patient networks would be derived against the 75-patient cohort"
+      ]
+    },
+    {
+      "id": "M47",
+      "class": "do",
+      "form": "goal",
+      "prompt": "Two separate TF-to-gene regulatory networks are needed: one from the 12 hypoxia and one from the 12 normoxia HUVEC samples, both built on the same genes and the same motif and PPI priors, so I can compare each transcription factor's targeting between the conditions. Expression, motif and PPI data are prepared.",
+      "workflows": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "reason": "PANDA, OTTER and GIRAFFE each produce an aggregate TF-to-gene network from expression, motif and PPI, run once per condition.",
+      "evidence": "panda.yaml: \"description: Infer an aggregate TF-to-gene regulatory network with PANDA.\" | otter.yaml: \"It produces an aggregate TF-to-gene network whose edge weight is the optimized OTTER W score.\" | giraffe.yaml: \"It returns the aggregate TF-by-gene R matrix and a TF-by-sample TFA matrix.\"",
+      "interpretation_facts": [
+        "One network per condition (two runs of 12 samples), not one network pooled over all 24 samples",
+        "Both runs must share genes and priors for edge weights to be comparable"
+      ]
+    },
+    {
+      "id": "M48",
+      "class": "vague",
+      "form": "run",
+      "prompt": "I've uploaded kidney_expr_64.tsv, tf_motif.txt, tf_ppi.txt, mirna_prior.txt and mirna_ids.txt for 64 biopsies. Please launch the standard NetZoo analysis on them now, with all output going to /data/runs/kidney/.",
+      "workflows": [
+        "PANDA",
+        "PUMA",
+        "LIONESS-PANDA",
+        "LIONESS-PUMA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "reason": "There is no single standard analysis; the files fit several workflows with different results.",
+      "evidence": "puma.yaml: \"required_inputs: [expression_file, motif_file, ppi_file, mirna_file, output_file]\" | lioness-puma.yaml: \"description: Infer aggregate PUMA and sample-specific LIONESS-PUMA networks.\" | panda.yaml: \"description: Infer an aggregate TF-to-gene regulatory network with PANDA.\"",
+      "missing_core": "Which result: aggregate or per-biopsy networks, TF-only or TF plus miRNA regulators, or TF activity.",
+      "interpretation_facts": [
+        "Whether miRNAs are to be included as regulators is left open",
+        "Whether one network for all 64 biopsies or one per biopsy is wanted is left open"
+      ]
+    }
+  ]
+}
