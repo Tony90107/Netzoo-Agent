@@ -15,7 +15,7 @@ values, or not said) and two lists, B5 settings and B6 counts. Each field is rea
 re-read, and an answer fills its field.
 
 `to_menu` turns a `SlimReading` into the `MenuReading` that `decide_menu` judges; `to_slim` turns a `MenuReading`
-into the slim shape (phase-0 gold readings, recorded phase-1 reads); `wire_payloads` writes the payloads the two
+into the slim shape (phase-0 gold readings, recorded phase-1 reads); `slim_values.wire_payloads` writes the payloads the two
 reads would send for a reading, to count the values written. Offline: nothing in the live path calls this module.
 """
 
@@ -43,8 +43,7 @@ from .menu_reader import (
 )
 
 __all__ = ["FACTS", "MAX_FOCUS", "Needs", "SLIM_SHAPE", "chosen", "core_model", "core_text", "focus_model",
-           "focus_text", "from_core", "merge_focus", "slim_needs", "split_b", "to_menu", "to_slim", "wire_payloads",
-           "wire_values"]
+           "focus_text", "from_core", "merge_focus", "slim_needs", "split_b", "to_menu", "to_slim"]
 
 SLIM_SHAPE = "s1"
 MAX_FOCUS = 6
@@ -328,6 +327,8 @@ class Needs:
     candidates: tuple[str, ...] = ()
     counts: tuple[str, ...] = ()
     groups: bool = False
+    data: tuple[str, ...] = ()
+    """Hybrid: the chosen workflows' core data step 1 did not mention, read as one cell each (has, lacks)."""
 
     @property
     def runs(self) -> bool:
@@ -342,6 +343,7 @@ class Needs:
                 seen.add((item, dimension))
                 found.append((f"item{item + 1}_{_CELL_KEY[dimension]}", item, dimension))
         found += [(_condition_key(name), -1, name) for name in self.conditions]
+        found += [("has_" + re.sub(r"[^a-z0-9]+", "_", need), -2, f"data:{need}") for need in self.data]
         return found
 
 
@@ -666,7 +668,11 @@ def focus_text(needs: Needs, slim: SlimReading) -> str:
         lines += ["THINGS ASKED:", *(f"- item{i + 1}: \"{quote}\"" for i, quote in things), ""]
     lines.append("FIELDS (cells: stated, unsure between values, or not_said):")
     for key, item, dimension in needs.cells():
-        if item >= 0:
+        if item == -2:
+            kinds = " or ".join(_DATA_MEANS.get(o, o) for o in dimension.split(":", 1)[1].split("|")) \
+                if dimension != "data:two_layers" else "two omics layers measured on the same samples"
+            lines.append(f"- {key}: whether the user has {kinds} (has, lacks); a named input file counts.")
+        elif item >= 0:
             means = _CELL_MEANS[dimension]
             if dimension == "granularity" and not needs.groups:
                 means = means.replace("per_group: one for each group or condition; ", "")
@@ -723,7 +729,9 @@ def focus_model(needs: Needs) -> type[BaseModel]:
 
     fields: dict[str, tuple] = {}
     for key, item, dimension in needs.cells():
-        if item >= 0:
+        if item == -2:
+            values = ("has", "lacks")
+        elif item >= 0:
             values = _CELL_VALUES[dimension]
             if dimension == "granularity" and not needs.groups:
                 values = tuple(v for v in values if v != "per_group")
@@ -759,6 +767,12 @@ def _cell_facts(key: str, item: int, dimension: str, entry: dict, quote: str, re
     status = entry.get("status")
     values = [str(v) for v in dict.fromkeys(entry.get("values") or [])]
     value = str(entry.get("value") or "")
+    if item == -2:  # a chosen workflow's core data: A3, read here because step 1 did not mention it
+        if status != "stated" or value not in ("has", "lacks"):
+            return []
+        options = dimension.split(":", 1)[1].split("|")
+        names = ["two_layers"] if options == ["two_layers"] else options[:1] if value == "has" else options
+        return [Stated(field="A3", name=name, value=value, quote=quote) for name in names]
     if item < 0:
         menu = _b4_values(dimension)
         if status == "unsure":
@@ -918,77 +932,6 @@ def merge_focus(slim: SlimReading, payload, task: str, needs: Needs) -> tuple[Sl
         elif len(per_layer) == 1:  # one data type, unsure: its count is the one COBRA's genes > samples reads (h3 L40)
             facts.append(Stated(field="B6", name="single_feature_count", values=[str(v) for v in per_layer[0]],
                                 quote=quote))
-    return slim.model_copy(update={"stated": [*slim.stated, *facts]}), report
-
-
-# --- the values written ----------------------------------------------------------------------------------------------
-
-def wire_payloads(slim: SlimReading, needs: Needs, names: tuple[str, ...] = ()) -> tuple[dict, dict | None]:
-    """The payloads steps 1 and 3 would send for this reading -- to count the values written (spec 6.1, S1/S2)."""
-    core: dict = {"items": [{"quote": r.quote, "asks": r.said, "result": r.value, "results": list(r.values),
-                             "outside_name": r.outside_name} for r in slim.results]}
-    if names:
-        core["names"] = {name_key(name): {"role": slim.roles.get(name, "target")} for name in names}
-    core["data"] = [{"kind": d.name, "status": d.value, "quote": d.quote} for d in slim.data]
-    core["only_these"] = slim.only_quote
-    core["run"], core["run_quote"] = slim.run, slim.run_quote
-    wire_of = {dimension: name for name, (_field, dimension, _menu) in FACTS.items() if dimension}
-    facts = []
-    for f in slim.stated:
-        if f.field in ("C4",):
-            values = [_SPECIAL_OF.get((f.name, v), v) for v in f.values]
-            facts.append({"field": "special_data", "value": "" if values else _SPECIAL_OF.get((f.name, f.value), f.value),
-                          "values": values, "quote": f.quote})
-        elif f.field in ("C2", "C3", "D1", "D2", "D3", "D4", "D5", "D6", "D7"):
-            name = wire_of[f.name]
-            value = "" if name in ("outside_action", "raw_files", "groups", "file_doubt") else f.value
-            facts.append({"field": name, "value": value, "values": list(f.values), "quote": f.quote})
-    core["facts"] = facts
-    core["unregistered_methods"] = list(slim.unregistered_methods)
-    if not needs.runs:
-        return core, None
-    focus: dict = {}
-    for key, item, dimension in needs.cells():
-        focus[key] = {"status": "not_said", "value": None, "values": [], "quote": ""}
-    for f in slim.stated:
-        if not f.field.startswith("B") or f.field in ("B5", "B6") or not chosen(f, needs):
-            continue
-        for key, item, dimension in needs.cells():
-            same = (dimension == {"integration": "layers", "mirna_driver": "regulators"}.get(f.name, f.name)
-                    and f.item in (-1, item)) or (dimension.startswith("setting:") and f.name.startswith("setting:")
-                                                 and dimension.endswith(f".{f.name.split(':', 1)[1]}"))
-            if same:
-                focus[key] = {"status": "unsure" if f.values else "stated", "value": None if f.values else f.value,
-                              "values": list(f.values), "quote": f.quote}
-    focus["settings"] = [{"quote": f.quote, "workflow": f.workflow, "control": f.name, "value": f.value,
-                          "values": list(f.values), "asks_to_set": True} for f in slim.stated if f.field == "B5"]
-    if needs.counts:
-        focus["counts"] = [{"what": "samples" if f.name == "sample_count" else "features", "layer": "",
-                            "value": None if f.values else int(f.value), "values": [int(v) for v in f.values],
-                            "quote": f.quote} for f in slim.stated
-                           if f.field == "B6" and f.name != "single_feature_count" and chosen(f, needs)]
-    return core, focus
-
-
-_EMPTY = (None, "", "not_stated", "not_mentioned", "not_said", "none", False, "unspecified", "nothing")
-
-
-def wire_values(payload) -> tuple[int, int]:
-    """(values written, values with content) of a payload: every leaf, an empty list counting once (phase 1's count:
-    56 bench items x 2 reads, median 207.5 and 25)."""
-    leaves = []
-
-    def walk(node):
-        if isinstance(node, dict):
-            for value in node.values():
-                walk(value)
-        elif isinstance(node, list):
-            if not node:
-                leaves.append([])
-            for value in node:
-                walk(value)
-        else:
-            leaves.append(node)
-
-    walk(payload or {})
-    return len(leaves), sum(1 for v in leaves if v != [] and v not in _EMPTY)
+    data = [f for f in facts if f.field == "A3"]
+    stated = [f for f in facts if f.field != "A3"]
+    return slim.model_copy(update={"stated": [*slim.stated, *stated], "data": [*slim.data, *data]}), report

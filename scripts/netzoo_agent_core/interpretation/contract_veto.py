@@ -111,6 +111,8 @@ def limit_needs(slim: SlimReading, workflows) -> Needs:
     if not workflows:
         return Needs()
     stated = {f.name for f in slim.stated}
+    menu = to_menu(slim)
+    data = tuple(dict.fromkeys(need for workflow in workflows for need in _unmentioned(menu, workflow, table)))
     conditions = []
     for workflow in workflows:
         for name in table.b4_conditions.get(workflow, ()):
@@ -118,7 +120,22 @@ def limit_needs(slim: SlimReading, workflows) -> Needs:
             if name not in stated and key not in conditions:
                 conditions.append(key)
     return Needs(conditions=tuple(conditions), candidates=workflows,
-                 counts=tuple(focus_limits(workflows)["counts"]))
+                 counts=tuple(focus_limits(workflows)["counts"]), data=data)
+
+
+def _unmentioned(menu: MenuReading, workflow: str, table: JudgmentDefaults) -> list[str]:
+    """The workflow's core data (`workflow_data` core) the words neither have nor lack; none after "only these"."""
+    if menu.only_data:
+        return []
+    found = []
+    for need in table.workflow_data[workflow][0]:
+        if need == "two_layers":
+            mentioned = "two_layers" in menu.data or len(set(menu.data) & table.omics_layers) >= 2
+        else:
+            mentioned = any(o in menu.data or o in menu.data_absent for o in need.split("|"))
+        if not mentioned:
+            found.append(need)
+    return found
 
 
 # --- the contract check pairs -------------------------------------------------------------------------------------------
@@ -369,18 +386,10 @@ def _core_data_question(menu: MenuReading, workflows: list[str], table: Judgment
     """The core data a chosen workflow cannot run without (`workflow_data` core), never mentioned -- neither had nor
     lacked, in words or file names (A3): asked once, in the same reply, never a veto (user decision 2026-10-19). Data
     the user says they lack is C6 (above); "only these" leaves nothing unmentioned."""
-    if menu.only_data:
-        return None
     needs: dict[str, list[str]] = {}
     for workflow in workflows:
-        for need in table.workflow_data[workflow][0]:
-            options = need.split("|")
-            if need == "two_layers":
-                mentioned = len(set(menu.data) & table.omics_layers) >= 2
-            else:
-                mentioned = any(option in menu.data or option in menu.data_absent for option in options)
-            if not mentioned:
-                needs.setdefault(need, []).append(workflow)
+        for need in _unmentioned(menu, workflow, table):
+            needs.setdefault(need, []).append(workflow)
     if not needs:
         return None
     return VetoQuestion(workflow=", ".join(dict.fromkeys(w for ws in needs.values() for w in ws)),
