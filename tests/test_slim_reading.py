@@ -331,6 +331,11 @@ def test_a_regulator_cell_maps_to_regulators_and_what_drives_mirna_links():
         "status": "unsure", "value": None, "values": ["tf", "other_regulators"],
         "quote": "TF and miRNA network"}, "settings": []}, task, needs)
     assert to_menu(unsure).wanted[0].regulators.values == ["tf", "off_menu"]
+    every, _ = merge_focus(core, {"item1_regulators": {
+        "status": "unsure", "value": None, "values": ["tf", "tf_and_mirna_prior", "mirna_expression_driven"],
+        "quote": "TF and miRNA network"}, "settings": []}, task, needs)
+    menu = to_menu(every)
+    assert menu.wanted[0].regulators.values == ["tf", "tf_mirna"] and "mirna_driver" not in menu.conditions
 
 
 def test_not_said_writes_nothing_and_a_data_description_is_no_setting():
