@@ -37,11 +37,13 @@ from ..workflow_conditions import (
     UNREGISTERED, StatedSetting, all_conditions, combination_issues, data_issue, setting_issue,
 )
 
-__all__ = ["PROBED_INTENTS", "GateVerdict", "apply_answers", "candidate_workflows", "decide_menu", "deciding_intents",
-           "intent_values", "workflow_conditions", "workflow_gate"]
+__all__ = ["B_INTENTS", "PROBED_INTENTS", "GateVerdict", "apply_answers", "b_fields", "candidate_workflows", "decide_menu",
+           "deciding_intents", "intent_values", "workflow_conditions", "workflow_gate"]
 
 PROBED_INTENTS = ("artifact", "integration", "granularity", "regulators", "layers")
 """The intents the phase-1b intent probe may ask about (the user's decision, 2026-10-18); never any other field."""
+B_INTENTS = ("granularity", "regulators", "integration", "layers")
+"""B1-B3 of the slim reading (spec 2026-10-19): the intents of a thing asked that only the focused read (step 3) reads."""
 
 _REGULATION = frozenset({"regulatory_network", "targeting_scores", "tf_activity"})
 _JOINT = frozenset({"multi_omic_network", "edge_significance"})
@@ -572,12 +574,10 @@ def _doubts(ctx: _Context, item: _Item, workflows: list[str], unstated: bool = T
     item.questions.extend(asked)
 
 
-def _unstated_b4(ctx: _Context, item: _Item, workflows: list[str], asked: set[str]) -> list[Question]:
-    """B4 (slim reading spec 2026-10-19): the condition a candidate workflow's contract turns on, not stated -> asked
-    when its values lead to different calls. A condition the user was unsure of is already asked above."""
+def _b4_open(ctx: _Context, workflows, asked) -> list[tuple[str, list[str]]]:
+    """The B4 conditions of these workflows not stated, as (key, values): a condition name, or `setting:W.control`
+    for a required setting (BONOBO's declared log transform and centering)."""
     found, reading, table = [], ctx.reading, ctx.table
-    if ctx.probing:
-        return found
     for workflow in workflows:
         for name in table.b4_conditions.get(workflow, ()):
             if name.startswith("setting:"):
@@ -591,10 +591,18 @@ def _unstated_b4(ctx: _Context, item: _Item, workflows: list[str], asked: set[st
                 if key in asked or name in reading.conditions:
                     continue
                 values = [v for v in CONDITIONS.get(name, (table.dimensions[name].values,))[0] if v != "not_stated"]
-            if _decides(ctx, item, key, values):
-                found.append(_question(item, key, values, table, "", "condition"))
-                asked.add(key)
+            asked = {*asked, key}
+            found.append((key, values))
     return found
+
+
+def _unstated_b4(ctx: _Context, item: _Item, workflows: list[str], asked: set[str]) -> list[Question]:
+    """B4 (slim reading spec 2026-10-19): the condition a candidate workflow's contract turns on, not stated -> asked
+    when its values lead to different calls. A condition the user was unsure of is already asked above."""
+    if ctx.probing:
+        return []
+    return [_question(item, key, values, ctx.table, "", "condition") for key, values in _b4_open(ctx, workflows, asked)
+            if _decides(ctx, item, key, values)]
 
 
 def _requirements(ctx: _Context, item: _Item, workflows: list[str]) -> list[str]:
@@ -832,6 +840,41 @@ def deciding_intents(reading: MenuReading, task: str = "",
             if len(alive) > 1:
                 found.append((item.index, dimension))
     return found
+
+
+def b_fields(reading: MenuReading, task: str = "", table: JudgmentDefaults | None = None
+             ) -> tuple[list[tuple[int, str]], list[str], list[str]]:
+    """Slim reading step 2 (spec 2026-10-19, sections 2 and 3, B): what the focused read (step 3) reads, chosen from
+    the candidates' contracts -- for each thing asked, each B1-B3 intent not stated whose values lead to different
+    calls (off-menu values count: stating one refuses, so it must be read), and the B4 conditions of its candidate
+    workflows not stated whose values do the same. "One per group" is a value only when the user names groups; B3
+    only while a candidate gives a joint multi-omic result.
+
+    Returns the (item, intent) pairs, the B4 keys and the candidate workflows."""
+    table = table or judgment_defaults()
+    if reading.status == "failed":
+        return [], [], []
+    ctx = _Context(reading, table, task)
+    items = [_Item(index, wanted) for index, wanted in enumerate(reading.wanted) if wanted.form == "deliverable"]
+    intents, conditions, candidates = [], [], set()
+    for item in items or [_Item(len(reading.wanted), Wanted(quote=""))]:
+        _evaluate(ctx.but(reading, probing=True), item)
+        candidates |= set(item.candidates)
+        # B3 only while a candidate gives a joint multi-omic result (spec 3, B3): "joint" stated on any other request
+        # refuses it, which is no reason to read the field.
+        joint = any(entry.kind == "produces" and entry.workflow in item.candidates and _artifact_of(table, key) in _JOINT
+                    for key, entry in sheet_entries().items())
+        for dimension in B_INTENTS:
+            if getattr(item.wanted, dimension).status != "not_stated" or (
+                    dimension in ("integration", "layers") and not joint):
+                continue
+            values = [v for v in intent_values(dimension, table) if v != "per_group" or reading.groups]
+            if _decides(ctx, _Item(item.index, item.wanted), dimension, values):
+                intents.append((item.index, dimension))
+        for key, values in _b4_open(ctx, item.candidates, set(conditions)):
+            if _decides(ctx, _Item(item.index, item.wanted), key, values):
+                conditions.append(key)
+    return intents, conditions, sorted(candidates)
 
 
 @dataclass
