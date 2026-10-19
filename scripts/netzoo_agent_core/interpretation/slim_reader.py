@@ -776,6 +776,10 @@ def _cell_facts(key: str, item: int, dimension: str, entry: dict, quote: str, re
             by_dimension.setdefault(name, [])
             if mapped not in by_dimension[name]:
                 by_dimension[name].append(mapped)
+    # A dimension only some of the values in play speak to is not written: unsure between TFs alone and miRNA links
+    # driven by expression says nothing yet about what drives miRNA links (S2 smoke, accept24:U01).
+    by_dimension = {name: mapped for name, mapped in by_dimension.items()
+                    if all(any(n == name for n, _m in mapping[v]) for v in chosen_values)}
     facts = []
     for name, mapped in by_dimension.items():
         many = status == "unsure" and len(mapped) >= 2
