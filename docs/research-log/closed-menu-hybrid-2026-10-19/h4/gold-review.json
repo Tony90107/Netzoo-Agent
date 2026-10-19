@@ -1,0 +1,729 @@
+{
+  "reviewer_note": "Read only items-author.json, the 13 workflows/*.yaml contracts and scripts/workflow_registry.py in .worktrees/netzoo-core-p0-run (all read in full); nothing else was opened and the assistant was not run. Each gold was checked against verbatim contract text: required inputs, control ranges and combinations (BONOBO delta < 1/3 with sparsify, DRAGON paired lambdas in [0, 1], OTTER lam in [0, 1], SAMBAR 2 <= kmin <= kmax <= samples, GIRAFFE controls: []), sample minimums (LIONESS/BONOBO >= 3), COBRA genes > samples, and LIONESS-DRAGON value counts recomputed as F(F-1)/2 x samples with F the features of both layers (M01, M08, M23 all confirmed). file_checkable is set only for ask items of form 'run' (M01, M36, M38, M44): true when the contract's input check reads the deciding quantity from the named files before the run (LIONESS-DRAGON value cap, SAMBAR kmax vs mutation samples), false otherwise; null for all other items. One gold changed (M39 workflows); interpretation_facts corrected without a verdict change for M02, M15, M17, M22; borderline items flagged in reason (M20, M36, M47).",
+  "items": {
+    "M01": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": [
+        "LIONESS-DRAGON"
+      ],
+      "deciding_fact": "How many CpG features cpg_85.csv holds: 300 probes (600 features, 179,700 pairs x 85 = 15,274,500 values) or 5,000 probes (5,300 features, 14,042,350 pairs x 85 = 1,193,599,750 values).",
+      "file_checkable": true,
+      "interpretation_facts": [
+        "Each sample's network is relative to the 85-sample cohort; RNA and CpG methylation are the two layers"
+      ],
+      "reason": "Arithmetic checks: 600 features give 179,700 pairs x 85 = 15,274,500 (allowed); 5,300 give 14,042,350 x 85 = 1,193,599,750 (refused). The value cap is computed from the named layer files before the run, so the input check settles it.",
+      "evidence": "lioness-dragon.yaml: \"The per-sample table holds one value per feature pair per sample; runs above 20,000,000 values are refused before they start.\""
+    },
+    "M02": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "SAMBAR",
+        "PANDA",
+        "LIONESS-PANDA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Whether the mutation calls and the RNA-seq are to be analysed jointly or separately is left open"
+      ],
+      "reason": "Broad aim, no result named. Interpretation fact rewritten: 'No workflow models mutations and expression together' is a contract fact, not something the request states or leaves open.",
+      "evidence": "",
+      "missing_core": "Which result is wanted (mutation-based subtypes, expression-based regulatory networks, or both) and from which data."
+    },
+    "M03": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": [
+        "LIONESS-COEXPRESSION"
+      ],
+      "deciding_fact": "Whether at least three libraries remain after the failed ones are dropped (dropping one leaves 3, dropping two leaves 2).",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Each library's network is relative to the libraries kept in the cohort"
+      ],
+      "reason": "Dropping one library leaves 3 (allowed), two leaves 2 (refused) against the three-sample minimum.",
+      "evidence": "lioness-coexpression.yaml: \"Require at least three samples and validate expression inside the execution wrapper.\""
+    },
+    "M04": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Whether batch, age and sex are nuisance covariates and disease activity the variable of interest is not stated",
+        "Whether a cohort-wide result or per-patient networks are wanted is not stated"
+      ],
+      "reason": "Files only, no result; COBRA is the only workflow with a design_file, but the role of the covariates and the wanted result are unstated.",
+      "evidence": "",
+      "missing_core": "What result is wanted and whether the covariates are to be adjusted away or studied."
+    },
+    "M05": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [
+        "GIRAFFE"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [],
+      "reason": "GIRAFFE exposes no controls; the registry also says the optimizer's learning rate, iteration limits and loss weights are not set by this agent.",
+      "evidence": "giraffe.yaml: \"controls: []\" | workflow_registry.py: \"How far it moves is set by the optimizer's learning rate, its iteration limits and the loss weights, none of which this agent sets\""
+    },
+    "M06": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": [
+        "SAMBAR"
+      ],
+      "deciding_fact": "Whether the mutation calls are somatic (tumour versus matched normal) or germline.",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Germline calls would make pathway scores reflect inherited variation rather than tumour mutations"
+      ],
+      "reason": "SAMBAR accepts somatic mutation only; the user says the origin of the calls is unknown. No input check can tell somatic from germline.",
+      "evidence": "sambar.yaml: \"accepted_input_modalities: [somatic_mutation]\""
+    },
+    "M07": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [
+        "COBRA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [],
+      "reason": "400 genes is not more than 520 samples.",
+      "evidence": "cobra.yaml: \"Expression must be a labeled gene-by-sample matrix with more genes than samples.\""
+    },
+    "M08": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [
+        "LIONESS-DRAGON"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "One network per donor relative to the 60-donor cohort; methylation and expression are the two layers"
+      ],
+      "reason": "4,000 features: 7,998,000 pairs x 60 = 479,880,000 values, above 20,000,000; filtering is ruled out by the user, and DRAGON would give only one aggregate network, not one per donor.",
+      "evidence": "lioness-dragon.yaml: \"runs above 20,000,000 values are refused before they start\""
+    },
+    "M09": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": [
+        "COBRA"
+      ],
+      "deciding_fact": "Whether the expression table has more genes than samples (19,000-gene transcriptome versus 500-gene panel for about 650 samples).",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Batch and disease status are both covariates whose co-expression components are of interest, not only nuisances"
+      ],
+      "reason": "19,000 > ~650 passes, 500 < ~650 fails the more-genes-than-samples rule.",
+      "evidence": "cobra.yaml: \"Expression must be a labeled gene-by-sample matrix with more genes than samples.\""
+    },
+    "M10": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Which two of the four layers are modeled together is not stated",
+        "Whether one cohort-wide network or one per mouse is wanted is not stated"
+      ],
+      "reason": "No result named; four layers against a two-layer contract leave the pair and granularity open.",
+      "evidence": "",
+      "missing_core": "Which two layers to relate and what result (one cohort-wide network or one per mouse) the integration should give."
+    },
+    "M11": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "COBRA",
+        "CONDOR",
+        "PANDA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Whether the hospital effect is to be adjusted away or studied is not stated",
+        "Whether fibrosis stage is the variable of interest is not stated"
+      ],
+      "reason": "Asks whether two methods could help, with no result named.",
+      "evidence": "",
+      "missing_core": "Which result is wanted (covariate-associated co-expression, network communities, or another output) and what it should show about fibrosis."
+    },
+    "M12": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [
+        "BONOBO"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [],
+      "reason": "With sparsify, delta must be above 0 and below 1/3; 0.4 is outside. Other settings (14 samples, declared log2/centered, HDF5) are valid.",
+      "evidence": "bonobo.yaml: \"With sparsify it must be above 0 and below 1/3 (Log 224).\""
+    },
+    "M13": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "DRAGON"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Layer 1 is the proteome and layer 2 the phosphoproteome, so lambda1 and lambda2 attach to those layers respectively",
+        "One aggregate network across all 48 tumours, not one per tumour",
+        "Edges are conditional associations, not causal effects"
+      ],
+      "reason": "Both manual values supplied, at the inclusive ends of [0, 1]; edge_list allowed; one aggregate network, so DRAGON only (LIONESS-DRAGON is sample-specific).",
+      "evidence": "dragon.yaml: \"Manual shrinkage is allowed only when both values are supplied in [0, 1].\""
+    },
+    "M14": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "LIONESS-PANDA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Each sample's network comes from the all-three-sample PANDA network and the network without that sample, so it is relative to this three-sample cohort"
+      ],
+      "reason": "Exactly three samples meets the minimum; separate aggregate and per-sample outputs given.",
+      "evidence": "lioness-panda.yaml: \"Require at least three expression samples before execution.\""
+    },
+    "M15": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Whether one co-expression network for all 60 donors or one per donor is wanted is left open"
+      ],
+      "reason": "Only an expression file and an output folder; the user says there is no question. Added the open granularity fact (both candidate workflows differ on it), as done for M42 and M48.",
+      "evidence": "",
+      "missing_core": "What network result is wanted from the 60 donors."
+    },
+    "M16": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "BONOBO"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "One network per biopsy, each estimated with the other biopsies as background, not one pooled network",
+        "With save_pvals the saved networks are not thresholded; the 0.01 cut is applied afterwards by the user"
+      ],
+      "reason": "5 >= 3 samples, declared log2 and centered, sparsify+save_pvals is the valid full-matrix-plus-p-values mode, .csv allowed; only BONOBO gives per-edge p-values.",
+      "evidence": "bonobo.yaml: \"With both sparsify=true and save_pvals=true, upstream retains the full co-expression matrix and writes p-values for downstream thresholding\""
+    },
+    "M17": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "COBRA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Disease status is the covariate of interest; recruiting site is a nuisance covariate to adjust for",
+        "Whether site is completely confounded with disease status matters for reading the disease component"
+      ],
+      "reason": "18,000 > 210 and the design follows the contract. Dropped the interpretation fact about /scratch/cobra_run1/ being the output folder: misreading it would not change the scientific meaning of the analysis.",
+      "evidence": ""
+    },
+    "M18": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [
+        "CONDOR"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "The control network is the null model for the disease network; separate community runs on each network would be a different analysis"
+      ],
+      "reason": "Differential modularity between two networks is not produced by any registered workflow; CONDOR partitions one network.",
+      "evidence": "workflow_registry.py: \"CONDOR finds modules in one network at a time; it does not compare two.\""
+    },
+    "M19": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "SAMBAR"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Turning norm_patient off means gene scores are not scaled by each patient's mutation burden",
+        "Subtypes are clusters of the whole 120-tumour cohort"
+      ],
+      "reason": "2 <= 3 <= 8 <= 120; linkage takes a scipy name ('average' is one); norm_patient is an exposed boolean.",
+      "evidence": "sambar.yaml: \"cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.\""
+    },
+    "M20": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [],
+      "reason": "No registered workflow builds a predictive model. Borderline: workflows is empty although dont asks for the closest workflow; the registry names no single closest one (per-sample results of several workflows could only be features), so left unchanged.",
+      "evidence": "workflow_registry.py: \"No registered workflow builds a model that predicts an outcome for new samples.\""
+    },
+    "M21": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "PUMA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "One aggregate network across all 52 biopsies, not one per biopsy"
+      ],
+      "reason": "All five PUMA inputs given, miRNA list follows the rule, one aggregate network wanted.",
+      "evidence": "puma.yaml: \"Require one miRNA identifier per line and require every miRNA in prior column one.\""
+    },
+    "M22": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": [
+        "BONOBO"
+      ],
+      "deciding_fact": "Whether the expression matrix is log-transformed and gene-centered, or raw TPM.",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "One network per sample, each estimated against the other six samples as background, not one pooled network"
+      ],
+      "reason": "Two conflicting descriptions of the transformation, which BONOBO requires to be declared. Added the missing per-sample background fact (cf. M16).",
+      "evidence": "bonobo.yaml: \"at least three total samples so each leave-one-out background has at least two samples\""
+    },
+    "M23": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "LIONESS-DRAGON"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Each sample's network is relative to the 110-sample cohort it is built from",
+        "Metabolites and genes are the two modeled layers; shrinkage is estimated once on all samples"
+      ],
+      "reason": "250 + 350 = 600 features: 179,700 pairs x 110 = 19,767,000 <= 20,000,000; estimated shrinkage is the default.",
+      "evidence": "lioness-dragon.yaml: \"runs above 20,000,000 values are refused before they start\""
+    },
+    "M24": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "GIRAFFE"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "The per-tumour quantity is TF activity, not each tumour's TF-to-target wiring",
+        "Activation or repression signs come from one cohort-wide matrix, not from each tumour"
+      ],
+      "reason": "Only GIRAFFE gives TF activity per sample apart from TF mRNA and signed activation/repression effects.",
+      "evidence": "giraffe.yaml: \"It returns the aggregate TF-by-gene R matrix and a TF-by-sample TFA matrix.\""
+    },
+    "M25": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [
+        "SAMBAR"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [],
+      "reason": "kmax = 8 exceeds the 6 mutation samples.",
+      "evidence": "sambar.yaml: \"cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.\""
+    },
+    "M26": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": [
+        "DRAGON"
+      ],
+      "deciding_fact": "Whether the proteomics and RNA-seq rows come from the same 40 individuals or from different cohorts sharing codes.",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Identical IDs do not prove pairing; cross-layer edges mean something only if each row is the same person in both layers"
+      ],
+      "reason": "DRAGON needs paired tables; the ID check would pass on shared codes, so only the user can say whether the rows are the same people.",
+      "evidence": "dragon.yaml: \"DRAGON consumes exactly two paired sample-by-feature continuous omics tables\""
+    },
+    "M27": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION",
+        "LIONESS-PANDA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Whether per-biopsy co-expression or per-biopsy TF-gene regulation is wanted is left open"
+      ],
+      "reason": "A method choice with no stated result.",
+      "evidence": "",
+      "missing_core": "What result the biopsies should yield (per-sample co-expression, per-sample TF-gene networks, or something else) and for which question."
+    },
+    "M28": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Whether survival is to be related to per-patient values or used to define groups is left open"
+      ],
+      "reason": "Asks what to do; no result named.",
+      "evidence": "",
+      "missing_core": "What result the analysis should produce for the survival question."
+    },
+    "M29": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [
+        "DRAGON"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "All three layers are to be modeled jointly; separate two-layer runs would condition on different feature sets and mean something else"
+      ],
+      "reason": "DRAGON takes exactly two layers; no three-layer argument.",
+      "evidence": "dragon.yaml: \"The verified API has no sample_metadata, motif, PPI, expression-matrix, or three-layer argument.\""
+    },
+    "M30": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "deciding_fact": "Whether the per-patient TF value is targeting strength (wiring) or TF activity.",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Wiring (targeting strength in each patient's network) and activity (TFA) are different quantities",
+        "LIONESS per-patient values are relative to the 120-sample cohort"
+      ],
+      "reason": "Goal is clear (one value per TF per patient); wiring versus activity is the registry's per_sample_quantity axis and the user says they cannot choose.",
+      "evidence": "workflow_registry.py: \"For each sample, do you need each regulator's wiring to its targets (edge weights, summarised for example as targeting scores), or each regulator's activity level?\""
+    },
+    "M31": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "OTTER"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "One aggregate network pooled over all 64 samples, not one per group or per sample",
+        "lam = 1 gives co-expression full weight and the PPI zero weight; it is not a sparsity setting"
+      ],
+      "reason": "lam = 1 is the inclusive maximum, gamma 0.6 >= 0, iterations 150 >= 1, edge_list allowed, 64 >= 2 samples.",
+      "evidence": "otter.yaml: \"name: lam type: number default: 0.035 minimum: 0 maximum: 1\""
+    },
+    "M32": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [
+        "DRAGON"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "The requested claim is causal direction, which an undirected partial-correlation network cannot support"
+      ],
+      "reason": "Causal direction is beyond every registered output; DRAGON is undirected association.",
+      "evidence": "dragon.yaml: \"This is an association network, not a causal graph.\""
+    },
+    "M33": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "GIRAFFE",
+        "PANDA",
+        "LIONESS-PANDA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Whether samples from the same donor are treated as paired across time points is left open",
+        "Whether one network across all time points or one per time point is wanted is left open"
+      ],
+      "reason": "A method is named but no question or result.",
+      "evidence": "",
+      "missing_core": "What the time course analysis should produce (TF activity over time, networks per time point, or something else)."
+    },
+    "M34": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [
+        "OTTER"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "The user wants per-patient networks from OTTER's objective specifically, not PANDA-based LIONESS networks"
+      ],
+      "reason": "Registered OTTER is aggregate only; LIONESS-OTTER is not registered, and the user explicitly rules out PANDA-based LIONESS.",
+      "evidence": "otter.yaml: \"This agent's registered OTTER action is aggregate only and does not silently label its output LIONESS-OTTER.\""
+    },
+    "M35": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": [
+        "LIONESS-PANDA",
+        "LIONESS-PUMA"
+      ],
+      "deciding_fact": "Whether the regulators are TFs only or TFs plus miRNAs.",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "One network per tumour derived against the 85-tumour cohort, not one per group"
+      ],
+      "reason": "TF-only versus TF+miRNA regulators is stated two ways and separates LIONESS-PANDA from LIONESS-PUMA.",
+      "evidence": "lioness-puma.yaml: \"regulator_types: [tf, mirna]\""
+    },
+    "M36": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": [
+        "LIONESS-PUMA"
+      ],
+      "deciding_fact": "Whether the 48 columns are single cells or bulk preparations from different donors.",
+      "file_checkable": false,
+      "interpretation_facts": [
+        "Each column's network is derived against the other 47 columns; whether the units are cells or donors changes what a per-sample network means"
+      ],
+      "reason": "Single cells versus bulk preparations is stated two ways. Borderline: the single-cell exclusion is registry advice (OUTSIDE_STEPS caveat), not a YAML input check; no input check can tell cells from bulk preparations, so file_checkable is false.",
+      "evidence": "workflow_registry.py: \"Not on single cells: run it on pseudo-bulk profiles, one per donor and state\" | lioness-puma.yaml: \"Require at least three expression samples and a validated one-ID-per-line miRNA list.\""
+    },
+    "M37": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Whether time points are analysed separately or pooled is left open"
+      ],
+      "reason": "Curiosity only; no result named.",
+      "evidence": "",
+      "missing_core": "What result the drought time course should yield."
+    },
+    "M38": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": [
+        "SAMBAR"
+      ],
+      "deciding_fact": "Whether the mutation matrix has at least 10 tumours (15 passes, 8 fails for kmax = 10).",
+      "file_checkable": true,
+      "interpretation_facts": [],
+      "reason": "kmax = 10 passes with 15 tumours and fails with 8. The SAMBAR input check counts the mutation samples in the named file against kmax before execution, so it settles the fact.",
+      "evidence": "sambar.yaml: \"cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.\""
+    },
+    "M39": {
+      "verdict": "change",
+      "class": "ask",
+      "workflows": [
+        "COBRA",
+        "PANDA",
+        "OTTER"
+      ],
+      "deciding_fact": "Whether sequencing center is completely confounded with disease group.",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Sequencing center is to be adjusted away while disease group is studied",
+        "If center is fully confounded with group, removing it removes the disease difference too",
+        "One network per group, not one pooled network"
+      ],
+      "reason": "Class and deciding fact are right. OTTER is missing: it is a registered COBRA handoff target that produces an aggregate TF-to-gene network from COBRA's adjusted co-expression, the same route as PANDA.",
+      "evidence": "cobra.yaml: \"handoff_targets: [run_panda, run_puma, run_otter]\" | otter.yaml: \"COBRA is an explicit predecessor when batch/confounder adjustment is needed. Only COBRA's adjusted co-expression artifact after this exact identifier/order validation may hand off to OTTER; OTTER does not perform batch correction.\" | otter.yaml: \"It produces an aggregate TF-to-gene network whose edge weight is the optimized OTTER W score.\""
+    },
+    "M40": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [
+        "DRAGON"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Layer 1 is RNA and layer 2 is miRNA, so lambda1 would apply to the RNA layer"
+      ],
+      "reason": "One manual and one estimated shrinkage value is not allowed.",
+      "evidence": "dragon.yaml: \"Manual shrinkage is allowed only when both values are supplied in [0, 1].\""
+    },
+    "M41": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "LIONESS-PUMA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "One network per patient, each derived against the full 90-patient cohort (leave-one-out), not one per group",
+        "Regulators are TFs and miRNAs, not TFs only"
+      ],
+      "reason": "Per-patient TF+miRNA networks from LIONESS-PUMA; 90 >= 3 and all four input kinds are on hand.",
+      "evidence": "lioness-puma.yaml: \"derive sample-specific TF/miRNA-to-gene networks\""
+    },
+    "M42": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE",
+        "LIONESS-PANDA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Whether one cohort-wide network or one network per sample is wanted is left open"
+      ],
+      "reason": "Files fit several workflows with different results; none named.",
+      "evidence": "",
+      "missing_core": "Which result: one cohort-wide TF-gene network, one network per sample, or TF activity per sample."
+    },
+    "M43": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE",
+        "LIONESS-PANDA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Whether one network across all 48 hearts, one per group, or one per heart is wanted is left open"
+      ],
+      "reason": "Broad reviewer request, no concrete result.",
+      "evidence": "",
+      "missing_core": "What concrete network result would answer the reviewer."
+    },
+    "M44": {
+      "verdict": "agree",
+      "class": "ask",
+      "workflows": [
+        "OTTER"
+      ],
+      "deciding_fact": "Whether lam is 0.35 (inside [0, 1]) or 3.5 (outside the allowed range).",
+      "file_checkable": false,
+      "interpretation_facts": [
+        "lam sets the co-expression versus PPI weighting, not sparsity"
+      ],
+      "reason": "lam must be in [0, 1]; 0.35 runs, 3.5 does not. lam is a request value, not something in the named files, so no input check can settle which was intended.",
+      "evidence": "otter.yaml: \"name: lam type: number default: 0.035 minimum: 0 maximum: 1\""
+    },
+    "M45": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "CONDOR"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Communities are found in one aggregate bipartite TF-gene network, not per sample"
+      ],
+      "reason": "CONDOR takes a source-target-weight bipartite edge list and returns regulator-side and gene-side partitions.",
+      "evidence": "condor.yaml: \"returns community assignments with regulator-side and gene-side partitions\""
+    },
+    "M46": {
+      "verdict": "agree",
+      "class": "dont",
+      "workflows": [
+        "LIONESS-PANDA"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Batch is to be adjusted away, not studied",
+        "Per-patient networks would be derived against the 75-patient cohort"
+      ],
+      "reason": "LIONESS-PANDA has no co-expression input, and an aggregate COBRA artifact is explicitly not a LIONESS handoff.",
+      "evidence": "lioness-panda.yaml: \"An aggregate COBRA adjusted co-expression artifact is not a direct LIONESS handoff; sample-specific COBRA adjustment would need to be recomputed inside each leave-one-out construction.\""
+    },
+    "M47": {
+      "verdict": "agree",
+      "class": "do",
+      "workflows": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "One network per condition (two runs of 12 samples), not one network pooled over all 24 samples",
+        "Both runs must share genes and priors for edge weights to be comparable"
+      ],
+      "reason": "PANDA, OTTER and GIRAFFE each give an aggregate TF-to-gene network from expression, motif and PPI; PUMA lacks a miRNA input. Borderline: LIONESS-PANDA also declares an aggregate granularity, but its aggregate is the PANDA network, so it is not listed separately (same convention as M13/M21).",
+      "evidence": "lioness-panda.yaml: \"granularities: [aggregate, sample_specific]\" | lioness-panda.yaml: \"description: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.\""
+    },
+    "M48": {
+      "verdict": "agree",
+      "class": "vague",
+      "workflows": [
+        "PANDA",
+        "PUMA",
+        "LIONESS-PANDA",
+        "LIONESS-PUMA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "deciding_fact": "",
+      "file_checkable": null,
+      "interpretation_facts": [
+        "Whether miRNAs are to be included as regulators is left open",
+        "Whether one network for all 64 biopsies or one per biopsy is wanted is left open"
+      ],
+      "reason": "No single standard analysis; the files fit several workflows with different results.",
+      "evidence": "",
+      "missing_core": "Which result: aggregate or per-biopsy networks, TF-only or TF plus miRNA regulators, or TF activity."
+    }
+  }
+}
