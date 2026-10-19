@@ -107,6 +107,9 @@ def show() -> None:
     print("outcome changes:", [(r["set"], r["id"], r["outcome_before"], r["outcome_after"]) for r in rows
                                if r.get("outcome_before") != r.get("outcome_after")])
     print("unverified reasons:", sum(len(r.get("unverified") or []) for r in rows))
+    core = [r for r in rows if any(q["dimension"].startswith("data:") for q in r.get("questions") or [])]
+    print("core-data question fired:", len(core), "by class:",
+          {c: [r["set"] + ":" + r["id"] for r in core if r["class"] == c] for c in ("do", "dont", "ask", "vague")})
 
 
 if __name__ == "__main__":

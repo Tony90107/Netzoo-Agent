@@ -97,7 +97,8 @@ def test_narrowing_and_unsure_readings_never_veto():
     slim = SlimReading(stated=[fact("B1", "granularity", "per_sample", "one network per patient")])
     assert contract_veto(slim, ["OTTER"]).violations == {}
     # an unsure count that flips COBRA: one question, no veto
-    unsure = SlimReading(stated=[fact("B6", "sample_count", "380", "380 patients"),
+    unsure = SlimReading(data=[fact("A3", "expression", "has", "panel.tsv")],
+                         stated=[fact("B6", "sample_count", "380", "380 patients"),
                                  fact("B6", "feature_count", quote="400 genes, or fewer than 350", values=("350", "400")),
                                  fact("B6", "single_feature_count", quote="400 genes, or fewer than 350",
                                       values=("350", "400"))])
@@ -109,15 +110,18 @@ def test_narrowing_and_unsure_readings_never_veto():
 
 
 def test_bonobos_declarations_are_asked_when_not_given():
-    verdict = contract_veto(SlimReading(), ["BONOBO"])
+    expression = [fact("A3", "expression", "has", "expr.tsv")]
+    verdict = contract_veto(SlimReading(data=expression), ["BONOBO"])
     assert {q.dimension for q in verdict.questions} == {"setting:BONOBO.log_transformed", "setting:BONOBO.centered"}
-    declared = SlimReading(stated=[fact("B4", "setting:log_transformed", "true", "log2", workflow="BONOBO"),
+    declared = SlimReading(data=expression,
+                           stated=[fact("B4", "setting:log_transformed", "true", "log2", workflow="BONOBO"),
                                    fact("B4", "setting:centered", "true", "centered", workflow="BONOBO")])
     assert contract_veto(declared, ["BONOBO"]).questions == []
 
 
 def test_a_passed_do_keeps_its_workflows_and_gains_disclosures_and_confirmations():
-    slim = SlimReading(stated=[fact("D1", "groups", "responders and non-responders")])
+    slim = SlimReading(data=[fact("A3", "expression", "has", "expr.tsv")],
+                       stated=[fact("D1", "groups", "responders and non-responders")])
     verdict = contract_veto(slim, ["LIONESS-PANDA"], "per-patient networks")
     core = vetoed_core(do("LIONESS-PANDA"), verdict)
     assert core.kind == "DO" and core.workflows == ["LIONESS-PANDA"] and core.run_allowed
@@ -128,7 +132,8 @@ def test_a_passed_do_keeps_its_workflows_and_gains_disclosures_and_confirmations
 
 
 def test_one_vetoed_workflow_of_a_tie_leaves_the_others():
-    slim = SlimReading(stated=[fact("B5", "lam", "1.5", "lam = 1.5", workflow="OTTER")])
+    slim = SlimReading(data=[fact("A3", "expression", "has", "expr.tsv")],
+                       stated=[fact("B5", "lam", "1.5", "lam = 1.5", workflow="OTTER")])
     verdict = contract_veto(slim, ["PANDA", "OTTER", "GIRAFFE"])
     assert verdict.vetoed == ["OTTER"] and verdict.kept == ["PANDA", "GIRAFFE"]
     core = vetoed_core(do("PANDA", "OTTER", "GIRAFFE"), verdict)
@@ -213,3 +218,23 @@ def test_words_that_set_nothing_are_no_setting_and_settings_are_no_method():
     # another workflow's control ("iterations" is OTTER's) does not make GIRAFFE's optimizer change a setting of its own
     optimizer = SlimReading(unregistered_methods=["change the optimizer: learning rate 0.0005, 5,000 iterations"])
     assert contract_veto(optimizer, ["GIRAFFE"]).violations["GIRAFFE"][0].kind == "C5"
+
+
+def test_core_data_never_mentioned_is_asked_once_in_the_same_reply_never_vetoed():
+    """User decision 2026-10-19: a chosen workflow's core data, neither had nor lacked in the words, is asked."""
+    unmentioned = contract_veto(SlimReading(), ["SAMBAR"], "Group our tumours with SAMBAR.")
+    assert unmentioned.violations == {}
+    [question] = [q for q in unmentioned.questions if q.dimension.startswith("data:")]
+    assert question.dimension == "data:mutation_calls"
+    core = vetoed_core(do("SAMBAR"), unmentioned)
+    assert core.kind == "ASK" and core.facts[0].question.startswith("Do you have somatic mutation calls")
+    had = SlimReading(data=[fact("A3", "mutation_calls", "has", "mut.csv")])
+    assert not any(q.dimension.startswith("data:") for q in contract_veto(had, ["SAMBAR"]).questions)
+    lacked = SlimReading(data=[fact("A3", "mutation_calls", "lacks", "we have no mutation calls")])
+    assert not any(q.dimension.startswith("data:") for q in contract_veto(lacked, ["SAMBAR"]).questions)
+    # one question for every chosen workflow's unmentioned core data; OTTER takes either table
+    tie = contract_veto(SlimReading(data=[fact("A3", "coexpression_matrix", "has", "coexp.npy")]),
+                        ["PANDA", "OTTER"])
+    assert [q.dimension for q in tie.questions] == ["data:expression"]
+    layers = contract_veto(SlimReading(data=[fact("A3", "expression", "has", "rna.csv")]), ["DRAGON"])
+    assert [q.dimension for q in layers.questions] == ["data:two_layers"]

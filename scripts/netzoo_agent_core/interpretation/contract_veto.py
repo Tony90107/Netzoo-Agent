@@ -360,6 +360,36 @@ def _flip_questions(menu: MenuReading, workflow: str, task: str, table: Judgment
     return found
 
 
+_CORE_LABEL = {"expression": "a gene expression table", "coexpression_matrix": "a gene co-expression matrix",
+               "mutation_calls": "somatic mutation calls", "two_layers": "two omics layers measured on the same samples",
+               "regulator_gene_network": "an existing regulator-to-gene network"}
+
+
+def _core_data_question(menu: MenuReading, workflows: list[str], table: JudgmentDefaults) -> VetoQuestion | None:
+    """The core data a chosen workflow cannot run without (`workflow_data` core), never mentioned -- neither had nor
+    lacked, in words or file names (A3): asked once, in the same reply, never a veto (user decision 2026-10-19). Data
+    the user says they lack is C6 (above); "only these" leaves nothing unmentioned."""
+    if menu.only_data:
+        return None
+    needs: dict[str, list[str]] = {}
+    for workflow in workflows:
+        for need in table.workflow_data[workflow][0]:
+            options = need.split("|")
+            if need == "two_layers":
+                mentioned = len(set(menu.data) & table.omics_layers) >= 2
+            else:
+                mentioned = any(option in menu.data or option in menu.data_absent for option in options)
+            if not mentioned:
+                needs.setdefault(need, []).append(workflow)
+    if not needs:
+        return None
+    return VetoQuestion(workflow=", ".join(dict.fromkeys(w for ws in needs.values() for w in ws)),
+                        dimension="data:" + "+".join(needs), values=("yes", "no"), quote="", infeasible=("no",),
+                        contract_quote="; ".join(f"{', '.join(ws)} needs " + " or ".join(
+                            _CORE_LABEL.get(o, o.replace("_", " ")) for o in need.split("|"))
+                                                 for need, ws in needs.items()))
+
+
 def _nearest(menu: MenuReading, vetoed: list[str], kept: list[str], task: str, table: JudgmentDefaults,
              global_veto: bool) -> list[str]:
     """Registered workflows giving a result a vetoed one gives that pass the same code checks (none after a veto that
@@ -399,6 +429,8 @@ def contract_veto(slim: SlimReading, workflows, task: str = "", check_payload=No
         verdict.unverified += unverified
     for workflow in verdict.kept:
         verdict.questions += _flip_questions(menu, workflow, task, table)
+    if verdict.kept and (core_data := _core_data_question(menu, verdict.kept, table)) is not None:
+        verdict.questions.append(core_data)
     verdict.unconfirmed = list(dict.fromkeys(
         p.quote for p in pairs if p.kind == "D4" and p.workflow in verdict.kept and p not in met
         and p not in clauses))
@@ -432,6 +464,11 @@ def _question(q: VetoQuestion) -> str:
         if set(q.values) == {"true", "false"}:
             return f"For {workflow}: are your data {control.replace('_', ' ')}? (yes / no)"
         return f"Which value of {workflow}'s {control} applies: {' or '.join(q.values)}?"
+    if q.dimension.startswith("data:"):
+        needs = q.dimension.split(":", 1)[1].split("+")
+        labels = [" or ".join(_CORE_LABEL.get(o, o.replace("_", " ")) for o in need.split("|")) for need in needs]
+        return (f"Do you have {labels[0]} ({q.workflow} cannot run without it)?" if len(labels) == 1 else
+                f"Which of these do you have: {'; '.join(labels)}? ({q.workflow} cannot run without them.)")
     if q.dimension in ("sample_count", "feature_count"):
         return f"How many {'samples' if q.dimension == 'sample_count' else 'features'} are there: {' or '.join(q.values)}?"
     options = table.dimensions[q.dimension].options if q.dimension in table.dimensions else {}
