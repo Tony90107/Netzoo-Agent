@@ -545,13 +545,210 @@ slim_fields:
   D4: {class: D, fills: [requirements], means: "A requirement on how the result is computed or what it contains; checked against each candidate's contract."}
   D5: {class: D, fills: [data_stage], values: [raw_files], means: "Raw files that need processing outside NetZoo first."}
   D6: {class: D, fills: [unsure_files], means: "A doubt about what a named file holds."}
+  D7: {class: D, fills: [covariates], values: [batch, site, other], means: "A covariate or confounder the user mentions (batch, site or centre, age, sex); triggers interpretation choices 3 and 4."}
 
-# B4: the condition each workflow's contract turns on. Not stated while the workflow is a candidate -> asked when its
-# values lead to different calls (spec 3, B4; 4.2). BONOBO's declared log transform and centering are its required
-# settings (B5 controls), asked the same way.
+# B4: the condition each workflow's contract turns on, read in step 3 while the workflow is a candidate. User decision
+# 2026-10-19 (a): an unstated condition takes its draft-5 default (mutation_origin somatic, value_type continuous, both
+# disclosed) or the input check (samples_matched, input_network, disclosed) and is asked only when the user is unsure;
+# only BONOBO's required declarations (`setting:`) are asked when not stated.
 b4_conditions:
   SAMBAR: [mutation_origin]
   DRAGON: [samples_matched, value_type]
   LIONESS-DRAGON: [samples_matched, value_type]
   CONDOR: [input_network]
   BONOBO: [setting:log_transformed, setting:centered]
+
+# Per-package algorithm core (user decision 2026-10-19): internal, for code and reviewers -- never shown to users and
+# never sent to the reader. Sources: the workflow YAML, the capability sheet `reading` lines, the papers.
+workflow_logic:
+  PANDA:
+    logic: "Message passing reconciles the motif prior, PPI and co-expression; an edge weight is their joint support -- unsigned, not binding evidence. Can take COBRA-adjusted co-expression."
+    source: "workflows/panda.yaml; capability sheet panda.*; Glass et al. 2013, PLoS One"
+  PUMA:
+    logic: "PANDA plus miRNA edges, from target-prior agreement with the targets' co-expression; the miRNA's own expression is not used."
+    source: "workflows/puma.yaml; capability sheet puma.no_mirna_expression_use; Kuijjer et al. 2020, Bioinformatics"
+  OTTER:
+    logic: "Graph-matching optimisation: W is fitted so the implied TF-TF and gene-gene structures match the PPI and co-expression; lam sets the balance. Non-convex, its own weight scale, binary PPI."
+    source: "workflows/otter.yaml; capability sheet otter.no_global_optimum; Weighill et al. 2021, PLoS Comput Biol"
+  GIRAFFE:
+    logic: "Factorisation Y ~ R |TFA|: R holds signed partial linear effects, TFA per-sample activity apart from the TF's mRNA; neither is binding or protein measurement. Package defaults only."
+    source: "workflows/giraffe.yaml; capability sheet giraffe.no_protein_level; Ben Guebila et al. 2024"
+  LIONESS-PANDA: &lioness
+    logic: "Leave one out: N_k = n N_all - (n-1) N_without_k. Each network is relative to the cohort it was built from, and the networks are not independent."
+    source: "workflows/lioness-*.yaml; Kuijjer et al. 2019, iScience"
+  LIONESS-PUMA: *lioness
+  LIONESS-COEXPRESSION: *lioness
+  BONOBO:
+    logic: "Bayesian per-sample co-expression against a leave-one-out background; optional per-edge p-values; no cohort network; needs log-transformed, centered data."
+    source: "workflows/bonobo.yaml; capability sheet bonobo.*; Saha et al. 2024"
+  DRAGON:
+    logic: "Two-layer Gaussian graphical model with layer-specific shrinkage lambda1, lambda2; partial correlations are conditional on every other feature, so adding or removing features changes them. Two layers only; not causal."
+    source: "workflows/dragon.yaml; capability sheet dragon.no_more_layers; Shutta et al. 2023, Bioinformatics"
+  LIONESS-DRAGON:
+    logic: "DRAGON plus leave one out; lambda estimated once on all samples; no per-sample p-values; a cap on values computed."
+    source: "workflows/lioness-dragon.yaml; capability sheet lioness_dragon.no_pvalues"
+  COBRA:
+    logic: "Decomposes co-expression into covariate components by the design matrix; the adjusted co-expression is the intercept component, removing every covariate in the design. Components are contributions, not correlations or significance. Needs genes > samples."
+    source: "workflows/cobra.yaml; capability sheet cobra.no_pair_significance; Micheletti et al. 2023"
+  CONDOR:
+    logic: "Bipartite modularity on a regulator-gene network; one community per node; a core score is a node's share of its community's modularity."
+    source: "workflows/condor.yaml; capability sheet condor.*; Platig et al. 2016, PLoS Comput Biol"
+  SAMBAR:
+    logic: "Gene-length-normalised mutation scores -> pathway scores (cancer-gene list, pathway set) -> hierarchical clustering. Somatic mutations only."
+    source: "workflows/sambar.yaml; capability sheet sambar.*; Kuijjer et al. 2018, Br J Cancer"
+
+# Interpretation choices (user decision 2026-10-19): what keeps the workflow but changes what the result means.
+# must_confirm: triggered (`trigger`, code) and not verifiable from the files or the contract -> listed at run
+#   confirmation (hybrid spec 2026-10-19, section 4); `field` B1/B3 are the live path's scale and layer questions,
+#   `confirm` a choice only the run confirmation lists.
+# default_disclose: a disclosure line written by code when one of `workflows` is in the call, unless the user set one
+#   of `unless_settings`. The reader never sees this table.
+interpretation_choices:
+  pooled_or_per_group:
+    n: 1
+    policy: must_confirm
+    field: B1
+    workflows: [PANDA, PUMA, OTTER, GIRAFFE, DRAGON]
+    trigger: groups_mentioned
+    question: "One network across all your groups together, or one network per group?"
+    reason: "One network across groups mixes their regulation; one per group is what a group comparison needs."
+    source: "spec 2026-10-19 B1; granularity options in this file"
+  lioness_background:
+    n: 2
+    policy: must_confirm
+    field: confirm
+    workflows: [LIONESS-PANDA, LIONESS-PUMA, LIONESS-COEXPRESSION, LIONESS-DRAGON]
+    trigger: groups_mentioned
+    question: "Which samples should each per-sample network be estimated against?"
+    options:
+      all_samples: "All samples together (each network is relative to the whole cohort)"
+      within_group: "Only the samples of its own group (each network is relative to its group)"
+    reason: "A LIONESS network is relative to the cohort it was built from; pooling or splitting the groups changes what each edge means."
+    source: "workflow_logic LIONESS-*; Kuijjer et al. 2019"
+  batch_adjustment:
+    n: 3
+    policy: must_confirm
+    field: confirm
+    workflows: [COBRA, PANDA, PUMA, LIONESS-PANDA, LIONESS-PUMA, LIONESS-COEXPRESSION, BONOBO]
+    trigger: batch_with_comparison
+    question: "Should the batch or site effect be removed first (COBRA-adjusted co-expression) or left in?"
+    options:
+      adjust_first: "Remove it first with COBRA, then build the networks from the adjusted co-expression"
+      no_adjustment: "Leave it in (the batch or site is not confounded with the comparison)"
+    reason: "A batch or site confounded with the groups compared shows up as a network difference."
+    source: "workflow_logic COBRA, PANDA (COBRA-adjusted co-expression)"
+  cobra_covariates:
+    n: 4
+    policy: must_confirm
+    field: confirm
+    workflows: [COBRA]
+    trigger: several_covariates
+    question: "Are all the covariates in the design to be adjusted away, or is one of them what you want to study?"
+    options:
+      adjust_all: "Adjust them all away (the adjusted co-expression removes every covariate in the design)"
+      study_some: "One of them is what I want to study (keep it out of the adjustment or look at its component)"
+    reason: "COBRA's adjusted co-expression removes every covariate in the design matrix."
+    source: "workflow_logic COBRA; workflows/cobra.yaml"
+  dragon_layer_pair:
+    n: 5
+    policy: must_confirm
+    field: B3
+    workflows: [DRAGON, LIONESS-DRAGON]
+    trigger: three_or_more_layers
+    question: "Which two of your omics layers should DRAGON model together?"
+    reason: "DRAGON models exactly two layers; which pair is the user's choice."
+    source: "workflow_logic DRAGON; capability sheet dragon.no_more_layers"
+  prior_ids:
+    n: 6
+    policy: default_disclose
+    workflows: [PANDA, PUMA, LIONESS-PANDA, LIONESS-PUMA, OTTER, GIRAFFE]
+    disclose: "The prior's gene IDs and species are checked against your expression file before the run."
+    source: "workflows/panda.yaml input_checks"
+  dragon_lambda:
+    n: 7
+    policy: default_disclose
+    workflows: [DRAGON, LIONESS-DRAGON]
+    unless_settings: [lambda1, lambda2]
+    disclose: "DRAGON estimates the two shrinkage values (lambda1, lambda2) from the data; setting them by hand needs both."
+    source: "workflows/dragon.yaml controls"
+  dragon_adjustment:
+    n: 8
+    policy: default_disclose
+    workflows: [DRAGON]
+    disclose: "DRAGON's edge p-values are adjusted (Benjamini-Hochberg) within and across the two layers."
+    source: "workflows/dragon.yaml outputs"
+  sambar_defaults:
+    n: 9
+    policy: default_disclose
+    workflows: [SAMBAR]
+    unless_settings: [kmin, kmax, norm_patient, distance, linkage]
+    disclose: "SAMBAR runs with its defaults: 2 to 4 subtypes, scores normalised by each patient's mutation burden, binomial distance and complete linkage."
+    source: "workflows/sambar.yaml controls"
+  bonobo_defaults:
+    n: 10
+    policy: default_disclose
+    workflows: [BONOBO]
+    unless_settings: [sparsify, bonobo_confidence]
+    disclose: "BONOBO keeps every edge (sparsify off); if you turn sparsification on, edges are kept at confidence 0.05."
+    source: "workflows/bonobo.yaml controls"
+  otter_defaults:
+    n: 11
+    policy: default_disclose
+    workflows: [OTTER]
+    unless_settings: [lam, gamma]
+    disclose: "OTTER runs with lam 0.035 and gamma 0.335 and treats the PPI as binary."
+    source: "workflows/otter.yaml controls"
+  condor_weights:
+    n: 12
+    policy: default_disclose
+    workflows: [CONDOR]
+    disclose: "CONDOR's communities depend on the edge weights and any threshold applied to your network."
+    source: "workflow_logic CONDOR"
+  giraffe_defaults:
+    n: 13
+    policy: default_disclose
+    workflows: [GIRAFFE]
+    disclose: "GIRAFFE runs with its package defaults only; NetZoo exposes no GIRAFFE settings."
+    source: "workflows/giraffe.yaml (no controls)"
+  lioness_single_sample:
+    n: 14
+    policy: default_disclose
+    workflows: [LIONESS-PANDA, LIONESS-PUMA, LIONESS-COEXPRESSION, LIONESS-DRAGON]
+    disclose: "Each per-sample network is estimated against all the samples given, even when you need only some of them."
+    source: "workflow_logic LIONESS-*"
+  puma_mirna_edges:
+    n: 15
+    policy: default_disclose
+    workflows: [PUMA, LIONESS-PUMA]
+    disclose: "PUMA's miRNA edges come from the target prior and the targets' co-expression; your miRNA expression is not used."
+    source: "workflow_logic PUMA; capability sheet puma.no_mirna_expression_use"
+  giraffe_signs:
+    n: 16
+    policy: default_disclose
+    workflows: [GIRAFFE]
+    disclose: "GIRAFFE's edge signs are fitted effects, and TF activity is not a protein measurement."
+    source: "workflow_logic GIRAFFE"
+  lioness_dependence:
+    n: 17
+    policy: default_disclose
+    workflows: [LIONESS-PANDA, LIONESS-PUMA, LIONESS-COEXPRESSION, LIONESS-DRAGON]
+    disclose: "The per-sample networks are not independent of each other; statistics comparing them later must account for that."
+    source: "workflow_logic LIONESS-*"
+  dragon_features:
+    n: 18
+    policy: default_disclose
+    workflows: [DRAGON, LIONESS-DRAGON]
+    disclose: "DRAGON's partial correlations depend on which features are included; adding or removing features changes them."
+    source: "workflow_logic DRAGON"
+  cobra_components:
+    n: 19
+    policy: default_disclose
+    workflows: [COBRA]
+    disclose: "COBRA's components are each covariate's contribution to co-expression, not correlations or significance tests."
+    source: "workflow_logic COBRA"
+  sambar_pathways:
+    n: 20
+    policy: default_disclose
+    workflows: [SAMBAR]
+    disclose: "SAMBAR's subtypes depend on the pathway set and the cancer-gene list used."
+    source: "workflow_logic SAMBAR"

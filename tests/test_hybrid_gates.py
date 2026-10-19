@@ -83,6 +83,7 @@ def _context(llm):
 
 def test_the_gate_call_declines_a_live_do_and_a_failed_call_changes_nothing(monkeypatch):
     events = []
+    monkeypatch.setenv("NETZOO_HYBRID_GATES", "1")  # off by default since the user's decision 2026-10-19 (c)
     monkeypatch.setattr(hybrid_gate_call, "record_event", lambda *a: events.append(a[2]))
     monkeypatch.setattr(hybrid_gate_call, "preflight_budget",
                         lambda context, state, **kw: (SimpleNamespace(status="ok"), state["budget_warnings"]))

@@ -30,7 +30,7 @@ from .capability_sheet import sheet_entries
 from .contracts.capability_check import CONDITIONS
 
 __all__ = ["CLASSES", "DEFAULTS_PATH", "POLICIES", "SLIM_CLASSES", "Artifact", "Dimension", "JudgmentDefaults",
-           "QuestionGroup", "SlimField", "TieOption", "judgment_defaults", "load_defaults"]
+           "InterpretationChoice", "QuestionGroup", "SlimField", "TieOption", "judgment_defaults", "load_defaults"]
 
 DEFAULTS_PATH = Path(__file__).resolve().parents[1] / "judgment_defaults.yaml"
 POLICIES = frozenset({"ask", "extra", "default", "no_filter", "input_check", "needs_input"})
@@ -38,7 +38,7 @@ CLASSES = frozenset({"intent", "condition", "input_check", "setting"})
 _INTENT_POLICIES = frozenset({"ask", "extra", "no_filter"})
 _OPTION_PARTS = ("difference", "good_for", "logic", "source")
 SLIM_CLASSES = frozenset({"A", "B", "C", "D"})
-_READING_SLOTS = frozenset({"run", "groups", "unsure_files"})
+_READING_SLOTS = frozenset({"run", "groups", "unsure_files", "covariates"})
 """What a slim field may fill beside a dimension: reading slots the decision reads directly."""
 
 
@@ -52,6 +52,30 @@ class SlimField:
     fills: tuple[str, ...]
     values: tuple[str, ...] = ()
     means: str = ""
+
+
+CHOICE_TRIGGERS = frozenset({"groups_mentioned", "batch_with_comparison", "several_covariates", "three_or_more_layers"})
+"""What code checks to make a must-confirm interpretation choice apply (spec change log 2026-10-19)."""
+
+
+@dataclass(frozen=True, slots=True)
+class InterpretationChoice:
+    """A choice that keeps the workflow but changes what the result means (user decision 2026-10-19)."""
+
+    name: str
+    n: int
+    policy: str
+    """must_confirm or default_disclose."""
+    workflows: tuple[str, ...]
+    source: str
+    field: str = ""
+    """must_confirm: B1 or B3 (the live path's scale or layer question) or `confirm` (listed at run confirmation)."""
+    trigger: str = ""
+    question: str = ""
+    options: Mapping[str, str] = MappingProxyType({})
+    reason: str = ""
+    disclose: str = ""
+    unless_settings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,7 +154,11 @@ class JudgmentDefaults:
     required_settings: Mapping[str, Mapping[str, str]] = MappingProxyType({})
     slim_fields: Mapping[str, SlimField] = MappingProxyType({})
     b4_conditions: Mapping[str, tuple[str, ...]] = MappingProxyType({})
-    """Workflow -> the conditions (or `setting:control`) its contract turns on, asked when not stated (B4)."""
+    """Workflow -> the conditions (or `setting:control`) its contract turns on, read in step 3 (B4); only `setting:`
+    ones (required declarations) are asked when not stated (user decision 2026-10-19 (a))."""
+    workflow_logic: Mapping[str, tuple[str, str]] = MappingProxyType({})
+    """Workflow -> (logic, source): the algorithm core, for code and reviewers only -- never shown, never read."""
+    choices: Mapping[str, InterpretationChoice] = MappingProxyType({})
 
     def expand(self, artifact: str) -> tuple[str, ...]:
         """The artifacts a word stands for: a generic word's list, or the artifact itself."""
@@ -269,6 +297,36 @@ def load_defaults(path: Path = DEFAULTS_PATH) -> JudgmentDefaults:
                                                                                               "input_check")):
                 raise ValueError(f"judgment defaults: b4 condition {name} of {workflow} is no condition")
         b4[workflow] = tuple(names)
+    logic = {}
+    for workflow, raw in (data.get("workflow_logic") or {}).items():
+        if workflow not in known_workflows or not raw.get("logic") or not raw.get("source"):
+            raise ValueError(f"judgment defaults: workflow_logic {workflow} is unknown or lacks logic or source")
+        logic[workflow] = (raw["logic"], raw["source"])
+    from .workflow_conditions import all_conditions
+    controls = {workflow: set(limits.settings) for workflow, limits in all_conditions().items()}
+    choices = {}
+    for name, raw in (data.get("interpretation_choices") or {}).items():
+        workflows = tuple(raw.get("workflows") or ())
+        policy = raw.get("policy")
+        if policy not in ("must_confirm", "default_disclose") or not workflows or set(workflows) - known_workflows:
+            raise ValueError(f"judgment defaults: interpretation choice {name} has an unknown policy or workflow")
+        if not raw.get("source"):
+            raise ValueError(f"judgment defaults: interpretation choice {name} has no source")
+        if policy == "must_confirm" and (raw.get("trigger") not in CHOICE_TRIGGERS
+                                         or raw.get("field") not in ("B1", "B3", "confirm") or not raw.get("question")):
+            raise ValueError(f"judgment defaults: must-confirm choice {name} needs a known trigger, field and question")
+        if policy == "must_confirm" and raw.get("field") == "confirm" and len(raw.get("options") or {}) < 2:
+            raise ValueError(f"judgment defaults: choice {name} needs two options")
+        if policy == "default_disclose" and not raw.get("disclose"):
+            raise ValueError(f"judgment defaults: default choice {name} needs a disclosure line")
+        unless = tuple(raw.get("unless_settings") or ())
+        if any(not any(control in controls.get(w, ()) for w in workflows) for control in unless):
+            raise ValueError(f"judgment defaults: choice {name} names a control none of its workflows has")
+        choices[name] = InterpretationChoice(
+            name=name, n=int(raw.get("n", 0)), policy=policy, workflows=workflows, source=raw["source"],
+            field=raw.get("field", ""), trigger=raw.get("trigger", ""), question=raw.get("question", ""),
+            options=MappingProxyType(dict(raw.get("options") or {})), reason=raw.get("reason", ""),
+            disclose=raw.get("disclose", ""), unless_settings=unless)
     share = thresholds.get("soft_requirements_met")
     if not isinstance(share, (int, float)) or not 0 < share <= 1:
         raise ValueError("judgment defaults: thresholds.soft_requirements_met must be in (0, 1]")
@@ -284,7 +342,8 @@ def load_defaults(path: Path = DEFAULTS_PATH) -> JudgmentDefaults:
                             tie_options=MappingProxyType(ties), soft_requirements_met=float(share),
                             workflow_data=MappingProxyType(workflow_data), omics_layers=layers,
                             required_settings=MappingProxyType(required), slim_fields=MappingProxyType(slim),
-                            b4_conditions=MappingProxyType(b4))
+                            b4_conditions=MappingProxyType(b4), workflow_logic=MappingProxyType(logic),
+                            choices=MappingProxyType(choices))
 
 
 @lru_cache(maxsize=1)

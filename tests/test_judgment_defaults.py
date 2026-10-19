@@ -153,6 +153,28 @@ def test_condition_defaults_are_values_of_their_condition():
     assert table.dimensions["data_unit"].kind == "condition"
 
 
+# Interpretation choices (user decision 2026-10-19; hybrid spec 4): code reads them, the reader never does.
+
+def test_every_must_confirm_choice_has_a_trigger_a_question_and_a_source():
+    table = load_defaults()
+    must = [c for c in table.choices.values() if c.policy == "must_confirm"]
+    assert sorted(c.n for c in must) == [1, 2, 3, 4, 5]
+    assert all(c.trigger and c.question and c.source for c in must)
+    defaults = [c for c in table.choices.values() if c.policy == "default_disclose"]
+    assert sorted(c.n for c in defaults) == list(range(6, 21)) and all(c.disclose and c.source for c in defaults)
+    assert set(table.workflow_logic) == set(table.workflow_data)
+    assert all(logic and source for logic, source in table.workflow_logic.values())
+
+
+def test_the_reader_never_sees_the_logic_table_or_the_choices():
+    from netzoo_agent_core.interpretation.menu_reader import menu_text
+    from netzoo_agent_core.interpretation.slim_reader import core_text
+    table = load_defaults()
+    texts = menu_text() + core_text()
+    assert not any(logic[:40] in texts for logic, _source in table.workflow_logic.values())
+    assert not any(c.disclose and c.disclose[:40] in texts for c in table.choices.values())
+
+
 @pytest.mark.parametrize("change, message", [
     (lambda d: d["artifacts"]["tf_activity"]["entries"].append("panda.tf_gene_network"), "in both"),
     (lambda d: d["artifacts"]["tf_activity"].update(entries=[]), "in no artifact"),
@@ -178,6 +200,11 @@ def test_condition_defaults_are_values_of_their_condition():
     (lambda d: d["ruled_by"].update({"panda.no_sign": "signed=maybe"}), "not a dimension"),
     (lambda d: d["ruled_by"].update({"panda.no_sign": "colour=red"}), "not a dimension"),
     (lambda d: d["limit_fields"].update(min_samples="cohort_size"), "unknown dimensions"),
+    (lambda d: d["interpretation_choices"]["lioness_background"].pop("trigger"), "known trigger"),
+    (lambda d: d["interpretation_choices"]["cobra_covariates"].pop("source"), "no source"),
+    (lambda d: d["interpretation_choices"]["otter_defaults"].update(unless_settings=["learning_rate"]),
+     "control none of its workflows has"),
+    (lambda d: d["workflow_logic"]["PANDA"].pop("source"), "lacks logic or source"),
 ])
 def test_an_inconsistent_table_fails_to_load(tmp_path, change, message):
     with pytest.raises(ValueError, match=message):
