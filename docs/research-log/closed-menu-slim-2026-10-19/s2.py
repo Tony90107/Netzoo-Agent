@@ -38,7 +38,7 @@ from netzoo_agent_core.interpretation.slim_reader import SLIM_SHAPE, to_menu, wi
 ITEMS = json.loads((P1 / "dev_items.json").read_text())["items"]
 
 
-def one(item: dict, llm) -> dict:
+def one(item: dict, llm, keep_menu: bool = False) -> dict:
     prompt = item["prompt"]
     read = read_slim(prompt, llm)
     menu = to_menu(read.reading)
@@ -70,6 +70,7 @@ def one(item: dict, llm) -> dict:
         "filled": read.report.filled + read.focus_report.filled, "req": req,
         "slim": read.reading.model_dump(mode="json", exclude_defaults=True),
         "core_payload": read.core_payload, "focus_payload": read.focus_payload,
+        **({"menu": menu.model_dump(mode="json")} if keep_menu else {}),
     }
 
 
