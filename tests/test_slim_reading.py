@@ -435,3 +435,50 @@ def test_read_slim_reads_the_core_then_only_the_fields_step_two_chose():
 
     failed = read_slim(DRAGON_TASK, Broken())
     assert failed.reading.status == "failed" and decide_menu(to_menu(failed.reading), DRAGON_TASK).kind == "UNCHECKED"
+
+
+# --- hybrid spec 3.4: the three h3 bugs (synthetic cases) ------------------------------------------------------------
+
+def test_a_settings_alternatives_are_only_values_the_user_wrote():
+    task = "Run BONOBO with sparsify on, confidence 0.05, delta 0.5 and .h5 output. For OTTER, lam is 0.35 or 3.5."
+    core = SlimReading(results=[ResultItem(quote="Run BONOBO", said="workflow_only")])
+    needs = Needs(candidates=("BONOBO", "OTTER"))
+    slim, _ = merge_focus(core, {"settings": [
+        {"quote": "confidence 0.05", "workflow": "BONOBO", "control": "bonobo_confidence", "value": "0.05",
+         "values": [str(i / 100) for i in range(101)], "asks_to_set": True},  # the whole range listed
+        {"quote": ".h5 output", "workflow": "BONOBO", "control": "bonobo_output_format", "value": ".h5",
+         "values": [".h5", ".hdf", ".txt", ".csv"], "asks_to_set": True},
+        {"quote": "lam is 0.35 or 3.5", "workflow": "OTTER", "control": "lam", "value": "",
+         "values": ["0.35", "3.5", "0.035"], "asks_to_set": True},
+        {"quote": "sparsify on", "workflow": "BONOBO", "control": "sparsify", "value": "",
+         "values": ["true", "false"], "asks_to_set": True}]}, task, needs)
+    got = {(f.name, f.value, tuple(f.values)) for f in slim.stated}
+    assert got == {("bonobo_confidence", "0.05", ()), ("bonobo_output_format", ".h5", ()),
+                   ("lam", "", ("0.35", "3.5")), ("sparsify", "", ("true", "false"))}
+
+
+def test_an_unsure_count_of_one_data_type_is_the_count_cobra_checks():
+    task = "Start COBRA for our 380 patients; I think around 400 genes, but it might be fewer than 350."
+    core = SlimReading(results=[ResultItem(quote="Start COBRA", said="workflow_only")], roles={"COBRA": "target"},
+                       data=[Stated(field="A3", name="expression", value="has", quote="400 genes"),
+                             Stated(field="A3", name="design_matrix", value="has", quote="380 patients")])
+    needs = Needs(candidates=("COBRA",), counts=("sample_count", "feature_count"))
+    slim, _ = merge_focus(core, {"settings": [], "counts": [
+        {"what": "samples", "layer": "", "value": 380, "values": [], "quote": "380 patients"},
+        {"what": "features", "layer": "expression", "value": None, "values": [400, 350],
+         "quote": "around 400 genes, but it might be fewer than 350"}]}, task, needs)
+    menu = to_menu(slim)
+    assert menu.features_one_type and menu.feature_count.values == [350, 400]
+    decision = decide_menu(menu, task)
+    assert decision.kind == "ASK" and "feature_count" in [q.dimension for q in decision.questions]
+
+
+def test_a_claim_no_workflow_supports_declines_without_asking_anything_else():
+    task = "Per patient, link methylation and expression and tell me which methylation changes causally drive it."
+    slim = SlimReading(results=[ResultItem(quote="link methylation and expression", said="menu_result",
+                                           value="multi_omic_network")],
+                       data=[Stated(field="A3", name="methylation", value="has", quote="methylation"),
+                             Stated(field="A3", name="expression", value="has", quote="expression")],
+                       stated=[Stated(field="C2", name="claims", value="causal", quote="causally drive it")])
+    decision = decide_menu(to_menu(slim), task)
+    assert decision.kind == "DECLINE" and not decision.questions and decision.declined[0].reasons == ["claims=causal"]

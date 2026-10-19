@@ -117,6 +117,9 @@ class MenuReading(_Model):
     """All features modeled together (both layers for DRAGON)."""
     single_feature_count: int | None = None
     """The one feature count of a single data type (COBRA's genes), when exactly one is stated."""
+    features_one_type: bool = False
+    """The feature count, stated or unsure, is of one data type: a probe of it is also the single-type count (h3
+    L40: unsure between 350 and 400 genes for 380 samples decides COBRA)."""
     settings: list[SettingAsked] = Field(default_factory=list)
     unsure_files: list[str] = Field(default_factory=list)
     """The user's words doubting what a named file holds (which export, which matrix); the input check settles them
