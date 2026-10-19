@@ -284,13 +284,18 @@ def _methods(menu: MenuReading, workflows=()) -> list[str]:
     """Unregistered methods (C5) that are not settings: words naming one of these workflows' controls (a whole word),
     or read as a setting, are the setting's (read once; H1 debug: BONOBO's sparsify and save_pvals read as an
     unregistered method)."""
-    controls = {name.casefold() for w in workflows if w in all_conditions() for name in all_conditions()[w].settings}
+    limits = [limit for w in workflows if w in all_conditions() for limit in all_conditions()[w].settings.values()]
+    # A control's name or one of its listed values (edge_list, gpu) names that setting (H1 debug, h1 H22: "edge-list
+    # output" read as an unregistered method refused OTTER).
+    names = {limit.name for limit in limits} | {str(v) for limit in limits for v in limit.allowed_values or ()
+                                                if not isinstance(v, bool)}
+    names = {re.sub(r"[_\-]+", " ", name.casefold()).strip() for name in names if len(str(name)) > 2}
     settings = [_norm(s.quote) for s in menu.settings if s.quote]
     found = []
     for method in menu.unregistered_methods:
-        words = _norm(method)
-        if any(re.search(rf"(?<![\w]){re.escape(control)}(?![\w])", words) for control in controls) or any(
-                words in quote or quote in words for quote in settings):
+        words = re.sub(r"[_\-]+", " ", _norm(method))
+        if any(re.search(rf"(?<![\w.]){re.escape(name)}(?![\w])", words) for name in names) or any(
+                _norm(method) in quote or quote in _norm(method) for quote in settings):
             continue
         found.append(method)
     return found
