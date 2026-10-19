@@ -1,5 +1,5 @@
 {
- "commit": "d5ae659e",
+ "commit": "61dc6878",
  "rows": [
   {
    "set": "h1",
@@ -9,7 +9,7 @@
     "PUMA"
    ],
    "calls": 2,
-   "usd": 0.00037,
+   "usd": 0.000533,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -78,7 +78,7 @@
     "DRAGON"
    ],
    "calls": 2,
-   "usd": 0.000595,
+   "usd": 0.000636,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -169,7 +169,7 @@
     "GIRAFFE"
    ],
    "calls": 2,
-   "usd": 0.000366,
+   "usd": 0.000367,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -314,7 +314,7 @@
     "LIONESS-COEXPRESSION"
    ],
    "calls": 2,
-   "usd": 0.000367,
+   "usd": 0.000388,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -346,8 +346,6 @@
       "quote": "The expression matrix is gene-by-sample with a header row of sample IDs, already log2-transformed and mean-centred per gene."
      }
     ],
-    "run": "run",
-    "run_quote": "I want a separate gene-gene co-expression network for each of 24 mouse hippocampus samples (12 stressed, 12 control)",
     "stated": [
      {
       "field": "B6",
@@ -366,7 +364,7 @@
     "COBRA"
    ],
    "calls": 2,
-   "usd": 0.000404,
+   "usd": 0.000409,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -400,16 +398,10 @@
     ],
     "stated": [
      {
-      "field": "D7",
-      "name": "covariates",
-      "value": "batch",
-      "quote": "batch"
-     },
-     {
       "field": "B6",
       "name": "sample_count",
       "value": "230",
-      "quote": "230 glioblastoma RNA-seq samples"
+      "quote": "Our 230 glioblastoma RNA-seq samples"
      },
      {
       "field": "B6",
@@ -434,17 +426,27 @@
     "DRAGON"
    ],
    "calls": 2,
-   "usd": 0.000498,
+   "usd": 0.000508,
    "errors": [],
    "status": "checked",
-   "kind_after": "DO",
+   "kind_after": "ASK",
    "workflows_after": [
     "DRAGON"
    ],
    "outcome_before": "partly_accept",
-   "outcome_after": "partly_accept",
+   "outcome_after": "undecided",
    "vetoes": [],
-   "questions": [],
+   "questions": [
+    {
+     "workflow": "DRAGON",
+     "dimension": "data:two_layers",
+     "values": [
+      "yes",
+      "no"
+     ],
+     "quote": ""
+    }
+   ],
    "unverified": [],
    "unconfirmed": [],
    "disclosures": 4,
@@ -484,7 +486,7 @@
     "OTTER"
    ],
    "calls": 3,
-   "usd": 0.000763,
+   "usd": 0.001048,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -508,7 +510,7 @@
       "value": "coexpression_network"
      },
      {
-      "quote": "build the aggregate TF-to-gene network",
+      "quote": "build the aggregate TF-to-gene network from that matrix",
       "said": "menu_result",
       "value": "regulatory_network"
      },
@@ -521,6 +523,10 @@
       "quote": "a TF-TF PPI edge list whose TFs match the seed",
       "said": "off_menu_result",
       "outside_name": "TF-TF PPI edge list"
+     },
+     {
+      "quote": "using lam 0.5, 150 iterations and edge-list output",
+      "said": "purpose_or_topic"
      }
     ],
     "roles": {
@@ -535,7 +541,7 @@
      }
     ],
     "run": "run",
-    "run_quote": "build the aggregate TF-to-gene network from that matrix, a TF-by-gene motif seed over the same genes, and a TF-TF PPI edge list whose TFs match the seed, using lam 0.5, 150 iterations and edge-list output.",
+    "run_quote": "build the aggregate TF-to-gene network from that matrix",
     "stated": [
      {
       "field": "B6",
@@ -554,17 +560,27 @@
     "CONDOR"
    ],
    "calls": 2,
-   "usd": 0.000396,
+   "usd": 0.000559,
    "errors": [],
    "status": "checked",
-   "kind_after": "DO",
+   "kind_after": "ASK",
    "workflows_after": [
     "CONDOR"
    ],
    "outcome_before": "partly_accept",
-   "outcome_after": "partly_accept",
+   "outcome_after": "undecided",
    "vetoes": [],
-   "questions": [],
+   "questions": [
+    {
+     "workflow": "CONDOR",
+     "dimension": "data:regulator_gene_network",
+     "values": [
+      "yes",
+      "no"
+     ],
+     "quote": ""
+    }
+   ],
    "unverified": [],
    "unconfirmed": [],
    "disclosures": 2,
@@ -600,7 +616,7 @@
     "BONOBO"
    ],
    "calls": 2,
-   "usd": 0.000589,
+   "usd": 0.000803,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -626,12 +642,6 @@
     "roles": {
      "BONOBO": "target"
     },
-    "unregistered_methods": [
-     "sparsify with bonobo_confidence 0.01",
-     "turn save_pvals on",
-     "set delta to 0.3",
-     "write .csv files to /data/pbmc/bonobo_out/"
-    ],
     "data": [
      {
       "field": "A3",
@@ -716,7 +726,7 @@
     "BONOBO"
    ],
    "calls": 2,
-   "usd": 0.000923,
+   "usd": 0.001051,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -735,7 +745,7 @@
    "slim": {
     "results": [
      {
-      "quote": "BONOBO",
+      "quote": "For BONOBO, please sparsify at confidence 0.05 and fix delta at 0.4 so each sample carries a little more weight in its own covariance estimate.",
       "said": "workflow_only"
      }
     ],
@@ -751,7 +761,7 @@
      }
     ],
     "run": "run",
-    "run_quote": "BONOBO",
+    "run_quote": "For BONOBO, please sparsify at confidence 0.05 and fix delta at 0.4 so each sample carries a little more weight in its own covariance estimate.",
     "stated": [
      {
       "field": "B4",
@@ -778,21 +788,14 @@
       "field": "B5",
       "name": "bonobo_confidence",
       "value": "0.05",
-      "quote": "sparsify at confidence 0.05",
-      "workflow": "BONOBO"
-     },
-     {
-      "field": "B5",
-      "name": "delta",
-      "value": "0.4",
-      "quote": "fix delta at 0.4",
+      "quote": "please sparsify at confidence 0.05",
       "workflow": "BONOBO"
      },
      {
       "field": "B6",
       "name": "sample_count",
       "value": "12",
-      "quote": "12 liver samples"
+      "quote": "My 12 liver samples"
      }
     ]
    }
@@ -805,48 +808,44 @@
     "GIRAFFE"
    ],
    "calls": 2,
-   "usd": 0.000428,
+   "usd": 0.000588,
    "errors": [],
    "status": "checked",
-   "kind_after": "DECLINE",
+   "kind_after": "ASK",
    "workflows_after": [
     "GIRAFFE"
    ],
    "outcome_before": "partly_accept",
-   "outcome_after": "correct",
-   "vetoes": [
+   "outcome_after": "undecided",
+   "vetoes": [],
+   "questions": [
     {
      "workflow": "GIRAFFE",
-     "kind": "C5",
-     "reason": "not a registered method: custom learning rate of 0.001, heavier weight on the PPI term in the loss",
-     "user": "custom learning rate of 0.001",
-     "contract": "NetZoo registers: BONOBO, COBRA, CONDOR, DRAGON, GIRAFFE, LIONESS-COEXPRESSION, LIONESS-DRAGON, LIONESS-PANDA, LIONESS-PUMA, OTTER, PANDA, PUMA, SAMBAR.",
-     "source": "registry"
+     "dimension": "data:expression",
+     "values": [
+      "yes",
+      "no"
+     ],
+     "quote": ""
     }
    ],
-   "questions": [],
    "unverified": [],
    "unconfirmed": [],
-   "disclosures": 0,
+   "disclosures": 3,
    "to_confirm": [],
    "pairs": 0,
    "slim": {
     "results": [
      {
-      "quote": "GIRAFFE",
+      "quote": "GIRAFFE run on 75 AML samples with a custom learning rate of 0.001, 5,000 iterations and a heavier weight on the PPI term in the loss",
       "said": "workflow_only"
      }
     ],
     "roles": {
      "GIRAFFE": "target"
     },
-    "unregistered_methods": [
-     "custom learning rate of 0.001",
-     "5,000 iterations",
-     "heavier weight on the PPI term in the loss"
-    ],
     "run": "run",
-    "run_quote": "GIRAFFE run on 75 AML samples with a custom learning rate of 0.001, 5,000 iterations and a heavier weight on the PPI term in the loss - with the defaults it seemed to stop before the TF activities stabilised.",
+    "run_quote": "GIRAFFE run on 75 AML samples with a custom learning rate of 0.001, 5,000 iterations and a heavier weight on the PPI term in the loss",
     "stated": [
      {
       "field": "B6",
@@ -865,7 +864,7 @@
     "LIONESS-PANDA"
    ],
    "calls": 2,
-   "usd": 0.000411,
+   "usd": 0.000565,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -884,8 +883,9 @@
    "slim": {
     "results": [
      {
-      "quote": "We only have three patient-derived organoid lines (bulk RNA-seq, one sample per line), plus a human TF motif prior and a STRING-based PPI.",
-      "said": "workflow_only"
+      "quote": "We only have three patient-derived organoid lines (bulk RNA-seq, one sample per line)",
+      "said": "menu_result",
+      "value": "regulatory_network"
      },
      {
       "quote": "We need LIONESS-PANDA to give each line its own TF-to-gene network alongside the overall one.",
@@ -906,13 +906,13 @@
       "field": "A3",
       "name": "motif_prior",
       "value": "has",
-      "quote": "a human TF motif prior"
+      "quote": "human TF motif prior"
      },
      {
       "field": "A3",
       "name": "ppi",
       "value": "has",
-      "quote": "a STRING-based PPI"
+      "quote": "STRING-based PPI"
      }
     ],
     "run": "run",
@@ -935,7 +935,7 @@
     "SAMBAR"
    ],
    "calls": 2,
-   "usd": 0.000635,
+   "usd": 0.000798,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -1019,7 +1019,7 @@
     "DRAGON"
    ],
    "calls": 2,
-   "usd": 0.000617,
+   "usd": 0.000628,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -1032,7 +1032,7 @@
    "questions": [],
    "unverified": [],
    "unconfirmed": [],
-   "disclosures": 3,
+   "disclosures": 4,
    "to_confirm": [],
    "pairs": 0,
    "slim": {
@@ -1073,27 +1073,6 @@
       "quote": "same 85 plasma donors"
      },
      {
-      "field": "B5",
-      "name": "output_format",
-      "value": "edge_list",
-      "quote": "edge_list",
-      "workflow": "DRAGON"
-     },
-     {
-      "field": "B5",
-      "name": "lambda1",
-      "value": "0",
-      "quote": "lambda1 at 0",
-      "workflow": "DRAGON"
-     },
-     {
-      "field": "B5",
-      "name": "lambda2",
-      "value": "1",
-      "quote": "lambda2 at 1",
-      "workflow": "DRAGON"
-     },
-     {
       "field": "B6",
       "name": "sample_count",
       "value": "85",
@@ -1110,7 +1089,7 @@
     "LIONESS-DRAGON"
    ],
    "calls": 2,
-   "usd": 0.000662,
+   "usd": 0.000863,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -1194,7 +1173,7 @@
        "200",
        "400"
       ],
-      "quote": "the 400 most variable genes"
+      "quote": "400 most variable genes"
      },
      {
       "field": "B6",
@@ -1203,7 +1182,7 @@
        "200",
        "400"
       ],
-      "quote": "the 400 most variable genes"
+      "quote": "400 most variable genes"
      }
     ]
    }
@@ -1216,17 +1195,27 @@
     "LIONESS-PUMA"
    ],
    "calls": 2,
-   "usd": 0.000314,
+   "usd": 0.000312,
    "errors": [],
    "status": "checked",
-   "kind_after": "DO",
+   "kind_after": "ASK",
    "workflows_after": [
     "LIONESS-PUMA"
    ],
    "outcome_before": "false_accept",
-   "outcome_after": "false_accept",
+   "outcome_after": "undecided",
    "vetoes": [],
-   "questions": [],
+   "questions": [
+    {
+     "workflow": "LIONESS-PUMA",
+     "dimension": "data:expression",
+     "values": [
+      "yes",
+      "no"
+     ],
+     "quote": ""
+    }
+   ],
    "unverified": [],
    "unconfirmed": [],
    "disclosures": 4,
@@ -1320,7 +1309,7 @@
     "COBRA"
    ],
    "calls": 2,
-   "usd": 0.000398,
+   "usd": 0.000391,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -1352,9 +1341,15 @@
     "data": [
      {
       "field": "A3",
+      "name": "expression",
+      "value": "has",
+      "quote": "18,000 genes measured in 96 colon samples from three hospitals and two sequencing batches"
+     },
+     {
+      "field": "A3",
       "name": "design_matrix",
       "value": "has",
-      "quote": "a numeric design matrix (one-hot hospital, batch, age) keyed by the same sample IDs"
+      "quote": "numeric design matrix (one-hot hospital, batch, age) keyed by the same sample IDs"
      }
     ],
     "run": "run",
@@ -1389,7 +1384,7 @@
     "DRAGON"
    ],
    "calls": 2,
-   "usd": 0.000538,
+   "usd": 0.000716,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -1463,7 +1458,7 @@
     "BONOBO"
    ],
    "calls": 2,
-   "usd": 0.000443,
+   "usd": 0.000537,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -1483,7 +1478,7 @@
    "slim": {
     "results": [
      {
-      "quote": "a separate gene-gene co-expression network for each of 30 bulk RNA-seq samples of human skin",
+      "quote": "a separate gene-gene co-expression network for each of 30 bulk RNA-seq samples of human skin (log2 CPM, centered per gene, genes on rows)",
       "said": "menu_result",
       "value": "coexpression_network"
      }
@@ -1497,7 +1492,7 @@
      }
     ],
     "run": "run",
-    "run_quote": "a separate gene-gene co-expression network for each of 30 bulk RNA-seq samples of human skin",
+    "run_quote": "I need a separate gene-gene co-expression network for each of 30 bulk RNA-seq samples of human skin (log2 CPM, centered per gene, genes on rows).",
     "stated": [
      {
       "field": "B4",
@@ -1542,7 +1537,7 @@
     "GIRAFFE"
    ],
    "calls": 2,
-   "usd": 0.000427,
+   "usd": 0.000436,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -1615,7 +1610,7 @@
     "CONDOR"
    ],
    "calls": 2,
-   "usd": 0.000435,
+   "usd": 0.000608,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -1728,40 +1723,23 @@
    "live": [
     "OTTER"
    ],
-   "calls": 3,
-   "usd": 0.000859,
+   "calls": 2,
+   "usd": 0.000575,
    "errors": [],
    "status": "checked",
-   "kind_after": "DECLINE",
+   "kind_after": "DO",
    "workflows_after": [
     "OTTER"
    ],
    "outcome_before": "partly_accept",
-   "outcome_after": "correct",
-   "vetoes": [
-    {
-     "workflow": "OTTER",
-     "kind": "C1",
-     "reason": "the contract contradicts \"set computing to gpu\"",
-     "user": "set computing to gpu",
-     "contract": "setting computing (enum; allowed: cpu, gpu): Hardware the optimization runs on: cpu or gpu.",
-     "source": "contract"
-    },
-    {
-     "workflow": "OTTER",
-     "kind": "C1",
-     "reason": "the contract contradicts \"the CPU run took far too long on our 19,000-gene matrix\"",
-     "user": "the CPU run took far too long on our 19,000-gene matrix",
-     "contract": "The current agent runtime does not enable OTTER GPU execution.",
-     "source": "contract"
-    }
-   ],
+   "outcome_after": "partly_accept",
+   "vetoes": [],
    "questions": [],
    "unverified": [],
    "unconfirmed": [],
-   "disclosures": 0,
+   "disclosures": 2,
    "to_confirm": [],
-   "pairs": 2,
+   "pairs": 0,
    "slim": {
     "results": [
      {
@@ -1770,7 +1748,8 @@
      },
      {
       "quote": "expr_pbmc.tsv",
-      "said": "workflow_only"
+      "said": "menu_result",
+      "value": "regulatory_network"
      },
      {
       "quote": "motif_pbmc.tsv",
@@ -1782,17 +1761,15 @@
      },
      {
       "quote": "output otter_pbmc.tsv as an edge list",
-      "said": "workflow_only"
+      "said": "purpose_or_topic"
      },
      {
       "quote": "set computing to gpu",
-      "said": "off_menu_result",
-      "outside_name": "set computing to gpu"
+      "said": "purpose_or_topic"
      },
      {
       "quote": "the CPU run took far too long on our 19,000-gene matrix",
-      "said": "off_menu_result",
-      "outside_name": "the CPU run took far too long on our 19,000-gene matrix"
+      "said": "purpose_or_topic"
      },
      {
       "quote": "Start it now",
@@ -1802,8 +1779,28 @@
     "roles": {
      "OTTER": "target"
     },
+    "data": [
+     {
+      "field": "A3",
+      "name": "expression",
+      "value": "has",
+      "quote": "expr_pbmc.tsv"
+     },
+     {
+      "field": "A3",
+      "name": "motif_prior",
+      "value": "has",
+      "quote": "motif_pbmc.tsv"
+     },
+     {
+      "field": "A3",
+      "name": "ppi",
+      "value": "has",
+      "quote": "ppi_pbmc.tsv"
+     }
+    ],
     "run": "run",
-    "run_quote": "Time to rerun OTTER"
+    "run_quote": "Start it now"
    }
   },
   {
@@ -1814,7 +1811,7 @@
     "LIONESS-PANDA"
    ],
    "calls": 2,
-   "usd": 0.00038,
+   "usd": 0.000376,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -1861,7 +1858,7 @@
      }
     ],
     "run": "run",
-    "run_quote": "LIONESS-PANDA to give each of the three samples its own TF-to-gene network, kept separate from the aggregate one.",
+    "run_quote": "LIONESS-PANDA",
     "stated": [
      {
       "field": "B6",
@@ -1880,7 +1877,7 @@
     "OTTER"
    ],
    "calls": 3,
-   "usd": 0.000907,
+   "usd": 0.00093,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -1953,17 +1950,27 @@
     "DRAGON"
    ],
    "calls": 2,
-   "usd": 0.000604,
+   "usd": 0.000624,
    "errors": [],
    "status": "checked",
-   "kind_after": "DO",
+   "kind_after": "ASK",
    "workflows_after": [
     "DRAGON"
    ],
    "outcome_before": "correct",
-   "outcome_after": "correct",
+   "outcome_after": "needless_question",
    "vetoes": [],
-   "questions": [],
+   "questions": [
+    {
+     "workflow": "DRAGON",
+     "dimension": "data:two_layers",
+     "values": [
+      "yes",
+      "no"
+     ],
+     "quote": ""
+    }
+   ],
    "unverified": [],
    "unconfirmed": [],
    "disclosures": 4,
@@ -2014,7 +2021,7 @@
     "DRAGON"
    ],
    "calls": 2,
-   "usd": 0.000541,
+   "usd": 0.000623,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -2038,12 +2045,12 @@
       "said": "workflow_only"
      },
      {
-      "quote": "with rna_top400.tsv (48 samples by the 400 most variable transcripts)",
+      "quote": "rna_top400.tsv",
       "said": "menu_result",
       "value": "multi_omic_network"
      },
      {
-      "quote": "and meth_top150.tsv (the same 48 sample IDs by 150 CpG probes)",
+      "quote": "meth_top150.tsv",
       "said": "menu_result",
       "value": "multi_omic_network"
      },
@@ -2061,13 +2068,13 @@
       "field": "A3",
       "name": "expression",
       "value": "has",
-      "quote": "rna_top400.tsv (48 samples by the 400 most variable transcripts)"
+      "quote": "rna_top400.tsv"
      },
      {
       "field": "A3",
       "name": "methylation",
       "value": "has",
-      "quote": "meth_top150.tsv (the same 48 sample IDs by 150 CpG probes)"
+      "quote": "meth_top150.tsv"
      }
     ],
     "run": "run",
@@ -2089,13 +2096,13 @@
       "field": "B6",
       "name": "sample_count",
       "value": "48",
-      "quote": "48 samples"
+      "quote": "48 samples by the 400 most variable transcripts"
      },
      {
       "field": "B6",
       "name": "feature_count",
       "value": "550",
-      "quote": "400 most variable transcripts"
+      "quote": "the 400 most variable transcripts"
      }
     ]
    }
@@ -2108,20 +2115,29 @@
     "DRAGON"
    ],
    "calls": 2,
-   "usd": 0.000579,
+   "usd": 0.000634,
    "errors": [],
    "status": "checked",
-   "kind_after": "DO",
+   "kind_after": "DECLINE",
    "workflows_after": [
     "DRAGON"
    ],
    "outcome_before": "partly_accept",
-   "outcome_after": "partly_accept",
-   "vetoes": [],
+   "outcome_after": "correct",
+   "vetoes": [
+    {
+     "workflow": "DRAGON",
+     "kind": "B5",
+     "reason": "DRAGON: lambda1 and lambda2 must be supplied together",
+     "user": "fix lambda1 at 0.3 for the RNA layer",
+     "contract": "setting lambda1 (number; minimum 0; maximum 1): Shrinkage of omics layer 1 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it; a manual value needs lambda1 and lambda2 together, both in [0, 1].",
+     "source": "contract"
+    }
+   ],
    "questions": [],
    "unverified": [],
    "unconfirmed": [],
-   "disclosures": 5,
+   "disclosures": 0,
    "to_confirm": [],
    "pairs": 0,
    "slim": {
@@ -2142,9 +2158,30 @@
     "roles": {
      "DRAGON": "target"
     },
+    "data": [
+     {
+      "field": "A3",
+      "name": "expression",
+      "value": "has",
+      "quote": "matched RNA-seq (2,000 genes) and RPPA protein data (220 antibodies) from 160 breast tumors"
+     },
+     {
+      "field": "A3",
+      "name": "protein",
+      "value": "has",
+      "quote": "matched RNA-seq (2,000 genes) and RPPA protein data (220 antibodies) from 160 breast tumors"
+     }
+    ],
     "run": "run",
     "run_quote": "running DRAGON on matched RNA-seq (2,000 genes) and RPPA protein data (220 antibodies) from 160 breast tumors",
     "stated": [
+     {
+      "field": "B5",
+      "name": "lambda1",
+      "value": "0.3",
+      "quote": "fix lambda1 at 0.3 for the RNA layer",
+      "workflow": "DRAGON"
+     },
      {
       "field": "B6",
       "name": "sample_count",
@@ -2162,30 +2199,29 @@
     "LIONESS-DRAGON"
    ],
    "calls": 2,
-   "usd": 0.000622,
+   "usd": 0.000623,
    "errors": [],
    "status": "checked",
-   "kind_after": "ASK",
+   "kind_after": "DECLINE",
    "workflows_after": [
     "LIONESS-DRAGON"
    ],
    "outcome_before": "partly_accept",
-   "outcome_after": "undecided",
-   "vetoes": [],
-   "questions": [
+   "outcome_after": "correct",
+   "vetoes": [
     {
      "workflow": "LIONESS-DRAGON",
-     "dimension": "feature_count",
-     "values": [
-      "500",
-      "2000"
-     ],
-     "quote": "2,000 transcripts"
+     "kind": "B6",
+     "reason": "LIONESS-DRAGON writes at most 20,000,000 values (features x (features - 1) / 2 x samples); 2,500 features and 120 samples give 374,850,000",
+     "user": "2,000 transcripts",
+     "contract": "runs above 20,000,000 values are refused before they start",
+     "source": "contract"
     }
    ],
+   "questions": [],
    "unverified": [],
    "unconfirmed": [],
-   "disclosures": 5,
+   "disclosures": 0,
    "to_confirm": [],
    "pairs": 0,
    "slim": {
@@ -2230,19 +2266,7 @@
      {
       "field": "B6",
       "name": "feature_count",
-      "values": [
-       "500",
-       "2000"
-      ],
-      "quote": "2,000 transcripts"
-     },
-     {
-      "field": "B6",
-      "name": "single_feature_count",
-      "values": [
-       "500",
-       "2000"
-      ],
+      "value": "2500",
       "quote": "2,000 transcripts"
      }
     ]
@@ -2256,7 +2280,7 @@
     "BONOBO"
    ],
    "calls": 2,
-   "usd": 0.000623,
+   "usd": 0.00068,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -2324,37 +2348,23 @@
      },
      {
       "field": "B5",
-      "name": "sparsify",
-      "value": "true",
-      "quote": "Turn sparsify on",
+      "name": "sample_names",
+      "value": "sample IDs",
+      "quote": "sample IDs",
       "workflow": "BONOBO"
      },
      {
       "field": "B5",
       "name": "bonobo_confidence",
       "value": "0.01",
-      "quote": "bonobo_confidence 0.01",
-      "workflow": "BONOBO"
-     },
-     {
-      "field": "B5",
-      "name": "save_pvals",
-      "value": "true",
-      "quote": "save the p-value matrices",
+      "quote": "0.01",
       "workflow": "BONOBO"
      },
      {
       "field": "B5",
       "name": "delta",
       "value": "0.3",
-      "quote": "set delta to 0.3",
-      "workflow": "BONOBO"
-     },
-     {
-      "field": "B5",
-      "name": "genes_axis",
-      "value": "rows",
-      "quote": "genes on rows",
+      "quote": "0.3",
       "workflow": "BONOBO"
      },
      {
@@ -2374,17 +2384,27 @@
     "LIONESS-PUMA"
    ],
    "calls": 2,
-   "usd": 0.000454,
+   "usd": 0.000448,
    "errors": [],
    "status": "checked",
-   "kind_after": "DO",
+   "kind_after": "ASK",
    "workflows_after": [
     "LIONESS-PUMA"
    ],
    "outcome_before": "correct",
-   "outcome_after": "correct",
+   "outcome_after": "needless_question",
    "vetoes": [],
-   "questions": [],
+   "questions": [
+    {
+     "workflow": "LIONESS-PUMA",
+     "dimension": "data:expression",
+     "values": [
+      "yes",
+      "no"
+     ],
+     "quote": ""
+    }
+   ],
    "unverified": [],
    "unconfirmed": [],
    "disclosures": 4,
@@ -2398,8 +2418,19 @@
      },
      {
       "quote": "from expr_ucec.tsv (genes by samples)",
-      "said": "kind_of_result",
-      "value": "network"
+      "said": "workflow_only"
+     },
+     {
+      "quote": "motif_prior.tsv (TF and miRNA target edges, regulator in column one)",
+      "said": "workflow_only"
+     },
+     {
+      "quote": "ppi_prior.tsv",
+      "said": "workflow_only"
+     },
+     {
+      "quote": "mirna_ids.txt with one miRNA ID per line",
+      "said": "workflow_only"
      },
      {
       "quote": "Aggregate network to out/puma_all.txt",
@@ -2430,20 +2461,29 @@
     "GIRAFFE"
    ],
    "calls": 2,
-   "usd": 0.000412,
+   "usd": 0.000571,
    "errors": [],
    "status": "checked",
-   "kind_after": "DO",
+   "kind_after": "DECLINE",
    "workflows_after": [
     "GIRAFFE"
    ],
    "outcome_before": "partly_accept",
-   "outcome_after": "partly_accept",
-   "vetoes": [],
+   "outcome_after": "correct",
+   "vetoes": [
+    {
+     "workflow": "GIRAFFE",
+     "kind": "C5",
+     "reason": "not a registered method: change the optimizer: learning rate 0.0005, 5,000 iterations, and a heavier weight on the PPI term of the loss. The defaults gave us nearly flat TF activities last time.",
+     "user": "change the optimizer: learning rate 0.0005, 5,000 iterations, and a heavier weight on the PPI term of the loss. The defaults gave us nearly flat TF activities last time.",
+     "contract": "NetZoo registers: BONOBO, COBRA, CONDOR, DRAGON, GIRAFFE, LIONESS-COEXPRESSION, LIONESS-DRAGON, LIONESS-PANDA, LIONESS-PUMA, OTTER, PANDA, PUMA, SAMBAR.",
+     "source": "registry"
+    }
+   ],
    "questions": [],
    "unverified": [],
    "unconfirmed": [],
-   "disclosures": 3,
+   "disclosures": 0,
    "to_confirm": [],
    "pairs": 0,
    "slim": {
@@ -2571,17 +2611,27 @@
     "PANDA"
    ],
    "calls": 2,
-   "usd": 0.000524,
+   "usd": 0.000641,
    "errors": [],
    "status": "checked",
-   "kind_after": "DO",
+   "kind_after": "ASK",
    "workflows_after": [
     "PANDA"
    ],
    "outcome_before": "correct",
-   "outcome_after": "correct",
+   "outcome_after": "needless_question",
    "vetoes": [],
-   "questions": [],
+   "questions": [
+    {
+     "workflow": "PANDA",
+     "dimension": "data:expression",
+     "values": [
+      "yes",
+      "no"
+     ],
+     "quote": ""
+    }
+   ],
    "unverified": [],
    "unconfirmed": [],
    "disclosures": 1,
@@ -2613,26 +2663,6 @@
     "roles": {
      "PANDA": "target"
     },
-    "data": [
-     {
-      "field": "A3",
-      "name": "expression",
-      "value": "has",
-      "quote": "data/gtex_liver_expr.txt (genes by 226 samples; the first row is a header with sample IDs)"
-     },
-     {
-      "field": "A3",
-      "name": "motif_prior",
-      "value": "has",
-      "quote": "data/motif_hs_tf.txt"
-     },
-     {
-      "field": "A3",
-      "name": "ppi",
-      "value": "has",
-      "quote": "data/ppi_hs_string.txt"
-     }
-    ],
     "run": "run",
     "run_quote": "Run PANDA now"
    }
@@ -2645,7 +2675,7 @@
     "SAMBAR"
    ],
    "calls": 2,
-   "usd": 0.00054,
+   "usd": 0.000538,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -2664,16 +2694,8 @@
    "slim": {
     "results": [
      {
-      "quote": "try every subtype number from 3 up to 9 clusters",
-      "said": "purpose_or_topic"
-     },
-     {
-      "quote": "average linkage",
-      "said": "purpose_or_topic"
-     },
-     {
-      "quote": "default normalization by each patient's mutation burden",
-      "said": "purpose_or_topic"
+      "quote": "SAMBAR",
+      "said": "workflow_only"
      }
     ],
     "roles": {
@@ -2687,6 +2709,8 @@
       "quote": "somatic mutation counts (samples by genes)"
      }
     ],
+    "run": "run",
+    "run_quote": "SAMBAR try every subtype number from 3 up to 9 clusters? Use average linkage and keep the default normalization by each patient's mutation burden.",
     "stated": [
      {
       "field": "B4",
@@ -2705,14 +2729,14 @@
       "field": "B5",
       "name": "kmin",
       "value": "3",
-      "quote": "every subtype number from 3 up to 9 clusters",
+      "quote": "try every subtype number from 3 up to 9 clusters",
       "workflow": "SAMBAR"
      },
      {
       "field": "B5",
       "name": "kmax",
       "value": "9",
-      "quote": "every subtype number from 3 up to 9 clusters",
+      "quote": "try every subtype number from 3 up to 9 clusters",
       "workflow": "SAMBAR"
      },
      {
@@ -2726,7 +2750,7 @@
       "field": "B6",
       "name": "sample_count",
       "value": "9",
-      "quote": "nine patient-derived colorectal cancer organoids"
+      "quote": "nine patient-derived colorectal cancer organoids with somatic mutation counts (samples by genes)"
      }
     ]
    }
@@ -2739,7 +2763,7 @@
     "COBRA"
    ],
    "calls": 2,
-   "usd": 0.000442,
+   "usd": 0.000426,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -2772,13 +2796,13 @@
       "field": "A3",
       "name": "expression",
       "value": "has",
-      "quote": "bulk RNA-seq covers 18,500 genes in 240 lung biopsies sequenced in two batches"
+      "quote": "bulk RNA-seq covers 18,500 genes in 240 lung biopsies sequenced in two batches."
      },
      {
       "field": "A3",
       "name": "design_matrix",
       "value": "has",
-      "quote": "The design table has one row per sample ID, batch coded 0/1 and pack-years as a number"
+      "quote": "The design table has one row per sample ID, batch coded 0/1 and pack-years as a number."
      }
     ],
     "stated": [
@@ -2792,13 +2816,13 @@
       "field": "B6",
       "name": "feature_count",
       "value": "18500",
-      "quote": "Our bulk RNA-seq covers 18,500 genes"
+      "quote": "covers 18,500 genes"
      },
      {
       "field": "B6",
       "name": "single_feature_count",
       "value": "18500",
-      "quote": "Our bulk RNA-seq covers 18,500 genes"
+      "quote": "covers 18,500 genes"
      }
     ]
    }
@@ -2811,17 +2835,27 @@
     "GIRAFFE"
    ],
    "calls": 2,
-   "usd": 0.000371,
+   "usd": 0.000378,
    "errors": [],
    "status": "checked",
-   "kind_after": "DO",
+   "kind_after": "ASK",
    "workflows_after": [
     "GIRAFFE"
    ],
    "outcome_before": "correct",
-   "outcome_after": "correct",
+   "outcome_after": "needless_question",
    "vetoes": [],
-   "questions": [],
+   "questions": [
+    {
+     "workflow": "GIRAFFE",
+     "dimension": "data:expression",
+     "values": [
+      "yes",
+      "no"
+     ],
+     "quote": ""
+    }
+   ],
    "unverified": [],
    "unconfirmed": [],
    "disclosures": 3,
@@ -2833,26 +2867,6 @@
       "quote": "I want an activity value for every transcription factor in every sample that isn't simply the TF's own mRNA level",
       "said": "menu_result",
       "value": "tf_activity"
-     }
-    ],
-    "data": [
-     {
-      "field": "A3",
-      "name": "expression",
-      "value": "has",
-      "quote": "the expression matrix"
-     },
-     {
-      "field": "A3",
-      "name": "motif_prior",
-      "value": "has",
-      "quote": "a motif prior"
-     },
-     {
-      "field": "A3",
-      "name": "ppi",
-      "value": "has",
-      "quote": "a TF-TF PPI matrix with matching IDs"
      }
     ],
     "stated": [
@@ -2873,7 +2887,7 @@
     "CONDOR"
    ],
    "calls": 2,
-   "usd": 0.000404,
+   "usd": 0.000414,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -2928,7 +2942,7 @@
     "BONOBO"
    ],
    "calls": 2,
-   "usd": 0.000444,
+   "usd": 0.000442,
    "errors": [],
    "status": "checked",
    "kind_after": "DO",
@@ -2962,7 +2976,7 @@
      }
     ],
     "run": "run",
-    "run_quote": "I need a separate gene-gene co-expression network for each of 30 mouse retina samples (15 wild-type, 15 rd10).",
+    "run_quote": "I need a separate gene-gene co-expression network for each of 30 mouse retina samples.",
     "stated": [
      {
       "field": "B4",
@@ -2981,7 +2995,7 @@
      {
       "field": "B5",
       "name": "sample_names",
-      "value": "30",
+      "value": "30 mouse retina samples",
       "quote": "separate gene-gene co-expression network for each of 30 mouse retina samples",
       "workflow": "BONOBO"
      },
@@ -3009,7 +3023,7 @@
     "COBRA"
    ],
    "calls": 2,
-   "usd": 0.000409,
+   "usd": 0.000572,
    "errors": [],
    "status": "checked",
    "kind_after": "ASK",
@@ -3097,17 +3111,27 @@
     "OTTER"
    ],
    "calls": 2,
-   "usd": 0.00051,
+   "usd": 0.000683,
    "errors": [],
    "status": "checked",
-   "kind_after": "DO",
+   "kind_after": "ASK",
    "workflows_after": [
     "OTTER"
    ],
    "outcome_before": "correct",
-   "outcome_after": "correct",
+   "outcome_after": "needless_question",
    "vetoes": [],
-   "questions": [],
+   "questions": [
+    {
+     "workflow": "OTTER",
+     "dimension": "data:expression|coexpression_matrix",
+     "values": [
+      "yes",
+      "no"
+     ],
+     "quote": ""
+    }
+   ],
    "unverified": [],
    "unconfirmed": [],
    "disclosures": 2,
@@ -3150,17 +3174,27 @@
     "CONDOR"
    ],
    "calls": 2,
-   "usd": 0.000415,
+   "usd": 0.000425,
    "errors": [],
    "status": "checked",
-   "kind_after": "DO",
+   "kind_after": "ASK",
    "workflows_after": [
     "CONDOR"
    ],
    "outcome_before": "false_accept",
-   "outcome_after": "false_accept",
+   "outcome_after": "undecided",
    "vetoes": [],
-   "questions": [],
+   "questions": [
+    {
+     "workflow": "CONDOR",
+     "dimension": "data:regulator_gene_network",
+     "values": [
+      "yes",
+      "no"
+     ],
+     "quote": ""
+    }
+   ],
    "unverified": [],
    "unconfirmed": [],
    "disclosures": 2,

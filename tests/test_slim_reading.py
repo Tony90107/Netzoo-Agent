@@ -23,7 +23,10 @@ from netzoo_agent_core.interpretation.menu_decision import b_fields, candidate_w
 from netzoo_agent_core.interpretation.menu_focus import focus_limits  # noqa: E402
 from netzoo_agent_core.interpretation.slim_reader import (  # noqa: E402
     FACTS, Needs, chosen, core_model, core_text, focus_model, from_core, merge_focus, slim_needs, split_b, to_menu,
-    to_slim, wire_payloads, wire_values,
+    to_slim,
+)
+from netzoo_agent_core.interpretation.slim_values import (  # noqa: E402
+    wire_payloads, wire_values,
 )
 from netzoo_agent_core.judgment_defaults import load_defaults  # noqa: E402
 

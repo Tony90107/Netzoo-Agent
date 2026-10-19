@@ -174,6 +174,8 @@ def test_the_hook_is_off_by_default_and_vetoes_a_live_do_when_on(monkeypatch):
                 return SimpleNamespace(invoke=lambda m: {"parsed": schema.model_validate(core_payload), "raw": None})
             payload = {"settings": [{"quote": "learning rate 0.0005", "workflow": "GIRAFFE", "control": "unregistered",
                                      "value": "0.0005", "values": [], "asks_to_set": True}]}
+            payload.update({name: {"quote": "", "status": "not_said", "value": None, "values": []}
+                            for name in schema.model_fields if name not in ("settings", "counts")})
             if "counts" in schema.model_fields:
                 payload["counts"] = []
             return SimpleNamespace(invoke=lambda m: {"parsed": schema.model_validate(payload), "raw": None})
@@ -238,3 +240,18 @@ def test_core_data_never_mentioned_is_asked_once_in_the_same_reply_never_vetoed(
     assert [q.dimension for q in tie.questions] == ["data:expression"]
     layers = contract_veto(SlimReading(data=[fact("A3", "expression", "has", "rna.csv")]), ["DRAGON"])
     assert [q.dimension for q in layers.questions] == ["data:two_layers"]
+
+
+def test_core_data_step_one_missed_is_read_once_in_step_three():
+    """H2 prep (debug on seen sets): step 1 wrote no data for "Run PANDA now on data/gtex_liver_expr.txt ..."; the
+    limit read gets one cell for a chosen workflow's core data step 1 did not mention, and a named file counts."""
+    from netzoo_agent_core.interpretation.slim_reader import focus_model, merge_focus
+    task = "Run PANDA now on data/liver_expr.txt with motif.txt and ppi.txt."
+    needs = limit_needs(SlimReading(), ["PANDA"])
+    assert needs.data == ("expression",) and ("has_expression", -2, "data:expression") in needs.cells()
+    assert "has_expression" in focus_model(needs).model_json_schema()["properties"]
+    slim, _ = merge_focus(SlimReading(), {"has_expression": {"quote": "data/liver_expr.txt", "status": "stated",
+                                                             "value": "has", "values": []}, "settings": []}, task, needs)
+    assert [(d.name, d.value) for d in slim.data] == [("expression", "has")]
+    assert not any(q.dimension.startswith("data:") for q in contract_veto(slim, ["PANDA"], task).questions)
+    assert limit_needs(slim, ["PANDA"]).data == ()  # read once: mentioned now, never read again

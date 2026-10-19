@@ -33,7 +33,8 @@ from dev import outcome  # noqa: E402
 from netzoo_agent_core.graph.menu_reading_call import read_requirements  # noqa: E402
 from netzoo_agent_core.graph.slim_reading_call import read_slim  # noqa: E402
 from netzoo_agent_core.interpretation.menu_decision import decide_menu  # noqa: E402
-from netzoo_agent_core.interpretation.slim_reader import SLIM_SHAPE, to_menu, wire_values  # noqa: E402
+from netzoo_agent_core.interpretation.slim_reader import SLIM_SHAPE, to_menu  # noqa: E402
+from netzoo_agent_core.interpretation.slim_values import wire_values  # noqa: E402
 
 ITEMS = json.loads((P1 / "dev_items.json").read_text())["items"]
 

@@ -29,7 +29,10 @@ from phase0_gate import ITEMS, reading as gold_reading  # noqa: E402
 
 from netzoo_agent_core.contracts.menu_reading import MenuReading  # noqa: E402
 from netzoo_agent_core.interpretation.slim_reader import (  # noqa: E402
-    slim_needs, split_b, to_slim, wire_payloads, wire_values,
+    slim_needs, split_b, to_slim,
+)
+from netzoo_agent_core.interpretation.slim_values import (  # noqa: E402
+    wire_payloads, wire_values,
 )
 from netzoo_agent_core.method_names import workflows_in  # noqa: E402
 
