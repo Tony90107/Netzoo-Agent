@@ -24,6 +24,7 @@ from ..evaluation import (
 )
 from ..evaluation.rendering import render_authority_search_response, render_retrieval_failure_response
 from ..interpretation import _is_fatal_exception
+from ..interpretation.contract_veto import with_veto_notes
 from ..interpretation.concept_answers import (
     render_capability_gap,
     render_outcome_clarification,
@@ -87,7 +88,8 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     result = with_study_purpose_reply(with_outside_steps_reply(result, state, _reply), state, _reply)
     # Logs 383, 387: the data-needs plan, then what was understood to be asked for.
     result = with_capability_check_reply(with_data_plan_reply(result, state, _reply), state, _reply)
-    return record_core_view(context, state, with_run_choice_reply(result, state, _reply))  # tied run; core view
+    result = with_run_choice_reply(result, state, _reply)  # tied run; hybrid spec 4: the veto's notes on a DO
+    return record_core_view(context, state, with_veto_notes(result, state, _reply))  # core view
 
 
 def _respond(context: _GraphContext, state: AgentState) -> dict:

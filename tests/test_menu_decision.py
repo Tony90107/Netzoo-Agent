@@ -18,7 +18,8 @@ from netzoo_agent_core.capability_sheet import sheet_entries  # noqa: E402
 from netzoo_agent_core.contracts.menu_reading import (  # noqa: E402
     Answer, Count, MenuReading, Requirement, Said, SettingAsked, Wanted,
 )
-from netzoo_agent_core.interpretation.menu_decision import confirm_items, disclosures_for, apply_answers, decide_menu  # noqa: E402
+from netzoo_agent_core.interpretation.interpretation_choices import confirm_items, disclosures_for  # noqa: E402
+from netzoo_agent_core.interpretation.menu_decision import apply_answers, decide_menu  # noqa: E402
 from netzoo_agent_core.judgment_defaults import judgment_defaults  # noqa: E402
 
 TABLE = judgment_defaults()

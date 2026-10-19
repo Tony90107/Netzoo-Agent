@@ -162,7 +162,7 @@ def _clarify_need(decision, check, goal_quote: str = "") -> ClarifyNeed:
 def with_core(decision, core: CoreDecision):
     """The decision a call leaves: CLARIFY (phase 1) and an agent's ASK (phase 2) select, refuse and run nothing;
     the other kinds change nothing yet."""
-    if core.kind == "ASK" and core.basis in ("fact_agent", "count_fact", "hybrid_requirement"):
+    if core.kind == "ASK" and core.basis in ("fact_agent", "count_fact", "hybrid_requirement", "contract_veto_fact"):
         asked = [fact.question for fact in core.facts if not fact.settled_by_input_check]
         return decision.model_copy(update={
             "core": core, "action": "no_tool", "should_execute": False, "execution_requested": False,
@@ -170,7 +170,7 @@ def with_core(decision, core: CoreDecision):
             "hypothesis_actions": [], "alternative_actions": [], "capability_match_status": "ambiguous",
             "clarification_question": " ".join(asked)[:300],
             "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen."})
-    if core.kind == "DECLINE" and core.basis == "hybrid_gate":  # the hard gates (2026-10-18): nothing runs
+    if core.kind == "DECLINE" and core.basis in ("hybrid_gate", "contract_veto"):  # a contract rules it out
         return decision.model_copy(update={
             "core": core, "action": "no_tool", "should_execute": False, "execution_requested": False,
             "intent_type": "answer_question", "matched_actions": [], "recommended_actions": [],

@@ -34,6 +34,11 @@ def decline_reply(core) -> str:
     """DECLINE, from the call alone: each part that cannot be done as asked, why, and what can be done instead."""
     if core.basis in ("algorithm_boundary", "cobra_boundary"):
         return core.declined[0].line if core.declined else ""
+    if core.basis == "contract_veto":  # hybrid spec 4: "cannot, because <contract words>", then the nearest options
+        nearest = list(dict.fromkeys(w for part in core.declined for w in part.alternatives))
+        tail = (f"The nearest options NetZoo can run: {', '.join(nearest)}." if nearest
+                else "No registered workflow can do this as you asked.")
+        return "\n\n".join(["\n".join(part.line for part in core.declined), tail, _CLOSING])
     lines = [f"{index}. {part.line or chr(34) + part.quote + chr(34) + ' -- not available here as asked.'}"
              for index, part in enumerate(core.declined, 1)]
     head = ["What I understood you are asking for:", *lines] if lines else [
