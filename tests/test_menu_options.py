@@ -132,9 +132,9 @@ def test_one_option_left_and_everything_confirmed_is_do():
                           conditions={"mutation_origin": said("somatic", "somatic mutation calls")})
     decision = decide_menu(reading, "Run SAMBAR on our somatic mutation calls in mut.csv")
     assert decision.kind == "DO" and [o.workflow for o in decision.options] == ["SAMBAR"] and decision.run_ready
-    # slim reading B4: unstated, SAMBAR's mutation origin is asked, never assumed
+    # User decision 2026-10-19 (a): unstated, the mutation origin defaults to somatic and is disclosed, never asked
     unstated = decide_menu(reading.model_copy(update={"conditions": {}}), "Run SAMBAR on mut.csv")
-    assert unstated.kind == "ASK" and unstated.questions[0].dimension == "mutation_origin"
+    assert unstated.kind == "DO" and "mutation_origin=somatic" in unstated.assumptions
 
 
 # --- settings only from the candidates' controls -------------------------------------------------------------------

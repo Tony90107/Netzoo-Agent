@@ -128,7 +128,7 @@ def test_c3_every_request_scope_limit_is_read_by_b5_or_b6():
 
 def test_c4_every_dimension_is_read_by_one_slim_field_and_no_field_is_idle():
     table = load_defaults()
-    names = {f"{c}{i}" for c, n in (("A", 4), ("B", 6), ("C", 7), ("D", 6)) for i in range(1, n + 1)}
+    names = {f"{c}{i}" for c, n in (("A", 4), ("B", 6), ("C", 7), ("D", 7)) for i in range(1, n + 1)}
     assert set(table.slim_fields) == names
     filled = {d for field in table.slim_fields.values() for d in field.fills}
     assert set(table.dimensions) <= filled, sorted(set(table.dimensions) - filled)

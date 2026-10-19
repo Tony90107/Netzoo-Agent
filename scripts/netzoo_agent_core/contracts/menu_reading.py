@@ -122,6 +122,9 @@ class MenuReading(_Model):
     """The user's words doubting what a named file holds (which export, which matrix); the input check settles them
     before a run (spec R5), and they are asked about otherwise."""
     run_requested: bool = False
+    covariates: list[str] = Field(default_factory=list)
+    """D7: covariates or confounders the user mentions (batch, site, other); they trigger interpretation choices
+    (`judgment_defaults.choices`, user decision 2026-10-19)."""
 
 
 class Answer(_Model):
@@ -204,3 +207,4 @@ class MenuDecision(_Model):
     """DECLINE: the nearest registered options that can be done, with what differs from the request."""
     evidence: list[str] = Field(default_factory=list)
     """CLARIFY: the user's words showing the goal is unclear (no result named, only a generic word, a method choice)."""
+

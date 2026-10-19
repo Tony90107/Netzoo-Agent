@@ -5,7 +5,7 @@ and requirements (the study-purpose model, gpt-4o-mini; strict schema `menu_focu
 requirement against those workflows' contracts (`menu_requirements`, verified clauses only), and lets
 `interpretation.hybrid_gates.gated_core` change the call. Every call is priced against the turn's budget first and
 recorded in its usage; a call that cannot be made or fails leaves the live call as it was (the gates never hold a
-turn on their own failure). Set NETZOO_HYBRID_GATES=0 to turn them off.
+turn on their own failure). Off by default (user decision 2026-10-19 (c)); NETZOO_HYBRID_GATES=1 turns them on.
 """
 
 from __future__ import annotations
@@ -76,7 +76,7 @@ def _call(context, state, role, model, llm, messages, schema, usage, warnings):
 
 def apply_hybrid_gates(context, state, decision, core, user_task: str, usage, warnings):
     """(core, usage, warnings): the live DO judged by the hard gates; anything else is returned as it came."""
-    if core.kind != "DO" or os.environ.get("NETZOO_HYBRID_GATES", "1") == "0":
+    if core.kind != "DO" or os.environ.get("NETZOO_HYBRID_GATES", "0") != "1":
         return core, usage, warnings
     known = registered_workflows()
     workflows = tuple(name for name in core.workflows if name in known)

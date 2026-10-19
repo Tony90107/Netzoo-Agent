@@ -65,6 +65,7 @@ FACTS = {
     "requirement": ("D4", "requirements", ("how_computed", "what_it_contains")),
     "raw_files": ("D5", "data_stage", ()),
     "file_doubt": ("D6", "unsure_files", ()),
+    "covariate": ("D7", "covariates", ("batch", "site", "other")),
 }
 _FACT_MEANS = {
     "claim": "causal: proof that one thing causes another; prediction: a trained model that predicts an outcome.",
@@ -84,6 +85,8 @@ _FACT_MEANS = {
                    "format is no requirement.",
     "raw_files": "raw files that need processing first: FASTQ, BAM, peak or signal files (value empty).",
     "file_doubt": "the user doubts what a named file holds: which export, which matrix (value empty).",
+    "covariate": "a covariate or confounder the user mentions: batch, site (a site or centre), or other (age, sex, "
+                 "treatment); one fact each.",
 }
 # C4: a special data situation and its plain counterpart, as the condition and its value.
 _SPECIAL = {"single_cells": ("data_unit", "single_cells"), "bulk_samples": ("data_unit", "bulk_samples"),
@@ -170,7 +173,7 @@ def to_menu(slim: SlimReading) -> MenuReading:
             wanted.append(Wanted(quote=quote))
     deliverable = [i for i, w in enumerate(wanted) if w.form == "deliverable"]
     conditions: dict[str, Said] = {}
-    parts: dict = {"claims": Said(), "delivery": Said(), "groups": [], "settings": [], "unsure_files": [],
+    parts: dict = {"claims": Said(), "delivery": Said(), "groups": [], "settings": [], "unsure_files": [], "covariates": [],
                    "sample_count": Count(), "feature_count": Count(), "single_feature_count": None}
     purposes = []
     for fact in slim.stated:
@@ -195,6 +198,8 @@ def to_menu(slim: SlimReading) -> MenuReading:
             parts["groups"].append(fact.value or fact.quote)
         elif name == "unsure_files":
             parts["unsure_files"].append(fact.quote)
+        elif name == "covariates":
+            parts["covariates"].append(fact.value)
         elif name in ("sample_count", "feature_count"):
             parts[name] = _count_of(fact)
         elif name == "single_feature_count":
@@ -220,7 +225,8 @@ def to_menu(slim: SlimReading) -> MenuReading:
         data=[d.name for d in slim.data if d.value == "has"], data_absent=[d.name for d in slim.data if d.value == "lacks"],
         only_data=slim.only_these, groups=parts["groups"], sample_count=parts["sample_count"],
         feature_count=parts["feature_count"], single_feature_count=parts["single_feature_count"],
-        settings=parts["settings"], unsure_files=parts["unsure_files"], run_requested=slim.run == "run")
+        settings=parts["settings"], unsure_files=parts["unsure_files"], run_requested=slim.run == "run",
+        covariates=parts["covariates"])
 
 
 def _fact_of(field: str, name: str, said: Said, item: int = -1) -> Stated:
@@ -282,6 +288,7 @@ def to_slim(reading: MenuReading) -> SlimReading:
         stated.append(_fact_of("C3", "delivery", reading.delivery))
     stated += [Stated(field="D1", name="groups", value=group, quote=group) for group in reading.groups]
     stated += [Stated(field="D6", name="unsure_files", quote=quote) for quote in reading.unsure_files]
+    stated += [Stated(field="D7", name="covariates", value=value, quote=value) for value in reading.covariates]
     for name in ("sample_count", "feature_count"):
         count = getattr(reading, name)
         if count.status == "stated":
@@ -892,7 +899,7 @@ def wire_payloads(slim: SlimReading, needs: Needs, names: tuple[str, ...] = ()) 
             values = [_SPECIAL_OF.get((f.name, v), v) for v in f.values]
             facts.append({"field": "special_data", "value": "" if values else _SPECIAL_OF.get((f.name, f.value), f.value),
                           "values": values, "quote": f.quote})
-        elif f.field in ("C2", "C3", "D1", "D2", "D3", "D4", "D5", "D6"):
+        elif f.field in ("C2", "C3", "D1", "D2", "D3", "D4", "D5", "D6", "D7"):
             name = wire_of[f.name]
             value = "" if name in ("outside_action", "raw_files", "groups", "file_doubt") else f.value
             facts.append({"field": name, "value": value, "values": list(f.values), "quote": f.quote})

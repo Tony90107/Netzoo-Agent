@@ -18,7 +18,7 @@ from netzoo_agent_core.capability_sheet import sheet_entries  # noqa: E402
 from netzoo_agent_core.contracts.menu_reading import (  # noqa: E402
     Answer, Count, MenuReading, Requirement, Said, SettingAsked, Wanted,
 )
-from netzoo_agent_core.interpretation.menu_decision import apply_answers, decide_menu  # noqa: E402
+from netzoo_agent_core.interpretation.menu_decision import confirm_items, disclosures_for, apply_answers, decide_menu  # noqa: E402
 from netzoo_agent_core.judgment_defaults import judgment_defaults  # noqa: E402
 
 TABLE = judgment_defaults()
@@ -140,8 +140,12 @@ def test_linking_words_give_the_joint_network():
     read = reading("multi_omic_network", "whole_cohort", None, "joint", ["expression", "methylation"])
     decision = decide_menu(_dragon(read))
     assert (decision.kind, decision.workflows) == ("DO", ["DRAGON"])
-    unstated = decide_menu(read)  # B4: the same samples and continuous values are asked, never assumed
-    assert unstated.kind == "ASK" and unstated.questions[0].dimension in ("samples_matched", "value_type")
+    # User decision 2026-10-19 (a): unstated, value_type takes its default and the same samples are left to the input
+    # check -- both disclosed, neither asked.
+    unstated = decide_menu(read)
+    assert (unstated.kind, unstated.workflows) == ("DO", ["DRAGON"]) and "value_type=continuous" in unstated.assumptions
+    lines = disclosures_for(read, ["DRAGON"])
+    assert any("same samples" in line for line in lines) and any("continuous" in line for line in lines)
 
 
 def test_three_layers_ask_which_pair():
@@ -303,3 +307,19 @@ def test_mirna_data_is_a_mention_so_the_regulator_kind_is_asked():
     decision = decide_menu(reading("regulatory_network", "whole_cohort", None, None,
                                    ["expression", "motif_prior", "ppi", "mirna_prior"]))
     assert decision.kind == "ASK" and decision.questions[0].dimension == "regulators"
+
+
+def test_disclosures_and_confirm_items_come_from_the_choices_table():
+    """Hybrid spec 4: a run discloses its workflows' defaults (unless the user set that control) and lists the
+    triggered must-confirm choices at run confirmation."""
+    lioness = MenuReading(data=["expression", "motif_prior", "ppi"], groups=["responders", "non-responders"])
+    lines = disclosures_for(lioness, ["LIONESS-PANDA"])
+    assert any("not independent" in line for line in lines) and any("against all the samples" in line for line in lines)
+    assert confirm_items(lioness, ["LIONESS-PANDA"]) == [
+        "Which samples should each per-sample network be estimated against?"]
+    assert confirm_items(lioness.model_copy(update={"groups": []}), ["LIONESS-PANDA"]) == []
+    otter = MenuReading(settings=[SettingAsked(quote="lam 0.1", workflow="OTTER", control="lam", value="0.1")])
+    assert not any("lam 0.035" in line for line in disclosures_for(otter, ["OTTER"]))
+    assert any("lam 0.035" in line for line in disclosures_for(MenuReading(), ["OTTER"]))
+    batch = MenuReading(groups=["AD", "control"], covariates=["batch"])
+    assert any("batch" in item for item in confirm_items(batch, ["PANDA", "COBRA"]))
