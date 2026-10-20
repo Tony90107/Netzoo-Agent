@@ -28,3 +28,11 @@
 - 重建的 check 不含 second opinion，T02 在 live 會不會被 second opinion 再認可，靠新加的跳過規則與單元測試保護，尚未 live 驗證。
 - 背景候選數字一律當成樣本數判斷。已存資料裡只有 T02 觸發；若使用者把其他數量（例如 1 或 2 個資料層）寫成並列且沒被讀到，可能被誤判。
 - 模型第一次讀取漏讀仍未根治；這是程式端的補救。
+
+## 補充：live attempt-06 之後的修正（`4323a061`）
+
+Live attempt-06 中，T02 判成 DECLINE ✓，但 T03 退步成 DO：模型把同一句請求拆成兩個原文重疊的結果，「單一結果」規則因此沒有套用「2 或 14」；ROUND-10 記下的背景候選又讓保護網以為已解釋。修正兩點：
+1. 有幾個被認可的結果，按段落算，原文重疊算同一個（`distinct_passages`；second opinion 路徑只有原文，用包含關係判斷，`distinct_quotes`）。
+2. 保護網只有在背景候選確實套用到該結果時，才把它當成已解釋；判斷規則和 `count_update` 一樣。
+
+重放 1,002 份（`compare-overlap.txt`）：只有 attempt-06 T03 改變，DO → ASK「Which of these is right: 2 or 14?」；其餘的 check 和判定都不變；金標 561 = 561。全套 4797 passed。
