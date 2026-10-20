@@ -28,7 +28,8 @@ from .needed_facts import (
 from ..contracts.capability_check import (
     CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences, reading_version,
 )
-from .count_alternatives import count_update, file_count_note, verified_count_alternatives, weigh_sample_doubts
+from .count_alternatives import (count_update, file_count_note, verified_count_alternatives, weigh_credited_counts,
+                                 weigh_sample_doubts)
 from .request_spans import _locate_tokens, _span, distinct_passages  # noqa: F401 -- research tools import _span
 from .request_readings import only_inputs, ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal  # noqa: F401
 from .method_conditions import (
@@ -954,7 +955,7 @@ def _pairs(check: CapabilityCheck, actions_for) -> list[tuple[int, str, list[str
 
 
 def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, list[str]]],
-                         answers: list) -> CapabilityCheck:
+                         answers: list, task: str = "") -> CapabilityCheck:
     """Credit a workflow's fitting entries for every pair answered all; the gap stands only if none was.
 
     Log 407: "part" no longer credits anything. Log 403 added it for one quote holding two results
@@ -963,9 +964,10 @@ def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, lis
     sessions), while "part" was answered for single results only partly met -- each TF's sign in each
     tumor from GIRAFFE's cohort-level signs, enhancer-promoter loops from DRAGON -- 13 times on
     unsupported requests; the 4 times on supported ones another workflow was answered "all".
+    `task`: the request, so a credited result's candidate counts are weighed (`weigh_credited_counts`).
     """
     requirements = [item.model_copy() for item in check.requirements]
-    full = {}
+    full, fitted = {}, {}
     for (index, _action, keys), answer in zip(pairs, answers):
         # "named": the words only ask to run this workflow ("請跑 PANDA"), naming no result -- its own results are
         # what is asked (10-13b F40, F46 were refused when the only choices were all/part/none).
@@ -978,7 +980,7 @@ def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, lis
         from types import SimpleNamespace
         # Revalidate at the credit boundary, even if a caller supplied stale/unfiltered pairs.
         candidate = list(dict.fromkeys([*previous, *keys]))
-        candidate = _fitting(candidate, SimpleNamespace(**item.attrs)) if item.attrs else []
+        candidate = fitted[index] = _fitting(candidate, SimpleNamespace(**item.attrs)) if item.attrs else []
         kept, limits, _instead, own = method_fitting(item.method, candidate)
         previous = []
         delivered = list(dict.fromkeys([*previous, *kept]))
@@ -986,6 +988,7 @@ def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, lis
             "delivered_by": delivered, "status": _status(delivered), "second_opinion": True,
             "limits": list(dict.fromkeys([*item.limits, *limits])),
             "defaults": list(dict.fromkeys([*item.defaults, *own]))})
+    requirements = weigh_credited_counts(task, check, requirements, fitted)
     results = [item for item in requirements if item.kind == "result"]
     full_gap = _full_gap(results, check.unchecked)
     return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})

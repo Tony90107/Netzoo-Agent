@@ -16,7 +16,7 @@ from test_method_conditions import _ask  # noqa: E402
 
 from netzoo_agent_core.contracts.capability_check import proposal_model, unstated_conditions  # noqa: E402
 from netzoo_agent_core.interpretation.capability_check import (  # noqa: E402
-    build_capability_check, request_sentences, second_opinion_pairs, understanding_paragraph,
+    apply_second_opinion, build_capability_check, request_sentences, second_opinion_pairs, understanding_paragraph,
 )
 
 ASK = "Can LIONESS-PANDA produce a TF-to-gene network per sample from these bulk RNA measurements"
@@ -165,3 +165,27 @@ def test_context_moved_back_to_its_own_sentence_is_read_for_candidates():
     check = build_capability_check(task, proposal)[0]
     assert [a["values"] for a in check.count_alternatives] == [[9, 17]]
     assert [row.status for row in check.results()] == ["available"]
+
+
+@pytest.mark.parametrize("numbers, status, gap", [("one or two", "not_available", True),
+                                                  ("nine or seventeen", "available", False),
+                                                  ("2 or 14", "needs_fact", False)])
+def test_candidates_are_weighed_for_a_result_the_second_opinion_credits(numbers, status, gap):
+    """The first reading credited nothing, so the candidates had no workflow to be weighed for; the second opinion's
+    credit is weighed like the first reading's (live attempt-07 open gap)."""
+    context = f"The entire cohort consists of either {numbers} biological samples"
+    task = f"{context}; the manifest is unavailable. {ASK}?"
+    check = _check(task, _ask(ASK, [], scale="per_sample", regulator_kinds=["tf"]), has=[context])
+    assert check.full_gap and check.count_alternatives
+    pairs = second_opinion_pairs(check, ["run_lioness_panda"])
+    assert pairs
+    (row,) = apply_second_opinion(check, pairs, ["all"] * len(pairs), task).results()
+    assert row.status == status and row.second_opinion
+    assert apply_second_opinion(check, pairs, ["all"] * len(pairs), task).full_gap is gap
+    if status == "not_available":
+        assert any(limit.startswith("with 1: LIONESS-PANDA needs at least 3 samples") for limit in row.limits)
+        assert row.unknown_quote == context and row.fact_ids
+    if status == "needs_fact":
+        assert row.by_code and set(row.outcomes) == {"2", "14"} and row.fact_ids
+    # Without the request's words nothing is weighed, as before.
+    assert apply_second_opinion(check, pairs, ["all"] * len(pairs)).results()[0].status == "available"
