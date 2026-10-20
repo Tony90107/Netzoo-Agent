@@ -278,6 +278,15 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     workflows = ([workflow_name(decision.action)] if running
                  else _names(key for row in given for key in row.delivered_by) or _routed(decision))
     declined = _declined(results, check)
+    # Copied context is not a checked prerequisite. Keep unread quantities out
+    # of the approval path without guessing what those numbers count.
+    from .sample_coverage import unread_sample_conditions
+
+    questions, missing = unread_sample_conditions(check, task)
+    if questions:
+        evidence["unread_sample_conditions"] = missing
+        return call("ASK", "count_fact", facts=questions,
+                    workflows=list(dict.fromkeys(w for fact in questions for w in fact.workflows)))
     approved = (running and verdict is not None and not verdict.held and verdict.verdict in APPROVING_RUN_VERDICTS)
     held = verdict is not None and verdict.held
     basis = "run_held" if held else "run" if running else "results_given" if given else "routed"
