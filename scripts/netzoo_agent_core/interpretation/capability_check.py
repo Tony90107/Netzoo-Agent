@@ -36,6 +36,7 @@ from .method_conditions import (
     verified_method, with_request_method,
 )
 from .request_facts import FactRecord
+from .sentence_ownership import owned_sentences, request_sentences
 from .requirement_split import (
     ask_conditions, condition_requirements, delivery_requirements, form_condition_spans, split_additions,
 )
@@ -51,19 +52,6 @@ __all__ = [
     "apply_second_opinion",
     "implied_actions", "requirement_for", "delivering_actions", "checked_route_lines", "checked_body_result",
 ]
-
-_SENTENCE_END = re.compile(r"(?<=[.!?。！？])\s+|\n+")
-
-
-def request_sentences(task: str) -> list[tuple[int, int]]:
-    """(start, end) of each sentence with words in it."""
-    spans, start = [], 0
-    for match in _SENTENCE_END.finditer(task):
-        spans.append((start, match.start()))
-        start = match.end()
-    spans.append((start, len(task)))
-    return [(s, e) for s, e in spans if re.search(r"\w{2,}", task[s:e])]
-
 
 def _status(delivered: list[str]) -> str:
     levels = {entry(key).level for key in delivered}
@@ -417,9 +405,11 @@ def build_capability_check(
             spans.append(span)
         return span
 
-    asked = [found for sentence in proposal_sentences(proposal) for item in sentence.asks
+    sentences, ownership_rejected = owned_sentences(task, proposal_sentences(proposal))
+    rejected.extend(ownership_rejected)
+    asked = [found for sentence in sentences for item in sentence.asks
              if (found := _span(task, item.quote)) is not None]
-    for sentence in proposal_sentences(proposal):
+    for sentence in sentences:
         for kind, quotes in (("context", sentence.has), ("about_methods", sentence.about_methods)):
             for quote in quotes:
                 if (span := place(quote)) is not None:
