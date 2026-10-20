@@ -55,3 +55,21 @@ def scope_applies(result: str, scopes: list[str] | None) -> bool:
     """
     return scopes is None or any(_locate(result, quote) is not None or _locate(quote, result) is not None
                                  for quote in scopes)
+
+
+def distinct_passages(spans) -> int:
+    """How many separate passages the spans quote: spans whose words overlap are one (live attempt-06 T03: "one
+    TF-to-gene network per biological sample from pine_bulk.tsv, ..." and "one TF-to-gene network per biological
+    sample" are one result read twice, not two)."""
+    count, end = 0, -1
+    for start, stop in sorted(spans):
+        if start >= end:
+            count += 1
+        end = max(end, stop)
+    return count
+
+
+def distinct_quotes(quotes) -> int:
+    """How many separate passages the quotes are, when only their words are known: a quote inside another is it."""
+    quotes = [quote.casefold() for quote in dict.fromkeys(quotes)]
+    return sum(1 for quote in quotes if not any(quote != other and quote in other for other in quotes))

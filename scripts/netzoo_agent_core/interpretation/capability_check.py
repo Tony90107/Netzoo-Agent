@@ -29,7 +29,7 @@ from ..contracts.capability_check import (
     CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences, reading_version,
 )
 from .count_alternatives import count_update, file_count_note, verified_count_alternatives, weigh_sample_doubts
-from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
+from .request_spans import _locate_tokens, _span, distinct_passages  # noqa: F401 -- research tools import _span
 from .request_readings import only_inputs, ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal  # noqa: F401
 from .method_conditions import (
     method_fitting, request_method_for, request_method_limit, settings_apart, typed_setting,
@@ -433,8 +433,8 @@ def build_capability_check(
     asks, additions = split_additions(task, asks, request_sentences(task))  # M2: what an ask adds to a result
     # Phase 5b (m3 U12 trace): only results some workflow is credited with count as several; an uncredited row
     # ("I need a capability judgment that waits for the size fact") kept the count off the one real result.
-    credited_results = sum(any(known.get(k) and known[k].kind == "produces" for item in items
-                               for k in item.delivered_by) for items in asks.values())
+    credited_results = distinct_passages(span for span, items in asks.items() if any(  # overlapping words: one result
+        known.get(k) and known[k].kind == "produces" for item in items for k in item.delivered_by))
     requirements, apart = [], {}
     for span, items in asks.items():
         # M1: each reading is held to the method, settings and data size it states.

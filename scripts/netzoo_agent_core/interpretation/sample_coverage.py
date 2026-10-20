@@ -10,7 +10,7 @@ from ..capability_sheet import sheet_entries
 from ..contracts.core_decision import FactQuestion
 from ..workflow_conditions import conditions_for
 from .count_words import candidate_runs
-from .request_spans import _locate, scope_applies
+from .request_spans import _locate, distinct_passages, scope_applies
 
 
 def _candidate_runs(text: str) -> list[list[float]]:
@@ -33,6 +33,16 @@ def _read_sample_counts(check, result) -> set[float]:
     return found
 
 
+def _applied(check, task, evidence, result) -> bool:
+    """Whether context candidates were weighed for this result, as `count_update` applies them: the request has one
+    result (overlapping words are one), or the candidates' words overlap the result's."""
+    spans = [found for row in check.results() if row.delivered_by and (found := _locate(task, row.quote))]
+    if distinct_passages(spans) <= 1:
+        return True
+    where = _locate(task, result)
+    return bool(where and evidence.span and evidence.span[0] < where[1] and where[0] < evidence.span[1])
+
+
 def _unexplained_context(check, task, result):
     """Context words holding side-by-side candidate whole numbers that no reading explains: neither a fact read in
     overlapping words nor a sample count read for this result (verification of 70471222: 10 of 14 recorded triggers
@@ -50,6 +60,8 @@ def _unexplained_context(check, task, result):
             for evidence in fact.evidence:
                 if evidence.result and not scope_applies(result, [evidence.result]):
                     continue
+                if evidence.reader == "context_candidates" and not _applied(check, task, evidence, result):
+                    continue  # live attempt-06 T03: candidates read but never weighed for it explain nothing
                 span = _locate(task, evidence.quote) if evidence.quote else None
                 if span is None or not (span[0] < where[1] and where[0] < span[1]):
                     continue
