@@ -18,6 +18,7 @@ from ..interpretation.contract_veto import check_pairs, check_text, contract_vet
 from ..interpretation.menu_reader import request_layout
 from ..interpretation.menu_requirements import requirement_model
 from ..interpretation.slim_reader import core_model, focus_model, from_core, merge_focus
+from ..interpretation.veto_evidence import veto_ledger
 from ..method_names import registered_workflows
 from .context import record_event
 from .hybrid_gate_call import _call
@@ -34,19 +35,25 @@ CHECK_SHAPE = (
 )
 
 
-def veto_reads(task: str, workflows, call):
+def veto_reads(task: str, workflows, call, reports: list | None = None):
     """(slim reading, pairs, check payload) for the workflows, or None when the core read fails. `call(role, messages,
-    schema)` makes one structured call and returns its payload dict (None on failure)."""
+    schema)` makes one structured call and returns its payload dict (None on failure). `reports` collects each read's
+    ReadReport (what was dropped and why) for the ledger (ROUND-02 C)."""
+    reports = [] if reports is None else reports
     layout = request_layout(task)
     data = call("contract_veto_core", build_core_messages(task), core_model(layout.names))
     if data is None:
         return None
-    slim, _report = from_core(data, task, layout)
+    slim, report = from_core(data, task, layout)
+    reports.append(report)
     needs = limit_needs(slim, workflows)
     if needs.runs:
         focused = call("contract_veto_limits", build_focus_messages(task, slim, needs), focus_model(needs))
         if focused is not None:
-            slim, _report = merge_focus(slim, focused, task, needs)
+            slim, report = merge_focus(slim, focused, task, needs)
+            reports.append(report)
+        else:
+            report.dropped.append("focus: the limit read failed; its cells were not read")
     pairs = check_pairs(slim, workflows)
     payload = None
     if pairs:
@@ -64,6 +71,11 @@ def apply_contract_veto(context, state, decision, core, user_task: str, usage, w
     workflows = tuple(name for name in core.workflows if name in known)
     llm, model = getattr(context, "study_purpose_llm", None), getattr(context, "semantic_model_name", None)
     if not workflows or llm is None or usage.budget_exhausted:
+        # ROUND-02 C: a veto that never ran says so -- an empty record is never a pass.
+        reason = "no_workflows" if not workflows else "no_model" if llm is None else "budget_exhausted"
+        record_event(context, state, "core.contract_veto", "classify", {
+            "status": f"not_run:{reason}", "workflows": list(workflows),
+            "ledger": veto_ledger(workflows, f"not_run:{reason}")})
         return core, usage, warnings
     spent = {"usage": usage, "warnings": warnings}
 
@@ -72,15 +84,18 @@ def apply_contract_veto(context, state, decision, core, user_task: str, usage, w
                                                                   spent["usage"], spent["warnings"])
         return data
 
-    read = veto_reads(user_task, workflows, call)
+    reports: list = []
+    read = veto_reads(user_task, workflows, call, reports)
     if read is None:
         record_event(context, state, "core.contract_veto", "classify",
-                     {"status": "read_failed", "workflows": list(workflows)})
+                     {"status": "read_failed", "workflows": list(workflows),
+                      "ledger": veto_ledger(workflows, "read_failed")})
         return core, spent["usage"], spent["warnings"]
     slim, pairs, payload = read
     verdict = contract_veto(slim, workflows, user_task, payload, pairs)
     vetoed = vetoed_core(core, verdict)
     record_event(context, state, "core.contract_veto", "classify", {
         "status": "checked", "workflows": list(workflows), "kind_before": core.kind, "kind_after": vetoed.kind,
-        "evidence": vetoed.evidence.get("contract_veto"), "reading": slim.model_dump(mode="json", exclude_defaults=True)})
+        "evidence": vetoed.evidence.get("contract_veto"), "reading": slim.model_dump(mode="json", exclude_defaults=True),
+        "ledger": veto_ledger(workflows, "checked", slim, reports, verdict, verdict.set_aside)})
     return vetoed, spent["usage"], spent["warnings"]

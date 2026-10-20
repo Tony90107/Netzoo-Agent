@@ -21,7 +21,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-__all__ = ["RESULT_SAID", "ResultItem", "SlimReading", "Stated"]
+__all__ = ["Evidence", "RESULT_SAID", "ResultItem", "SlimReading", "Stated"]
 
 RESULT_SAID = ("menu_result", "kind_of_result", "workflow_only", "method_choice", "purpose_or_topic",
                "off_menu_result", "unsure_between_results", "question_to_us")
@@ -46,6 +46,23 @@ class ResultItem(_Model):
     """off_menu_result: the user's words naming the result (C1)."""
 
 
+class Evidence(_Model):
+    """ROUND-02 A: one piece of the user's words behind a count or a data fact, kept to the judgment that uses it.
+
+    A count's evidence lists every number the reading took for it, each with its own words and the data it counts
+    (`belongs_to`): one `value`; the `alternative`s of one doubt (one data object, several versions); the `operand`s of
+    a total code derived over several data objects; the `corrected` ones a later statement replaced (kept for the
+    audit, never judged). A reading without evidence (recorded before ROUND-02) is legacy: its attribution is unknown."""
+
+    quote: str
+    values: list[str] = Field(default_factory=list)
+    belongs_to: str = ""
+    """The user's words naming the data object or layer the number counts; empty when the words do not say."""
+    role: Literal["value", "alternative", "operand", "corrected"] = "value"
+    corrected_by: str = ""
+    """corrected: the words of the later statement that replaced it."""
+
+
 class Stated(_Model):
     """One stated fact of a B, C or D field (or A3 data): its value and the user's words; alternatives when unsure."""
 
@@ -63,7 +80,12 @@ class Stated(_Model):
     item: int = -1
     """The A1 item it belongs to (B1-B3, D2-D4); -1 for the whole request."""
     workflow: str = ""
-    """B5: the workflow whose control it is ("" for every candidate that has it)."""
+    """B5: the workflow whose control it is ("" for every candidate that has it). A3: the registered workflow the user
+    asks to give this data to as its input ("" when the words do not say; ROUND-02 D)."""
+    evidence: list[Evidence] = Field(default_factory=list)
+    """B6 counts and A3 data (ROUND-02 A): the words behind the value, each with what it counts; empty = legacy."""
+    derived: str = ""
+    """B6: how code computed a total from its operands ("300 + 5,000"); empty when the user said the number."""
     basis: Basis = "explicit"
     verdicts: dict[str, Literal["met", "contradicted", "not_addressed"]] = Field(default_factory=dict)
     """D4: each candidate workflow's contract on the requirement (the requirement check)."""
@@ -78,7 +100,8 @@ class SlimReading(_Model):
     unregistered_methods: list[str] = Field(default_factory=list)
     """C5: the user's words naming a method or variant no registered workflow is."""
     data: list[Stated] = Field(default_factory=list)
-    """A3: field "A3", name = the data kind, value = has or lacks."""
+    """A3: field "A3", name = the data kind, value = has, lacks (the user denies having it) or unsure (they do not
+    know whether they have it or what a file holds -- never lacks; ROUND-02 A2)."""
     only_these: bool = False
     only_quote: str = ""
     """A3: the user's words saying the data listed are all they have."""

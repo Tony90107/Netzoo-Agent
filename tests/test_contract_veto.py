@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.contracts import LLMUsage  # noqa: E402
 from netzoo_agent_core.contracts.core_decision import CoreDecision  # noqa: E402
-from netzoo_agent_core.contracts.slim_reading import ResultItem, SlimReading, Stated  # noqa: E402
+from netzoo_agent_core.contracts.slim_reading import Evidence, ResultItem, SlimReading, Stated  # noqa: E402
 from netzoo_agent_core.graph import contract_veto_call, hybrid_gate_call  # noqa: E402
 from netzoo_agent_core.interpretation.contract_veto import (  # noqa: E402
     check_pairs, contract_veto, limit_needs, veto_notes, vetoed_core,
@@ -48,10 +48,19 @@ def test_a_setting_out_of_its_contract_vetoes_with_the_settings_own_line():
 
 
 def test_a_count_over_the_cap_vetoes_with_the_input_checks_words():
-    slim = SlimReading(stated=[fact("B6", "sample_count", "120", "120 matched samples"),
-                               fact("B6", "feature_count", "2500", "2,000 transcripts and 500 proteins")])
+    # ROUND-02 A1: a total code derived carries its parts, each in its own words; the veto quotes the parts.
+    total = Stated(field="B6", name="feature_count", value="2500", quote="2,000 transcripts", derived="2,000 + 500",
+                   evidence=[Evidence(quote="2,000 transcripts", values=["2000"], belongs_to="rna", role="operand"),
+                             Evidence(quote="500 proteins", values=["500"], belongs_to="protein", role="operand")])
+    slim = SlimReading(stated=[fact("B6", "sample_count", "120", "120 matched samples"), total])
     [violation] = contract_veto(slim, ["LIONESS-DRAGON"]).violations["LIONESS-DRAGON"]
     assert violation.kind == "B6" and violation.contract_quote == "runs above 20,000,000 values are refused before they start"
+    assert violation.user_quote == '2,000 transcripts" and "500 proteins'
+    # A legacy reading (no evidence): a total whose words hold other numbers is set aside, reported, never judged.
+    legacy = SlimReading(stated=[fact("B6", "sample_count", "120", "120 matched samples"),
+                                 fact("B6", "feature_count", "2500", "2,000 transcripts and 500 proteins")])
+    verdict = contract_veto(legacy, ["LIONESS-DRAGON"])
+    assert verdict.violations == {} and verdict.set_aside and "feature_count 2500" in verdict.set_aside[0]
     assert contract_veto(slim.model_copy(update={"stated": [fact("B6", "sample_count", "120", "120 samples"),
                                                             fact("B6", "feature_count", "300", "300 genes")]}),
                          ["LIONESS-DRAGON"]).violations == {}

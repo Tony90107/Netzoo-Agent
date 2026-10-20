@@ -14,7 +14,10 @@ A veto needs a violation with the user's words (verified in the request when rea
 - model-copied: for a fact no code line covers (a data form, a stated-absent input, an off-menu result, a requirement),
   the contract check copies the clause and says met / contradicted / not_addressed; only a contradicted clause that is
   verbatim in that workflow's contract counts (`menu_requirements.workflow_contract`).
-A violation without contract words is reported (`unverified`), never a veto. Narrowing ("no registered result fits")
+A violation without contract words is reported (`unverified`), never a veto. ROUND-02 (`veto_evidence`): a count its
+words do not back is set aside before anything is judged, the toolkit's own name is no method, a question keeps only
+values its words support, and data the user asks to give a workflow as input is checked against that workflow's
+request-level input check (C8: an input the contract does not take). Narrowing ("no registered result fits")
 and unsure readings never veto; an unsure value that flips the same workflow from feasible to infeasible adds one
 question (`questions`).
 """
@@ -29,7 +32,7 @@ from ..capability_sheet import sheet_entries
 from ..contracts.menu_reading import Count, MenuReading, Said
 from ..contracts.slim_reading import SlimReading
 from ..judgment_defaults import JudgmentDefaults, judgment_defaults
-from ..method_names import registered_workflows
+from ..method_names import is_project_identity, registered_workflows
 from ..workflow_conditions import all_conditions, data_issue
 from .interpretation_choices import confirm_items, disclosures_for
 from .menu_decision import _OFF, _ruled_out, _with_setting, workflow_gate
@@ -37,6 +40,7 @@ from .menu_focus import focus_limits
 from .menu_reader import _norm
 from .menu_requirements import RequirementPair, workflow_contract
 from .slim_reader import Needs, to_menu
+from .veto_evidence import backed_counts, backed_questions
 
 __all__ = ["CheckPair", "VetoQuestion", "VetoVerdict", "Violation", "check_pairs", "check_text", "contract_veto",
            "limit_needs", "veto_notes", "vetoed_core", "violation_line", "with_veto_notes"]
@@ -46,7 +50,7 @@ __all__ = ["CheckPair", "VetoQuestion", "VetoVerdict", "Violation", "check_pairs
 class Violation:
     workflow: str
     kind: str
-    """C2-C7, B4-B6 or D4: the spec's field of the user's fact."""
+    """C2-C8, B4-B6 or D4: the spec's field of the user's fact."""
     reason: str
     user_quote: str
     contract_quote: str
@@ -77,6 +81,13 @@ class VetoQuestion:
     infeasible: tuple[str, ...]
     """The values that make the workflow infeasible."""
     contract_quote: str = ""
+    evidence: str = ""
+    """legacy_unverified: a reading from before ROUND-02, whose words were not checked against the values asked."""
+    derived: str = ""
+    """A count total code derived ("300 + 300 or 5,000"): the question asks the part the user is unsure of."""
+    belongs_to: str = ""
+    layer_values: tuple[str, ...] = ()
+    """The doubtful part's own options, in its own words (`belongs_to`)."""
 
 
 @dataclass
@@ -91,6 +102,10 @@ class VetoVerdict:
     disclosures: list[str] = field(default_factory=list)
     to_confirm: list[str] = field(default_factory=list)
     nearest: list[str] = field(default_factory=list)
+    set_aside: list[str] = field(default_factory=list)
+    """Counts whose words do not back one number: never judged (ROUND-02 B1)."""
+    dropped_questions: list[str] = field(default_factory=list)
+    """Questions whose words do not back what they ask (ROUND-02 B3)."""
 
     @property
     def vetoed(self) -> list[str]:
@@ -214,13 +229,14 @@ def _setting_line(workflow: str, control: str) -> str:
                  if line.startswith(f"- setting {control} (")), "")
 
 
-def _input_check(workflow: str, limit: str) -> str:
-    """The contract's own words for a request-level count limit (`input_checks` scope request; the policy loader
-    proves they are in the contract)."""
+def _input_check(workflow: str, limit: str, whole: bool = False) -> str:
+    """The contract's own words for a request-level limit (`input_checks` scope request; the policy loader proves
+    they are in the contract): by the limit's name (min_samples, relation, max_values), or `whole` its full name."""
     from ..contract_text import check_limit, check_text as words
     from .menu_requirements import _policy
     spec = _policy().workflows[registered_workflows()[workflow]]
-    return next((words(check) for check in spec.input_checks if check_limit(check).split(":")[0] == limit), "")
+    return next((words(check) for check in spec.input_checks
+                 if (check_limit(check) if whole else check_limit(check).split(":")[0]) == limit), "")
 
 
 def _count_violations(workflow: str, menu: MenuReading) -> list[tuple[str, str, str]]:
@@ -239,7 +255,7 @@ def _count_violations(workflow: str, menu: MenuReading) -> list[tuple[str, str, 
             ("max_values", (dataclasses.replace(limits, min_samples=None, relation=None), samples, features, None),
              menu.feature_count.quotes)):
         if (problem := data_issue(*args)) and (words := _input_check(workflow, limit)):
-            found.append((problem, words, (quotes or [""])[0]))
+            found.append((problem, words, '" and "'.join(quotes) if len(quotes) > 1 else (quotes or [""])[0]))
     return found
 
 
@@ -260,6 +276,7 @@ def _violations(slim: SlimReading, menu: MenuReading, workflow: str, task: str, 
                                "NetZoo registers: " + ", ".join(sorted(registered_workflows())) + ".", "registry"))
     for reason, words, quote in _count_violations(workflow, menu):
         found.append(Violation(workflow, "B6", reason, quote, words))
+    found += _input_violations(slim, workflow)
     limits = all_conditions().get(workflow)
     count_reason = data_issue(limits, menu.sample_count.value if menu.sample_count.status == "stated" else None,
                               menu.feature_count.value if menu.feature_count.status == "stated" else None,
@@ -280,6 +297,19 @@ def _violations(slim: SlimReading, menu: MenuReading, workflow: str, task: str, 
     return found, unverified
 
 
+def _input_violations(slim: SlimReading, workflow: str) -> list[Violation]:
+    """C8 (ROUND-02 D, h4 M46): data the user asks to give this workflow as its input, of a kind its contract's
+    request-level input check says it does not take (`refuses_input:<kind>`). Only an explicit request counts: data
+    merely mentioned (an earlier COBRA result) names no workflow, and data of an unknown kind is never guessed."""
+    found = []
+    for fact in slim.data:
+        if fact.value == "has" and fact.workflow == workflow and fact.quote:
+            if words := _input_check(workflow, f"refuses_input:{fact.name}", whole=True):
+                found.append(Violation(workflow, "C8", f"{workflow} does not take {fact.name.replace('_', ' ')} as "
+                                                       f"an input", fact.quote, words))
+    return found
+
+
 def _methods(menu: MenuReading, workflows=()) -> list[str]:
     """Unregistered methods (C5) that are not settings: words naming one of these workflows' controls (a whole word),
     or read as a setting, are the setting's (read once; H1 debug: BONOBO's sparsify and save_pvals read as an
@@ -293,6 +323,8 @@ def _methods(menu: MenuReading, workflows=()) -> list[str]:
     settings = [_norm(s.quote) for s in menu.settings if s.quote]
     found = []
     for method in menu.unregistered_methods:
+        if is_project_identity(method):
+            continue  # the toolkit's own name (ROUND-02 B2, h4 M48)
         words = re.sub(r"[_\-]+", " ", _norm(method))
         if any(re.search(rf"(?<![\w.]){re.escape(name)}(?![\w])", words) for name in names) or any(
                 _norm(method) in quote or quote in _norm(method) for quote in settings):
@@ -431,6 +463,7 @@ def contract_veto(slim: SlimReading, workflows, task: str = "", check_payload=No
     verdict = VetoVerdict(workflows=workflows)
     if slim.status == "failed" or not workflows:
         return verdict
+    slim, verdict.set_aside = backed_counts(slim)  # ROUND-02 B1: before any rule reads a count
     menu = to_menu(slim)
     pairs = list(pairs)
     clauses = _clauses(pairs, check_payload) if pairs else {}
@@ -444,6 +477,7 @@ def contract_veto(slim: SlimReading, workflows, task: str = "", check_payload=No
         verdict.questions += _flip_questions(menu, workflow, task, table)
     if verdict.kept and (core_data := _core_data_question(menu, verdict.kept, table)) is not None:
         verdict.questions.append(core_data)
+    verdict.questions, verdict.dropped_questions = backed_questions(verdict.questions, slim)
     verdict.unconfirmed = list(dict.fromkeys(
         p.quote for p in pairs if p.kind == "D4" and p.workflow in verdict.kept and p not in met
         and p not in clauses))
@@ -482,6 +516,11 @@ def _question(q: VetoQuestion) -> str:
         labels = [" or ".join(_CORE_LABEL.get(o, o.replace("_", " ")) for o in need.split("|")) for need in needs]
         return (f"Do you have {labels[0]} ({q.workflow} cannot run without it)?" if len(labels) == 1 else
                 f"Which of these do you have: {'; '.join(labels)}? ({q.workflow} cannot run without them.)")
+    if q.dimension == "feature_count" and q.derived and q.layer_values:
+        # ROUND-02 B3 (h4 M01): the part the user is unsure of, in its own words; the totals are code's arithmetic.
+        part = f"in {q.belongs_to}" if q.belongs_to else "in the part you are unsure of"
+        return (f"How many features are {part}: {' or '.join(q.layer_values)}? (All layers together: "
+                f"{' or '.join(q.values)}, from {q.derived}.)")
     if q.dimension in ("sample_count", "feature_count"):
         return f"How many {'samples' if q.dimension == 'sample_count' else 'features'} are there: {' or '.join(q.values)}?"
     options = table.dimensions[q.dimension].options if q.dimension in table.dimensions else {}
@@ -498,7 +537,7 @@ def vetoed_core(core, verdict: VetoVerdict):
                                                 for w in verdict.vetoed},
         "questions": [dataclasses.asdict(q) for q in verdict.questions], "unverified": verdict.unverified,
         "unconfirmed": verdict.unconfirmed, "disclosures": verdict.disclosures, "to_confirm": verdict.to_confirm,
-        "nearest": verdict.nearest}}
+        "nearest": verdict.nearest, "set_aside": verdict.set_aside, "dropped_questions": verdict.dropped_questions}}
     parts = [DeclinedPart(quote=v.user_quote, reasons=[v.reason], alternatives=verdict.nearest, line=violation_line(v))
              for w in verdict.vetoed for v in verdict.violations[w]]
     if not verdict.kept:

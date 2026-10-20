@@ -44,6 +44,11 @@ def _limit_holds(workflow: str, limit: str) -> bool:
         name = limit.split(":", 1)[1].split("<")[0].split(">")[0]
         stated = [StatedSetting(f"{workflow}.{name}", f"{name} 9", "9")]
         return f"{workflow}.{name}".split(".")[1] in conditions.settings and bool(combination_issues(conditions, stated, 2))
+    if limit.startswith("refuses_input:"):  # ROUND-02 D: data the user asks to give the workflow as its input
+        from netzoo_agent_core.contracts.slim_reading import SlimReading, Stated
+        from netzoo_agent_core.interpretation.contract_veto import contract_veto
+        fed = Stated(field="A3", name=limit.split(":", 1)[1], value="has", quote="the file", workflow=workflow)
+        return any(v.kind == "C8" for v in contract_veto(SlimReading(data=[fed]), [workflow]).violations.get(workflow, []))
     return False
 
 
@@ -51,7 +56,7 @@ def test_every_request_scope_input_check_maps_to_a_limit_that_acts(policy):
     """The completeness test: a contract limit a request can decide never stays request-blind."""
     request = [(spec.workflow, check_text(item), check_limit(item)) for spec in policy.workflows.values()
                for item in spec.input_checks if check_scope(item) == "request"]
-    assert len(request) == 9
+    assert len(request) == 10  # ROUND-02 D: LIONESS-PANDA refuses an aggregate co-expression input
     missing = [(workflow, text, limit) for workflow, text, limit in request if not _limit_holds(workflow, limit)]
     assert missing == []
 

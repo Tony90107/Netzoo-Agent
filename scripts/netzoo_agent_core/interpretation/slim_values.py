@@ -16,7 +16,8 @@ def wire_payloads(slim: SlimReading, needs: Needs, names: tuple[str, ...] = ()) 
                              "outside_name": r.outside_name} for r in slim.results]}
     if names:
         core["names"] = {name_key(name): {"role": slim.roles.get(name, "target")} for name in names}
-    core["data"] = [{"kind": d.name, "status": d.value, "quote": d.quote} for d in slim.data]
+    core["data"] = [{"kind": d.name, "status": d.value, "quote": d.quote, "input_for": d.workflow, "corrects": None}
+                    for d in slim.data]
     core["only_these"] = slim.only_quote
     core["run"], core["run_quote"] = slim.run, slim.run_quote
     wire_of = {dimension: name for name, (_field, dimension, _menu) in FACTS.items() if dimension}
@@ -52,7 +53,7 @@ def wire_payloads(slim: SlimReading, needs: Needs, names: tuple[str, ...] = ()) 
     if needs.counts:
         focus["counts"] = [{"what": "samples" if f.name == "sample_count" else "features", "layer": "",
                             "value": None if f.values else int(f.value), "values": [int(v) for v in f.values],
-                            "quote": f.quote} for f in slim.stated
+                            "quote": f.quote, "belongs_to": "", "corrects": None} for f in slim.stated
                            if f.field == "B6" and f.name != "single_feature_count" and chosen(f, needs)]
     return core, focus
 
