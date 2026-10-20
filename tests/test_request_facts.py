@@ -153,7 +153,7 @@ def test_each_run_setting_has_a_disposition_and_names_its_fact():
     [fact] = _facts(check, "setting")
     [binding] = run_fact_bindings(check, "run_otter")
     assert binding == {"fact": fact.id, "control": "precision", "quote": "precision", "value": "single",
-                       "disposition": "applied"}
+                       "disposition": "applied", "from": "value"}
     assert run_fact_bindings(check, "run_otter", lambda name: name == "precision")[0]["disposition"] \
         == "set_by_request"
     assert run_fact_bindings(check, "run_otter", approved=False)[0]["disposition"] == "held"

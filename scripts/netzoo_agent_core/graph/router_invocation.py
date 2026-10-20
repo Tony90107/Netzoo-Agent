@@ -327,13 +327,23 @@ def _with_requested_run(context, state, user_task: str, result: _RouterInvocatio
     if validate_task_text(user_task, action, matched_actions=decision.matched_actions,
                           model_execution=True) is not None:
         return result
-    record_event(context, state, "routing.requested_run_adopted", "classify", {"action": action})
     run = hydrate_router_decision(decision.model_copy(update={
         "action": action, "should_execute": True, "intent_type": "run_analysis",
-        "run_verdict": run_verdict(check, action, named=named_workflow_action(user_task) == action),
         "reason": "Run requested; the capability check credited this workflow for what the request asks for."}),
         user_task)
-    return replace(result, decision=run)
+    # ROUND-06 (h3 L15; C40 p1/p2): this path planned the run without the check's settings -- ".csv" read, ".h5" run.
+    bound, controls, set_by_request = _bind_run_settings(context, state, run, action, check)
+    verdict = run_verdict(bound, action, named=named_workflow_action(user_task) == action)
+    approved = verdict.verdict in APPROVING_RUN_VERDICTS
+    _record_run_bindings(context, state, bound, action, set_by_request, approved, controls)
+    if not approved:  # a setting the run cannot carry: held and offered, as `_on_run_verdict` does
+        held = hold_run(decision.model_copy(update={"capability_check": bound, "run_verdict": verdict}), verdict)
+        record_event(context, state, "routing.run_held", "classify", {
+            "action": action, "verdict": verdict.verdict, "named": verdict.named,
+            "offered": held.recommended_actions, "check_status": "ok"})
+        return replace(result, decision=held, routing_state={**result.routing_state, **outcome_routing_state(held)})
+    record_event(context, state, "routing.requested_run_adopted", "classify", {"action": action})
+    return replace(result, decision=run.model_copy(update={"run_verdict": verdict, **controls}))
 
 
 def _with_run_check(context, state, user_task: str, result: _RouterInvocation, proposal,
@@ -359,6 +369,33 @@ def _control_default(action: str, name: str):
     return next((control.default for control in ACTION_DEFINITIONS[action].controls if control.name == name), None)
 
 
+def _bind_run_settings(context, state, decision, action: str, check):
+    """ROUND-06: the one binding of the check's settings to a run, for every path that plans one.
+
+    Returns the check with each stated setting the run cannot carry left unread (so the verdict holds the run), the
+    controls the check verified, and which controls the request already set as name=value. Until ROUND-06 only
+    `_on_run_verdict` bound them; a run adopted on a guidance turn (`_with_requested_run`) went ahead with defaults.
+    """
+    set_by_request = lambda name: getattr(decision, name, None) not in (  # noqa: E731
+        None, _control_default(action, name))
+    unbound = unbound_settings(check, action, set_by_request)
+    if unbound:
+        # M3 review: a setting the run cannot carry is not verified for it; the run waits, as for an unread sentence.
+        record_event(context, state, "routing.run_settings_unbound", "classify", {"quotes": unbound})
+        check = check.model_copy(update={"unchecked": list(dict.fromkeys([*check.unchecked, *unbound]))})
+    # M2: the settings the check verified are the run's, unless the request set the control as name=value.
+    controls = {name: value for name, value in verified_controls(check, action).items() if not set_by_request(name)}
+    return check, controls, set_by_request
+
+
+def _record_run_bindings(context, state, check, action: str, set_by_request, approved: bool, controls: dict) -> None:
+    if bindings := run_fact_bindings(check, action, set_by_request, approved=approved):
+        # ROUND-03: where each stated setting of the run's workflow went, by the fact it was read as.
+        record_event(context, state, "routing.run_fact_bindings", "classify", {"bindings": bindings})
+    if approved and controls:
+        record_event(context, state, "routing.run_controls_bound", "classify", {"controls": controls})
+
+
 def _held(decision) -> bool:
     return decision.run_verdict is not None and decision.run_verdict.held
 
@@ -379,24 +416,14 @@ def _on_run_verdict(context, state, user_task: str, result: _RouterInvocation, c
     """
     decision = result.decision
     named = decision.match_basis in _USER_CHOSEN or named_workflow_action(user_task) == decision.action
-    set_by_request = lambda name: getattr(decision, name, None) not in (  # noqa: E731
-        None, _control_default(decision.action, name))
-    unbound = unbound_settings(check, decision.action, set_by_request)
-    if unbound:
-        # M3 review: a setting the run cannot carry is not verified for it; the run waits, as for an unread sentence.
-        record_event(context, state, "routing.run_settings_unbound", "classify", {"quotes": unbound})
-        check = check.model_copy(update={"unchecked": list(dict.fromkeys([*check.unchecked, *unbound]))})
+    if check is not None:
+        check, controls, set_by_request = _bind_run_settings(context, state, decision, decision.action, check)
+    else:
+        controls, set_by_request = {}, (lambda name: False)
     verdict = run_verdict(check, decision.action, check_status=check_status, named=named)
-    if bindings := run_fact_bindings(check, decision.action, set_by_request,
-                                     approved=verdict.verdict in APPROVING_RUN_VERDICTS):
-        # ROUND-03: where each stated setting of the run's workflow went, by the fact it was read as.
-        record_event(context, state, "routing.run_fact_bindings", "classify", {"bindings": bindings})
-    if verdict.verdict in APPROVING_RUN_VERDICTS:
-        # M2: the settings the check verified are the run's, unless the request set the control as name=value.
-        controls = {name: value for name, value in verified_controls(check, decision.action).items()
-                    if getattr(decision, name, None) in (None, _control_default(decision.action, name))}
-        if controls:
-            record_event(context, state, "routing.run_controls_bound", "classify", {"controls": controls})
+    approved = verdict.verdict in APPROVING_RUN_VERDICTS
+    _record_run_bindings(context, state, check, decision.action, set_by_request, approved, controls)
+    if approved:
         return replace(result, decision=decision.model_copy(update={"run_verdict": verdict, **controls}))
     guidance = decision.model_copy(update={
         "action": "no_tool", "should_execute": False, "intent_type": "answer_question", "execution_requested": True,

@@ -392,12 +392,14 @@ def run_fact_bindings(check, action: str, set_by_request=lambda name: False, app
     """Where each setting fact of a run's workflow went (the proposal's section 6.4: every stated requirement is
     applied, unsupported or waiting -- never read and then dropped).
 
-    applied: its value is the run's control (`verified_controls` takes the same value); set_by_request: the request
-    gave the control as name=value, which the run already carries; unbound: its value is not one the run can take,
-    so the run waits (`unbound_settings`); held: the run was not approved, so nothing was bound.
+    applied: its value is the run's control (`verified_controls` takes the same value; `from` says whether it came
+    from its value words or, ROUND-06, its own words); set_by_request: the request gave the control as name=value,
+    which the run already carries; no_value: a number or choice stated without one, so the default stands; unbound:
+    a value the run cannot take, or a list or name it cannot pass, so the run waits (`unbound_settings`); held: the
+    run was not approved, so nothing was bound.
     """
     from ..workflow_conditions import conditions_for
-    from .method_conditions import _control_value, _run_settings
+    from .method_conditions import _run_settings, run_setting_value, stated_no_value
     from ..capability_sheet import entry
 
     conditions = conditions_for(action)
@@ -408,19 +410,20 @@ def run_fact_bindings(check, action: str, set_by_request=lambda name: False, app
         if action not in {entry(key).action for key in item.delivered_by}:
             continue
         for setting, limit in _run_settings(item, conditions):
-            value = _control_value(limit, setting.get("value", ""), setting.get("quote", ""))
+            value = run_setting_value(limit, conditions, setting)
             if not approved:
                 disposition = "held"
             elif set_by_request(limit.name):
                 disposition = "set_by_request"
             elif value is not None:
                 disposition = "applied"
-            elif not setting.get("value", "").strip() and limit.control_type != "boolean":
+            elif stated_no_value(limit, setting) and limit.control_type in ("boolean", "enum", "number", "integer"):
                 disposition = "no_value"
             else:
                 disposition = "unbound"
             binding = {"fact": fact_for_setting(check.facts, setting), "control": limit.name,
-                       "quote": setting.get("quote", ""), "value": value, "disposition": disposition}
+                       "quote": setting.get("quote", ""), "value": value, "disposition": disposition,
+                       "from": "value" if (setting.get("value") or "").strip() else "words"}
             if binding not in found:
                 found.append(binding)
     return found
