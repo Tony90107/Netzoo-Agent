@@ -198,7 +198,9 @@ SCHEMA_DIGESTS = {
     # ask's verified method, settings and data size, and what they rule out); they can only withhold a result.
     # 2026-10-20 (ROUND-07): the fact record's readers side_by_side / input_file, origin file, and conflict reasons
     # unsure_candidates / settled_by_file / file_disagrees (code-owned record; decisions unchanged on 979 readings).
-    "TaskDecision": "561ba4db891ef39415e880aeb5a79f52b5ea3f8eef9ce59f07b2b207f4d57d16",
+    # 2026-10-20: count_reading_precedence records a duplicate numeric reading being set aside. Verified the schema
+    # digest returns to the previous pin when only this FactConflict.reason enum value is removed.
+    "TaskDecision": "3aeb89919ada558b1b52a2be1e6295ad700169abb1ffdd4d51951d0e4f970834",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

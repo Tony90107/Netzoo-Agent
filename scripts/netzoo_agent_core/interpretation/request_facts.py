@@ -21,7 +21,7 @@ from ..workflow_conditions import UNREGISTERED, stated_numbers
 from .count_alternatives import verified_count_alternatives
 from .count_words import side_by_side_values
 from .method_conditions import verified_method
-from .request_spans import _span
+from .request_spans import _span, scope_applies
 
 __all__ = ["FactRecord", "fact_for_setting", "merge_facts", "run_fact_bindings"]
 
@@ -57,6 +57,9 @@ class FactRecord:
         self.scoped: list[str] = []
         self.scoped_features: list[str] = []
         """Reading shape 2: the request's scoped counts and settings, in the order read."""
+        self.alternative_ids: list[str] = []
+        self.count_scopes: dict[str, list[str] | None] = {}
+        self.sample_doubts: dict[str, list[str] | None] = {}
 
     # -- reads -------------------------------------------------------------------------------------------------
 
@@ -266,7 +269,60 @@ class FactRecord:
         ids += self._read_side_by_side(proposal)
         for unknown in getattr(getattr(proposal, "conditions", None), "unknown_facts", None) or ():
             self._read_unknown_count(unknown)
-        return [self.alternative(fact_id) for fact_id in dict.fromkeys(ids)]
+        self.alternative_ids = list(dict.fromkeys(ids))
+        return [self.alternative(fact_id) for fact_id in self.alternative_ids]
+
+    def read_doubts(self, proposal, unknowns, domains, scopes):
+        """Read each candidate once, reconcile its duplicate, then compile its domain and scope together."""
+        self.read_alternatives(proposal)
+        unknowns = self.reconcile_unknown_counts(unknowns, domains, scopes)
+        return [self.alternative(fact_id) for fact_id in self.alternative_ids], unknowns
+
+    def reconcile_unknown_counts(self, unknowns: list[tuple[str, str]], domains: dict,
+                                 scopes: dict) -> list[tuple[str, str]]:
+        """One owner for a candidate quantity, before either counterfactual path can act on it.
+
+        The dedicated count reading supplies its property and discrete candidates. An unknown-fact read of the
+        same complete candidate set in overlapping words is evidence of that doubt, not a second decision. The
+        unknown schema cannot name feature_count; treating its sample_count as independent can erase a correctly
+        stated patient count (C45). Keep unrelated quantities, other unknown dimensions, ranges and unspecified
+        doubts on their existing path. Do not resolve disagreement between two dedicated count readings here.
+        """
+        kept = []
+        candidates = [fact for fact in self.facts.values() if fact.state == "unsure" and any(
+            e.reader in ("count_alternatives", "side_by_side") for e in fact.evidence)]
+        for about, words in unknowns:
+            domain, span = domains.get(words), _span(self.task, words)
+            if about != "sample_count" or not domain or domain["kind"] != "choices" or span is None:
+                kept.append((about, words))
+                continue
+            values = [str(value) for value in sorted(set(domain["values"]))]
+            owners = [fact for fact in candidates if fact.values == values
+                      and fact.span[0] < span[1] and span[0] < fact.span[1]]
+            if not owners or len({fact.property for fact in owners}) != 1:
+                kept.append((about, words))
+                continue
+            applies = scopes.get(words)
+            for fact in owners:
+                if fact.id not in self.count_scopes:
+                    self.count_scopes[fact.id] = applies
+                elif self.count_scopes[fact.id] is None or applies is None:
+                    self.count_scopes[fact.id] = None
+                else:
+                    self.count_scopes[fact.id] = list(dict.fromkeys([*self.count_scopes[fact.id], *applies]))
+            if owners[0].property == "sample_count":
+                # The doubt still unsets the result's old count; only the duplicate decision is removed.
+                self.sample_doubts[words] = applies
+            if owners[0].property != about:
+                other = [fact.id for fact in self.facts.values() if fact.property == about
+                         and fact.state == "unsure" and fact.values == values
+                         and any(e.reader == "unknown_facts" and e.span == list(span) for e in fact.evidence)]
+                self._conflict(owners[0].property, "", "", [fact.id for fact in owners], other,
+                               "count_reading_precedence")
+        return kept
+
+    def sample_doubt_applies(self, result: str) -> bool:
+        return any(scope_applies(result, scopes) for scopes in self.sample_doubts.values())
 
     def _counts_written(self, proposal):
         """(property, number, quote) of every count the reading wrote as one number: the request's (shape 1 or 2),
@@ -318,8 +374,8 @@ class FactRecord:
     def _read_unknown_count(self, unknown) -> None:
         """An unknown sample count with its candidates (`count_kind` choices), kept when its words state each one.
 
-        It is a second place the reading writes the same doubt (14 of the 26 recorded readings with candidates wrote
-        both); `needed_facts` still acts on it as before, so here it is only recorded."""
+        It is a second place the reading writes the same doubt; `reconcile_unknown_counts` prevents that quantity
+        from being judged twice when a dedicated candidate reading already owns it."""
         values = sorted(set(getattr(unknown, "count_values", None) or ()))
         if getattr(unknown, "about", "") != "sample_count" or getattr(unknown, "count_kind", "") != "choices" \
                 or len(values) < 2:
@@ -341,6 +397,8 @@ class FactRecord:
         # stand (`count_update` otherwise applies a count to one of several results only inside its words).
         if read_by := list(dict.fromkeys(e.result for e in fact.evidence if e.reader == "side_by_side" and e.result)):
             found["read_by"] = read_by
+        if fact_id in self.count_scopes:
+            found["applies_to"] = self.count_scopes[fact_id]
         return found
 
     # -- what a result was judged on ---------------------------------------------------------------------------

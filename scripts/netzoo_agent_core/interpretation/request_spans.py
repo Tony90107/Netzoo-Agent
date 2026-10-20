@@ -45,3 +45,13 @@ def _locate_tokens(task: str, quote: str) -> tuple[int, int] | None:
 
 def _span(task: str, quote: str) -> tuple[int, int] | None:
     return _locate(task, quote) or _locate_tokens(task, quote)
+
+
+def scope_applies(result: str, scopes: list[str] | None) -> bool:
+    """An already verified scope contains the result's words, or vice versa. None means shared, [] unrelated.
+
+    Do not use the 70%-word recovery rule here: two results differing only in their cohort name are distinct
+    owners even when almost all their words match. Both strings have already been located in the request.
+    """
+    return scopes is None or any(_locate(result, quote) is not None or _locate(quote, result) is not None
+                                 for quote in scopes)

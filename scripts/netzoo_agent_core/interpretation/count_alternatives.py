@@ -13,7 +13,7 @@ from __future__ import annotations
 from ..capability_sheet import entry
 from ..workflow_conditions import stated_numbers
 from .method_conditions import method_fitting
-from .request_spans import _span
+from .request_spans import _span, scope_applies
 
 __all__ = ["count_line", "count_outcome_lines", "count_question", "count_update", "file_count_note",
            "verified_count_alternatives", "weigh_sample_doubts"]
@@ -87,8 +87,12 @@ def count_update(task: str, alternatives: list[dict], method: dict, keys: list[s
     """
     where = _span(task, quote)
     for alternative in alternatives:
-        if not keys or not single_result and quote not in alternative.get("read_by", ()) and (
-                where is None or not (where[0] < alternative["span"][1] and alternative["span"][0] < where[1])):
+        if "applies_to" in alternative:
+            applies = scope_applies(quote, alternative["applies_to"])
+        else:
+            applies = single_result or quote in alternative.get("read_by", ()) or where is not None and (
+                where[0] < alternative["span"][1] and alternative["span"][0] < where[1])
+        if not keys or not applies:
             continue
         base = _base(task, method, alternative)
         base_limits = method_fitting(base, keys)[1]
@@ -120,8 +124,9 @@ def weigh_sample_doubts(record, result: str, methods: list[dict], applicable: li
     they do not know): the methods take the file's count, and the doubt is neither asked nor judged again. A count
     that is none of the candidates settles nothing. G2: otherwise a stated count beside a count the user said they do
     not know is taken off, as before, and recorded as set aside (`record`, the turn's `FactRecord`)."""
-    unknown = any(about == "sample_count" for about, _said, _domain in applicable)
-    doubts = [found for found in alternatives if found["of"] == "samples"]
+    unknown = any(about == "sample_count" for about, _said, _domain in applicable) or record.sample_doubt_applies(result)
+    doubts = [found for found in alternatives if found["of"] == "samples"
+              and ("applies_to" not in found or scope_applies(result, found["applies_to"]))]
     choices = [domain["values"] for about, _said, domain in applicable
                if about == "sample_count" and domain and domain.get("kind") == "choices" and domain.get("values")]
     if counted and (doubts or unknown):
