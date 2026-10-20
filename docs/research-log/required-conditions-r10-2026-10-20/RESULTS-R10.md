@@ -36,3 +36,7 @@ Live attempt-06 中，T02 判成 DECLINE ✓，但 T03 退步成 DO：模型把�
 2. 保護網只有在背景候選確實套用到該結果時，才把它當成已解釋；判斷規則和 `count_update` 一樣。
 
 重放 1,002 份（`compare-overlap.txt`）：只有 attempt-06 T03 改變，DO → ASK「Which of these is right: 2 or 14?」；其餘的 check 和判定都不變；金標 561 = 561。全套 4797 passed。
+
+## 補記（2026-10-21）：live attempt-07 與 T01 讀取順序修正（`f65772f2`）
+
+Live attempt-07（US$0.030）：7 個回合中 6 個符合，T03 的重疊結果修正在 live 確認有效。T01 多問了一句，原因是背景候選在句子歸屬修正之前就讀了。修正後，用 1,006 份讀取重放：判定 0 份改變，金標 561 = 561，候選改變 6 份（都是 live 的 T01／T03）。詳見 `judgment-live-2026-10-20/attempt-07/RESULTS.md`。
