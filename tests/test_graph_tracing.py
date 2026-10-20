@@ -48,6 +48,7 @@ from netzoo_agent_core.session import (  # noqa: E402
 )
 from netzoo_agent_core.trace_store import LocalTraceStore  # noqa: E402
 from netzoo_agent_core.trace_contracts import LLMCallUsage  # noqa: E402
+from netzoo_agent_core.pricing import PriceCatalog  # noqa: E402
 from netzoo_agent_core.tracing import TraceRecorder  # noqa: E402
 import netzoo_agent as legacy_agent  # noqa: E402
 from run_approval import CheckingLLM  # noqa: E402
@@ -854,6 +855,36 @@ def test_session_serializes_llm_call_uuid_as_json_string(
     stored_call = payload["token_usage"]["calls"][0]
     assert stored_call["call_id"] == str(call.call_id)
     assert LLMUsage.model_validate(payload["token_usage"]).calls[0].call_id == call.call_id
+
+
+@pytest.mark.parametrize("configured", [False, True])
+def test_session_round_trips_price_snapshot_for_resume(tmp_path, monkeypatch, configured):
+    """Graph usage uses Python values; checkpoints must retain typed cost history."""
+    import json
+
+    monkeypatch.setattr(session, "SESSION_ROOT", tmp_path / "sessions")
+    monkeypatch.setenv("NETZOO_MODEL_PRICING_JSON", json.dumps({
+        "test-model": {"input_micro_usd_per_million": 150000,
+                       "output_micro_usd_per_million": 600000,
+                       "effective_at": "2026-10-20T09:21:54Z"},
+    } if configured else {}))
+    price = PriceCatalog.from_environment().snapshot("test-model")
+    call = LLMCallUsage(
+        role="router", model="test-model", input_tokens=3, output_tokens=2,
+        total_tokens=5, usage_provenance="estimated", status="success",
+        price_snapshot=price, cost_provenance="estimated" if configured else "unavailable",
+        cost_micro_usd=2 if configured else None,
+    )
+    usage = LLMUsage(input_tokens=3, output_tokens=2, total_tokens=5, calls=[call])
+    state = {"token_usage": usage.model_dump(), "plan": {"status": "needs_input"}}
+    save_session("priced-session", [HumanMessage(content="Build a network")], state)
+
+    messages, plan, restored = load_session("priced-session", include_usage=True)
+    assert plan == state["plan"]
+    assert messages[0].content == "Build a network"
+    assert LLMUsage.model_validate(restored) == usage
+    assert isinstance(restored["calls"][0]["price_snapshot"]["effective_at"], str)
+    assert state["token_usage"]["calls"][0]["price_snapshot"]["effective_at"] == price.effective_at
 
 
 def test_instrumented_node_records_boundaries_without_serializing_state(tmp_path: Path):
