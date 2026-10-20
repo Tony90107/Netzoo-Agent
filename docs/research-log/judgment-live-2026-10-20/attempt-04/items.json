@@ -1,0 +1,44 @@
+{
+  "kind": "New-item live smoke; authored by implementer, not independent blind acceptance",
+  "items": [
+    {
+      "id": "T01",
+      "expected": ["DO"],
+      "purpose": "All sample-count candidates satisfy the minimum; no count question",
+      "prompt": "Is LIONESS-PANDA suitable for one TF-to-gene network per patient in our thyroid bulk-RNA study? The post-QC export has either nine or seventeen patients; I cannot check the count until the data manager returns. We have the TF motif prior and TF PPI."
+    },
+    {
+      "id": "T02",
+      "expected": ["DECLINE"],
+      "purpose": "All sample-count candidates violate the minimum; no pointless count question",
+      "prompt": "The entire cohort consists of either one or two biological samples; the manifest is unavailable. Can LIONESS-PANDA produce a TF-to-gene network per sample from these bulk RNA measurements with motif and PPI priors?"
+    },
+    {
+      "id": "T03",
+      "expected": ["ASK", "DO"],
+      "purpose": "Deciding sample-count question, then answer it; missing files may still require input",
+      "turns": [
+        "Could you start LIONESS-PANDA to build one TF-to-gene network per biological sample from pine_bulk.tsv, pine_motifs.tsv and pine_ppi.tsv? The export contains either 2 or 14 samples, and I do not know which version is in the upload.",
+        "It contains 14 independent biological samples. Use that version."
+      ]
+    },
+    {
+      "id": "T04",
+      "expected": ["ASK"],
+      "purpose": "Unknown feature count crosses LIONESS-DRAGON output cap; preserve the known 31 patients",
+      "prompt": "We want LIONESS-DRAGON partial-correlation networks for each of 31 matched patients. One continuous table has 360 RNA genes; the paired continuous proteomics table is either the 180-protein panel or the 1,800-protein panel, and I cannot tell which export we received. The patient IDs match in both tables. Can we make the patient-specific networks?"
+    },
+    {
+      "id": "T05",
+      "expected": ["DECLINE"],
+      "purpose": "Explicit unsupported causal-proof result",
+      "prompt": "I have a bulk gene-by-sample expression table for 76 ovarian tumours. Can the registered workflows provide a directed acyclic causal graph proving which gene changes caused the cancer?"
+    },
+    {
+      "id": "T06",
+      "expected": ["CLARIFY"],
+      "purpose": "Short request with data but no scientific result",
+      "prompt": "I have expression data from a small lung cohort. Please help me analyse it."
+    }
+  ]
+}
