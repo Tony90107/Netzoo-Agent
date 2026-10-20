@@ -17,6 +17,7 @@ from .contracts import (
     DEFAULT_RETENTION_DAYS,
     DEFAULT_SESSION_HARD_RETENTION_DAYS,
     HumanMessage,
+    LLMUsage,
     SESSION_ROOT,
     TRACE_ROOT,
     TOOL_LOG_ROOT,
@@ -291,7 +292,12 @@ def save_session(
         "plan": state.get("plan"),
         "evaluation": state.get("evaluation"),
         "tool_results": state.get("tool_results", []),
-        "token_usage": state.get("token_usage"),
+        # Graph state retains typed UUID/date values in its Python-mode dumps.
+        # Normalize the usage contract only when crossing the JSON boundary.
+        "token_usage": (
+            LLMUsage.model_validate(state["token_usage"]).model_dump(mode="json")
+            if state.get("token_usage") is not None else None
+        ),
         "run_id": state.get("run_id"),
     }
     _write_json_atomic(path, payload)
