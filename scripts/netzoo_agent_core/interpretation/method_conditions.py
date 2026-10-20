@@ -20,8 +20,9 @@ from ..workflow_conditions import (
 )
 from .request_spans import _span
 
-__all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "settings_apart",
-           "typed_setting", "unbound_settings", "verified_controls", "verified_method", "with_request_method"]
+__all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "run_setting_value",
+           "settings_apart", "stated_no_value", "typed_setting", "unbound_settings", "verified_controls", "verified_method",
+           "with_request_method"]
 
 
 def _folded(text: str) -> str:
@@ -417,6 +418,34 @@ def _control_value(limit, words: str, quote: str = ""):
     return None  # names and lists are not read from prose
 
 
+def stated_no_value(limit, setting: dict) -> bool:
+    """Whether the words give the setting no value, as the check reads them (`setting_issue`): no value words, or, for a
+    number, value words stating no number (h2 J11 "Leave lambda1 and lambda2 empty so they're estimated", value
+    "empty" -- the check approved the run as stating no value; the binding held it as a value it could not pass)."""
+    value = (setting.get("value") or "").strip()
+    return not value or (limit.control_type in ("number", "integer") and not stated_numbers(value))
+
+
+def run_setting_value(limit, conditions, setting: dict):
+    """A stated setting's value as the run takes it: from its value words, or -- when the reading left those empty --
+    from the setting's own words, if they name it unambiguously and the check's own limits accept it.
+
+    ROUND-06 (p3/p5r C40): `{"name": "BONOBO.bonobo_output_format", "quote": "saved as .csv files", "value": ""}` --
+    the value was in the words naming the setting, the run read only the value words, and BONOBO was planned with .h5.
+    Taken from the words only: an allowed choice they alone name (`enum_value`), or the single number they state; the
+    value is then checked as a stated value is (`setting_issue`), so the range and choices are never bypassed.
+    """
+    value = _control_value(limit, setting.get("value", ""), setting.get("quote", ""))
+    if value is not None or not stated_no_value(limit, setting):
+        return value
+    words = setting.get("quote", "")
+    if limit.control_type == "enum" or (limit.control_type in ("number", "integer") and len(stated_numbers(words)) == 1):
+        found = _control_value(limit, words)
+        if found is not None and setting_issue(conditions, StatedSetting(setting["name"], words, words)) is None:
+            return found
+    return None
+
+
 def verified_controls(check, action: str) -> dict[str, object]:
     """The settings the check verified for a run's workflow, as its control values (M2).
 
@@ -433,7 +462,7 @@ def verified_controls(check, action: str) -> dict[str, object]:
         if action not in {entry(key).action for key in item.delivered_by}:
             continue
         for setting, limit in _run_settings(item, conditions):
-            if (value := _control_value(limit, setting.get("value", ""), setting.get("quote", ""))) is not None:
+            if (value := run_setting_value(limit, conditions, setting)) is not None:
                 found[limit.name] = value
     return found
 
@@ -463,9 +492,13 @@ def unbound_settings(check, action: str, set_by_request=lambda name: False) -> l
         if action not in {entry(key).action for key in item.delivered_by}:
             continue
         for setting, limit in _run_settings(item, conditions):
-            if set_by_request(limit.name) or (not setting.get("value", "").strip() and limit.control_type != "boolean"):
+            if set_by_request(limit.name) or run_setting_value(limit, conditions, setting) is not None:
                 continue
-            if _control_value(limit, setting.get("value", ""), setting.get("quote", "")) is None:
-                found.append(setting["quote"])
+            # ROUND-06 (p5r C40 "only write networks for samples MS_03, MS_11 and MS_19"): a list or name stated with no
+            # value words is still the user's -- the run waits for it rather than running every sample. A number or
+            # choice stated with no value in its words ("let DRAGON estimate lambda2") leaves the default, as before.
+            if stated_no_value(limit, setting) and limit.control_type in ("boolean", "enum", "number", "integer"):
+                continue
+            found.append(setting["quote"])
     return list(dict.fromkeys(found))
 
