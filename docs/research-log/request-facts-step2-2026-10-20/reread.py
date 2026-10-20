@@ -6,8 +6,10 @@ Each item is read once per arm with the check's prompt and schema exactly as the
 Spending stops at the cap (input $0.15/M, output $0.60/M -- gpt-4o-mini's list price on OpenRouter).
 
 Usage:
-  python3 -I reread.py run ARM OUT.json [--model M] [--cap USD] [--spent USD]   ARM: 1 (shape 1) or 2 (shape 2)
-  python3 -I reread.py score OUT1.json OUT2.json                                  per item and per gate
+  python3 reread.py run ARM OUT.json [--model M] [--cap USD] [--spent USD]   ARM: 1, 2 or 3 (reading shape)
+  python3 reread.py score OUT1.json OUT2.json [SCORE.json]                       per item and per gate
+  (no -I for runs: the model client needs packages in the user site; the script's folder holds only this round's files)
+  ARM 3 (ROUND-05): shape 1 with each setting's description sent once.
 """
 from __future__ import annotations
 
@@ -37,7 +39,8 @@ def run(arm: int, out: str, model: str, cap: float, spent: float):
         if value is not None:
             os.environ.setdefault(key, value)
     from netzoo_agent_core.contracts.capability_check import proposal_model
-    from netzoo_agent_core.graph.capability_check_call import build_capability_check_messages
+    from netzoo_agent_core.contracts.strict_schema import expanded_enum_values
+    from netzoo_agent_core.graph.capability_check_call import _ENUM_LIMIT, build_capability_check_messages
     from netzoo_agent_core.interpretation.semantic_repair import semantic_payload
     from netzoo_agent_core.llm import build_llm, validate_router_model
 
@@ -55,8 +58,11 @@ def run(arm: int, out: str, model: str, cap: float, spent: float):
                 return
             messages, count = build_capability_check_messages(item["task"])
             schema = proposal_model(count, version=arm)
+            compact = expanded_enum_values(schema.model_json_schema()) > _ENUM_LIMIT
+            if compact:  # ROUND-05: as production's backup path does (live m2b P30; ROUND-04 U12 failed without it)
+                schema = proposal_model(count, compact=True, version=arm)
             started = time.time()
-            row = {"arm": arm, "model": model, "attempt": attempt}
+            row = {"arm": arm, "model": model, "attempt": attempt, "compact": compact}
             try:
                 adapter = llm.with_structured_output(schema, method="function_calling", include_raw=True, strict=True)
                 payload, raw = semantic_payload(adapter.invoke(messages))
@@ -89,7 +95,8 @@ def _check(item, row):
     from netzoo_agent_core.interpretation.capability_check import build_capability_check
 
     count = sum(1 for name in row["proposal"] if name[1:].isdigit())
-    proposal = proposal_model(count, version=row["arm"]).model_validate(row["proposal"])
+    proposal = proposal_model(count, compact=row.get("compact", False), version=row["arm"]).model_validate(
+        row["proposal"])
     return build_capability_check(item["task"], proposal)[0]
 
 
@@ -172,7 +179,7 @@ def _leaves(value) -> int:
     return 1
 
 
-def score(path1: str, path2: str):
+def score(path1: str, path2: str, out: str = "score.json"):
     one, two = json.loads(Path(path1).read_text()), json.loads(Path(path2).read_text())
     totals = {arm: {"read": 0, "expected": 0, "placed": 0, "placements": 0, "misapplied": 0, "out": 0, "in": 0,
                     "leaves": 0, "usd": 0.0, "items": 0} for arm in (1, 2)}
@@ -209,7 +216,7 @@ def score(path1: str, path2: str):
             print("        B", note)
         if b["conflicts"] or b["owners"]:
             print("        B conflicts", b["conflicts"], "owners", b["owners"])
-    Path(HERE / "score.json").write_text(json.dumps({"totals": totals, "items": report}, indent=1, default=str))
+    Path(HERE / out).write_text(json.dumps({"totals": totals, "items": report}, indent=1, default=str))
 
 
 if __name__ == "__main__":
@@ -219,4 +226,4 @@ if __name__ == "__main__":
         run(int(args[1]), args[2], option("--model", "openai/gpt-4o-mini"), float(option("--cap", "0.32")),
             float(option("--spent", "0")))
     elif args[0] == "score":
-        score(args[1], args[2])
+        score(args[1], args[2], *args[3:4])

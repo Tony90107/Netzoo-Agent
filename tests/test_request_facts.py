@@ -376,3 +376,28 @@ def test_one_run_takes_one_set_of_settings_whichever_result_they_were_scoped_to(
                       _ask2(start, ["otter.tf_gene_network"], **TF),
                       settings=[_setting("OTTER.precision", "precision", "single", [])])
     assert all("settings" not in item.method for item in nowhere.results())
+
+
+# --- ROUND-05: reading shape 3 -- shape 1, with each setting's description sent once -------------------------------
+
+def test_shape3_sends_the_settings_description_once_and_reads_as_shape1(monkeypatch):
+    import json
+
+    from langchain_core.utils.function_calling import convert_to_openai_tool
+
+    from netzoo_agent_core.contracts.capability_check import reading_version, schema_version
+    from netzoo_agent_core.method_names import setting_meanings
+
+    described = " | ".join(setting_meanings())[:60]
+    one = json.dumps(convert_to_openai_tool(proposal_model(3), strict=True))
+    three = json.dumps(convert_to_openai_tool(proposal_model(3, version=3), strict=True))
+    assert one.count(described) == 5 and three.count(described) == 1
+    assert len(three) < 0.85 * len(one)
+    reading = proposal_model(1, version=3).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [_ask(
+            "Build one PANDA network for the 40 liver samples", ["panda.tf_gene_network"], **TF)]},
+        "conditions": unstated_conditions(3)})
+    assert reading_version(reading) == 1
+    assert proposal_model(1).model_validate(reading.model_dump()).model_dump() == reading.model_dump()
+    monkeypatch.setenv("NETZOO_CHECK_SCHEMA", "3")
+    assert schema_version() == 3
