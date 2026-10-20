@@ -196,7 +196,7 @@ SCHEMA_DIGESTS = {
     # 2026-10-14 (item 5): optional code-owned file_checked on each checked requirement; reply only.
     # 2026-10-14 (M1): optional code-owned method, limits, instead and defaults on each checked requirement (the
     # ask's verified method, settings and data size, and what they rule out); they can only withhold a result.
-    "TaskDecision": "958475f82b0ec226a151a13397037fc0ac492d47980fd0d65822d13a76e6adc0",
+    "TaskDecision": "f54c1735e60b2f87b0dde0bbd0997269577b762867267de930a14a9f96c3448f",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

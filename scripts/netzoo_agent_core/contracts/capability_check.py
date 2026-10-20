@@ -18,6 +18,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
 
 from ..capability_sheet import not_produced_ids, produces_ids
+from .request_facts import FactConflict, RequestFact
 from .strict_schema import strict_json_schema
 
 __all__ = ["APPROVING_RUN_VERDICTS", "CONDITIONS", "CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES",
@@ -557,6 +558,9 @@ class CheckedRequirement(BaseModel):
     (`interpretation.count_alternatives`); a code-verified fact, never a legacy dimension's shadow."""
     outcome_notes: dict[str, str] = Field(default_factory=dict)
     """Phase 5b: for a candidate count whose workflows lose a credit, the contract limit that removes it."""
+    fact_ids: list[str] = Field(default_factory=list)
+    """ROUND-03: the facts of `CapabilityCheck.facts` its method was compiled from and judged on (a derived total
+    with its parts), and the candidate count it waits on; empty in recordings from before ROUND-03."""
 
 
 class CapabilityCheck(BaseModel):
@@ -606,6 +610,11 @@ class CapabilityCheck(BaseModel):
     stated_quotes: list[str] = Field(default_factory=list)
     """Phase 2 R4: the request's words for each condition, method and setting the reading typed with a definite
     value; a fact proposed from inside them is stated, not uncertain."""
+    facts: list[RequestFact] = Field(default_factory=list)
+    """ROUND-03: the request's counts and settings, each kept once with every read of it
+    (`interpretation.request_facts`); the results cite them by id."""
+    fact_conflicts: list[FactConflict] = Field(default_factory=list)
+    """ROUND-03: where a result's own value and a request-level one disagreed, which was used and why."""
 
     def results(self) -> list[CheckedRequirement]:
         return [item for item in self.requirements if item.kind == "result"]

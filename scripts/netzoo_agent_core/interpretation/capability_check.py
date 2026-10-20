@@ -30,9 +30,10 @@ from .count_alternatives import count_update, verified_count_alternatives
 from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
 from .request_readings import only_inputs, ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal  # noqa: F401
 from .method_conditions import (
-    method_fitting, request_method, request_method_for, request_method_limit, settings_apart, typed_setting,
+    method_fitting, request_method_for, request_method_limit, settings_apart, typed_setting,
     verified_method, with_request_method,
 )
+from .request_facts import FactRecord
 from .requirement_split import (
     ask_conditions, condition_requirements, delivery_requirements, form_condition_spans, split_additions,
 )
@@ -397,8 +398,10 @@ def build_capability_check(
     unknown_domains = verified_unknown_domains(task, proposal)
     form_spans = form_condition_spans(task, proposal, conditions)  # M2: conditions on the result's form
     unknowns = verified_unknowns(task, proposal)
-    whole = request_method(task, proposal)
-    alternatives = verified_count_alternatives(task, proposal)  # phase 5b: a count given as candidates
+    # ROUND-03: every count and setting the reading writes is one record; methods and candidates are compiled from it.
+    record = FactRecord(task)
+    whole = record.read_request(proposal)
+    alternatives = record.read_alternatives(proposal)  # phase 5b: a count given as candidates
 
     def place(quote: str):
         span = _span(task, quote)
@@ -439,13 +442,18 @@ def build_capability_check(
     for span, items in asks.items():
         # M1: each reading is held to the method, settings and data size it states.
         applicable = applicable_unknowns(unknowns, unknown_scopes, unknown_domains, task[span[0]:span[1]])
-        methods = [verified_method(task, item) for item in items]
+        result = task[span[0]:span[1]]
+        own = [record.read_method(item, "result", result) for item in items]
+        methods = own
         if len(asks) == 1 and whole:  # live m1a F1: the request's own method and settings, for its one result
-            methods = [with_request_method(method, whole) for method in methods]
+            applied = [whole] * len(items)
         elif whole:  # M2: with several results, only what names a workflow a result is credited to
-            methods = [with_request_method(method, request_method_for(
-                whole, {known[k].workflow for k in item.delivered_by if known.get(k)})) for method, item in
-                zip(methods, items)]
+            applied = [request_method_for(whole, {known[k].workflow for k in item.delivered_by if known.get(k)})
+                       for item in items]
+        if whole:
+            methods = [with_request_method(method, given) for method, given in zip(own, applied)]
+            for mine, given, merged in zip(own, applied, methods):
+                record.note_conflicts(result, mine, given, merged)
         if any(about == "sample_count" for about, _said, _domain in applicable):
             methods = [{key: value for key, value in method.items() if key != "samples"} for method in methods]
         # Round m3 (MX12): a setting no credited workflow can use, stated apart from every asked result, is a
@@ -490,11 +498,12 @@ def build_capability_check(
                 k for keys in pre for k in keys)), task[span[0]:span[1]], credited_results <= 1)) is not None:
             method, limits = found.pop("method"), found.pop("limits")  # phase 5b: each candidate judged in code
             status, delivered, waiting = found.pop("status"), found.pop("delivered_by"), found
+        fact_ids = record.ids_for(method, waiting.get("unknown_quote", "") if waiting.get("by_code") else "")
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
                                                delivered_by=delivered, not_by=not_by, attrs=attrs, blank=blank,
                                                asked_as=asked_as, method=method, limits=limits, instead=instead,
-                                               defaults=defaults, **waiting))
-    requirements += list(apart.values())
+                                               defaults=defaults, fact_ids=fact_ids, **waiting))
+    requirements += [item.model_copy(update={"fact_ids": record.ids_for(item.method)}) for item in apart.values()]
     spans += [found for item in apart.values() if (found := _span(task, item.quote)) is not None]
     choices, option_spans = _open_choices(task, proposal, conditions, place)
     requirements = [item for item in requirements if _span(task, item.quote) not in option_spans] + choices
@@ -505,7 +514,8 @@ def build_capability_check(
         said = {name: task[found[0]:found[1]] for name in conditions
                 if (quote := (getattr(stated, f"{name}_quote", "") or "").strip())
                 and (found := _span(task, quote)) is not None}
-        requirements += [found] if (found := request_method_limit(whole, conditions, said, task)) is not None else []
+        if (found := request_method_limit(whole, conditions, said, task)) is not None:
+            requirements.append(found.model_copy(update={"fact_ids": record.ids_for(found.method)}))
     covered = [*asks, *(found for item in additions if (found := _span(task, item.quote)) is not None)]
     requirements += additions + condition_requirements(task, conditions, form_spans, covered)
     spans += [span for span in form_spans.values() if not any(a <= span[0] and span[1] <= b for a, b in asks)]
@@ -529,6 +539,7 @@ def build_capability_check(
                            uncertain_quotes=uncertain_quotes(task, proposal),
                            ruled_out=ruled_out_inputs(task, proposal),
                            count_alternatives=[{k: v for k, v in item.items() if k != "span"} for item in alternatives],
+                           facts=record.facts_list(), fact_conflicts=list(record.conflicts),
                            **dict(zip(("only_inputs", "only_inputs_quote"), only_inputs(task, proposal)))), rejected
 
 
