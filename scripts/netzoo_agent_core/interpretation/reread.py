@@ -27,6 +27,7 @@ from functools import lru_cache
 from ..capability_sheet import sheet_entries
 from ..contracts.capability_check import MAX_SENTENCES
 from .capability_check import _full_gap, request_sentences
+from .request_facts import merge_facts
 
 __all__ = ["MIN_UNREAD_WORDS", "letter_runs", "merge_reread", "reread_passages", "unread_stretches"]
 
@@ -187,4 +188,10 @@ def merge_reread(task: str, check, reread, passages=(), rejected=()):
     requirements = [*kept, *new]
     results = [item for item in requirements if item.kind == "result"]
     full_gap = _full_gap(results, unchecked)
-    return check.model_copy(update={"requirements": requirements, "unchecked": unchecked, "full_gap": full_gap})
+    # ROUND-03: the facts the new results cite join the record; their conflicts with them.
+    facts = merge_facts(check.facts, reread.facts, {fact_id for item in new for fact_id in item.fact_ids})
+    added = {item.quote for item in new}
+    conflicts = [*check.fact_conflicts, *(found for found in reread.fact_conflicts
+                                          if found.result in added and found not in check.fact_conflicts)]
+    return check.model_copy(update={"requirements": requirements, "unchecked": unchecked, "full_gap": full_gap,
+                                    "facts": facts, "fact_conflicts": conflicts})

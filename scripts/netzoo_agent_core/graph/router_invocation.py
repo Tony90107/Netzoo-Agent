@@ -50,6 +50,7 @@ from ..interpretation.capability_check import (
     wait_on_asked, workflow_description,
 )
 from ..interpretation.method_conditions import unbound_settings, verified_controls
+from ..interpretation.request_facts import run_fact_bindings
 from ..interpretation.requirement_split import apply_own_sentence_answers
 from .data_facts_call import invoke_data_facts
 from ..interpretation.run_check import run_check_verdict, run_verdict
@@ -378,13 +379,18 @@ def _on_run_verdict(context, state, user_task: str, result: _RouterInvocation, c
     """
     decision = result.decision
     named = decision.match_basis in _USER_CHOSEN or named_workflow_action(user_task) == decision.action
-    unbound = unbound_settings(check, decision.action, lambda name: getattr(decision, name, None) not in (
-        None, _control_default(decision.action, name)))
+    set_by_request = lambda name: getattr(decision, name, None) not in (  # noqa: E731
+        None, _control_default(decision.action, name))
+    unbound = unbound_settings(check, decision.action, set_by_request)
     if unbound:
         # M3 review: a setting the run cannot carry is not verified for it; the run waits, as for an unread sentence.
         record_event(context, state, "routing.run_settings_unbound", "classify", {"quotes": unbound})
         check = check.model_copy(update={"unchecked": list(dict.fromkeys([*check.unchecked, *unbound]))})
     verdict = run_verdict(check, decision.action, check_status=check_status, named=named)
+    if bindings := run_fact_bindings(check, decision.action, set_by_request,
+                                     approved=verdict.verdict in APPROVING_RUN_VERDICTS):
+        # ROUND-03: where each stated setting of the run's workflow went, by the fact it was read as.
+        record_event(context, state, "routing.run_fact_bindings", "classify", {"bindings": bindings})
     if verdict.verdict in APPROVING_RUN_VERDICTS:
         # M2: the settings the check verified are the run's, unless the request set the control as name=value.
         controls = {name: value for name, value in verified_controls(check, decision.action).items()
