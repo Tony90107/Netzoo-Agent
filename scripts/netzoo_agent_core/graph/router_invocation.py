@@ -561,7 +561,7 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
             answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings, situation)
         if answers is not None:
             # Verdict layer step 2: what the user said they do not know can decide among the workflows weighed here.
-            check = wait_on_asked(apply_second_opinion(check, pairs, answers), pairs)
+            check = wait_on_asked(apply_second_opinion(check, pairs, answers, user_task), pairs)
             late = [pair for pair in condition_pairs(check, stated) if check.requirements[pair[0]].second_opinion]
             late_own = [pair for pair in condition_pairs(check, own) if check.requirements[pair[0]].second_opinion]
             if late or late_own:

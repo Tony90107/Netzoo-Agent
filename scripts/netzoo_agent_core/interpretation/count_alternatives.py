@@ -13,10 +13,11 @@ from __future__ import annotations
 from ..capability_sheet import entry
 from ..workflow_conditions import stated_numbers
 from .method_conditions import method_fitting
-from .request_spans import _span, scope_applies
+from .request_spans import _span, distinct_passages, scope_applies
 
 __all__ = ["count_line", "count_outcome_lines", "count_question", "count_update", "file_count_note",
-           "judged_count_words", "splits_candidates", "verified_count_alternatives", "weigh_sample_doubts"]
+           "judged_count_words", "splits_candidates", "verified_count_alternatives", "weigh_credited_counts",
+           "weigh_sample_doubts"]
 
 _DIMENSION = {"samples": "sample_count", "features": "feature_count"}
 _LABEL = {"sample_count": "samples", "feature_count": "features"}
@@ -113,6 +114,34 @@ def count_update(task: str, alternatives: list[dict], method: dict, keys: list[s
                     "unknown_quote": alternative["quote"],
                     "limits": [*base_limits, *(f"with {int(value):,}: {note}" for value, note in notes.items())]}
     return None
+
+
+def weigh_credited_counts(task: str, check, requirements: list, credited: dict[int, list[str]]) -> list:
+    """Each result the second opinion credited, with the user's candidate counts weighed for it (`count_update`).
+
+    Candidates are otherwise weighed once, when the check is built, and a result no workflow was credited with then
+    has nothing to weigh them for: a request whose first reading credited nothing, with "either one or two samples",
+    would run once the second opinion credited LIONESS-PANDA. `credited`: requirement index -> the entries the second
+    opinion credited it with, before the data size is judged. Without the request's words, nothing is weighed.
+    """
+    if not task or not check.count_alternatives or not credited:
+        return requirements
+    alternatives = [{**item, "span": list(span)} for item in check.count_alternatives
+                    if (span := _span(task, item["quote"])) is not None]
+    single = distinct_passages(span for item in requirements if item.kind == "result" and item.delivered_by
+                               and (span := _span(task, item.quote)) is not None) <= 1
+    requirements = list(requirements)
+    for index, keys in credited.items():
+        item = requirements[index]
+        if not item.delivered_by or (found := count_update(task, alternatives, item.method, keys, item.quote,
+                                                           single)) is None:
+            continue
+        method, limits = found.pop("method"), found.pop("limits")
+        unsure = [fact.id for fact in check.facts if fact.state == "unsure" and fact.quote == found.get("unknown_quote")]
+        requirements[index] = item.model_copy(update={
+            **found, "method": method, "limits": list(dict.fromkeys([*item.limits, *limits])),
+            "fact_ids": list(dict.fromkeys([*item.fact_ids, *unsure[:1]]))})
+    return requirements
 
 
 def weigh_sample_doubts(record, result: str, methods: list[dict], applicable: list, alternatives: list[dict],
