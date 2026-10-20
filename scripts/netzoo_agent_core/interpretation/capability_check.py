@@ -36,6 +36,7 @@ from .method_conditions import (
     verified_method, with_request_method,
 )
 from .request_facts import FactRecord
+from .required_conditions import quantity_note
 from .sentence_ownership import owned_sentences, request_sentences
 from .requirement_split import (
     ask_conditions, condition_requirements, delivery_requirements, form_condition_spans, split_additions,
@@ -666,8 +667,8 @@ def understanding_paragraph(check: CapabilityCheck, offers_methods: bool = True)
     if not results and not check.unchecked and not check.provisional:
         return None
     lines = ["What I understood you are asking for:"] if results else []
-    lines += [f"{index}. {_line(item, check.provisional, check.gap_unconfirmed)}"
-              for index, item in enumerate(results, 1)]
+    lines += [f"{index}. {_line(item, check.provisional, check.gap_unconfirmed)}{quantity_note(check, item)}"
+              for index, item in enumerate(results, 1)]  # ROUND-10: an unstated quantity condition is said
     lines += [f'Not checked against the registered workflows: "{sentence}"' for sentence in check.unchecked]
     if check.provisional:
         # Log 403 (o10 SN6): a backup reading with no result in it said nothing at all, and the
@@ -933,9 +934,9 @@ def _pairs(check: CapabilityCheck, actions_for) -> list[tuple[int, str, list[str
     known = sheet_entries()
     pairs = []
     for index, requirement in enumerate(check.requirements):
-        # Log 414: a workflow removed for a stated requirement it cannot meet is not asked about again.
+        # Log 414 / ROUND-10: one a stated requirement, or every candidate count of the user's, ruled out stays out.
         if (requirement.kind != "result" or requirement.status != "not_available" or not requirement.attrs
-                or requirement.violations):
+                or requirement.violations or requirement.unknown_quote and requirement.limits):
             continue
         for action in actions_for(requirement):
             produces = [key for key, item in known.items() if item.kind == "produces" and item.action == action]

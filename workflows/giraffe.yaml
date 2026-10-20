@@ -60,9 +60,14 @@ conventions:
     60bcaf5ac69ac8f002db5fc6b1b10cbc101ee822 (version 0.11.0), installs patsy,
     and runs an import/signature smoke test during image build. The host Python
     environment is not silently modified.
+  - Require at least two expression samples before execution.
 # Core decision spec, phase 2 (R5) and phase 4a: what the input check verifies before a run, in this file's own
 # words; scope request names the request-level limit (workflow_conditions) that decides it, scope file only
 # the files can.
 input_checks:
+  # ROUND-10: the minimum the input preflight already enforces (data/giraffe.py:125); said here so the contract states it.
+  - text: "Require at least two expression samples before execution."
+    scope: request
+    limit: "min_samples"
   - text: "identifier mismatches are rejected before the API call"
     scope: file

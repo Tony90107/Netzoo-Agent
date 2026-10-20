@@ -92,7 +92,7 @@ def count_update(task: str, alternatives: list[dict], method: dict, keys: list[s
         else:
             applies = single_result or quote in alternative.get("read_by", ()) or where is not None and (
                 where[0] < alternative["span"][1] and alternative["span"][0] < where[1])
-        if not keys or not applies:
+        if not keys or not applies or alternative.get("unless_stated") and method.get("samples") is not None:
             continue
         base = _base(task, method, alternative)
         base_limits = method_fitting(base, keys)[1]

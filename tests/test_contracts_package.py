@@ -200,7 +200,7 @@ SCHEMA_DIGESTS = {
     # unsure_candidates / settled_by_file / file_disagrees (code-owned record; decisions unchanged on 979 readings).
     # 2026-10-20: count_reading_precedence records a duplicate numeric reading being set aside. Verified the schema
     # digest returns to the previous pin when only this FactConflict.reason enum value is removed.
-    "TaskDecision": "ca1f6da548c2a51ab5d56fe32606fefd944bf3b2dc4090f957e0752b84e02c97",
+    "TaskDecision": "a0b45f41357df351d4d8308fbf86750dc1ba6c584789c17a732a5b50941a0a23",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

@@ -56,7 +56,8 @@ def test_every_request_scope_input_check_maps_to_a_limit_that_acts(policy):
     """The completeness test: a contract limit a request can decide never stays request-blind."""
     request = [(spec.workflow, check_text(item), check_limit(item)) for spec in policy.workflows.values()
                for item in spec.input_checks if check_scope(item) == "request"]
-    assert len(request) == 10  # ROUND-02 D: LIONESS-PANDA refuses an aggregate co-expression input
+    assert len(request) == 13  # ROUND-02 D: LIONESS-PANDA refuses an aggregate co-expression input; ROUND-10: DRAGON,
+    # GIRAFFE and COBRA state the sample minimum their preflight enforces
     missing = [(workflow, text, limit) for workflow, text, limit in request if not _limit_holds(workflow, limit)]
     assert missing == []
 
