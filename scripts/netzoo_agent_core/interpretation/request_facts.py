@@ -13,6 +13,8 @@ Nothing here decides anything new: the rules that choose between a result's own 
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from ..contracts.request_facts import FactConflict, FactEvidence, RequestFact
 from ..workflow_conditions import UNREGISTERED, stated_numbers
 from .count_alternatives import verified_count_alternatives
@@ -35,6 +37,14 @@ def _same(known: RequestFact, fact: RequestFact) -> bool:
         fact.property, fact.name, fact.value, fact.values, fact.state)
 
 
+def _read_again(known: RequestFact, fact: RequestFact, evidence: FactEvidence) -> RequestFact:
+    """A fact read once more: one more read, and the results either read applies it to (every result wins)."""
+    scope = None if known.applies_to is None or fact.applies_to is None else list(
+        dict.fromkeys([*known.applies_to, *fact.applies_to]))
+    return known.model_copy(update={"evidence": [*known.evidence, evidence], "applies_to": scope,
+                                    "scope_unverified": known.scope_unverified and fact.scope_unverified})
+
+
 class FactRecord:
     """The turn's counts and settings, each kept once with every read of it."""
 
@@ -42,6 +52,9 @@ class FactRecord:
         self.task = task
         self.facts: dict[str, RequestFact] = {}
         self.conflicts: list[FactConflict] = []
+        self.scoped: list[str] = []
+        self.scoped_features: list[str] = []
+        """Reading shape 2: the request's scoped counts and settings, in the order read."""
 
     # -- reads -------------------------------------------------------------------------------------------------
 
@@ -56,12 +69,12 @@ class FactRecord:
                 if (known.property, known.value, known.state, known.origin) == (
                         fact.property, fact.value, "stated", "user_stated") \
                         and known.span[0] < fact.span[1] and fact.span[0] < known.span[1]:
-                    self.facts[known.id] = known.model_copy(update={"evidence": [*known.evidence, evidence]})
+                    self.facts[known.id] = _read_again(known, fact, evidence)
                     return known.id
         base, number = fact.id, 1
         while (known := self.facts.get(fact.id)) is not None:
             if _same(known, fact):
-                self.facts[fact.id] = known.model_copy(update={"evidence": [*known.evidence, evidence]})
+                self.facts[fact.id] = _read_again(known, fact, evidence)
                 return fact.id
             number += 1
             fact = fact.model_copy(update={"id": f"{base}#{number}"})
@@ -100,16 +113,133 @@ class FactRecord:
         return method
 
     def read_request(self, proposal) -> dict:
-        """The request's own method, settings and data size (`method_conditions.request_method`), from the record."""
-        return self.read_method(getattr(proposal, "conditions", None), "request")
+        """The request's own method, settings and data size (`method_conditions.request_method`), from the record.
 
-    def _read_setting(self, setting: dict, reader: str, result: str) -> str:
+        Reading shape 2 (ROUND-04): the request's counts and settings are the only ones, each scoped to the results it
+        applies to (`scoped_method`); this is all of them, as the request states them (a sample count only when the
+        request states one)."""
+        conditions = getattr(proposal, "conditions", None)
+        if not hasattr(conditions, "sample_counts"):
+            return self.read_method(conditions, "request")
+        method = {key: value for key, value in verified_method(self.task, SimpleNamespace(
+            named_method=conditions.named_method, named_method_quote=conditions.named_method_quote)).items()}
+        self.scoped = [fact_id for item in conditions.settings
+                       if (fact_id := self._read_scoped("settings", item)) is not None]
+        self.scoped += [fact_id for item in conditions.sample_counts
+                        if (fact_id := self._read_scoped("samples", item)) is not None]
+        self.scoped += [fact_id for item in conditions.feature_counts
+                        if (fact_id := self._read_scoped("features", item)) is not None]
+        self.scoped = list(dict.fromkeys(self.scoped))
+        return {**method, **self._compiled(self.scoped)}
+
+    def _read_scoped(self, kind: str, item) -> str | None:
+        """One scoped count or setting, verified as an ask's would be (`verified_method`), with its scope."""
+        if kind == "settings":
+            found = verified_method(self.task, SimpleNamespace(settings=[item])).get("settings")
+        elif kind == "samples":
+            found = verified_method(self.task, SimpleNamespace(sample_count=item.count, sample_count_quote=item.quote))
+        else:
+            found = verified_method(self.task, SimpleNamespace(feature_counts=[item])).get("feature_items")
+        if not found:
+            return None
+        raw = getattr(item, "applies_to", None)
+        scope = None if raw is None else [
+            self.task[span[0]:span[1]] for quote in raw
+            if (quote or "").strip() and (span := _span(self.task, quote)) is not None]
+        unverified = raw is not None and bool([quote for quote in raw if (quote or "").strip()]) and not scope
+        scoped = {"applies_to": scope, "scope_unverified": unverified}
+        if kind == "settings":
+            return self._read_setting(found[0], "request", "", scoped)
+        if kind == "samples":
+            span = _span(self.task, item.quote)
+            return self._add(
+                RequestFact(id=f"sample_count@{span[0]}-{span[1]}", property="sample_count",
+                            value=str(found["samples"]), quote=found["samples_quote"], span=list(span), **scoped),
+                FactEvidence(reader="request", quote=found["samples_quote"], span=list(span)))
+        start, end, count = found[0]
+        owner = _span(self.task, item.belongs_to) if (item.belongs_to or "").strip() else None
+        said = self.task[owner[0]:owner[1]] if owner else ""
+        for fact_id in self.scoped_features:
+            known = self.facts[fact_id]
+            # The same number restated ("a 48-gene panel ... those 48 genes", p3 C57) is one count when the reading
+            # names the same data type for both, or none for either; a named and an unnamed one, or two names, stay
+            # two (300 RNA genes and 300 CpG probes, h4 M01).
+            if known.value == str(count) and known.belongs_to.casefold() == said.casefold():
+                self.facts[fact_id] = _read_again(
+                    known, known.model_copy(update=scoped),
+                    FactEvidence(reader="request", quote=self.task[start:end], span=[start, end]))
+                return fact_id
+        fact_id = self._add(
+            RequestFact(id=f"feature_count@{start}-{end}", property="feature_count", value=str(count),
+                        quote=self.task[start:end], span=[start, end],
+                        belongs_to=said, **scoped),
+            FactEvidence(reader="request", quote=self.task[start:end], span=[start, end]))
+        self.scoped_features.append(fact_id)
+        return fact_id
+
+    def _applies(self, fact: RequestFact, span, single: bool) -> bool:
+        if fact.applies_to is None:
+            return True
+        if fact.scope_unverified:
+            return single
+        return any((found := _span(self.task, words)) is not None and found[0] < span[1] and span[0] < found[1]
+                   for words in fact.applies_to)
+
+    def scoped_method(self, span, result: str, single: bool, workflows: set[str]) -> dict:
+        """Shape 2: a result's counts and settings -- the request's facts that apply to it.
+
+        A count applies to the results it is scoped to (every result when unscoped). Settings: see below. Two
+        different sample counts for one result leave it with none (`several_values`)."""
+        ids = []
+        for fact_id in self.scoped:
+            fact = self.facts[fact_id]
+            if fact.property != "setting":
+                if self._applies(fact, span, single):
+                    ids.append(fact_id)
+                continue
+            scoped = fact.applies_to is not None
+            if fact.name == UNREGISTERED:
+                # Unscoped among several results, an unregistered setting holds none: it names no workflow, and the
+                # misread ones are exactly these (h4 M23 "Let it estimate both shrinkage values" refused all three
+                # results when applied to each in the offline conversion).
+                if self._applies(fact, span, single) and (single or scoped):
+                    ids.append(fact_id)
+                continue
+            own = fact.name.split(".", 1)[0] in workflows
+            # A registered setting holds the results it is scoped to; and since one run of a workflow takes one set of
+            # its settings, also every other result credited to that workflow (h2 J44 "set computing to gpu" read for
+            # "Time to rerun OTTER ..." only, beside "Start it now."), unless scoped to no asked result. Unscoped among
+            # several results, it holds only its workflow's results ("run PANDA ..., then CONDOR on it", M2).
+            if (self._applies(fact, span, single) and (single or scoped or own)) or (own and fact.applies_to != []):
+                ids.append(fact_id)
+        samples = [fact_id for fact_id in ids if self.facts[fact_id].property == "sample_count"]
+        if len({self.facts[fact_id].value for fact_id in samples}) > 1:
+            self._conflict("sample_count", "", result, [], samples, "several_values")
+            ids = [fact_id for fact_id in ids if fact_id not in samples]
+        return self._compiled(ids)
+
+    def _compiled(self, ids: list[str]) -> dict:
+        """A method's counts and settings from facts (a sample count only when they give one value)."""
+        method: dict = {}
+        settings = [self.setting(fact_id) for fact_id in ids if self.facts[fact_id].property == "setting"]
+        if settings:
+            method["settings"] = settings
+        samples = [self.facts[fact_id] for fact_id in ids if self.facts[fact_id].property == "sample_count"]
+        if len({fact.value for fact in samples}) == 1:
+            method.update(samples=_number(samples[0].value), samples_quote=samples[0].quote)
+        items = sorted([*self.facts[fact_id].span, _number(self.facts[fact_id].value)]
+                       for fact_id in ids if self.facts[fact_id].property == "feature_count")
+        if items:
+            method.update(features=sum(item[2] for item in items), feature_counts=len(items), feature_items=items)
+        return method
+
+    def _read_setting(self, setting: dict, reader: str, result: str, scoped: dict | None = None) -> str:
         value = setting.get("value", "")
         at = setting["at"]
         fact = RequestFact(
             id=f"setting:{setting['name']}@{setting['span'][0]}-{setting['span'][1]}", property="setting",
             name=setting["name"], value=value, quote=setting["quote"], span=list(setting["span"]),
-            value_quote=value, value_span=[at, at + len(value)] if value else [])
+            value_quote=value, value_span=[at, at + len(value)] if value else [], **(scoped or {}))
         return self._add(fact, FactEvidence(reader=reader, quote=setting["quote"], span=list(setting["span"]),
                                             result=result))
 

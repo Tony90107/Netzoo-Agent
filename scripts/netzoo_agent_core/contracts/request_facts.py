@@ -62,6 +62,12 @@ class RequestFact(BaseModel):
     evidence: list[FactEvidence] = Field(default_factory=list)
     derived_from: list[str] = Field(default_factory=list)
     formula: str = ""
+    applies_to: list[str] | None = None
+    """ROUND-04, reading shape 2: the asked results it applies to, in the request's words; None for every result (and
+    for shape 1, where the scope is each read's `evidence[].result`)."""
+    scope_unverified: bool = False
+    """ROUND-04: the reading named results for it, but none of their words is in the request -- applied only when the
+    request asks for one result, never guessed among several."""
 
     def reads(self) -> int:
         """How many times the reading wrote this fact."""
@@ -78,7 +84,8 @@ class FactConflict(BaseModel):
     used: list[str]
     """The fact ids the result was judged on."""
     set_aside: list[str]
-    reason: Literal["result_own_value", "latest_stated"] = "result_own_value"
+    reason: Literal["result_own_value", "latest_stated", "several_values"] = "result_own_value"
     """result_own_value: the result's own words state a count, so the request-level one is not applied to it;
     latest_stated: of two values of one setting, the one stated last is used (both rules are
-    `method_conditions.with_request_method`'s, unchanged)."""
+    `method_conditions.with_request_method`'s, unchanged); several_values (ROUND-04): two different sample counts
+    apply to the result, so neither is used -- a doubtful count never decides anything."""

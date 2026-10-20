@@ -12,6 +12,7 @@ quotes and sentence coverage are checked in code
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from typing import Any, Literal
 
@@ -24,7 +25,8 @@ from .strict_schema import strict_json_schema
 __all__ = ["APPROVING_RUN_VERDICTS", "CONDITIONS", "CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES",
            "RequirementKind", "RunVerdict", "RunVerdictName",
            "SecondOpinionAnswer", "condition_check_model", "conditions_model", "proposal_model", "proposal_sentences",
-           "reread_as_proposal", "reread_model", "second_opinion_model", "unstated_conditions"]
+           "reading_version", "reread_as_proposal", "reread_model", "schema_version", "second_opinion_model",
+           "unstated_conditions"]
 
 RequirementKind = Literal["result", "about_methods", "context"]
 SentenceRole = Literal["background", "asks", "methods_question", "mixed"]
@@ -97,8 +99,68 @@ def _method_fields(compact: bool = False) -> dict[str, Any]:
     }
 
 
+def schema_version() -> int:
+    """ROUND-04 (collab/ROUND-04-PLAN.md): the reading shape the check asks for. 1: counts and settings on every ask
+    and again for the request. 2: once, for the request, each with the asked results it applies to. Set by
+    NETZOO_CHECK_SCHEMA; 1 until the user accepts 2."""
+    return 2 if os.environ.get("NETZOO_CHECK_SCHEMA", "1").strip() == "2" else 1
+
+
+_ASK_METHOD_FIELDS_V2 = ("adds", "named_method", "named_method_quote")
+"""ROUND-04: what an ask still says of its method in shape 2 -- the counts and settings are the request's."""
+
+
 @lru_cache(maxsize=2)
-def _ask_model(compact: bool = False) -> type[BaseModel]:
+def _scoped_fields(compact: bool = False) -> dict[str, Any]:
+    """ROUND-04, shape 2: the request's counts and settings, each once, with the asked results it applies to.
+
+    ROUND-03 (979 recorded readings): 94% of the counts and settings an ask wrote repeated the request's own; the
+    rest were another cohort's or group's ("30 ALS and 30 control"), or a setting written into one result only
+    (h3 L10: the lambdas held for the second result, not the DRAGON network). `applies_to` reads as the unknown
+    facts' does.
+    """
+    from ..method_names import UNREGISTERED, setting_meanings, setting_names
+
+    applies = (list[str] | None, Field(description=(
+        "Exact quotes of the asked-for results this applies to, each as quoted in its ask; [] when it concerns no "
+        "asked-for result (another dataset, a later step); null only when it applies to every asked-for result.")))
+    setting = create_model(
+        "ScopedSetting", __config__=ConfigDict(extra="forbid"),
+        name=(str if compact else Literal[(*setting_names(), UNREGISTERED)], Field(description=(  # type: ignore
+            "The registered setting the words set, as WORKFLOW.setting; unregistered when none of these is it. "
+            "What each registered setting does (the registry's own description): "
+            + " | ".join(setting_meanings())))),
+        quote=(str, Field(description="Exact words of the request naming the setting.")),
+        value_quote=(str, Field(description="Exact words of the request giving its value; empty when none is given.")),
+        applies_to=applies)
+    samples = create_model(
+        "ScopedSamples", __config__=ConfigDict(extra="forbid"),
+        count=(int, Field(description="The number of samples, patients or profiles the words state.")),
+        quote=(str, Field(description="Exact words of the request stating it.")),
+        applies_to=applies)
+    features = create_model(
+        "ScopedFeatures", __config__=ConfigDict(extra="forbid"),
+        count=(int, Field(description="The number of genes, proteins or other features the words state.")),
+        quote=(str, Field(description="Exact words of the request stating it.")),
+        belongs_to=(str, Field(description=(
+            "Exact words of the request naming the data type or file it counts (e.g. \"RNA-seq\", \"cpg_85.csv\"); "
+            "empty when the request does not say."))),
+        applies_to=applies)
+    return {
+        "settings": (list[setting], Field(default_factory=list, description=(
+            "Each setting of a method the request gives anywhere -- a parameter, penalty, threshold, precision, "
+            "output format or hardware -- one item per setting; empty when it gives none. Not the input data."))),
+        "sample_counts": (list[samples], Field(default_factory=list, description=(
+            "Each number of samples, patients or profiles the request states, one item per group or cohort it "
+            "counts; empty when none is stated. Not candidates the user cannot choose between."))),
+        "feature_counts": (list[features], Field(default_factory=list, description=(
+            "Each number of genes, proteins or other features the request states, one item per data type; empty "
+            "when none is stated. Not candidates the user cannot choose between."))),
+    }
+
+
+@lru_cache(maxsize=4)
+def _ask_model(compact: bool = False, version: int = 1) -> type[BaseModel]:
     """One asked-for result and the sheet entries that give it (shared by the check and its re-read).
 
     `compact`: entry ids and names as strings, for the backup model's provider (see `_method_fields`); code drops
@@ -157,7 +219,8 @@ def _ask_model(compact: bool = False) -> type[BaseModel]:
         asked_as=(Literal["request", "question"], Field(description=(
             "request: the user wants the result produced. question: the user asks whether, or which, method "
             "produces it."))),
-        **_method_fields(compact),
+        **{name: field for name, field in _method_fields(compact).items()
+           if version == 1 or name in _ASK_METHOD_FIELDS_V2},
     )
 
 
@@ -205,8 +268,8 @@ UnknownAbout = Literal["data_unit", "input_network", "samples_matched", "sample_
 the fact agent's words to agree with (the fixed dimensions above still drive only the legacy asks)."""
 
 
-@lru_cache(maxsize=2)
-def conditions_model(compact: bool = False) -> type[BaseModel]:
+@lru_cache(maxsize=4)
+def conditions_model(compact: bool = False, version: int = 1) -> type[BaseModel]:
     fields = {}
     for name, (values, _rules_out, description) in CONDITIONS.items():
         fields[name] = (Literal[values], Field(default=values[-1], description=description))  # type: ignore[valid-type]
@@ -272,7 +335,7 @@ def conditions_model(compact: bool = False) -> type[BaseModel]:
         quote=(str, Field(description="Exact words of the request saying the choice is not made.")),
         differs_in=(Literal["result", "method"], Field(description=(
             "result: the options give different results. method: the options are methods for the same result."))),
-        options=(list[_ask_model(compact)], Field(description=(
+        options=(list[_ask_model(compact, version)], Field(description=(
             "Each option the user names, one ask per option, its quote the exact words naming it."))))
     fields["open_choices"] = (list[choice], Field(default_factory=list, description=(
         "Each choice among options the user names but says they have not made; empty when there is none.")))
@@ -286,22 +349,26 @@ def conditions_model(compact: bool = False) -> type[BaseModel]:
         "none when it names no method.")))
     fields["named_method_quote"] = (str, Field(default="", description=(
         "Exact words of the request naming that method; empty when none is named.")))
-    fields["settings"] = (method["settings"][0], Field(default_factory=list, description=(
-        "Each setting of a method the request gives anywhere -- a parameter, penalty, threshold, precision, output "
-        "format or hardware -- one item per setting; empty when it gives none. Not the input data.")))
+    if version == 2:
+        fields.update(_scoped_fields(compact))  # ROUND-04: the only place counts and settings are read
+    else:
+        fields["settings"] = (method["settings"][0], Field(default_factory=list, description=(
+            "Each setting of a method the request gives anywhere -- a parameter, penalty, threshold, precision, "
+            "output format or hardware -- one item per setting; empty when it gives none. Not the input data.")))
     # Round m3 (2026-10-15): "Can LIONESS-PANDA run for exactly two expression samples ...?", "Can BONOBO run on
     # exactly two total samples ...?" and "Can SAMBAR run with kmin=2 and kmax=9 on exactly six mutation samples ...?"
     # were questions about a method with no ask, so the data size they state had no field: the sample minimums, the
     # clustering limit and the LIONESS-DRAGON cap were never applied and each was answered as if it could run. The
     # data size is read for the request too, as its method and settings are.
-    fields["sample_count"] = (method["sample_count"][0], Field(default=None, description=(
-        "How many samples, patients or profiles the request says the user's data has, anywhere in it; null when it "
-        "does not say.")))
-    fields["sample_count_quote"] = (str, Field(default="", description=(
-        "Exact words of the request stating that number; empty when it is null.")))
-    fields["feature_counts"] = (method["feature_counts"][0], Field(default_factory=list, description=(
-        "Each number of genes, proteins or other features the request says the user's data has, one item per data "
-        "type; empty when none is stated.")))
+    if version == 1:
+        fields["sample_count"] = (method["sample_count"][0], Field(default=None, description=(
+            "How many samples, patients or profiles the request says the user's data has, anywhere in it; null when "
+            "it does not say.")))
+        fields["sample_count_quote"] = (str, Field(default="", description=(
+            "Exact words of the request stating that number; empty when it is null.")))
+        fields["feature_counts"] = (method["feature_counts"][0], Field(default_factory=list, description=(
+            "Each number of genes, proteins or other features the request says the user's data has, one item per "
+            "data type; empty when none is stated.")))
     # Core decision spec, phase 1 (2026-10-15): whether the request names the result it wants. Round p0: 9 of 14
     # requests that named none ("send me the results", "tell me what you find", "Should I go with BONOBO or
     # LIONESS ...?") were read as asks, matched nothing and were answered "no registered workflow produces this".
@@ -356,15 +423,22 @@ def conditions_model(compact: bool = False) -> type[BaseModel]:
     return create_model("RequestConditions", __config__=ConfigDict(extra="forbid"), **fields)
 
 
-def unstated_conditions() -> dict:
+def unstated_conditions(version: int = 1) -> dict:
     """The conditions of a reading that states none (a re-read reads asks only)."""
+    counts = ({"sample_count": None, "sample_count_quote": "", "feature_counts": []} if version == 1
+              else {"sample_counts": [], "feature_counts": []})
     return {**{key: value for name, (values, _rules_out, _description) in CONDITIONS.items()
                for key, value in ((name, values[-1]), (f"{name}_quote", ""))},
             "other_requirements": [], "unknown_facts": [], "open_choices": [],
-            "named_method": "none", "named_method_quote": "", "settings": [],
-            "sample_count": None, "sample_count_quote": "", "feature_counts": [],
+            "named_method": "none", "named_method_quote": "", "settings": [], **counts,
             "goal": "result_named", "goal_quote": "", "ruled_out_inputs": [], "only_inputs": [],
             "only_inputs_quote": "", "count_alternatives": []}
+
+
+def reading_version(proposal) -> int:
+    """The shape a reading (or its conditions) was given in: 2 when its counts are scoped (ROUND-04)."""
+    conditions = getattr(proposal, "conditions", proposal)
+    return 2 if hasattr(conditions, "sample_counts") else 1
 
 
 ConditionAnswer = Literal["satisfies", "violates", "unrelated", "not_about_results"]
@@ -390,15 +464,15 @@ def condition_check_model(pairs: int) -> type[BaseModel]:
     return model
 
 
-@lru_cache(maxsize=2 * (MAX_SENTENCES + 1))
-def proposal_model(sentences: int = 1, compact: bool = False) -> type[BaseModel]:
+@lru_cache(maxsize=4 * (MAX_SENTENCES + 1))
+def proposal_model(sentences: int = 1, compact: bool = False, version: int = 1) -> type[BaseModel]:
     """The provider-facing schema: one required field per request sentence, sheet ids as enums.
 
     Log 387 smoke run: with one free-length list of sentences gpt-4o-mini returned
     only the first (the data sentence) 3 times in 4, so the goal was never read.
     Strict mode requires every property, so a field per sentence cannot be skipped.
     """
-    ask = _ask_model(compact)
+    ask = _ask_model(compact, version)
     # Log 387 dev round: with a kind beside the entry lists, a data sentence was given
     # 16 not-produced entries. Only an ask can name entries now.
     # Log 387 dev round 2: data sentences ("We have expression from 50 kidney samples ...")
@@ -423,8 +497,8 @@ def proposal_model(sentences: int = 1, compact: bool = False) -> type[BaseModel]
         for index in range(1, max(1, min(sentences, MAX_SENTENCES)) + 1)
     }
     # The provider's strict schema still requires it; the default reads recordings and fixtures from before Log 412.
-    fields["conditions"] = (conditions_model(compact), Field(
-        default_factory=lambda: conditions_model(compact)(**unstated_conditions()), description=(
+    fields["conditions"] = (conditions_model(compact, version), Field(
+        default_factory=lambda: conditions_model(compact, version)(**unstated_conditions(version)), description=(
         "Conditions the request states anywhere -- in another sentence, or a follow-up to an earlier request -- "
         "about the user's data or about what every asked-for result must satisfy.")))
     model = create_model("CapabilityCheckProposal", __config__=ConfigDict(extra="forbid"), **fields)
@@ -433,8 +507,8 @@ def proposal_model(sentences: int = 1, compact: bool = False) -> type[BaseModel]
     return model
 
 
-@lru_cache(maxsize=2 * (MAX_SENTENCES + 1))
-def reread_model(sentences: int = 1, compact: bool = False) -> type[BaseModel]:
+@lru_cache(maxsize=4 * (MAX_SENTENCES + 1))
+def reread_model(sentences: int = 1, compact: bool = False, version: int = 1) -> type[BaseModel]:
     """Log 406: a second reading of words the check left unread, with only one thing to say about them.
 
     The check's sentence reading can file a sentence as background or as a question about methods
@@ -444,7 +518,7 @@ def reread_model(sentences: int = 1, compact: bool = False) -> type[BaseModel]:
     Asked again with the same choices it chooses the same; here the only field is what results
     the words ask for -- an empty list is a normal answer.
     """
-    ask = _ask_model(compact)
+    ask = _ask_model(compact, version)
     sentence = create_model(
         "SentenceAsks",
         __config__=ConfigDict(extra="forbid"),
@@ -470,11 +544,12 @@ def reread_as_proposal(reread, conditions=None) -> BaseModel:
     belong to two subtypes").
     """
     count = len(type(reread).model_fields)
-    return proposal_model(count).model_validate({
+    version = reading_version(conditions) if conditions is not None else 1
+    return proposal_model(count, version=version).model_validate({
         **{f"s{index}": {"role": "asks", "has": [], "about_methods": [],
                          "asks": [item.model_dump() for item in getattr(reread, f"s{index}").asks]}
            for index in range(1, count + 1)},
-        "conditions": conditions.model_dump() if conditions is not None else unstated_conditions()})
+        "conditions": conditions.model_dump() if conditions is not None else unstated_conditions(version)})
 
 
 SecondOpinionAnswer = Literal["all", "part", "none", "named"]
