@@ -1,0 +1,84 @@
+FFFF..F..                                                                [100%]
+=================================== FAILURES ===================================
+______ test_misplaced_background_cannot_be_promoted_by_the_second_opinion ______
+
+    def test_misplaced_background_cannot_be_promoted_by_the_second_opinion():
+        raw = _record("T01")
+        original = copy.deepcopy(raw)
+        check, rejected = _build(raw)
+>       assert [r.quote for r in check.results()] == [raw["proposal"]["s1"]["asks"][0]["quote"]]
+E       AssertionError: assert ['Is LIONESS-... and TF PPI.'] == ['Is LIONESS-...k-RNA study?']
+E         
+E         Left contains 2 more items, first extra item: 'The post-QC export has either nine or seventeen patients; I cannot check the count until the data manager returns.'
+E         Use -v to get more diff
+
+tests/test_reading_coverage.py:35: AssertionError
+________________ test_a_misplaced_real_result_is_still_a_result ________________
+
+    def test_a_misplaced_real_result_is_still_a_result():
+        raw = _record("T01")
+        raw["proposal"]["s2"]["role"] = "asks"
+        check, _ = _build(raw)
+        assert any("post-QC" in r.quote for r in check.results())
+>       assert not any("We have the TF motif" in r.quote for r in check.results())
+E       assert not True
+E        +  where True = any(<generator object test_a_misplaced_real_result_is_still_a_result.<locals>.<genexpr> at 0x141530520>)
+
+tests/test_reading_coverage.py:50: AssertionError
+______ test_unread_data_quantity_cannot_approve_a_sample_limited_workflow ______
+
+    def test_unread_data_quantity_cannot_approve_a_sample_limited_workflow():
+        raw = _record("T02")
+        decision = TaskDecision.model_validate(raw["decision"])
+        core = decide_core(decision, raw["task"])
+>       assert (core.kind, core.basis, core.run_allowed) == ("ASK", "count_fact", False)
+E       AssertionError: assert ('DO', 'results_given', False) == ('ASK', 'count_fact', False)
+E         
+E         At index 0 diff: 'DO' != 'ASK'
+E         Use -v to get more diff
+
+tests/test_reading_coverage.py:57: AssertionError
+__________ test_unread_count_ask_holds_runs_and_has_a_complete_reply ___________
+
+    def test_unread_count_ask_holds_runs_and_has_a_complete_reply():
+        raw = _record("T02")
+        decision = TaskDecision.model_validate(raw["decision"]).model_copy(update={
+            "action": "run_lioness_panda", "should_execute": True, "execution_requested": True})
+        held = with_core(decision, decide_core(decision, raw["task"]))
+>       assert held.action == "no_tool"
+E       AssertionError: assert 'run_lioness_panda' == 'no_tool'
+E         
+E         - no_tool
+E         + run_lioness_panda
+
+tests/test_reading_coverage.py:72: AssertionError
+_______________ test_the_guard_uses_the_preflight_sample_minimum _______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x14147a960>
+
+    def test_the_guard_uses_the_preflight_sample_minimum(monkeypatch):
+        from netzoo_agent_core.data import inspection
+    
+        raw = _record("T02")
+        monkeypatch.setattr(inspection, "LIONESS_MIN_SAMPLES", 7)
+        core = decide_core(TaskDecision.model_validate(raw["decision"]), raw["task"])
+>       assert core.kind == "ASK" and "at least 7" in core.facts[0].contract_quote
+E       AssertionError: assert ('DO' == 'ASK'
+E         
+E         - ASK
+E         + DO)
+
+tests/test_reading_coverage.py:98: AssertionError
+=============================== warnings summary ===============================
+../../../../.local/lib/python3.12/site-packages/pytz/tzinfo.py:27
+  /Users/chenzhonghan/.local/lib/python3.12/site-packages/pytz/tzinfo.py:27: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+    _epoch = datetime.utcfromtimestamp(0)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_reading_coverage.py::test_misplaced_background_cannot_be_promoted_by_the_second_opinion
+FAILED tests/test_reading_coverage.py::test_a_misplaced_real_result_is_still_a_result
+FAILED tests/test_reading_coverage.py::test_unread_data_quantity_cannot_approve_a_sample_limited_workflow
+FAILED tests/test_reading_coverage.py::test_unread_count_ask_holds_runs_and_has_a_complete_reply
+FAILED tests/test_reading_coverage.py::test_the_guard_uses_the_preflight_sample_minimum
+5 failed, 4 passed, 1 warning in 1.59s
