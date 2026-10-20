@@ -202,3 +202,177 @@ def test_the_response_model_is_not_given_the_record_again():
     assert "fact_ids" not in shown["capability_check"]["requirements"][0]
     assert shown["capability_check"]["requirements"][0]["method"]["samples"] == 40
     assert "advisory_recommendation" not in json.loads(TaskDecision(**base).model_dump_json(exclude=_NOT_FOR_RESPONSE))
+
+
+# --- ROUND-04: reading shape 2 -- counts and settings once, for the request, scoped to the results ---------------
+
+_ASK_ONLY = ("settings", "sample_count", "sample_count_quote", "feature_counts")
+
+
+def _ask2(*args, **kwargs):
+    return {key: value for key, value in _ask(*args, **kwargs).items() if key not in _ASK_ONLY}
+
+
+def _check2(task, *asks, **conditions):
+    sentences = [task[start:end] for start, end in request_sentences(task)]
+    readings = {f"s{index}": {"role": "background", "has": [], "about_methods": [], "asks": []}
+                for index in range(1, len(sentences) + 1)}
+    for ask in asks:
+        index = next(i for i, text in enumerate(sentences, 1) if ask["quote"] in text)
+        readings[f"s{index}"]["asks"].append(ask)
+        readings[f"s{index}"]["role"] = "asks"
+    readings["conditions"] = {**unstated_conditions(2), **conditions}
+    check, rejected = build_capability_check(task, proposal_model(len(sentences), version=2).model_validate(readings))
+    assert not rejected, rejected
+    return check
+
+
+def _samples(count, quote, applies_to=None):
+    return {"count": count, "quote": quote, "applies_to": applies_to}
+
+
+def _features(count, quote, belongs_to="", applies_to=None):
+    return {"count": count, "quote": quote, "belongs_to": belongs_to, "applies_to": applies_to}
+
+
+def _setting(name, quote, value, applies_to=None):
+    return {"name": name, "quote": quote, "value_quote": value, "applies_to": applies_to}
+
+
+TF = dict(scale="whole_cohort", regulator_kinds=["tf"])
+GROUPS = "Build one PANDA network for the 12 hypoxia samples. Build another PANDA network for the 15 normoxia samples."
+HYPOXIA = "Build one PANDA network for the 12 hypoxia samples"
+NORMOXIA = "Build another PANDA network for the 15 normoxia samples"
+
+
+def test_shape2_asks_carry_no_counts_or_settings_and_the_switch_selects_it(monkeypatch):
+    from netzoo_agent_core.contracts.capability_check import reading_version, schema_version
+
+    ask = proposal_model(1, version=2).model_json_schema()
+    text = str(ask)
+    assert "sample_counts" in text and "applies_to" in text and "sample_count_quote" not in text
+    monkeypatch.delenv("NETZOO_CHECK_SCHEMA", raising=False)
+    assert schema_version() == 1
+    monkeypatch.setenv("NETZOO_CHECK_SCHEMA", "2")
+    assert schema_version() == 2
+    assert reading_version(_proposal(LIVER)) == 1
+
+
+def test_each_group_count_goes_to_its_own_result():
+    check = _check2(GROUPS, _ask2(HYPOXIA, ["panda.tf_gene_network"], **TF),
+                    _ask2(NORMOXIA, ["panda.tf_gene_network"], **TF),
+                    sample_counts=[_samples(12, "12 hypoxia samples", [HYPOXIA]),
+                                   _samples(15, "15 normoxia samples", [NORMOXIA])])
+    assert [item.method.get("samples") for item in check.results()] == [12, 15]
+    assert not check.fact_conflicts
+    assert all(len(item.fact_ids) == 1 for item in check.results())
+
+
+def test_two_different_counts_for_one_result_decide_nothing():
+    task = "We have 400 patients and a validation cohort of 150 patients. Build one PANDA network for them."
+    check = _check2(task, _ask2("Build one PANDA network for them", ["panda.tf_gene_network"], **TF),
+                    sample_counts=[_samples(400, "400 patients"), _samples(150, "150 patients")])
+    [result] = check.results()
+    assert "samples" not in result.method
+    [conflict] = check.fact_conflicts
+    assert conflict.reason == "several_values" and len(conflict.set_aside) == 2 and conflict.used == []
+
+
+def test_a_count_for_every_result_applies_to_each_of_several():
+    task = "We have 40 liver samples. Build a PANDA network. Then find communities with CONDOR."
+    check = _check2(task, _ask2("Build a PANDA network", ["panda.tf_gene_network"], **TF),
+                    _ask2("Then find communities with CONDOR", ["condor.communities"], scale="whole_cohort"),
+                    sample_counts=[_samples(40, "40 liver samples")])
+    assert [item.method.get("samples") for item in check.results()] == [40, 40]
+
+
+def test_a_setting_scoped_to_one_result_stays_with_it():
+    task = ("Run DRAGON on RNA-seq (2,000 genes) and protein data (220 antibodies). Also give me a PANDA network. "
+            "Fix lambda1 at 0.3 for the DRAGON run.")
+    dragon = "Run DRAGON on RNA-seq (2,000 genes) and protein data (220 antibodies)"
+    check = _check2(task, _ask2(dragon, ["dragon.two_layer_network"], omics_layers=2),
+                    _ask2("Also give me a PANDA network", ["panda.tf_gene_network"], **TF),
+                    settings=[_setting("DRAGON.lambda1", "lambda1", "0.3", [dragon])],
+                    feature_counts=[_features(2000, "2,000 genes", "RNA-seq", [dragon]),
+                                    _features(220, "220 antibodies", "protein data", [dragon])])
+    first, second = check.results()
+    assert [item["value"] for item in first.method["settings"]] == ["0.3"] and "settings" not in second.method
+    assert first.method["features"] == 2220 and "features" not in second.method
+    owners = {fact.quote: fact.belongs_to for fact in check.facts if fact.property == "feature_count"
+              and fact.origin == "user_stated"}
+    assert owners == {"2,000 genes": "RNA-seq", "220 antibodies": "protein data"}
+
+
+def test_an_unscoped_registered_setting_goes_only_to_its_workflows_results():
+    task = "Build a PANDA network. Then run DRAGON on the two layers. Use lambda1 0.3."
+    check = _check2(task, _ask2("Build a PANDA network", ["panda.tf_gene_network"], **TF),
+                    _ask2("Then run DRAGON on the two layers", ["dragon.two_layer_network"], omics_layers=2),
+                    settings=[_setting("DRAGON.lambda1", "lambda1", "0.3")])
+    panda, dragon = check.results()
+    assert "settings" not in panda.method and dragon.method["settings"][0]["value"] == "0.3"
+
+
+def test_a_scope_whose_words_are_not_in_the_request_is_never_guessed_among_several():
+    one = _check2(LIVER, _ask2("Build one PANDA network for the 40 liver samples", ["panda.tf_gene_network"], **TF),
+                  sample_counts=[_samples(40, "40 liver samples", ["a network for the kidney"])])
+    assert one.results()[0].method["samples"] == 40
+    several = _check2(GROUPS, _ask2(HYPOXIA, ["panda.tf_gene_network"], **TF),
+                      _ask2(NORMOXIA, ["panda.tf_gene_network"], **TF),
+                      sample_counts=[_samples(12, "12 hypoxia samples", ["a network for the kidney"])])
+    assert all("samples" not in item.method for item in several.results())
+    assert [fact.scope_unverified for fact in several.facts] == [True]
+
+
+def test_a_count_for_no_asked_result_applies_to_none():
+    check = _check2(LIVER, _ask2("Build one PANDA network for the 40 liver samples", ["panda.tf_gene_network"], **TF),
+                    sample_counts=[_samples(40, "40 liver samples", [])])
+    assert "samples" not in check.results()[0].method
+
+
+def test_a_belongs_to_not_in_the_request_is_left_empty():
+    task = "Run DRAGON on 300 RNA genes and 300 CpG probes."
+    check = _check2(task, _ask2(task.rstrip("."), ["dragon.two_layer_network"], omics_layers=2),
+                    feature_counts=[_features(300, "300 RNA genes", "transcriptome table"),
+                                    _features(300, "300 CpG probes", "CpG probes")])
+    owners = sorted(fact.belongs_to for fact in check.facts if fact.property == "feature_count"
+                    and fact.origin == "user_stated")
+    assert owners == ["", "CpG probes"]
+    assert check.results()[0].method["features"] == 600
+
+
+def test_a_shape2_reread_carries_the_scoped_conditions():
+    from netzoo_agent_core.contracts.capability_check import reread_as_proposal, reread_model
+
+    conditions = proposal_model(1, version=2).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": []},
+        "conditions": {**unstated_conditions(2), "sample_counts": [_samples(40, "40 liver samples")]}}).conditions
+    reread = reread_model(1, version=2).model_validate({"s1": {"asks": [_ask2("a PANDA network", [], **TF)]}})
+    proposal = reread_as_proposal(reread, conditions)
+    assert proposal.conditions.sample_counts[0].count == 40 and "sample_count" not in proposal.s1.asks[0].model_dump()
+
+
+def test_an_unscoped_unregistered_setting_holds_no_result_among_several_but_a_scoped_one_holds_its_own():
+    task = "Build a PANDA network. Then run DRAGON on the two layers. Let it estimate both shrinkage values."
+    asks = (_ask2("Build a PANDA network", ["panda.tf_gene_network"], **TF),
+            _ask2("Then run DRAGON on the two layers", ["dragon.two_layer_network"], omics_layers=2))
+    loose = _check2(task, *asks, settings=[_setting("unregistered", "estimate both shrinkage values", "")])
+    assert all(item.status == "available" for item in loose.results())
+    scoped = _check2(task, *asks, settings=[_setting("unregistered", "estimate both shrinkage values", "",
+                                                     ["Then run DRAGON on the two layers"])])
+    # held to it, DRAGON's result is read without it and the words become a not-available row of their own (round m3's
+    # settings_apart: stated in a clause of their own); PANDA's result is untouched
+    panda, dragon, apart = scoped.results()
+    assert panda.status == "available" and "settings" not in panda.method and "settings" not in dragon.method
+    assert apart.quote.startswith("estimate both shrinkage values") and apart.status == "not_available"
+
+
+def test_one_run_takes_one_set_of_settings_whichever_result_they_were_scoped_to():
+    task = "Time to rerun OTTER on expr.tsv. Set precision to single. Start it now."
+    rerun, start = "Time to rerun OTTER on expr.tsv", "Start it now"
+    check = _check2(task, _ask2(rerun, ["otter.tf_gene_network"], **TF), _ask2(start, ["otter.tf_gene_network"], **TF),
+                    settings=[_setting("OTTER.precision", "precision", "single", [rerun])])
+    assert [item.method["settings"][0]["value"] for item in check.results()] == ["single", "single"]
+    nowhere = _check2(task, _ask2(rerun, ["otter.tf_gene_network"], **TF),
+                      _ask2(start, ["otter.tf_gene_network"], **TF),
+                      settings=[_setting("OTTER.precision", "precision", "single", [])])
+    assert all("settings" not in item.method for item in nowhere.results())

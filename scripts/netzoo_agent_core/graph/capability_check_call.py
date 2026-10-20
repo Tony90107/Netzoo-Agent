@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from ..capability_sheet import sheet_entries
 from ..contracts import AgentState, HumanMessage, LLMUsage, SystemMessage
 from ..contracts.capability_check import (
-    MAX_SENTENCES, condition_check_model, proposal_model, reread_model, second_opinion_model,
+    MAX_SENTENCES, condition_check_model, proposal_model, reread_model, schema_version, second_opinion_model,
 )
 from ..interpretation.capability_check import request_sentences
 from ..interpretation.provider_fallback import _is_fatal_exception
@@ -333,7 +333,8 @@ def request_capability_check(
         # The allowance tops up a turn whose routing left too little; it never reopens a spent turn.
         return None, usage, budget_warnings, "blocked"
     messages, count = build_capability_check_messages(user_task)
-    schema = proposal_model(count)
+    version = schema_version()  # ROUND-04: reading shape 1 or 2 (NETZOO_CHECK_SCHEMA)
+    schema = proposal_model(count, version=version)
     input_text = _serialized_structured_input(messages, schema)
     budget_context = reading = with_reading_allowance(context)
     for attempt in (1, 2):
@@ -349,7 +350,7 @@ def request_capability_check(
         raw = payload = proposal = None
         output_text, call_status, retry = "", "failed", False
         if llm is fallback_llm and expanded_enum_values(schema.model_json_schema()) > _ENUM_LIMIT:
-            schema = proposal_model(count, compact=True)  # M2 (live m2b P30): the backup provider's enum limit
+            schema = proposal_model(count, compact=True, version=version)  # M2 (live m2b P30): the backup provider's enum limit
         try:
             adapter = llm.with_structured_output(schema, method="function_calling", include_raw=True, strict=True)
             payload, raw = semantic_payload(adapter.invoke(messages))
@@ -404,7 +405,7 @@ def request_capability_reread(context, state, user_task: str, passages: list[str
     if llm is None or not passages or usage.budget_exhausted:
         return None, usage, budget_warnings
     messages = build_reread_messages(user_task, passages)
-    schema = reread_model(min(len(passages), MAX_SENTENCES))
+    schema = reread_model(min(len(passages), MAX_SENTENCES), version=schema_version())
     input_text = _serialized_structured_input(messages, schema)
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(

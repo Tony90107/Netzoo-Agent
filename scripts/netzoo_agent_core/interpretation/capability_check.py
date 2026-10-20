@@ -25,7 +25,9 @@ from .needed_facts import (
     applicable_unknowns, fact_line, fact_update, file_checked_note, needed_fact_reply, resolve_unknowns,
     verified_unknown_domains, verified_unknown_scopes, verified_unknowns,
 )
-from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
+from ..contracts.capability_check import (
+    CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences, reading_version,
+)
 from .count_alternatives import count_update, verified_count_alternatives
 from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
 from .request_readings import only_inputs, ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal  # noqa: F401
@@ -401,6 +403,7 @@ def build_capability_check(
     # ROUND-03: every count and setting the reading writes is one record; methods and candidates are compiled from it.
     record = FactRecord(task)
     whole = record.read_request(proposal)
+    scoped = reading_version(proposal) == 2
     alternatives = record.read_alternatives(proposal)  # phase 5b: a count given as candidates
 
     def place(quote: str):
@@ -445,12 +448,17 @@ def build_capability_check(
         result = task[span[0]:span[1]]
         own = [record.read_method(item, "result", result) for item in items]
         methods = own
+        workflows = [{known[k].workflow for k in item.delivered_by if known.get(k)} for item in items]
+        applied = None
         if len(asks) == 1 and whole:  # live m1a F1: the request's own method and settings, for its one result
             applied = [whole] * len(items)
         elif whole:  # M2: with several results, only what names a workflow a result is credited to
-            applied = [request_method_for(whole, {known[k].workflow for k in item.delivered_by if known.get(k)})
-                       for item in items]
-        if whole:
+            applied = [request_method_for(whole, found) for found in workflows]
+        if scoped:  # ROUND-04, shape 2: the counts and settings are the request's, each with its scope
+            applied = [{**{key: given[key] for key in ("named", "named_quote") if key in given},
+                        **record.scoped_method(span, result, len(asks) == 1, found)}
+                       for given, found in zip(applied or [{}] * len(items), workflows)]
+        if applied is not None:
             methods = [with_request_method(method, given) for method, given in zip(own, applied)]
             for mine, given, merged in zip(own, applied, methods):
                 record.note_conflicts(result, mine, given, merged)
