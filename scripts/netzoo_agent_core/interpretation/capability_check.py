@@ -395,8 +395,9 @@ def build_capability_check(
     record = FactRecord(task)
     whole = record.read_request(proposal)
     scoped = reading_version(proposal) == 2
+    sentences, ownership_rejected = owned_sentences(task, proposal_sentences(proposal))  # before any read of them
     alternatives, unknowns = record.read_doubts(proposal, verified_unknowns(task, proposal),
-                                               unknown_domains, unknown_scopes)
+                                               unknown_domains, unknown_scopes, sentences)
 
     def place(quote: str):
         span = _span(task, quote)
@@ -406,7 +407,6 @@ def build_capability_check(
             spans.append(span)
         return span
 
-    sentences, ownership_rejected = owned_sentences(task, proposal_sentences(proposal))
     rejected.extend(ownership_rejected)
     asked = [found for sentence in sentences for item in sentence.asks
              if (found := _span(task, item.quote)) is not None]

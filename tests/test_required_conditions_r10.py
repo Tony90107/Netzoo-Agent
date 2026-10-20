@@ -146,3 +146,22 @@ def test_the_guard_is_not_silenced_by_candidates_never_weighed_for_the_result():
     decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
                             capability_check=check)
     assert decide_core(decision, task).kind == "ASK"
+
+
+def test_context_moved_back_to_its_own_sentence_is_read_for_candidates():
+    """Live attempt-07 T01: the reading put "either nine or seventeen patients" in the first sentence as an uncredited
+    ask; ownership correction returns it to its own background sentence, and the candidates must be read from there."""
+    task = ("Is LIONESS-PANDA suitable for one TF-to-gene network per patient? "
+            "The post-QC export has either nine or seventeen patients. We have the TF motif prior and TF PPI.")
+    sentences = [task[a:b] for a, b in request_sentences(task)]
+    first = "Is LIONESS-PANDA suitable for one TF-to-gene network per patient"
+    proposal = proposal_model(len(sentences)).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [
+            _ask(first, ["lioness_panda.per_sample_networks"], scale="per_sample", regulator_kinds=["tf"]),
+            _ask("The post-QC export has either nine or seventeen patients", [])]},
+        "s2": {"role": "background", "has": [], "about_methods": [], "asks": []},
+        "s3": {"role": "background", "has": [], "about_methods": [], "asks": []},
+        "conditions": unstated_conditions()})
+    check = build_capability_check(task, proposal)[0]
+    assert [a["values"] for a in check.count_alternatives] == [[9, 17]]
+    assert [row.status for row in check.results()] == ["available"]

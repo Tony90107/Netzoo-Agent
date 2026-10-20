@@ -254,7 +254,7 @@ class FactRecord:
         return {"name": fact.name, "quote": fact.quote, "value": fact.value, "span": list(fact.span),
                 "at": fact.value_span[0] if fact.value_span else fact.span[0]}
 
-    def read_alternatives(self, proposal) -> list[dict]:
+    def read_alternatives(self, proposal, sentences=None) -> list[dict]:
         """The counts the user gave as candidates, recorded -- with an unknown count stating the same candidates in
         the same words as one more read of it -- and compiled back as `count_update` takes them."""
         ids = []
@@ -267,15 +267,18 @@ class FactRecord:
                 FactEvidence(reader="count_alternatives", quote=found["quote"], span=[start, end],
                              role="alternative")))
         ids += self._read_side_by_side(proposal)
-        ids += self._read_context_candidates(proposal)
+        ids += self._read_context_candidates(proposal, sentences)
         for unknown in getattr(getattr(proposal, "conditions", None), "unknown_facts", None) or ():
             self._read_unknown_count(unknown)
         self.alternative_ids = list(dict.fromkeys(ids))
         return [self.alternative(fact_id) for fact_id in self.alternative_ids]
 
-    def read_doubts(self, proposal, unknowns, domains, scopes):
-        """Read each candidate once, reconcile its duplicate, then compile its domain and scope together."""
-        self.read_alternatives(proposal)
+    def read_doubts(self, proposal, unknowns, domains, scopes, sentences=None):
+        """Read each candidate once, reconcile its duplicate, then compile its domain and scope together.
+
+        `sentences`: the reading's sentences after ownership correction (`sentence_ownership`), so context moved back
+        to its own sentence is read as context (live attempt-07 T01: "either nine or seventeen patients")."""
+        self.read_alternatives(proposal, sentences)
         self._note_kept_scopes(proposal)
         unknowns = self.reconcile_unknown_counts(unknowns, domains, scopes)
         return [self.alternative(fact_id) for fact_id in self.alternative_ids], unknowns
@@ -379,7 +382,7 @@ class FactRecord:
             ids.append(self._add_unsure(prop, [str(int(value)) for value in sorted(values)], span, words, evidence))
         return ids
 
-    def _read_context_candidates(self, proposal) -> list[str]:
+    def _read_context_candidates(self, proposal, sentences=None) -> list[str]:
         """ROUND-10: side-by-side whole numbers in words the reading filed as context, no read fact explains, are
         the user's sample-count candidates -- judged like any other (`count_update`, one result only).
 
@@ -391,7 +394,9 @@ class FactRecord:
         from .count_words import candidate_runs
 
         ids = []
-        for sentence in proposal_sentences(proposal) if hasattr(proposal, "s1") else ():
+        if sentences is None:
+            sentences = proposal_sentences(proposal) if hasattr(proposal, "s1") else ()
+        for sentence in sentences:
             for quote in sentence.has:
                 where = _span(self.task, quote) if (quote or "").strip() else None
                 if where is None:
