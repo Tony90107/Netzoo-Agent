@@ -196,7 +196,9 @@ SCHEMA_DIGESTS = {
     # 2026-10-14 (item 5): optional code-owned file_checked on each checked requirement; reply only.
     # 2026-10-14 (M1): optional code-owned method, limits, instead and defaults on each checked requirement (the
     # ask's verified method, settings and data size, and what they rule out); they can only withhold a result.
-    "TaskDecision": "c34d0d07bcf9ec8de9da84763b8a8901972cfc830ccb4e255d53684bd03f039a",
+    # 2026-10-20 (ROUND-07): the fact record's readers side_by_side / input_file, origin file, and conflict reasons
+    # unsure_candidates / settled_by_file / file_disagrees (code-owned record; decisions unchanged on 979 readings).
+    "TaskDecision": "561ba4db891ef39415e880aeb5a79f52b5ea3f8eef9ce59f07b2b207f4d57d16",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

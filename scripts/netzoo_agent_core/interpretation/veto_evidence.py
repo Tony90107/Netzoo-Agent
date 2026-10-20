@@ -22,6 +22,7 @@ import re
 from dataclasses import dataclass, replace
 
 from ..contracts.slim_reading import SlimReading, Stated
+from .count_words import side_by_side
 from .menu_focus import focus_limits
 from .menu_reader import _IDENTIFIER, _norm, request_layout
 
@@ -38,20 +39,10 @@ def _numbers(quote: str) -> list[tuple[float, int, int]]:
 
 
 def _side_by_side(quote: str, value: float) -> bool:
-    """Whether another number stands beside this one as an alternative: at most one word between them and no other
-    number ("8 or 15", "8-15", "8, 15"). Two quantities of different things have their own words between them
-    ("6 tumours x 900 genes")."""
-    numbers = _numbers(quote)
-    for v, start, end in numbers:
-        if v != value:
-            continue
-        for other, o_start, o_end in numbers:
-            if other == value:
-                continue
-            gap = quote[end:o_start] if o_start >= end else quote[o_end:start]
-            if len(re.findall(r"[^\W\d_]+", gap)) <= 1 and len(gap) <= 12:
-                return True
-    return False
+    """Whether another number stands beside this one as an alternative ("8 or 15", "8-15", "8, 15"): ROUND-07's shared
+    rule (`count_words`), on this module's numbers. Two quantities of different things have their own words and
+    punctuation between them ("88 donors: 44 AD", "6 tumours x 900 genes")."""
+    return side_by_side(quote, value, _numbers(quote))
 
 
 def count_backing(fact: Stated) -> str:

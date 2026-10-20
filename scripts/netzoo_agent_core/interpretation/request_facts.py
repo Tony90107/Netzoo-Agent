@@ -15,9 +15,11 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from ..contracts.capability_check import proposal_sentences
 from ..contracts.request_facts import FactConflict, FactEvidence, RequestFact
 from ..workflow_conditions import UNREGISTERED, stated_numbers
 from .count_alternatives import verified_count_alternatives
+from .count_words import side_by_side_values
 from .method_conditions import verified_method
 from .request_spans import _span
 
@@ -261,9 +263,57 @@ class FactRecord:
                             span=[start, end]),
                 FactEvidence(reader="count_alternatives", quote=found["quote"], span=[start, end],
                              role="alternative")))
+        ids += self._read_side_by_side(proposal)
         for unknown in getattr(getattr(proposal, "conditions", None), "unknown_facts", None) or ():
             self._read_unknown_count(unknown)
         return [self.alternative(fact_id) for fact_id in dict.fromkeys(ids)]
+
+    def _counts_written(self, proposal):
+        """(property, number, quote) of every count the reading wrote as one number: the request's (shape 1 or 2),
+        each asked result's and each open-choice option's."""
+        conditions = getattr(proposal, "conditions", None)
+        items = [conditions, *(ask for sentence in proposal_sentences(proposal) for ask in sentence.asks),
+                 *(option for choice in getattr(conditions, "open_choices", None) or ()
+                   for option in getattr(choice, "options", None) or ())]
+        for index, item in enumerate(items):
+            asked = _span(self.task, getattr(item, "quote", "") or "") if index and (
+                getattr(item, "quote", "") or "").strip() else None
+            result = self.task[asked[0]:asked[1]] if asked else ""
+            if getattr(item, "sample_count", None) is not None:
+                yield "sample_count", item.sample_count, getattr(item, "sample_count_quote", ""), result
+            for stated in getattr(item, "feature_counts", None) or ():
+                yield "feature_count", stated.count, stated.quote, result
+        for stated in getattr(conditions, "sample_counts", None) or ():
+            yield "sample_count", stated.count, stated.quote, ""
+
+    def _read_side_by_side(self, proposal) -> list[str]:
+        """ROUND-07 (G1): a count the reading wrote as one number whose words give others beside it ("two or ten
+        paired samples") is kept as the user's candidates -- the same doubt as a candidate count -- never as that one
+        number (`verified_method` does not keep it)."""
+        ids = []
+        for prop, count, quote, result in self._counts_written(proposal):
+            span = _span(self.task, quote) if (quote or "").strip() else None
+            if span is None:
+                continue
+            words = self.task[span[0]:span[1]]
+            values = side_by_side_values(words, float(count))
+            if not values or any(value <= 0 or value != int(value) for value in values):
+                continue
+            evidence = FactEvidence(reader="side_by_side", quote=words, span=list(span), result=result,
+                                    role="alternative")
+            ids.append(self._add_unsure(prop, [str(int(value)) for value in sorted(values)], span, words, evidence))
+        return ids
+
+    def _add_unsure(self, prop: str, values: list[str], span, words: str, evidence: FactEvidence) -> str:
+        """Candidates of one count: one more read of a doubt already kept with the same candidates in overlapping
+        words, else a fact of their own."""
+        for fact_id, fact in self.facts.items():
+            if (fact.property == prop and fact.state == "unsure" and fact.values == values
+                    and fact.span[0] < span[1] and span[0] < fact.span[1]):
+                self.facts[fact_id] = fact.model_copy(update={"evidence": [*fact.evidence, evidence]})
+                return fact_id
+        return self._add(RequestFact(id=f"{prop}@{span[0]}-{span[1]}:candidates", property=prop, values=values,
+                                     state="unsure", quote=words, span=list(span)), evidence)
 
     def _read_unknown_count(self, unknown) -> None:
         """An unknown sample count with its candidates (`count_kind` choices), kept when its words state each one.
@@ -281,19 +331,17 @@ class FactRecord:
         if any(value <= 0 or value not in stated_numbers(words) for value in values):
             return
         evidence = FactEvidence(reader="unknown_facts", quote=words, span=list(span), role="alternative")
-        for fact_id, fact in self.facts.items():
-            if (fact.property == "sample_count" and fact.state == "unsure" and fact.values == [str(v) for v in values]
-                    and fact.span[0] < span[1] and span[0] < fact.span[1]):
-                self.facts[fact_id] = fact.model_copy(update={"evidence": [*fact.evidence, evidence]})
-                return
-        self._add(RequestFact(id=f"sample_count@{span[0]}-{span[1]}:candidates", property="sample_count",
-                              values=[str(value) for value in values], state="unsure", quote=words, span=list(span)),
-                  evidence)
+        self._add_unsure("sample_count", [str(value) for value in values], span, words, evidence)
 
     def alternative(self, fact_id: str) -> dict:
         fact = self.facts[fact_id]
-        return {"of": _OF[fact.property], "quote": fact.quote, "values": [_number(v) for v in fact.values],
-                "span": list(fact.span)}
+        found = {"of": _OF[fact.property], "quote": fact.quote, "values": [_number(v) for v in fact.values],
+                 "span": list(fact.span)}
+        # ROUND-07: a result that wrote one of these candidates as its own count waits on them wherever their words
+        # stand (`count_update` otherwise applies a count to one of several results only inside its words).
+        if read_by := list(dict.fromkeys(e.result for e in fact.evidence if e.reader == "side_by_side" and e.result)):
+            found["read_by"] = read_by
+        return found
 
     # -- what a result was judged on ---------------------------------------------------------------------------
 
@@ -311,7 +359,9 @@ class FactRecord:
         candidate count it waits on (`unknown_quote`)."""
         ids = [self._find("setting", item["name"], item.get("span") or [], item.get("value", ""))
                for item in method.get("settings", [])]
-        if "samples" in method:
+        if method.get("samples_file"):
+            ids.append(f"sample_count@file:{method['samples_file']}")
+        elif "samples" in method:
             ids.append(self._find("sample_count", "", [], str(method["samples"]), quote=method.get("samples_quote")))
         features = [self._find("feature_count", "", item[:2], str(item[2])) for item in method.get("feature_items", [])]
         ids += features
@@ -354,6 +404,52 @@ class FactRecord:
             dropped = item if kept is other else other
             self._conflict("setting", item["name"], result, self.ids_for({"settings": [kept]}),
                            self.ids_for({"settings": [dropped]}), "latest_stated")
+
+    def unsure_at(self, prop: str, span) -> list[str]:
+        """The candidate facts of this property kept for exactly these words."""
+        return [fact_id for fact_id, fact in self.facts.items()
+                if fact.property == prop and fact.state == "unsure" and fact.span == list(span)]
+
+    def _unsure_over(self, prop: str, span) -> list[str]:
+        """The candidate facts of this property whose words hold these words."""
+        return [fact_id for fact_id, fact in self.facts.items() if fact.property == prop and fact.state == "unsure"
+                and span and fact.span[0] <= span[0] and span[1] <= fact.span[1]]
+
+    def note_set_aside(self, result: str, before: dict, after: dict, unknown: bool = False) -> None:
+        """ROUND-07 (G2): a stated count the result's method held before the doubt was weighed and no longer holds --
+        it lay inside the user's candidates (phase 5b `_base`), or beside a count the user said they do not know
+        (`unknown`) -- is recorded as set aside, so the record shows the doubt won."""
+        if "samples" in before and "samples" not in after and not before.get("samples_file"):
+            stated = self.ids_for({key: before[key] for key in ("samples", "samples_quote") if key in before})
+            span = next((self.facts[fact_id].span for fact_id in stated), None)
+            used = [] if unknown else self._unsure_over("sample_count", span)
+            self._conflict("sample_count", "", result, used, stated, "unsure_candidates")
+        kept = {tuple(item[:2]) for item in after.get("feature_items", [])}
+        for item in before.get("feature_items", []):
+            if tuple(item[:2]) not in kept:
+                stated = self.ids_for({"feature_items": [item]})
+                self._conflict("feature_count", "", result, self._unsure_over("feature_count", list(item[:2])),
+                               stated, "unsure_candidates")
+
+    def read_file_count(self, count: int, path: str) -> str:
+        """ROUND-07 (G3): the samples code counted in the expression file the request names."""
+        fact_id = f"sample_count@file:{path}"
+        if fact_id not in self.facts:
+            self.facts[fact_id] = RequestFact(
+                id=fact_id, property="sample_count", value=str(count), origin="file", quote=path,
+                evidence=[FactEvidence(reader="input_file", quote=path, span=[])])
+        return fact_id
+
+    def note_file_count(self, result: str, file_fact: str, unsure: list[str], settled: bool) -> None:
+        """ROUND-07 (G3): the file's count settled the candidates (or the count the user said they do not know), or
+        is none of the candidates and settled nothing."""
+        if settled:
+            self._conflict("sample_count", "", result, [file_fact], unsure, "settled_by_file")
+        else:
+            found = FactConflict(property="sample_count", result=result, used=unsure, set_aside=[file_fact],
+                                 reason="file_disagrees")
+            if found not in self.conflicts:
+                self.conflicts.append(found)
 
     def _conflict(self, prop, name, result, used, set_aside, reason) -> None:
         found = FactConflict(property=prop, name=name, result=result, used=used, set_aside=set_aside, reason=reason)
