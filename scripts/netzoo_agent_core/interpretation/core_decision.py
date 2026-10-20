@@ -37,6 +37,7 @@ from ..capability_sheet import entry, produced_text
 from ..contracts.capability_check import APPROVING_RUN_VERDICTS
 from ..contracts.core_decision import ClarifyNeed, CoreDecision, DeclinedPart, FactQuestion
 from ..method_names import workflows_in
+from .count_alternatives import judged_count_words, splits_candidates
 from .fact_check import MAX_ASKED
 from .needed_facts import _question
 
@@ -223,8 +224,15 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         evidence["legacy_facts"] = [fact.question for fact in agent.legacy]  # phase 2: shadow
         # Phase 5b (spec 13.3): a count code judged is asked first, beside the agent's (the code's on the same words).
         counted = _facts(check, by_code=True)
-        asked = [*counted, *(fact for fact in agent.accepted if not fact.settled_by_input_check and not any(
-            _same_words(task, fact.user_quote, count.user_quote) for count in counted))][:MAX_ASKED]
+        # ROUND-09 (R8): a question on candidates code weighed must be able to tell them apart, or it is not asked.
+        owned = [fact for fact in agent.accepted if not fact.settled_by_input_check and any(
+            _same_words(task, fact.user_quote, words) and not splits_candidates(fact.question, values)
+            for words, values in judged_count_words(check))]
+        if owned:
+            evidence["count_owned"] = [fact.question for fact in owned]
+        asked = [*counted, *(fact for fact in agent.accepted if not fact.settled_by_input_check and fact not in owned
+                             and not any(_same_words(task, fact.user_quote, count.user_quote)
+                                         for count in counted))][:MAX_ASKED]
         if asked:
             settled = [fact for fact in agent.accepted if fact.settled_by_input_check]
             return call("ASK", "count_fact" if counted else "fact_agent", facts=[*asked, *settled],

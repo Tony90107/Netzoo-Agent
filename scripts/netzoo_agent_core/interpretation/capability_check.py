@@ -22,7 +22,7 @@ import re
 
 from ..capability_sheet import data_units, entry, result_forms, sheet_entries
 from .needed_facts import (
-    applicable_unknowns, fact_line, fact_update, file_checked_note, needed_fact_reply, resolve_unknowns,
+    applicable_unknowns, check_unknowns, fact_line, fact_update, file_checked_note, needed_fact_reply, resolve_unknowns,
     verified_unknown_domains, verified_unknown_scopes, verified_unknowns,
 )
 from ..contracts.capability_check import (
@@ -139,7 +139,7 @@ def wait_on_asked(check: CapabilityCheck, pairs) -> CapabilityCheck:
         item = requirements[index]
         if item.status not in ("not_available", "available", "with_step"):
             continue
-        unknowns = applicable_unknowns(check.unknowns, check.unknown_scopes, check.unknown_domains, item.quote)
+        unknowns = check_unknowns(check, item.quote)
         if not unknowns:
             continue
         possible, analyses = resolve_unknowns(_fitting, list(dict.fromkeys(keys)),
@@ -447,7 +447,8 @@ def build_capability_check(
     requirements, apart = [], {}
     for span, items in asks.items():
         # M1: each reading is held to the method, settings and data size it states.
-        applicable = applicable_unknowns(unknowns, unknown_scopes, unknown_domains, task[span[0]:span[1]])
+        applicable = applicable_unknowns(unknowns, unknown_scopes, unknown_domains, task[span[0]:span[1]],
+                                         credited_results <= 1)
         result = task[span[0]:span[1]]
         own = [record.read_method(item, "result", result) for item in items]
         methods = own
@@ -950,8 +951,7 @@ def _pairs(check: CapabilityCheck, actions_for) -> list[tuple[int, str, list[str
             produces = [key for key, item in known.items() if item.kind == "produces" and item.action == action]
             # M1: never a workflow outside the named method or one that cannot take the data; one that lacks only a
             # stated setting is asked about, and credited as itself with its own settings (m1b MX05).
-            applicable = applicable_unknowns(check.unknowns, check.unknown_scopes, check.unknown_domains,
-                                              requirement.quote)
+            applicable = check_unknowns(check, requirement.quote)
             potential = (resolve_unknowns(_fitting, produces, {**requirement.attrs, "_method": requirement.method},
                                           applicable)[0] if applicable else
                          _fitting(produces, SimpleNamespace(**requirement.attrs)))
