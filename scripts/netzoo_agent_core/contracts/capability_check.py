@@ -36,8 +36,8 @@ MAX_SENTENCES = 12
 """Sentences after the twelfth are not read; the coverage check lists them as not checked."""
 
 
-@lru_cache(maxsize=2)
-def _method_fields(compact: bool = False) -> dict[str, Any]:
+@lru_cache(maxsize=4)
+def _method_fields(compact: bool = False, described: bool = True) -> dict[str, Any]:
     """M1 (2026-10-14): the method, settings and data size an ask states, as typed values with their words.
 
     Final acceptance a24b: OTTER "with an L1 sparsity penalty of 0.1", GIRAFFE with "its regularisation lambda",
@@ -46,6 +46,11 @@ def _method_fields(compact: bool = False) -> dict[str, Any]:
     beside the ask, so the result was credited to the workflow that cannot run it that way. Names are enums of
     the registry (`workflow_conditions`); code keeps a value only when its words are in the request and judges it.
     The defaults read recordings from before M1, which state none of these.
+
+    `described` False (ROUND-05, reading shape 3): a setting's name points to the description given once for the
+    request's settings instead of repeating it. The provider's schema inlines every reference, so the ~3.8k-character
+    list of what each setting does was sent once per sentence, once per open-choice option and once for the request
+    (3 copies for a one-sentence request, 14 for twelve).
     """
     from ..method_names import UNREGISTERED, method_names, setting_meanings, setting_names
 
@@ -56,8 +61,8 @@ def _method_fields(compact: bool = False) -> dict[str, Any]:
         "StatedSetting", __config__=ConfigDict(extra="forbid"),
         name=(str if compact else Literal[(*setting_names(), UNREGISTERED)], Field(description=(  # type: ignore
             "The registered setting the words set, as WORKFLOW.setting; unregistered when none of these is it. "
-            "What each registered setting does (the registry's own description): "
-            + " | ".join(setting_meanings())))),
+            + ("What each registered setting does (the registry's own description): " + " | ".join(setting_meanings())
+               if described else "What each registered setting does is described under conditions.settings.")))),
         quote=(str, Field(description="Exact words of the request naming the setting.")),
         value_quote=(str, Field(description="Exact words of the request giving its value; empty when none is given.")))
     count = create_model(
@@ -102,8 +107,9 @@ def _method_fields(compact: bool = False) -> dict[str, Any]:
 def schema_version() -> int:
     """ROUND-04 (collab/ROUND-04-PLAN.md): the reading shape the check asks for. 1: counts and settings on every ask
     and again for the request. 2: once, for the request, each with the asked results it applies to. Set by
-    NETZOO_CHECK_SCHEMA; 1 until the user accepts 2."""
-    return 2 if os.environ.get("NETZOO_CHECK_SCHEMA", "1").strip() == "2" else 1
+    NETZOO_CHECK_SCHEMA; 1 until the user accepts another. 3 (ROUND-05): shape 1, but an ask's settings point to the
+    request's description of each setting rather than repeating it (ROUND-04: shape 2 was not adopted)."""
+    return {"2": 2, "3": 3}.get(os.environ.get("NETZOO_CHECK_SCHEMA", "1").strip(), 1)
 
 
 _ASK_METHOD_FIELDS_V2 = ("adds", "named_method", "named_method_quote")
@@ -219,8 +225,8 @@ def _ask_model(compact: bool = False, version: int = 1) -> type[BaseModel]:
         asked_as=(Literal["request", "question"], Field(description=(
             "request: the user wants the result produced. question: the user asks whether, or which, method "
             "produces it."))),
-        **{name: field for name, field in _method_fields(compact).items()
-           if version == 1 or name in _ASK_METHOD_FIELDS_V2},
+        **{name: field for name, field in _method_fields(compact, described=version != 3).items()
+           if version != 2 or name in _ASK_METHOD_FIELDS_V2},
     )
 
 
@@ -360,7 +366,7 @@ def conditions_model(compact: bool = False, version: int = 1) -> type[BaseModel]
     # were questions about a method with no ask, so the data size they state had no field: the sample minimums, the
     # clustering limit and the LIONESS-DRAGON cap were never applied and each was answered as if it could run. The
     # data size is read for the request too, as its method and settings are.
-    if version == 1:
+    if version != 2:
         fields["sample_count"] = (method["sample_count"][0], Field(default=None, description=(
             "How many samples, patients or profiles the request says the user's data has, anywhere in it; null when "
             "it does not say.")))
@@ -425,7 +431,7 @@ def conditions_model(compact: bool = False, version: int = 1) -> type[BaseModel]
 
 def unstated_conditions(version: int = 1) -> dict:
     """The conditions of a reading that states none (a re-read reads asks only)."""
-    counts = ({"sample_count": None, "sample_count_quote": "", "feature_counts": []} if version == 1
+    counts = ({"sample_count": None, "sample_count_quote": "", "feature_counts": []} if version != 2
               else {"sample_counts": [], "feature_counts": []})
     return {**{key: value for name, (values, _rules_out, _description) in CONDITIONS.items()
                for key, value in ((name, values[-1]), (f"{name}_quote", ""))},
