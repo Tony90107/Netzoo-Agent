@@ -9,28 +9,13 @@ from __future__ import annotations
 from ..capability_sheet import sheet_entries
 from ..contracts.core_decision import FactQuestion
 from ..workflow_conditions import conditions_for
-from .count_words import _beside, number_spans
+from .count_words import candidate_runs
 from .request_spans import _locate, scope_applies
 
 
 def _candidate_runs(text: str) -> list[list[float]]:
-    """Each run of side-by-side whole numbers in the words -- two or more different ones, nothing but punctuation or
-    one spaced word between them ("either one or two", "8-15"), as `count_words` reads candidates. A lone number
-    ("the same 85 samples", "24 hours", "four batches", "precision to single") is no unread candidate count, and
-    a fraction ("delta is 0.2 or 0.5") counts nothing."""
-    runs, run = [], []
-    for item in number_spans(text):
-        if run and not _beside(text[run[-1][2]:item[1]]):
-            runs.append(run)
-            run = []
-        run.append(item)
-    runs.append(run)
-    found = []
-    for run in runs:
-        values = list(dict.fromkeys(value for value, _start, _end in run))
-        if len(values) >= 2 and all(value >= 1 and value == int(value) for value in values):
-            found.append(values)
-    return found
+    """The candidate values of each run of side-by-side whole numbers (`count_words.candidate_runs`)."""
+    return [values for values, _start, _end in candidate_runs(text)]
 
 
 def _read_sample_counts(check, result) -> set[float]:

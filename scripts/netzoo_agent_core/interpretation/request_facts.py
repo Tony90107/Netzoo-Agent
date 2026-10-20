@@ -267,6 +267,7 @@ class FactRecord:
                 FactEvidence(reader="count_alternatives", quote=found["quote"], span=[start, end],
                              role="alternative")))
         ids += self._read_side_by_side(proposal)
+        ids += self._read_context_candidates(proposal)
         for unknown in getattr(getattr(proposal, "conditions", None), "unknown_facts", None) or ():
             self._read_unknown_count(unknown)
         self.alternative_ids = list(dict.fromkeys(ids))
@@ -378,6 +379,38 @@ class FactRecord:
             ids.append(self._add_unsure(prop, [str(int(value)) for value in sorted(values)], span, words, evidence))
         return ids
 
+    def _read_context_candidates(self, proposal) -> list[str]:
+        """ROUND-10: side-by-side whole numbers in words the reading filed as context, no read fact explains, are
+        the user's sample-count candidates -- judged like any other (`count_update`, one result only).
+
+        Live T02 ("The entire cohort consists of either one or two biological samples"): the reading wrote no count
+        anywhere, so LIONESS-PANDA was offered; both candidates are below its minimum of three. Only runs of two or
+        more different whole numbers count (`count_words.candidate_runs`): a lone number, a fraction, a number glued
+        to a letter or numbers with their own words between them are not candidates."""
+        from ..contracts.capability_check import proposal_sentences
+        from .count_words import candidate_runs
+
+        ids = []
+        for sentence in proposal_sentences(proposal) if hasattr(proposal, "s1") else ():
+            for quote in sentence.has:
+                where = _span(self.task, quote) if (quote or "").strip() else None
+                if where is None:
+                    continue
+                words = self.task[where[0]:where[1]]
+                for values, start, end in candidate_runs(words):
+                    span = [where[0] + start, where[0] + end]
+                    if any(e.span and e.span[0] < span[1] and span[0] < e.span[1]
+                           for fact in self.facts.values() for e in fact.evidence):
+                        continue  # a fact read in these words explains them
+                    if any(fact.property == "sample_count" and fact.state == "stated" and fact.value
+                           and float(fact.value) in values for fact in self.facts.values()):
+                        continue  # the user settled them (T03 turn 2: "It contains 14 independent samples")
+                    evidence = FactEvidence(reader="context_candidates", quote=words, span=list(span),
+                                            role="alternative")
+                    ids.append(self._add_unsure("sample_count", [str(int(value)) for value in values], span, words,
+                                                evidence))
+        return ids
+
     def _add_unsure(self, prop: str, values: list[str], span, words: str, evidence: FactEvidence) -> str:
         """Candidates of one count: one more read of a doubt already kept with the same candidates in overlapping
         words, else a fact of their own."""
@@ -417,6 +450,8 @@ class FactRecord:
             found["read_by"] = read_by
         if fact_id in self.count_scopes:
             found["applies_to"] = self.count_scopes[fact_id]
+        if all(e.reader == "context_candidates" for e in fact.evidence):
+            found["unless_stated"] = True  # ROUND-10: never over a count the request states for the result
         return found
 
     # -- what a result was judged on ---------------------------------------------------------------------------

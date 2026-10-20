@@ -37,10 +37,15 @@ conventions:
   - Expression must be a labeled gene-by-sample matrix with more genes than samples.
   - Design rows must use exactly the expression sample IDs and numeric covariates.
   - run_cobra writes adjusted_coexpression.tsv and adjusted_coexpression.npz using the intercept component, with gene IDs on both axes.
+  - Require at least two expression samples before execution.
 # Core decision spec, phase 2 (R5) and phase 4a: what the input check verifies before a run, in this file's own
 # words; scope request names the request-level limit (workflow_conditions) that decides it, scope file only
 # the files can.
 input_checks:
+  # ROUND-10: the minimum the input preflight already enforces (data/cobra.py:97); said here so the contract states it.
+  - text: "Require at least two expression samples before execution."
+    scope: request
+    limit: "min_samples"
   - text: "Expression must be a labeled gene-by-sample matrix with more genes than samples."
     scope: request
     limit: "relation:features>samples"

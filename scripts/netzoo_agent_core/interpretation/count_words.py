@@ -14,7 +14,7 @@ import re
 
 from ..workflow_conditions import _NUMBER, _WORDS
 
-__all__ = ["number_spans", "side_by_side", "side_by_side_values"]
+__all__ = ["candidate_runs", "number_spans", "side_by_side", "side_by_side_values"]
 
 _IDENTIFIER = re.compile(r"\b\w+\.[A-Za-z][A-Za-z0-9]{1,4}\b|\b[a-z0-9]+_[a-z0-9_]+\b")
 """A file name or identifier (rna_85.csv): the numbers inside it count nothing (as `menu_reader._IDENTIFIER`)."""
@@ -70,3 +70,26 @@ def side_by_side_values(text: str, value: float, numbers=None) -> list[float]:
 def side_by_side(text: str, value: float, numbers=None) -> bool:
     """Whether another number stands beside this one as a candidate for the same count."""
     return bool(side_by_side_values(text, value, numbers))
+
+
+def candidate_runs(text: str) -> list[tuple[list[float], int, int]]:
+    """(values, start, end) of each run of side-by-side whole numbers in the words -- two or more different ones, each
+    at least 1 ("either one or two", "8-15"): the user's candidates for one count, when no reading wrote them.
+
+    A number glued to a letter ("10x", "3D", "2nd") is a unit, a dimension or an order, never a count (CELLS
+    "a single 10x run" is not "1 or 10"); a fraction counts nothing ("delta is 0.2 or 0.5")."""
+    text = text or ""
+    numbers = [item for item in number_spans(text) if not text[item[2]:item[2] + 1].isalpha()]
+    runs, run = [], []
+    for item in numbers:
+        if run and not _beside(text[run[-1][2]:item[1]]):
+            runs.append(run)
+            run = []
+        run.append(item)
+    runs.append(run)
+    found = []
+    for run in runs:
+        values = sorted({value for value, _start, _end in run})
+        if len(values) >= 2 and all(value >= 1 and value == int(value) for value in values):
+            found.append((values, run[0][1], run[-1][2]))
+    return found

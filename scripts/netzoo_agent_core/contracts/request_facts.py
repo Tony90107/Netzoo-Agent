@@ -23,7 +23,8 @@ class FactEvidence(BaseModel):
     """One read of a fact: where in the reading it was written, and the request words it quoted."""
 
     model_config = ConfigDict(extra="forbid")
-    reader: Literal["request", "result", "count_alternatives", "unknown_facts", "side_by_side", "input_file"]
+    reader: Literal["request", "result", "count_alternatives", "unknown_facts", "side_by_side", "input_file",
+                    "context_candidates"]
     """request: the reading's request-level fields; result: an asked result's own fields; count_alternatives /
     unknown_facts: a count the user gave as candidates, or said they do not know; side_by_side (ROUND-07): a count the
     reading wrote as one number whose words give another beside it; input_file (ROUND-07): code counted it in the
