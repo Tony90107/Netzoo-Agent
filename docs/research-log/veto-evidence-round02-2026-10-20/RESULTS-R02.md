@@ -80,3 +80,32 @@ L48 的 C6 否決來自合約核對時模型抄的條文，那份 payload 沒有
 - 樣本數若有多個不同數字，仍取最大值當總數（例如 60 個腫瘤＋60 個正常 → 120），這是沿用原本的行為。只有更正驗證失敗時，才改成保留衝突。
 - 金標由我一人根據 h4 的題目手寫，沒有第二位審核者。
 - 舊讀取上的重放只能證明「程式規則」的作用，不能證明新讀取形狀的作用。
+
+## 補充：用 gpt-4o-mini 重讀 6 個看過的 session（使用者 2026-10-20 同意，只用來除錯）
+
+- 腳本：`reread.py run`、`reread.py show`。結果：`reread.json`，含原始 payload。
+- 程式版本：`884cf5c4`，與 ce1ba1fc 程式相同。
+- 每題讀 1 次，溫度 0。共 12 次呼叫，**US$0.0044**，沒有讀取失敗。
+
+| 題 | 金標 | 重讀後判定 | 新欄位讀到什麼 |
+|---|---|---|---|
+| M01（ask） | 問 CpG 特徵數 | **ASK，問對**：「How many features are in cpg_85.csv: 300 or 5000? (All layers together: 600 or 5300, from 300 + 300 or 5,000.)」 | rna_85.csv 300 → operand；cpg_85.csv 300／5,000 → alternative。舊讀取的錯誤追問（continuous／binary）沒有再出現 |
+| M38（ask） | 問樣本數 | **ASK**：「8 or 15?」 | samples values [8, 15]，belongs_to mut_hnscc.csv，不再被讀成 8 |
+| M46（dont） | C8 | **DECLINE C8** | coexpression_matrix 的 input_for = LIONESS-PANDA；引用合約原文 |
+| L13（dont） | B6 超過上限 | **DECLINE B6**（恢復） | 2,000（rna_2000.csv）+ 500（prot_500.csv），列為 operands；否決時同時引用兩段原文 |
+| M25（dont） | B5 | **DECLINE B5**（保留） | 6 tumours 屬於 mut_pilot.csv；900 genes 另列為 features，沒有和樣本數混在一起 |
+| M40（dont） | B5 | **DECLINE B5**（保留） | lambda1 0.3；lambda2 沒有值，所以沒算成已設定 |
+
+6/6 判定正確。上一節舊讀取重放留下的三個問題，在新形狀下都改善了：
+
+- M01 的追問錯了 → 問對了；
+- M46 沒擋到 → 擋到了；
+- L13 的正確否決消失 → 恢復了。
+
+**限制**：
+
+- 6 題都是看過的題目，每題只讀 1 次，不能當驗收，也不能估計穩定性。
+- 讀取有兩個小瑕疵，都沒有影響判定：
+  - 樣本數被每層各報一次（M01、L13 都是同一個數字，取最大值不受影響；若兩層樣本數不同，仍會取最大值）；
+  - M46 的樣本數被歸到 adjusted_coexpression.tsv。
+- 要確認新形狀是否普遍有效，仍需第 8 節的新盲題驗收。
