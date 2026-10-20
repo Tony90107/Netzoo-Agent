@@ -144,7 +144,7 @@ def wait_on_asked(check: CapabilityCheck, pairs) -> CapabilityCheck:
             continue
         possible, analyses = resolve_unknowns(_fitting, list(dict.fromkeys(keys)),
                                              {**item.attrs, "_method": item.method}, unknowns)
-        update = fact_update(possible, analyses, _status)
+        update = fact_update(possible, analyses, _status, check.unknown_domains)
         if update is not None:
             requirements[index] = item.model_copy(update=update)
     if requirements == check.requirements:
@@ -402,12 +402,12 @@ def build_capability_check(
     unknown_scopes = verified_unknown_scopes(task, proposal)
     unknown_domains = verified_unknown_domains(task, proposal)
     form_spans = form_condition_spans(task, proposal, conditions)  # M2: conditions on the result's form
-    unknowns = verified_unknowns(task, proposal)
     # ROUND-03: every count and setting the reading writes is one record; methods and candidates are compiled from it.
     record = FactRecord(task)
     whole = record.read_request(proposal)
     scoped = reading_version(proposal) == 2
-    alternatives = record.read_alternatives(proposal)  # phase 5b: a count given as candidates
+    alternatives, unknowns = record.read_doubts(proposal, verified_unknowns(task, proposal),
+                                               unknown_domains, unknown_scopes)
 
     def place(quote: str):
         span = _span(task, quote)
@@ -502,7 +502,7 @@ def build_capability_check(
         fit_attrs["_method"] = method
         if applicable:
             possible, analyses = resolve_unknowns(_fitting, read, fit_attrs, applicable)
-            update = fact_update(possible, analyses, _status)
+            update = fact_update(possible, analyses, _status, unknown_domains)
             if update is not None:
                 status, delivered = update.pop("status"), update.pop("delivered_by")
                 waiting = update

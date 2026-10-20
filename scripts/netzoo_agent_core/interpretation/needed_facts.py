@@ -17,7 +17,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from ..capability_sheet import entry
-from .request_spans import _span
+from .request_spans import _span, scope_applies
 
 __all__ = ["DIMENSIONS", "FILE_CHECKED", "decisive_outcomes", "fact_line", "fact_questions", "file_checked",
            "file_checked_note", "needed_fact_reply", "waiting_decision"]
@@ -304,15 +304,14 @@ def verified_unknown_domains(task: str, proposal) -> dict[str, dict]:
 
 
 def _unknown_applies(scopes, said: str, result: str) -> bool:
-    return said not in scopes or any(_span(result, quote) is not None or _span(quote, result) is not None
-                                     for quote in scopes[said])
+    return scope_applies(result, scopes.get(said))
 
 
 def applicable_unknowns(unknowns, scopes, domains, quote):
     return [(about, said, domains.get(said)) for about, said in unknowns if _unknown_applies(scopes, said, quote)]
 
 
-def fact_update(possible, analyses, status_for):
+def fact_update(possible, analyses, status_for, domains=None):
     if not analyses:
         return None
     if not possible:
@@ -324,6 +323,9 @@ def fact_update(possible, analyses, status_for):
         if file_checked(about, outcomes):
             checked = {"file_checked": about, "unknown_quote": said}
             continue
+        # Discrete sample candidates are the same code-judged quantity whether the reading put them in
+        # count_alternatives or unknown_facts. The fact agent must not lift one path's wait but keep the other's.
+        counted = about == "sample_count" and (domains or {}).get(said, {}).get("kind") == "choices"
         return {"status": "needs_fact", "depends_on": about, "outcomes": outcomes, "unknown_quote": said,
-                "file_checked": None, "delivered_by": possible}
+                "file_checked": None, "delivered_by": possible, "by_code": counted}
     return {"status": status_for(possible), "delivered_by": possible, **checked}
