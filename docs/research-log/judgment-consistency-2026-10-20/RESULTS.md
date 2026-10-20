@@ -43,7 +43,7 @@ DO 表示能力判定可行；原有的使用者執行授權、必要檔案、�
 - 新增 [test_count_consistency.py](</Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/tests/test_count_consistency.py>)：19 個回歸案例。先確認 C45、追問被清掉、相似結果誤配及去重恢復舊數量等失敗，再修復。
 - 相關數量、未知事實、共用紀錄、合約、模組邊界：**107 passed**，見 `focused-test.log`。
 - 全套：**4749 passed、51 skipped、0 failed**，見 `full-test.log`。跳過的是 35 個需啟用 Docker 的數值／SAMBAR 容器檢查，以及 16 個沒有本機 Executor 的遠端 action 參數案例。跳過項目不算通過。
-- 首次全套有 2 個檢查未過：主檔新增一行超過 1000 行，以及新增內部衝突類型造成 schema pin 變動。已將疑問讀取整合在共用紀錄入口，沒有放寬長度上限；schema 差異驗證只有 `FactConflict.reason` 新增值，才更新 TaskDecision pin。其他 11 個 schema pin 不變。初次輸出保留在 `full-test-initial.log`；精確差異見 `schema-change.json`。
+- 首次全套有 2 個檢查未過：主檔新增一行超過 1000 行，以及新增內部衝突類型造成 schema pin 變動。已將疑問讀取整合在共用紀錄入口，沒有放寬長度上限；schema 差異驗證只有 `FactConflict.reason` 新增值，才更新 TaskDecision pin。其他 11 個 schema pin 不變。初次輸出保留在 `full-test-initial.log`（僅移除行尾空白）；精確差異見 `schema-change.json`。
 - `git diff --check` 通過；固定重放輸出可重現，來源及輸入雜湊吻合，見 `verification.json`。
 
 ## 979 份離線重放
