@@ -1,0 +1,1453 @@
+{
+ "tally": {
+  "DO turns": 383,
+  "DO turns with every quantity cell confirmed": 267,
+  "case state": 36,
+  "DO turns with no credited result (routed only; not measured)": 49,
+  "case file": 31
+ },
+ "rows": [
+  {
+   "key": "38f33e7b6f419b28",
+   "where": "docs/research-log/closed-menu-options-first-2026-10-18/h2/live/h2hyb/hb-h2hyb-J07-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-COEXPRESSION",
+     "action": "run_lioness_coexpression",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    },
+    {
+     "workflow": "BONOBO",
+     "action": "run_bonobo",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Each of my pig muscle samples should get its own gene-gene co-expression network (log2 CPM, centered per gene). We have three samples, unless the degraded one gets excluded, in which case only two. I won't know until Monday."
+  },
+  {
+   "key": "8124ed26dc5c8170",
+   "where": "docs/research-log/closed-menu-options-first-2026-10-18/h2/live/h2hyb/hb-h2hyb-J47-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Could you set up OTTER for an aggregate TF-gene network of human cardiomyocytes, using my precomputed gene-by-gene co-expression matrix instead of an expression table, plus the motif seed and the TF-TF PPI? Settings: lam = 1, gamma = 0, 150 iterations, single precision on CPU, matrix output."
+  },
+  {
+   "key": "32a24cb802e585b3",
+   "where": "docs/research-log/closed-menu-options-first-2026-10-18/h2/live/h2main/hb-h2main-J44-1/t1",
+   "case": "file",
+   "gold": "DECLINE",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Time to rerun OTTER: expr_pbmc.tsv, motif_pbmc.tsv and ppi_pbmc.tsv, output otter_pbmc.tsv as an edge list. This time set computing to gpu and precision to single, because the CPU run took far too long on our 19,000-gene matrix. Start it now."
+  },
+  {
+   "key": "d010695bd8c8edb3",
+   "where": "docs/research-log/closed-menu-options-first-2026-10-18/h2/live/h2main/hb-h2main-J47-1/t1",
+   "case": "state",
+   "gold": "DO",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Could you set up OTTER for an aggregate TF-gene network of human cardiomyocytes, using my precomputed gene-by-gene co-expression matrix instead of an expression table, plus the motif seed and the TF-TF PPI? Settings: lam = 1, gamma = 0, 150 iterations, single precision on CPU, matrix output."
+  },
+  {
+   "key": "b8227bbb7846a61a",
+   "where": "docs/research-log/closed-menu-phase1b-2026-10-18/heldout/live/h1/hb-h1-H22-1/t1",
+   "case": "state",
+   "gold": "DO",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "I lost the original expression table but kept a labeled, symmetric 9,800 x 9,800 gene co-expression matrix computed from it. My plan is for OTTER to build the aggregate TF-to-gene network from that matrix, a TF-by-gene motif seed over the same genes, and a TF-TF PPI edge list whose TFs match the seed, using lam 0.5, 150 iterations and edge-list output."
+  },
+  {
+   "key": "d5080315e6bfa6aa",
+   "where": "docs/research-log/closed-menu-slim-2026-10-19/h3/live/h3main/hb-h3main-L40-1/t1",
+   "case": "file",
+   "gold": "ASK",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "COBRA",
+     "action": "run_cobra",
+     "cell": "relation",
+     "missing": [
+      "features"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Please start COBRA on targeted_expr.tsv and design.tsv (sample IDs plus numeric batch and age) for our 380 patients, results to cobra_out/. It's a targeted panel: I think around 400 genes, but after the low-count filter it might be fewer than 350, and I haven't looked."
+  },
+  {
+   "key": "b9ef56cf66aca7ce",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/g4o1/cj-g4o1-C44-1/t1",
+   "case": "file",
+   "gold": "ASK",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv; I have no expression file, only that co-expression file. I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix for the cohort or the edge-by-sample table from our earlier LIONESS co-expression run."
+  },
+  {
+   "key": "19e603034aeaf7a8",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/g4o1/cj-g4o1-C53-1/t1",
+   "case": "state",
+   "gold": "CLARIFY",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-PANDA",
+     "action": "run_lioness_panda",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    },
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    },
+    {
+     "workflow": "LIONESS-COEXPRESSION",
+     "action": "run_lioness_coexpression",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    },
+    {
+     "workflow": "BONOBO",
+     "action": "run_bonobo",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Could you help me see how genes are connected in my sorghum heat-stress experiment?"
+  },
+  {
+   "key": "a036595b17f9baf6",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/g4o2/cj-g4o2-C44-1/t1",
+   "case": "file",
+   "gold": "ASK",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv; I have no expression file, only that co-expression file. I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix for the cohort or the edge-by-sample table from our earlier LIONESS co-expression run."
+  },
+  {
+   "key": "a00034d4f9097bfc",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/g4o2/cj-g4o2-C53-1/t1",
+   "case": "state",
+   "gold": "CLARIFY",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-COEXPRESSION",
+     "action": "run_lioness_coexpression",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    },
+    {
+     "workflow": "BONOBO",
+     "action": "run_bonobo",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Could you help me see how genes are connected in my sorghum heat-stress experiment?"
+  },
+  {
+   "key": "acb82ccdb4f98202",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p0/cj-p0-C23-1/t1",
+   "case": "state",
+   "gold": "CLARIFY",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "DRAGON",
+     "action": "run_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "We generated quite a lot of omics on a pig model of septic shock: whole-blood transcriptome, plasma proteome and a few hundred metabolites, sampled at baseline and at 24 hours. I'd like a systems-level view of what is going on in these animals. Where should we start?"
+  },
+  {
+   "key": "6e3b2a14fe54fc75",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p0/cj-p0-C43-1/t1",
+   "case": "file",
+   "gold": "ASK",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "LIONESS-PANDA",
+     "action": "run_lioness_panda",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run LIONESS-PANDA on expr_ra_synovium.tsv with motif_hs.txt and ppi_hs.txt to get a TF-to-gene network per column. I'm not sure which export this file is: the per-patient matrix (24 patients) or the version where a student averaged the patients into two columns, RA and control."
+  },
+  {
+   "key": "a7cacdd11e866224",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p0/cj-p0-C53-1/t1",
+   "case": "state",
+   "gold": "CLARIFY",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-COEXPRESSION",
+     "action": "run_lioness_coexpression",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    },
+    {
+     "workflow": "BONOBO",
+     "action": "run_bonobo",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Could you help me see how genes are connected in my sorghum heat-stress experiment?"
+  },
+  {
+   "key": "484547556144fac5",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p1/cj-p1-C23-1/t1",
+   "case": "state",
+   "gold": "CLARIFY",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "DRAGON",
+     "action": "run_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "We generated quite a lot of omics on a pig model of septic shock: whole-blood transcriptome, plasma proteome and a few hundred metabolites, sampled at baseline and at 24 hours. I'd like a systems-level view of what is going on in these animals. Where should we start?"
+  },
+  {
+   "key": "49932fc6e36d5a60",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p1/cj-p1-C43-1/t1",
+   "case": "file",
+   "gold": "ASK",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "LIONESS-PANDA",
+     "action": "run_lioness_panda",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run LIONESS-PANDA on expr_ra_synovium.tsv with motif_hs.txt and ppi_hs.txt to get a TF-to-gene network per column. I'm not sure which export this file is: the per-patient matrix (24 patients) or the version where a student averaged the patients into two columns, RA and control."
+  },
+  {
+   "key": "f7fb36169007ad65",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p1/cj-p1-C44-1/t1",
+   "case": "file",
+   "gold": "ASK",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv; I have no expression file, only that co-expression file. I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix for the cohort or the edge-by-sample table from our earlier LIONESS co-expression run."
+  },
+  {
+   "key": "3447dd669db7f40c",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p1/cj-p1-C53-1/t1",
+   "case": "state",
+   "gold": "CLARIFY",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-COEXPRESSION",
+     "action": "run_lioness_coexpression",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Could you help me see how genes are connected in my sorghum heat-stress experiment?"
+  },
+  {
+   "key": "dd1768f746211777",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p2/cj-p2-C44-1/t1",
+   "case": "file",
+   "gold": "ASK",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv; I have no expression file, only that co-expression file. I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix for the cohort or the edge-by-sample table from our earlier LIONESS co-expression run."
+  },
+  {
+   "key": "3e30cf0d1d6cc775",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p2/cj-p2-C53-1/t1",
+   "case": "state",
+   "gold": "CLARIFY",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-COEXPRESSION",
+     "action": "run_lioness_coexpression",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Could you help me see how genes are connected in my sorghum heat-stress experiment?"
+  },
+  {
+   "key": "8684b15009c09d9a",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p3/cj-p3-C53-1/t1",
+   "case": "state",
+   "gold": "CLARIFY",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-COEXPRESSION",
+     "action": "run_lioness_coexpression",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Could you help me see how genes are connected in my sorghum heat-stress experiment?"
+  },
+  {
+   "key": "dc6c828f49a79873",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p4c/cj-p4c-C13-1/t1",
+   "case": "file",
+   "gold": "DECLINE",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv with lam set to 1.5, so co-expression gets even more weight than PPI."
+  },
+  {
+   "key": "4b55d90a17702129",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p4c/cj-p4c-C43-1/t1",
+   "case": "file",
+   "gold": "ASK",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "LIONESS-PANDA",
+     "action": "run_lioness_panda",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run LIONESS-PANDA on expr_ra_synovium.tsv with motif_hs.txt and ppi_hs.txt to get a TF-to-gene network per column. I'm not sure which export this file is: the per-patient matrix (24 patients) or the version where a student averaged the patients into two columns, RA and control."
+  },
+  {
+   "key": "6583425e9ead8e9d",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p4c/cj-p4c-C44-1/t1",
+   "case": "file",
+   "gold": "ASK",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv; I have no expression file, only that co-expression file. I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix for the cohort or the edge-by-sample table from our earlier LIONESS co-expression run."
+  },
+  {
+   "key": "10e996f393a6a233",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p4c/cj-p4c-C53-1/t1",
+   "case": "state",
+   "gold": "CLARIFY",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-COEXPRESSION",
+     "action": "run_lioness_coexpression",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Could you help me see how genes are connected in my sorghum heat-stress experiment?"
+  },
+  {
+   "key": "cf20d363c51580ff",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p5r/cj-p5r-C13-1/t1",
+   "case": "file",
+   "gold": "DECLINE",
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv with lam set to 1.5, so co-expression gets even more weight than PPI."
+  },
+  {
+   "key": "6b5da2f6eab7d445",
+   "where": "docs/research-log/core-judgment-2026-10-15/live/p5r/cj-p5r-C53-1/t1",
+   "case": "state",
+   "gold": "CLARIFY",
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-COEXPRESSION",
+     "action": "run_lioness_coexpression",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Could you help me see how genes are connected in my sorghum heat-stress experiment?"
+  },
+  {
+   "key": "43e7b5da933a2b14",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-K02-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Plan aggregate OTTER on CPU from our valid priors and expression."
+  },
+  {
+   "key": "1ea6075aff96515f",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-K03-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "DRAGON",
+     "action": "run_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "DRAGON should combine our RNA and protein tables with valid paired continuous measurements."
+  },
+  {
+   "key": "58ad737f8d0229e5",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-K03-1/t2",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "DRAGON",
+     "action": "run_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    },
+    {
+     "workflow": "LIONESS-DRAGON",
+     "action": "run_lioness_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    },
+    {
+     "workflow": "LIONESS-DRAGON",
+     "action": "run_lioness_dragon",
+     "cell": "max_values",
+     "missing": [
+      "features",
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Previous NetZoo goal: DRAGON should combine our RNA and protein tables with valid paired continuous measurements.\nUser follow-up: Add a separately modeled metabolite layer. I now require one DRAGON model with three separate layers and no merging."
+  },
+  {
+   "key": "cb2cb15b898e736c",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-K03-2/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "DRAGON",
+     "action": "run_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "DRAGON should combine our RNA and protein tables with valid paired continuous measurements."
+  },
+  {
+   "key": "2551402cc73c02ba",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-K03-2/t2",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "DRAGON",
+     "action": "run_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    },
+    {
+     "workflow": "LIONESS-DRAGON",
+     "action": "run_lioness_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    },
+    {
+     "workflow": "LIONESS-DRAGON",
+     "action": "run_lioness_dragon",
+     "cell": "max_values",
+     "missing": [
+      "features",
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Previous NetZoo goal: DRAGON should combine our RNA and protein tables with valid paired continuous measurements.\nUser follow-up: Add a separately modeled metabolite layer. I now require one DRAGON model with three separate layers and no merging."
+  },
+  {
+   "key": "c1b25a81ecf35a89",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-K04-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "GIRAFFE",
+     "action": "run_giraffe",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "For GIRAFFE we want shared regulatory coefficients and per-sample TF activity."
+  },
+  {
+   "key": "b2ebd7e48a38452f",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-K08-1/t2",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "GIRAFFE",
+     "action": "run_giraffe",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "Previous NetZoo goal: We wanted GIRAFFE to fit a wiring matrix for each patient.\nUser follow-up: We have corrected the endpoint: use GIRAFFE for one aggregate signed R matrix and a TF-by-sample activity matrix; all required input files are validated."
+  },
+  {
+   "key": "b61063bc86e17424",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-K08-2/t2",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "GIRAFFE",
+     "action": "run_giraffe",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "Previous NetZoo goal: We wanted GIRAFFE to fit a wiring matrix for each patient.\nUser follow-up: We have corrected the endpoint: use GIRAFFE for one aggregate signed R matrix and a TF-by-sample activity matrix; all required input files are validated."
+  },
+  {
+   "key": "d1200e71488b5ca2",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-K09-1/t2",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Previous NetZoo goal: I asked OTTER to run on a GPU with the validated motif, PPI and expression files.\nUser follow-up: CPU is now approved. Run aggregate OTTER on CPU in double precision, using the same validated inputs."
+  },
+  {
+   "key": "91d0bed6feb113bc",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-MX08-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "SAMBAR",
+     "action": "run_sambar",
+     "cell": "kmax",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Can SAMBAR produce pathway mutation scores from valid inputs and directly emit a motif-compatible prior for PANDA?"
+  },
+  {
+   "key": "18a3b9172cb09a01",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-MX08-2/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "SAMBAR",
+     "action": "run_sambar",
+     "cell": "kmax",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Can SAMBAR produce pathway mutation scores from valid inputs and directly emit a motif-compatible prior for PANDA?"
+  },
+  {
+   "key": "4717d0a8ce493f99",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-MX09-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "DRAGON",
+     "action": "run_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "Our consortium is writing two deliverable descriptions for a project on metabolite and transcript measurements. Both assays were collected from the same independent participants, have unique sample and feature identifiers, and contain complete continuous numeric values. One analyst is responsible for the statistical graph and another is preparing a mechanistic story for the proposal. Please assess the two deliverables separately so that a feasible computational output is not confused with a stronger interpretation of that output. We are only asking about the tools that are already registered in this agent, without adding a new causal-discovery package. Run DRAGON on two valid continuous paired layers, output conditional associations, and certify every retained edge as a causal effect."
+  },
+  {
+   "key": "3d202e1295303f14",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-MX16-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "請用 COBRA 調整後的共表現矩陣接 OTTER，會重新驗證基因順序；另請 OTTER 在內部自動補值所有缺失數據。"
+  },
+  {
+   "key": "c82e7d271a5e6805",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-N26-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-DRAGON",
+     "action": "run_lioness_dragon",
+     "cell": "max_values",
+     "missing": [
+      "features"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run LIONESS-DRAGON with 100 samples and 1000 total features, keeping every pair for every sample in one run."
+  },
+  {
+   "key": "ac8e91735ca2e6bc",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-N26-2/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-DRAGON",
+     "action": "run_lioness_dragon",
+     "cell": "max_values",
+     "missing": [
+      "features"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run LIONESS-DRAGON with 100 samples and 1000 total features, keeping every pair for every sample in one run."
+  },
+  {
+   "key": "f3db1a59b95a13ec",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P04-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-PUMA",
+     "action": "run_lioness_puma",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "For the moth infection cohort, can LIONESS-PUMA derive sample-specific miRNA-to-gene wiring using expression, combined regulator priors, PPI and the one-ID-per-line miRNA list? There are 12 samples."
+  },
+  {
+   "key": "7b9aa3bc8ae82e13",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P08-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "SAMBAR",
+     "action": "run_sambar",
+     "cell": "kmax",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Can SAMBAR return pathway mutation scores without assigning tumor clusters? Our sarcoma mutation CSV, positive exon lengths, single-line cancer gene list and GMT have overlapping genes; set cluster=false."
+  },
+  {
+   "key": "4c87c382e625cb90",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P10-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-DRAGON",
+     "action": "run_lioness_dragon",
+     "cell": "max_values",
+     "missing": [
+      "features"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Our paired chromatin and RNA measurements are continuous and validated for nine samples. Does LIONESS-DRAGON output a source/target table with one network-value column for each sample, alongside the aggregate matrix?"
+  },
+  {
+   "key": "276eeb6e932cb766",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P10-2/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-DRAGON",
+     "action": "run_lioness_dragon",
+     "cell": "max_values",
+     "missing": [
+      "features"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Our paired chromatin and RNA measurements are continuous and validated for nine samples. Does LIONESS-DRAGON output a source/target table with one network-value column for each sample, alongside the aggregate matrix?"
+  },
+  {
+   "key": "2357ede0dd5d5ce7",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P11-2/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run OTTER with seed.tsv, tf_edges.tsv and expression.tsv, all validated with exactly matching IDs. Use CPU, double precision, 75 iterations, lam=0.1, gamma=0.4, eta=0.00001 and save an edge list to otter_edges.tsv."
+  },
+  {
+   "key": "54304df460967833",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P12-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "GIRAFFE",
+     "action": "run_giraffe",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "Can GIRAFFE jointly estimate the aggregate signed regulatory coefficient matrix and TF activities for our pancreatic differentiation samples? We will provide gene expression, motif priors and a TF interaction prior."
+  },
+  {
+   "key": "29f57a89aec466cf",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P15-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "SAMBAR",
+     "action": "run_sambar",
+     "cell": "kmax",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "請用 SAMBAR 算胃癌的途徑突變分數。現在只有 mutation.csv；exon-length CSV、癌症基因清單和 GMT 還沒提供。"
+  },
+  {
+   "key": "9ae35f318f07780f",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P15-2/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "SAMBAR",
+     "action": "run_sambar",
+     "cell": "kmax",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "請用 SAMBAR 算胃癌的途徑突變分數。現在只有 mutation.csv；exon-length CSV、癌症基因清單和 GMT 還沒提供。"
+  },
+  {
+   "key": "ce671d6703a2d94b",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P19-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "BONOBO",
+     "action": "run_bonobo",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "For a frog regeneration study, can BONOBO save full per-sample co-expression matrices and matching approximate p-value matrices together by using sparsify=true and save_pvals=true?"
+  },
+  {
+   "key": "11c39595c9a7a1f9",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P21-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "GIRAFFE",
+     "action": "run_giraffe",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "We only need the activity of TFs across samples, together with the shared signed R coefficients. Can GIRAFFE use a labeled TF-by-gene prior matrix and a labeled square symmetric PPI matrix if their IDs match expression exactly?"
+  },
+  {
+   "key": "e332dbe8e8759738",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P23-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "DRAGON",
+     "action": "run_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "請跑 DRAGON：兩個連續數值表的樣本 ID 集合完全相同，只是第二個表的列順序不同。先依第一個表的 ID 重排第二個表，再輸出整體條件相關網路。"
+  },
+  {
+   "key": "aa77599da91277ca",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-P23-2/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "DRAGON",
+     "action": "run_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "請跑 DRAGON：兩個連續數值表的樣本 ID 集合完全相同，只是第二個表的列順序不同。先依第一個表的 ID 重排第二個表，再輸出整體條件相關網路。"
+  },
+  {
+   "key": "e76d854481b134d5",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-U01-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": true,
+   "cells": [
+    {
+     "workflow": "BONOBO",
+     "action": "run_bonobo",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run BONOBO on lunar.tsv for our lunar-cycle algae experiment. The expression table has a header and numeric values, but I do not know whether the upstream export was log-transformed and centered. Please establish that before proceeding."
+  },
+  {
+   "key": "d02b326e241bf685",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-U03-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "LIONESS-PANDA",
+     "action": "run_lioness_panda",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run LIONESS-PANDA for the validated acorn RNA panel with matching priors. I am waiting to learn whether the panel has two independent samples or five."
+  },
+  {
+   "key": "b6f8c741de29ac5e",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-U07-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "COBRA",
+     "action": "run_cobra",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    },
+    {
+     "workflow": "COBRA",
+     "action": "run_cobra",
+     "cell": "relation",
+     "missing": [
+      "features",
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run COBRA for the wheat site-effect analysis. All sample IDs match, but I do not know whether the design columns encode sites numerically or still contain text labels."
+  },
+  {
+   "key": "b2ff52cde6183197",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-U09-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "DRAGON",
+     "action": "run_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "Run DRAGON on the two stellar-radiation cell-culture tables. Their shapes and headers are correct, but it is unknown whether the sample ID sets match exactly."
+  },
+  {
+   "key": "620a205129c5c8ff",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-U15-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "GIRAFFE",
+     "action": "run_giraffe",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "Run GIRAFFE on the validated desert moss files. We need our published optimizer settings preserved, but I have not determined whether they are package defaults or customized values."
+  },
+  {
+   "key": "e06d085d4bb017da",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-U17-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "SAMBAR",
+     "action": "run_sambar",
+     "cell": "kmax",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run SAMBAR using the provided four reference/data files. I do not yet know whether their gene identifier sets share any gene across all four files."
+  },
+  {
+   "key": "3e7fb629f23af8cb",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-U21-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "BONOBO",
+     "action": "run_bonobo",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run BONOBO with sparsify=true using the fixed delta in our protocol. The protocol owner must confirm whether delta is 0.2 or 0.5; do not substitute another value."
+  },
+  {
+   "key": "09aaaee89e990aed",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-U21-2/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "BONOBO",
+     "action": "run_bonobo",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Run BONOBO with sparsify=true using the fixed delta in our protocol. The protocol owner must confirm whether delta is 0.2 or 0.5; do not substitute another value."
+  },
+  {
+   "key": "08564c4e80827f49",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-U26-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "DRAGON",
+     "action": "run_dragon",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "能用 DRAGON 分析這兩份新生兒資料嗎？一份是連續數值；另一份是否含缺失值還沒確認，而且本研究禁止補值或刪除觀測。"
+  },
+  {
+   "key": "e7ec4fd848011b3e",
+   "where": "docs/research-log/m3-clarification-2026-10-15/live/m3/ve-m3-live-U29-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "BONOBO",
+     "action": "run_bonobo",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "請跑 BONOBO，其他格式都已確認。匯出者還沒回答表中的數字樣本標籤是不是實際 sample ID，或只是我要選取的欄位位置編號。"
+  },
+  {
+   "key": "c4ff6ac78c17a7f6",
+   "where": "docs/research-log/m3-method-fitting-2026-10-15/live/m3f/ve-m3f-live-K02-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Plan aggregate OTTER on CPU from our valid priors and expression."
+  },
+  {
+   "key": "ed6f4f7ed347563a",
+   "where": "docs/research-log/m3-method-fitting-2026-10-15/live/m3f/ve-m3f-live-MX12-1/t1",
+   "case": "file",
+   "gold": null,
+   "run": true,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "GIRAFFE",
+     "action": "run_giraffe",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": false
+    }
+   ],
+   "task": "Run GIRAFFE with all validated priors to produce signed R and sample-varying TFA, and use an exposed custom optimizer learning rate of 0.009."
+  },
+  {
+   "key": "e8370f519df35b11",
+   "where": "docs/research-log/m3-method-fitting-2026-10-15/live/m3f/ve-m3f-live-P08-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "SAMBAR",
+     "action": "run_sambar",
+     "cell": "kmax",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Can SAMBAR return pathway mutation scores without assigning tumor clusters? Our sarcoma mutation CSV, positive exon lengths, single-line cancer gene list and GMT have overlapping genes; set cluster=false."
+  },
+  {
+   "key": "b8c7c576ec88606d",
+   "where": "docs/research-log/m3-method-fitting-2026-10-15/live/m3f2/ve-m3f2-live-K02-1/t1",
+   "case": "state",
+   "gold": null,
+   "run": false,
+   "files": false,
+   "cells": [
+    {
+     "workflow": "OTTER",
+     "action": "run_otter",
+     "cell": "min_samples",
+     "missing": [
+      "samples"
+     ],
+     "file_checkable": true
+    }
+   ],
+   "task": "Plan aggregate OTTER on CPU from our valid priors and expression."
+  }
+ ]
+}
