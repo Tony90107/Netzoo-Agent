@@ -140,7 +140,11 @@ def test_known_samples_are_not_asked_again_because_a_batch_count_was_unread():
 
 
 @pytest.mark.parametrize("kind, scope", [("sample_count", []), ("feature_count", None)])
-def test_an_unrelated_or_wrong_kind_count_cannot_clear_the_missing_sample_condition(kind, scope):
+def test_a_lone_unread_count_is_no_candidate_doubt(kind, scope):
+    """Narrowed after verification of 70471222 (user decision, 2026-10-20): only side-by-side whole-number
+    candidates in context are an unread quantity. With the 140-sample fact unrelated or of the wrong kind, the lone
+    "140" and the "three" sequencing runs ask nothing -- the accepted cost: a lone unread sample count is not
+    guarded. Candidates stay guarded (`test_a_known_count_cannot_settle_a_different_data_description`)."""
     raw = _record("known_samples_and_batches")
     check = CapabilityCheck.model_validate(raw["check"])
     check = check.model_copy(update={"facts": [fact.model_copy(update={"property": kind, "applies_to": scope})
@@ -148,8 +152,20 @@ def test_an_unrelated_or_wrong_kind_count_cannot_clear_the_missing_sample_condit
                                               for fact in check.facts]})
     decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9,
                             reason="r", capability_check=check)
-    core = decide_core(decision, raw["task"])
-    assert core.kind == "ASK" and core.facts[0].depends_on == "sample_count"
+    assert decide_core(decision, raw["task"]).kind == "DO"
+
+
+@pytest.mark.parametrize("words, asked", [
+    ("The entire cohort consists of either one or two biological samples.", True),
+    ("We have three samples, unless the degraded one gets excluded, in which case only two.", False),
+    ("The protocol owner must confirm whether delta is 0.2 or 0.5.", False),
+    ("They were sampled at baseline and at 24 hours in four extraction batches.", False),
+    ("Set precision to single.", False),
+])
+def test_only_side_by_side_whole_number_candidates_are_an_unread_quantity(words, asked):
+    from netzoo_agent_core.interpretation.sample_coverage import _candidate_runs
+
+    assert bool(_candidate_runs(words)) is asked
 
 
 def test_a_known_count_cannot_settle_a_different_data_description():
