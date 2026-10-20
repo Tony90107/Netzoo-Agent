@@ -8,16 +8,57 @@ from __future__ import annotations
 
 from ..capability_sheet import sheet_entries
 from ..contracts.core_decision import FactQuestion
-from ..workflow_conditions import conditions_for, stated_numbers
+from ..workflow_conditions import conditions_for
+from .count_words import _beside, number_spans
 from .request_spans import _locate, scope_applies
 
 
+def _candidate_runs(text: str) -> list[list[float]]:
+    """Each run of side-by-side whole numbers in the words -- two or more different ones, nothing but punctuation or
+    one spaced word between them ("either one or two", "8-15"), as `count_words` reads candidates. A lone number
+    ("the same 85 samples", "24 hours", "four batches", "precision to single") is no unread candidate count, and
+    a fraction ("delta is 0.2 or 0.5") counts nothing."""
+    runs, run = [], []
+    for item in number_spans(text):
+        if run and not _beside(text[run[-1][2]:item[1]]):
+            runs.append(run)
+            run = []
+        run.append(item)
+    runs.append(run)
+    found = []
+    for run in runs:
+        values = list(dict.fromkeys(value for value, _start, _end in run))
+        if len(values) >= 2 and all(value >= 1 and value == int(value) for value in values):
+            found.append(values)
+    return found
+
+
+def _read_sample_counts(check, result) -> set[float]:
+    """The stated sample counts read for this result, wherever their words are (M01: "the same 85 samples" beside
+    "rna_85.csv (85 samples x 300 genes)")."""
+    found = set()
+    for fact in check.facts:
+        if fact.property != "sample_count" or fact.state != "stated" or fact.scope_unverified \
+                or not scope_applies(result, fact.applies_to):
+            continue
+        try:
+            found.add(float(fact.value))
+        except (TypeError, ValueError):
+            continue
+    return found
+
+
 def _unexplained_context(check, task, result):
+    """Context words holding side-by-side candidate whole numbers that no reading explains: neither a fact read in
+    overlapping words nor a sample count read for this result (verification of 70471222: 10 of 14 recorded triggers
+    asked about lone numbers, counts the user stated elsewhere, hours, batches or setting values)."""
+    read = _read_sample_counts(check, result)
     quotes = []
     for row in check.requirements:
         if row.kind != "context" or not (where := _locate(task, row.quote)):
             continue
-        numbers = set(stated_numbers(task[where[0]:where[1]]))
+        runs = _candidate_runs(task[where[0]:where[1]])
+        explained = set(read)
         for fact in check.facts:
             if fact.scope_unverified or not scope_applies(result, fact.applies_to):
                 continue
@@ -27,15 +68,12 @@ def _unexplained_context(check, task, result):
                 span = _locate(task, evidence.quote) if evidence.quote else None
                 if span is None or not (span[0] < where[1] and where[0] < span[1]):
                     continue
-                common = task[max(span[0], where[0]):min(span[1], where[1])]
-                values = set()
                 for value in [fact.value, *fact.values]:
                     try:
-                        values.add(float(value))
+                        explained.add(float(value))
                     except (TypeError, ValueError):
                         pass
-                numbers -= values & set(stated_numbers(common))
-        if numbers and row.quote not in quotes:
+        if any(not set(values) & explained for values in runs) and row.quote not in quotes:
             quotes.append(row.quote)
     return quotes
 
