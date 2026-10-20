@@ -101,3 +101,48 @@ def test_the_contract_states_the_minimum_the_preflight_enforces(action, minimum)
     spec = ProjectPolicyLoader(PROJECT_ROOT).load().workflows[action]
     assert any(item.limit == "min_samples" and item.text in spec.conventions for item in spec.input_checks)
     assert conditions_for(action).min_samples == minimum
+
+
+def test_one_result_read_twice_in_overlapping_words_is_one_result():
+    """Live attempt-06 T03: the reading split one request into two asks whose words overlap; "either 2 or 14" was then
+    applied to neither, as if two results were asked."""
+    task = ("Could you start LIONESS-PANDA to build one TF-to-gene network per biological sample from pine_bulk.tsv? "
+            "The export contains either 2 or 14 samples.")
+    long, short = ("one TF-to-gene network per biological sample from pine_bulk.tsv",
+                   "one TF-to-gene network per biological sample")
+    sentences = [task[a:b] for a, b in request_sentences(task)]
+    entries = ["lioness_panda.per_sample_networks"]
+    proposal = proposal_model(len(sentences)).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [
+            _ask(long, entries, scale="per_sample", regulator_kinds=["tf"]),
+            _ask(short, entries, scale="per_sample", regulator_kinds=["tf"])]},
+        "s2": {"role": "background", "has": ["either 2 or 14 samples"], "about_methods": [], "asks": []},
+        "conditions": unstated_conditions()})
+    check = build_capability_check(task, proposal)[0]
+    assert [(row.status, row.depends_on) for row in check.results()] == [("needs_fact", "sample_count")] * 2
+
+
+def test_the_guard_is_not_silenced_by_candidates_never_weighed_for_the_result():
+    """Two separate results, candidates in a third sentence overlapping neither: count_update weighs them for none, so
+    the unread-quantity guard still holds the result (it must not count them as explained)."""
+    from netzoo_agent_core.contracts import TaskDecision
+    from netzoo_agent_core.interpretation.core_decision import decide_core
+
+    task = ("Build a PANDA network for the liver set. Build a LIONESS-PANDA network per sample for the kidney set. "
+            "The kidney set has either 2 or 14 samples.")
+    sentences = [task[a:b] for a, b in request_sentences(task)]
+    proposal = proposal_model(len(sentences)).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [
+            _ask("Build a PANDA network for the liver set", ["panda.tf_gene_network"], scale="whole_cohort",
+                 regulator_kinds=["tf"])]},
+        "s2": {"role": "asks", "has": [], "about_methods": [], "asks": [
+            _ask("Build a LIONESS-PANDA network per sample for the kidney set", ["lioness_panda.per_sample_networks"],
+                 scale="per_sample", regulator_kinds=["tf"])]},
+        "s3": {"role": "background", "has": ["The kidney set has either 2 or 14 samples"], "about_methods": [],
+               "asks": []},
+        "conditions": unstated_conditions()})
+    check = build_capability_check(task, proposal)[0]
+    assert all(row.status == "available" for row in check.results())  # weighed for neither
+    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
+                            capability_check=check)
+    assert decide_core(decision, task).kind == "ASK"

@@ -17,7 +17,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from ..capability_sheet import entry
-from .request_spans import _span, scope_applies
+from .request_spans import _span, distinct_quotes, scope_applies
 
 __all__ = ["DIMENSIONS", "FILE_CHECKED", "check_unknowns", "decisive_outcomes", "fact_line", "fact_questions", "file_checked",
            "file_checked_note", "needed_fact_reply", "stated_sample_choices", "waiting_decision"]
@@ -339,7 +339,7 @@ def applicable_unknowns(unknowns, scopes, domains, quote, single: bool = True):
 def check_unknowns(check, quote: str):
     """The unknowns of a built check that apply to one of its results (second opinion, redirect)."""
     return applicable_unknowns(check.unknowns, check.unknown_scopes, check.unknown_domains, quote,
-                               len(check.results()) <= 1)
+                               distinct_quotes(item.quote for item in check.results()) <= 1)
 
 
 def fact_update(possible, analyses, status_for, domains=None):
