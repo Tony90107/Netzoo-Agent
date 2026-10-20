@@ -88,7 +88,7 @@ class FactConflict(BaseModel):
     """The fact ids the result was judged on."""
     set_aside: list[str]
     reason: Literal["result_own_value", "latest_stated", "several_values", "unsure_candidates", "settled_by_file",
-                    "file_disagrees", "count_reading_precedence"] = "result_own_value"
+                    "file_disagrees", "count_reading_precedence", "empty_scope_kept"] = "result_own_value"
     """result_own_value: the result's own words state a count, so the request-level one is not applied to it;
     latest_stated: of two values of one setting, the one stated last is used (both rules are
     `method_conditions.with_request_method`'s, unchanged); several_values (ROUND-04): two different sample counts
@@ -99,4 +99,6 @@ class FactConflict(BaseModel):
     count is none of the candidates, so nothing is settled and the user is asked (`used` the candidates).
     count_reading_precedence -- the dedicated candidate-count reading owns this quantity's property and domain;
     an unknown-fact reading of the same candidates in overlapping words is recorded but not judged again. Unlike
-    the other reasons, its set_aside fact may have a different property (features misread as samples)."""
+    the other reasons, its set_aside fact may have a different property (features misread as samples).
+    empty_scope_kept (ROUND-09) -- an unknown sample count given as candidates was scoped to no asked result, or to
+    words not in the request; it is kept for every result (`used` the doubt, nothing set aside)."""

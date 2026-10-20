@@ -16,7 +16,7 @@ from .method_conditions import method_fitting
 from .request_spans import _span, scope_applies
 
 __all__ = ["count_line", "count_outcome_lines", "count_question", "count_update", "file_count_note",
-           "verified_count_alternatives", "weigh_sample_doubts"]
+           "judged_count_words", "splits_candidates", "verified_count_alternatives", "weigh_sample_doubts"]
 
 _DIMENSION = {"samples": "sample_count", "features": "feature_count"}
 _LABEL = {"sample_count": "samples", "feature_count": "features"}
@@ -110,6 +110,7 @@ def count_update(task: str, alternatives: list[dict], method: dict, keys: list[s
                     "outcome_notes": notes, "file_checked": None}
         if not any(outcomes.values()):
             return {"status": "not_available", "delivered_by": [], "method": base,
+                    "unknown_quote": alternative["quote"],
                     "limits": [*base_limits, *(f"with {int(value):,}: {note}" for value, note in notes.items())]}
     return None
 
@@ -184,3 +185,27 @@ def count_line(item) -> str:
     outcomes = {value: list(dict.fromkeys(entry(key).workflow for key in keys)) for value, keys in item.outcomes.items()}
     return (f'"{item.quote}" -- depends on a number you gave candidates for ("{item.unknown_quote}"): '
             + "; ".join(count_outcome_lines(outcomes, item.outcome_notes)) + ".")
+
+
+
+def judged_count_words(check) -> list[tuple[str, list]]:
+    """ROUND-09 (R8): the words and candidate numbers of each count the user gave as candidates, once code weighed
+    them for a result -- credited, or ruled out by every candidate. Empty when nothing was weighed."""
+    if check is None or not any(row.delivered_by or row.outcomes or row.status == "not_available" and row.unknown_quote
+                                for row in check.results()):
+        return []
+    found = [(item["quote"], list(item["values"])) for item in check.count_alternatives]
+    return found + [(said, list(check.unknown_domains[said]["values"])) for about, said in check.unknowns
+                    if about == "sample_count" and (check.unknown_domains.get(said) or {}).get("kind") == "choices"]
+
+
+def splits_candidates(question: str, values: list) -> bool:
+    """ROUND-09 (R8): whether a question's answer can tell the user's candidate numbers apart, read from the numbers
+    it states. It names a candidate ("Will it end up as 5?", h2 J22: SAMBAR's kmax 6 decides 5 from 9), or states a
+    threshold some candidates meet and some do not. Live attempt-03 T01: "Do you have at least three expression
+    samples?" for nine or seventeen patients -- both meet it, so the answer could not change anything. A question
+    stating no number cannot be judged and is kept."""
+    numbers = stated_numbers(question)
+    if not numbers or any(number in values for number in numbers):
+        return True
+    return any(min(values) < number <= max(values) for number in numbers)

@@ -19,8 +19,8 @@ from types import SimpleNamespace
 from ..capability_sheet import entry
 from .request_spans import _span, scope_applies
 
-__all__ = ["DIMENSIONS", "FILE_CHECKED", "decisive_outcomes", "fact_line", "fact_questions", "file_checked",
-           "file_checked_note", "needed_fact_reply", "waiting_decision"]
+__all__ = ["DIMENSIONS", "FILE_CHECKED", "check_unknowns", "decisive_outcomes", "fact_line", "fact_questions", "file_checked",
+           "file_checked_note", "needed_fact_reply", "stated_sample_choices", "waiting_decision"]
 
 # dimension: (what it is about, the question, ((value, label), ...)); a value is set on the ask's typed attributes.
 DIMENSIONS = {
@@ -253,12 +253,33 @@ def resolve_unknowns(fitting, keys: list[str], attrs: dict, unknowns: list[tuple
     return [key for key in baseline if key in possible], adjusted
 
 
+def stated_sample_choices(fact) -> bool:
+    """ROUND-09: an unknown sample count given as two or more candidates, each stated in its own words."""
+    from ..workflow_conditions import stated_numbers
+
+    values = set(getattr(fact, "count_values", None) or ())
+    return (getattr(fact, "about", "") == "sample_count" and getattr(fact, "count_kind", "") == "choices"
+            and len(values) >= 2 and all(n > 0 and n in stated_numbers(fact.quote) for n in values))
+
+
+def _scope_unusable(task: str, fact) -> bool:
+    """The reading scoped the unknown to no asked result, or to words not in the request."""
+    applies = getattr(fact, "applies_to", None)
+    return applies == [] or (applies is not None
+                             and not any(_span(task, words) is not None for words in applies if words.strip()))
+
+
 def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
     """Verdict layer step 2: (dimension, the user's words) for each unknown fact whose words are in the request.
 
     Words that also state a result choice are that choice (step 2b), not a second unknown: pre-measure F37 ("I have
     not decided whether edges should mean TF regulation or gene-gene coexpression") was read as a choice and as an
     unknown omics-layer count, which would have asked how many omics data types the user has.
+
+    ROUND-09 (live attempt-03 T01/T03, m3 U02/U04): an unknown sample count given as candidates was scoped to no
+    asked result (`applies_to` []) in 6 of 36 such readings -- every one about the user's only dataset -- and was
+    dropped, so "either 2 or 14 samples" was never weighed. Such a count is kept and shared by every result; the
+    candidates' own feasibility check decides whether it matters. Other unknowns keep the reading's scope.
     """
     conditions = getattr(proposal, "conditions", None)
     chosen = [span for choice in getattr(conditions, "open_choices", None) or () if choice.differs_in == "result"
@@ -270,9 +291,7 @@ def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
             continue
         span = _span(task, fact.quote)
         if (span is None or (fact.about, task[span[0]:span[1]]) in found
-                or getattr(fact, "applies_to", None) == []
-                or (getattr(fact, "applies_to", None) is not None
-                    and not any(_span(task, words) is not None for words in fact.applies_to if words.strip()))
+                or _scope_unusable(task, fact) and not stated_sample_choices(fact)
                 or any(span[0] < end and start < span[1] for start, end in chosen)):
             continue
         found.append((fact.about, task[span[0]:span[1]]))
@@ -284,7 +303,8 @@ def verified_unknown_scopes(task: str, proposal) -> dict[str, list[str]]:
     for fact in getattr(getattr(proposal, "conditions", None), "unknown_facts", None) or ():
         applies = getattr(fact, "applies_to", None)
         where = _span(task, fact.quote)
-        if applies is not None and where is not None:
+        kept = stated_sample_choices(fact) and _scope_unusable(task, fact)  # ROUND-09: no scope, every result
+        if applies is not None and where is not None and not kept:
             scopes[task[where[0]:where[1]]] = [task[a:b] for words in applies if words.strip()
                                             if (placed := _span(task, words)) is not None for a, b in [placed]]
     return scopes
@@ -299,7 +319,8 @@ def verified_unknown_domains(task: str, proposal) -> dict[str, dict]:
         if (fact.about in ("sample_count", "omics_layers") and where is not None
                 and kind in ("choices", "range") and values and (kind != "range" or len(values) == 2)
                 and all(n > 0 and n in stated_numbers(fact.quote) for n in values)):
-            domains[task[where[0]:where[1]]] = {"kind": kind, "values": sorted(set(values))}
+            domains[task[where[0]:where[1]]] = {"kind": kind, "values": sorted(set(values)), **(
+                {"kept_without_scope": True} if stated_sample_choices(fact) and _scope_unusable(task, fact) else {})}
     return domains
 
 
@@ -307,15 +328,28 @@ def _unknown_applies(scopes, said: str, result: str) -> bool:
     return scope_applies(result, scopes.get(said))
 
 
-def applicable_unknowns(unknowns, scopes, domains, quote):
-    return [(about, said, domains.get(said)) for about, said in unknowns if _unknown_applies(scopes, said, quote)]
+def applicable_unknowns(unknowns, scopes, domains, quote, single: bool = True):
+    """The unknowns that apply to one result. ROUND-09: a sample count kept although the reading scoped it to no asked
+    result applies only when the request asks for one result -- among several its owner cannot be told, and a
+    result's own stated count must not be put in doubt by another dataset's (`test_count_consistency`)."""
+    return [(about, said, domains.get(said)) for about, said in unknowns if _unknown_applies(scopes, said, quote)
+            and (single or not (domains.get(said) or {}).get("kept_without_scope"))]
+
+
+def check_unknowns(check, quote: str):
+    """The unknowns of a built check that apply to one of its results (second opinion, redirect)."""
+    return applicable_unknowns(check.unknowns, check.unknown_scopes, check.unknown_domains, quote,
+                               len(check.results()) <= 1)
 
 
 def fact_update(possible, analyses, status_for, domains=None):
     if not analyses:
         return None
     if not possible:
-        return {"status": "not_available", "delivered_by": [], "file_checked": None}
+        # ROUND-09: the words whose every candidate rules the result out, so the turn knows code weighed them.
+        ruled = next((said for about, said, outcomes in analyses if not any(outcomes.values())), "")
+        return {"status": "not_available", "delivered_by": [], "file_checked": None,
+                **({"unknown_quote": ruled} if ruled else {})}
     checked = {}
     for about, said, outcomes in analyses:
         if len({frozenset(found) for found in outcomes.values()}) < 2:

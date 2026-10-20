@@ -275,6 +275,7 @@ class FactRecord:
     def read_doubts(self, proposal, unknowns, domains, scopes):
         """Read each candidate once, reconcile its duplicate, then compile its domain and scope together."""
         self.read_alternatives(proposal)
+        self._note_kept_scopes(proposal)
         unknowns = self.reconcile_unknown_counts(unknowns, domains, scopes)
         return [self.alternative(fact_id) for fact_id in self.alternative_ids], unknowns
 
@@ -303,14 +304,16 @@ class FactRecord:
                 kept.append((about, words))
                 continue
             applies = scopes.get(words)
-            for fact in owners:
+            # ROUND-09: a doubt kept although the reading scoped it to no result lends no scope; the dedicated
+            # candidate keeps its own (one result: every result; several: only results whose words hold it).
+            for fact in [] if domain.get("kept_without_scope") else owners:
                 if fact.id not in self.count_scopes:
                     self.count_scopes[fact.id] = applies
                 elif self.count_scopes[fact.id] is None or applies is None:
                     self.count_scopes[fact.id] = None
                 else:
                     self.count_scopes[fact.id] = list(dict.fromkeys([*self.count_scopes[fact.id], *applies]))
-            if owners[0].property == "sample_count":
+            if owners[0].property == "sample_count" and not domain.get("kept_without_scope"):
                 # The doubt still unsets the result's old count; only the duplicate decision is removed.
                 self.sample_doubts[words] = applies
             if owners[0].property != about:
@@ -320,6 +323,21 @@ class FactRecord:
                 self._conflict(owners[0].property, "", "", [fact.id for fact in owners], other,
                                "count_reading_precedence")
         return kept
+
+    def _note_kept_scopes(self, proposal) -> None:
+        """ROUND-09: each unknown sample count the reading scoped to no asked result but kept for every result."""
+        from .needed_facts import _scope_unusable, stated_sample_choices
+
+        for unknown in getattr(getattr(proposal, "conditions", None), "unknown_facts", None) or ():
+            span = _span(self.task, unknown.quote) if (unknown.quote or "").strip() else None
+            if span is None or not stated_sample_choices(unknown) or not _scope_unusable(self.task, unknown):
+                continue
+            used = [fact_id for fact_id, fact in self.facts.items() if fact.state == "unsure" and any(
+                e.reader == "unknown_facts" and e.span == list(span) for e in fact.evidence)]
+            found = FactConflict(property="sample_count", result="", used=used, set_aside=[],
+                                 reason="empty_scope_kept")
+            if found not in self.conflicts:
+                self.conflicts.append(found)
 
     def sample_doubt_applies(self, result: str) -> bool:
         return any(scope_applies(result, scopes) for scopes in self.sample_doubts.values())
