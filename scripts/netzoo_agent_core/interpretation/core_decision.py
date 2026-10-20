@@ -97,15 +97,35 @@ def _boundary(decision, task: str) -> tuple[str, str] | None:
     return None
 
 
-def _facts(check, by_code: bool | None = None) -> list[FactQuestion]:
-    """The check's waits as questions: all, or only those code judged (phase 5b) or only the legacy dimensions'."""
+def _facts(check, by_code: bool | None = None, task: str = "") -> list[FactQuestion]:
+    """The check's waits as questions: all, or only those code judged (phase 5b) or only the legacy dimensions'.
+
+    One question per doubt (live attempt-04 T03): the first reading and the re-read each found a result, both waiting
+    on "either 2 or 14 samples" / "2 or 14 samples", and "Which of these is right: 2 or 14?" was asked twice. Waits on
+    the same dimension and candidate values, in overlapping words, are one question; its workflows and notes are
+    both results' together."""
     rows = [row for row in (check.needed_facts() if check is not None else [])
             if by_code is None or row.by_code == by_code]
-    return [FactQuestion(question=_question(row), user_quote=row.unknown_quote, depends_on=row.depends_on or "",
-                         workflows=_names(key for keys in row.outcomes.values() for key in keys),
-                         outcomes={value: _names(keys) for value, keys in row.outcomes.items()},
-                         by_code=row.by_code, notes=dict(row.outcome_notes))
-            for row in rows]
+    found: list[FactQuestion] = []
+    for row in rows:
+        fact = FactQuestion(question=_question(row), user_quote=row.unknown_quote, depends_on=row.depends_on or "",
+                            workflows=_names(key for keys in row.outcomes.values() for key in keys),
+                            outcomes={value: _names(keys) for value, keys in row.outcomes.items()},
+                            by_code=row.by_code, notes=dict(row.outcome_notes))
+        same = next((index for index, known in enumerate(found)
+                     if (known.depends_on, known.by_code, list(known.outcomes)) == (fact.depends_on, fact.by_code,
+                                                                                    list(fact.outcomes))
+                     and _same_words(task, known.user_quote, fact.user_quote)), None)
+        if same is None:
+            found.append(fact)
+            continue
+        known = found[same]
+        found[same] = known.model_copy(update={
+            "workflows": list(dict.fromkeys([*known.workflows, *fact.workflows])),
+            "outcomes": {value: list(dict.fromkeys([*names, *fact.outcomes.get(value, [])]))
+                         for value, names in known.outcomes.items()},
+            "notes": {**fact.notes, **known.notes}})
+    return found
 
 
 def _overlaps(a: str, b: str) -> bool:
@@ -223,7 +243,7 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     if agent is not None and agent.status == "checked":
         evidence["legacy_facts"] = [fact.question for fact in agent.legacy]  # phase 2: shadow
         # Phase 5b (spec 13.3): a count code judged is asked first, beside the agent's (the code's on the same words).
-        counted = _facts(check, by_code=True)
+        counted = _facts(check, by_code=True, task=task)
         # ROUND-09 (R8): a question on candidates code weighed must be able to tell them apart, or it is not asked.
         owned = [fact for fact in agent.accepted if not fact.settled_by_input_check and any(
             _same_words(task, fact.user_quote, words) and not splits_candidates(fact.question, values)
@@ -237,7 +257,7 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
             settled = [fact for fact in agent.accepted if fact.settled_by_input_check]
             return call("ASK", "count_fact" if counted else "fact_agent", facts=[*asked, *settled],
                         workflows=list(dict.fromkeys(name for fact in asked for name in fact.workflows)))
-    elif (facts := _facts(check)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":
+    elif (facts := _facts(check, task=task)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":
         return call("ASK", "needs_fact", facts=facts, workflows=_names(k for f in facts for k in f.workflows))
     running = decision.action.startswith("run_")
     if check is not None and check.unconfirmed() and (read or not running):  # p3: an unconfirmed guidance turn too
