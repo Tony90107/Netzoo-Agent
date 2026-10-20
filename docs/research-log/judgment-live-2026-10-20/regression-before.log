@@ -1,0 +1,180 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+__________ test_session_round_trips_price_snapshot_for_resume[False] ___________
+
+tmp_path = PosixPath('/private/var/folders/77/mgcvrjws6z1fcfj7yrtzzcfc0000gn/T/pytest-of-chenzhonghan/pytest-729/test_session_round_trips_price0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x15d52c1a0>
+configured = False
+
+    @pytest.mark.parametrize("configured", [False, True])
+    def test_session_round_trips_price_snapshot_for_resume(tmp_path, monkeypatch, configured):
+        """Graph usage uses Python values; checkpoints must retain typed cost history."""
+        import json
+    
+        monkeypatch.setattr(session, "SESSION_ROOT", tmp_path / "sessions")
+        monkeypatch.setenv("NETZOO_MODEL_PRICING_JSON", json.dumps({
+            "test-model": {"input_micro_usd_per_million": 150000,
+                           "output_micro_usd_per_million": 600000,
+                           "effective_at": "2026-10-20T09:21:54Z"},
+        } if configured else {}))
+        price = PriceCatalog.from_environment().snapshot("test-model")
+        call = LLMCallUsage(
+            role="router", model="test-model", input_tokens=3, output_tokens=2,
+            total_tokens=5, usage_provenance="estimated", status="success",
+            price_snapshot=price, cost_provenance="estimated" if configured else "unavailable",
+            cost_micro_usd=2 if configured else None,
+        )
+        usage = LLMUsage(input_tokens=3, output_tokens=2, total_tokens=5, calls=[call])
+        state = {"token_usage": usage.model_dump(), "plan": {"status": "needs_input"}}
+>       save_session("priced-session", [HumanMessage(content="Build a network")], state)
+
+tests/test_graph_tracing.py:880: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/netzoo_agent_core/session.py:297: in save_session
+    _write_json_atomic(path, payload)
+scripts/netzoo_agent_core/memory/storage.py:90: in _write_json_atomic
+    serialized = json.dumps(
+/opt/anaconda3/lib/python3.12/json/__init__.py:238: in dumps
+    **kw).encode(obj)
+          ^^^^^^^^^^^
+/opt/anaconda3/lib/python3.12/json/encoder.py:202: in encode
+    chunks = list(chunks)
+             ^^^^^^^^^^^^
+/opt/anaconda3/lib/python3.12/json/encoder.py:432: in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+/opt/anaconda3/lib/python3.12/json/encoder.py:406: in _iterencode_dict
+    yield from chunks
+/opt/anaconda3/lib/python3.12/json/encoder.py:406: in _iterencode_dict
+    yield from chunks
+/opt/anaconda3/lib/python3.12/json/encoder.py:326: in _iterencode_list
+    yield from chunks
+/opt/anaconda3/lib/python3.12/json/encoder.py:406: in _iterencode_dict
+    yield from chunks
+/opt/anaconda3/lib/python3.12/json/encoder.py:406: in _iterencode_dict
+    yield from chunks
+/opt/anaconda3/lib/python3.12/json/encoder.py:439: in _iterencode
+    o = _default(o)
+        ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.encoder.JSONEncoder object at 0x15d47d3d0>
+o = datetime.datetime(2026, 10, 20, 11, 33, 52, 119801, tzinfo=datetime.timezone.utc)
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+>       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type datetime is not JSON serializable
+
+/opt/anaconda3/lib/python3.12/json/encoder.py:180: TypeError
+___________ test_session_round_trips_price_snapshot_for_resume[True] ___________
+
+tmp_path = PosixPath('/private/var/folders/77/mgcvrjws6z1fcfj7yrtzzcfc0000gn/T/pytest-of-chenzhonghan/pytest-729/test_session_round_trips_price1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x15cce2660>
+configured = True
+
+    @pytest.mark.parametrize("configured", [False, True])
+    def test_session_round_trips_price_snapshot_for_resume(tmp_path, monkeypatch, configured):
+        """Graph usage uses Python values; checkpoints must retain typed cost history."""
+        import json
+    
+        monkeypatch.setattr(session, "SESSION_ROOT", tmp_path / "sessions")
+        monkeypatch.setenv("NETZOO_MODEL_PRICING_JSON", json.dumps({
+            "test-model": {"input_micro_usd_per_million": 150000,
+                           "output_micro_usd_per_million": 600000,
+                           "effective_at": "2026-10-20T09:21:54Z"},
+        } if configured else {}))
+        price = PriceCatalog.from_environment().snapshot("test-model")
+        call = LLMCallUsage(
+            role="router", model="test-model", input_tokens=3, output_tokens=2,
+            total_tokens=5, usage_provenance="estimated", status="success",
+            price_snapshot=price, cost_provenance="estimated" if configured else "unavailable",
+            cost_micro_usd=2 if configured else None,
+        )
+        usage = LLMUsage(input_tokens=3, output_tokens=2, total_tokens=5, calls=[call])
+        state = {"token_usage": usage.model_dump(), "plan": {"status": "needs_input"}}
+>       save_session("priced-session", [HumanMessage(content="Build a network")], state)
+
+tests/test_graph_tracing.py:880: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/netzoo_agent_core/session.py:297: in save_session
+    _write_json_atomic(path, payload)
+scripts/netzoo_agent_core/memory/storage.py:90: in _write_json_atomic
+    serialized = json.dumps(
+/opt/anaconda3/lib/python3.12/json/__init__.py:238: in dumps
+    **kw).encode(obj)
+          ^^^^^^^^^^^
+/opt/anaconda3/lib/python3.12/json/encoder.py:202: in encode
+    chunks = list(chunks)
+             ^^^^^^^^^^^^
+/opt/anaconda3/lib/python3.12/json/encoder.py:432: in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+/opt/anaconda3/lib/python3.12/json/encoder.py:406: in _iterencode_dict
+    yield from chunks
+/opt/anaconda3/lib/python3.12/json/encoder.py:406: in _iterencode_dict
+    yield from chunks
+/opt/anaconda3/lib/python3.12/json/encoder.py:326: in _iterencode_list
+    yield from chunks
+/opt/anaconda3/lib/python3.12/json/encoder.py:406: in _iterencode_dict
+    yield from chunks
+/opt/anaconda3/lib/python3.12/json/encoder.py:406: in _iterencode_dict
+    yield from chunks
+/opt/anaconda3/lib/python3.12/json/encoder.py:439: in _iterencode
+    o = _default(o)
+        ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.encoder.JSONEncoder object at 0x15d52c320>
+o = datetime.datetime(2026, 10, 20, 9, 21, 54, tzinfo=datetime.timezone.utc)
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+>       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type datetime is not JSON serializable
+
+/opt/anaconda3/lib/python3.12/json/encoder.py:180: TypeError
+=============================== warnings summary ===============================
+../../../../.local/lib/python3.12/site-packages/pytz/tzinfo.py:27
+  /Users/chenzhonghan/.local/lib/python3.12/site-packages/pytz/tzinfo.py:27: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+    _epoch = datetime.utcfromtimestamp(0)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_graph_tracing.py::test_session_round_trips_price_snapshot_for_resume[False]
+FAILED tests/test_graph_tracing.py::test_session_round_trips_price_snapshot_for_resume[True]
+2 failed, 21 deselected, 1 warning in 1.60s
