@@ -44,3 +44,9 @@ def check_scope(item) -> str:
 
 def check_limit(item) -> str:
     return "" if isinstance(item, str) else item.limit
+
+
+def file_checkable(item) -> bool:
+    """Whether the input check can settle it from the files (ROUND-02 D): every entry but a refused input, which only
+    the request can show (what the user asks to feed in)."""
+    return not check_limit(item).startswith("refuses_input:")

@@ -45,3 +45,8 @@ input_checks:
   - text: "Require at least three expression samples before execution."
     scope: request
     limit: "min_samples"
+  # ROUND-02 D (h4 M46): the request asks to feed an aggregate COBRA co-expression matrix in as LIONESS-PANDA's input.
+  # A request-level check only: no file inspection settles it (contract_text.file_checkable).
+  - text: "An aggregate COBRA adjusted co-expression artifact is not a direct LIONESS handoff"
+    scope: request
+    limit: "refuses_input:coexpression_matrix"

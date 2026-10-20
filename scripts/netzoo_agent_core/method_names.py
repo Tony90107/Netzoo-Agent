@@ -10,7 +10,7 @@ import re
 
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
-__all__ = ["LIONESS_FAMILY", "UNREGISTERED", "method_names", "named_workflows", "registered_workflows",
+__all__ = ["LIONESS_FAMILY", "PROJECT_IDENTITIES", "UNREGISTERED", "is_project_identity", "method_names", "named_workflows", "registered_workflows",
            "setting_meanings", "setting_names", "workflows_in"]
 
 LIONESS_FAMILY = "LIONESS"
@@ -18,6 +18,18 @@ LIONESS_FAMILY = "LIONESS"
 
 UNREGISTERED = "unregistered"
 """A named method or setting that no registered workflow has."""
+
+PROJECT_IDENTITIES = ("netZoo", "netZooPy")
+"""The project and package the registered workflows come from (the Dockerfile installs github.com/netZoo/netZooPy;
+tests check it): the toolkit's own name, never a method or variant (ROUND-02 B2, h4 M48 "the standard NetZoo
+analysis" read as an unregistered method). Kept apart from the runnable workflows above."""
+
+
+def is_project_identity(name: str) -> bool:
+    """Whether the words are exactly the project's or package's name (letters only, any case) -- never a substring:
+    "NetZoo-TIGER" still names a method."""
+    letters = re.sub(r"[^a-z0-9]", "", name.casefold())
+    return bool(letters) and letters in {re.sub(r"[^a-z0-9]", "", n.casefold()) for n in PROJECT_IDENTITIES}
 
 
 def registered_workflows() -> dict[str, str]:

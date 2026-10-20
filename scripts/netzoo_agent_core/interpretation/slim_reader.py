@@ -41,6 +41,7 @@ from .menu_reader import (
     _CONDITION_MEANS, _DATA_MEANS, _EDGE, _IDENTIFIER, _LIONESS_VERSION, Layout, ReadReport, _norm, _strict, name_key,
     quote_in, request_layout,
 )
+from .slim_evidence import _count_facts, _data_facts
 
 __all__ = ["FACTS", "MAX_FOCUS", "Needs", "SLIM_SHAPE", "chosen", "core_model", "core_text", "focus_model",
            "focus_text", "from_core", "merge_focus", "slim_needs", "split_b", "to_menu", "to_slim"]
@@ -141,6 +142,8 @@ def _said_of(fact: Stated) -> Said:
 
 def _count_of(fact: Stated) -> Count:
     quotes = [fact.quote] if fact.quote else []
+    if fact.derived and not fact.values:  # a total code derived: its parts' own words (ROUND-02 A1), never one quote
+        quotes = [e.quote for e in fact.evidence if e.role == "operand"] or quotes
     if fact.values:
         return Count(status="conflicting", values=[int(v) for v in fact.values], quotes=quotes)
     return Count(status="stated", value=int(fact.value), quotes=quotes)
@@ -467,8 +470,16 @@ def core_model(names: tuple[str, ...] = ()) -> type[BaseModel]:
     data = create_model(
         "SlimData", __config__=_FORBID,
         kind=(str, Field(description="A kind from DATA KINDS.")),
-        status=(Literal["has", "lacks"], Field(description="has: the user has it; lacks: they say they do not.")),
+        status=(Literal["has", "lacks", "unsure"], Field(description=(
+            "has: the user has it; lacks: they say they do not have it; unsure: they do not know whether they have "
+            "it or what a file holds."))),
         quote=(str, Field(description="The user's exact words.")),
+        input_for=(str, Field(description=(
+            "The registered workflow the user asks to give this data to as its input, as named in the request; "
+            "empty when the words do not say."))),
+        corrects=(int | None, Field(description=(
+            "When these words correct an earlier entry of this list about the same data: that entry's number "
+            "(1 = the first); null otherwise."))),
     )
     fact = create_model(
         "SlimFact", __config__=_FORBID,
@@ -564,16 +575,7 @@ def from_core(payload, task: str, layout: Layout | None = None) -> tuple[SlimRea
         role = ((raw.get("names") or {}).get(name_key(name)) or {}).get("role")
         if role:
             roles[name] = role
-    data, seen = [], set()
-    for index, entry in enumerate(raw.get("data") or []):
-        kind = str(entry.get("kind") or "")
-        if kind not in table.dimensions["data_available"].values:
-            report.dropped.append(f"data[{index}]: {kind!r} is no data kind")
-            continue
-        quote = _verified(entry.get("quote"), task, f"data[{index}]", report)
-        if quote and kind not in seen:
-            seen.add(kind)
-            data.append(Stated(field="A3", name=kind, value=entry.get("status") or "has", quote=quote))
+    data = _data_facts(raw.get("data") or [], task, layout, table, report)
     only = _verified(raw.get("only_these"), task, "only_these", report)
     run_quote = _verified(raw.get("run_quote"), task, "run_quote", report) if raw.get("run") == "run" else ""
     stated = []
@@ -591,6 +593,8 @@ def from_core(payload, task: str, layout: Layout | None = None) -> tuple[SlimRea
     return SlimReading(results=results, roles=roles, unregistered_methods=unregistered, data=data,
                        only_these=bool(only), only_quote=only, run="run" if run_quote else "ask",
                        run_quote=run_quote, stated=stated), report
+
+
 
 
 def _fact(entry: dict, task: str, where: str, report: ReadReport, results: list[ResultItem]) -> Stated | None:
@@ -758,6 +762,12 @@ def focus_model(needs: Needs) -> type[BaseModel]:
             value=(int | None, Field(description="The number; null when the user gives several.")),
             values=(list[int], Field(description="When the user is unsure: the numbers the words leave open.")),
             quote=(str, Field(description="The user's exact words.")),
+            belongs_to=(str, Field(description=(
+                "The user's exact words naming the data the number counts (a file name, or their words for that "
+                "data or layer); empty when the words do not say."))),
+            corrects=(int | None, Field(description=(
+                "When these words correct an earlier entry of this list about the same count: that entry's number "
+                "(1 = the first); null otherwise."))),
         )
         fields["counts"] = (list[count], Field(description="Each number of samples or features the user gives."))
     return _strict(create_model("SlimFocusWire", __config__=_FORBID, **fields))
@@ -897,41 +907,7 @@ def merge_focus(slim: SlimReading, payload, task: str, needs: Needs) -> tuple[Sl
             continue
         facts.append(Stated(field="B5", name=control, workflow=workflow, quote=quote, value=value,
                             values=values if control != UNREGISTERED else []))
-    samples, layers = [], {}
-    for index, entry in enumerate(raw.get("counts") or []):
-        quote = _verified(entry.get("quote"), task, f"focus.counts[{index}]", report)
-        numbers = sorted({int(v) for v in entry.get("values") or []}) or (
-            [int(entry["value"])] if entry.get("value") is not None else [])
-        if not quote or not numbers:
-            continue
-        if entry.get("what") == "samples":
-            samples.append((numbers, quote))
-        else:
-            layers.setdefault(str(entry.get("layer") or "features").casefold(), []).append((numbers, quote))
-    if "sample_count" in needs.counts and samples:
-        doubtful = [n for n, _q in samples if len(n) >= 2]
-        if doubtful:
-            facts.append(Stated(field="B6", name="sample_count", values=[str(v) for v in doubtful[0]],
-                                quote=samples[0][1]))
-        else:  # the largest stated number is the total
-            facts.append(Stated(field="B6", name="sample_count", value=str(max(n[0] for n, _q in samples)),
-                                quote=samples[0][1]))
-    if "feature_count" in needs.counts and layers:
-        per_layer = [sorted({v for numbers, _q in found for v in numbers}) for found in layers.values()]
-        quote = next(q for found in layers.values() for _n, q in found)
-        totals = {0}
-        for options in per_layer:
-            totals = {total + option for total in totals for option in options}
-        if len(totals) == 1:
-            facts.append(Stated(field="B6", name="feature_count", value=str(totals.pop()), quote=quote))
-        else:
-            facts.append(Stated(field="B6", name="feature_count", values=[str(v) for v in sorted(totals)],
-                                quote=quote))
-        if len(per_layer) == 1 and len(per_layer[0]) == 1:
-            facts.append(Stated(field="B6", name="single_feature_count", value=str(per_layer[0][0]), quote=quote))
-        elif len(per_layer) == 1:  # one data type, unsure: its count is the one COBRA's genes > samples reads (h3 L40)
-            facts.append(Stated(field="B6", name="single_feature_count", values=[str(v) for v in per_layer[0]],
-                                quote=quote))
+    facts += _count_facts(raw.get("counts") or [], task, needs.counts, report)
     data = [f for f in facts if f.field == "A3"]
     stated = [f for f in facts if f.field != "A3"]
     return slim.model_copy(update={"stated": [*slim.stated, *stated], "data": [*slim.data, *data]}), report

@@ -37,7 +37,8 @@ __all__ = [
 ]
 
 
-_LIMIT_NAME = re.compile(r"min_samples|max_values|omics_layers|relation:[a-z_]+[<>]=?[a-z_]+|setting:[a-z_]+(<=|>=|<|>)samples")
+_LIMIT_NAME = re.compile(r"min_samples|max_values|omics_layers|relation:[a-z_]+[<>]=?[a-z_]+|setting:[a-z_]+(<=|>=|<|>)samples"
+                         r"|refuses_input:[a-z_]+")
 
 
 class ProjectPolicyError(RuntimeError):

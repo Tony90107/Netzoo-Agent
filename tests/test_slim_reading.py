@@ -111,11 +111,14 @@ def test_c2_every_near_miss_on_a_b_field_is_read_when_its_workflow_is_the_candid
 def test_c3_every_request_scope_limit_is_read_by_b5_or_b6():
     table = load_defaults()
     b = _b_dimensions(table)
-    assert set(table.limit_fields.values()) <= set(b)
+    assert set(table.limit_fields.values()) - {"data_available"} <= set(b)  # data_available: A3 (ROUND-02 D)
     for path in WORKFLOWS.glob("*.yaml"):
         workflow_yaml = yaml.safe_load(path.read_text(encoding="utf-8"))
         for check in workflow_yaml.get("input_checks") or []:
             if check.get("scope") != "request":
+                continue
+            if str(check["limit"]).startswith("refuses_input:"):  # ROUND-02 D: read by A3's input_for, not B5/B6
+                assert check["limit"].split(":", 1)[1] in table.dimensions["data_available"].values, (path, check)
                 continue
             dimension = table.limit_fields[str(check["limit"]).split(":")[0]]
             workflow = next(name for name, entry in sheet_entries().items()
@@ -388,7 +391,9 @@ def test_wire_payloads_read_back_to_the_same_reading_and_count_their_values():
     needs = slim_needs(core, DRAGON_TASK)
     core_payload, focus_payload = wire_payloads(slim, needs, ("DRAGON",))
     read, _ = from_core(core_payload, DRAGON_TASK)
-    assert read.model_dump(exclude={"stated"}) == core.model_dump(exclude={"stated"})
+    # ROUND-02 A2: a read-back keeps each data fact's words as its evidence; the fixture, written by hand, has none.
+    plain = read.model_copy(update={"data": [d.model_copy(update={"evidence": []}) for d in read.data]})
+    assert plain.model_dump(exclude={"stated"}) == core.model_dump(exclude={"stated"})
     merged, _ = merge_focus(read, focus_payload, DRAGON_TASK, needs)
     assert [(f.field, f.name, f.value) for f in merged.stated] == [("B4", "samples_matched", "same_samples")]
     written, content = wire_values(core_payload)
@@ -404,8 +409,9 @@ def test_read_slim_reads_the_core_then_only_the_fields_step_two_chose():
         "items": [{"quote": "Run DRAGON on expression.csv and methylation.csv", "asks": "workflow_only", "result": "",
                    "results": [], "outside_name": ""}],
         "names": {"DRAGON": {"role": "target"}},
-        "data": [{"kind": "expression", "status": "has", "quote": "expression.csv"},
-                 {"kind": "methylation", "status": "has", "quote": "methylation.csv"}],
+        "data": [{"kind": "expression", "status": "has", "quote": "expression.csv", "input_for": "", "corrects": None},
+                 {"kind": "methylation", "status": "has", "quote": "methylation.csv", "input_for": "",
+                  "corrects": None}],
         "only_these": "", "run": "run", "run_quote": "Run DRAGON", "facts": [], "unregistered_methods": []}
     seen = []
 
