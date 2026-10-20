@@ -28,7 +28,7 @@ from .needed_facts import (
 from ..contracts.capability_check import (
     CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences, reading_version,
 )
-from .count_alternatives import count_update, verified_count_alternatives
+from .count_alternatives import count_update, file_count_note, verified_count_alternatives, weigh_sample_doubts
 from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
 from .request_readings import only_inputs, ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal  # noqa: F401
 from .method_conditions import (
@@ -382,6 +382,7 @@ def _full_gap(results: list[CheckedRequirement], unchecked: list[str]) -> bool:
 
 def build_capability_check(
     task: str, proposal, verified_claims: frozenset[str] = frozenset(),
+    counted_samples: tuple[int, str] | None = None,
 ) -> tuple[CapabilityCheck, list[dict]]:
     """The verified check for one proposal, and what was rejected.
 
@@ -392,6 +393,8 @@ def build_capability_check(
     A passage asked for several times is one requirement; when one reading names an
     entry and another names none (Log 387 dev round: a network and a forecast quoted as
     one sentence twice) it is `partial`, never `available`.
+
+    `counted_samples` (ROUND-07): (samples, path) counted in the named expression file (`weigh_sample_doubts`).
     """
     known = sheet_entries()
     rejected, spans, asks, other = [], [], {}, {}
@@ -462,8 +465,9 @@ def build_capability_check(
             methods = [with_request_method(method, given) for method, given in zip(own, applied)]
             for mine, given, merged in zip(own, applied, methods):
                 record.note_conflicts(result, mine, given, merged)
-        if any(about == "sample_count" for about, _said, _domain in applicable):
-            methods = [{key: value for key, value in method.items() if key != "samples"} for method in methods]
+        # ROUND-07: a sample count the user is unsure of -- answered by the named file, or else set aside
+        methods, applicable, here = weigh_sample_doubts(record, result, methods, applicable, alternatives,
+                                                        counted_samples if credited_results <= 1 else None)
         # Round m3 (MX12): a setting no credited workflow can use, stated apart from every asked result, is a
         # requirement of its own; the result is read without it.
         for index, (item, method) in enumerate(zip(items, methods)):
@@ -502,8 +506,9 @@ def build_capability_check(
             if update is not None:
                 status, delivered = update.pop("status"), update.pop("delivered_by")
                 waiting = update
-        if alternatives and (found := count_update(task, alternatives, method, list(dict.fromkeys(
+        if here and (found := count_update(task, here, method, list(dict.fromkeys(
                 k for keys in pre for k in keys)), task[span[0]:span[1]], credited_results <= 1)) is not None:
+            record.note_set_aside(result, method, found["method"])  # ROUND-07 (G2): the doubt, not the one number
             method, limits = found.pop("method"), found.pop("limits")  # phase 5b: each candidate judged in code
             status, delivered, waiting = found.pop("status"), found.pop("delivered_by"), found
         fact_ids = record.ids_for(method, waiting.get("unknown_quote", "") if waiting.get("by_code") else "")
@@ -546,7 +551,8 @@ def build_capability_check(
                            stated_quotes=stated_quotes(task, proposal),
                            uncertain_quotes=uncertain_quotes(task, proposal),
                            ruled_out=ruled_out_inputs(task, proposal),
-                           count_alternatives=[{k: v for k, v in item.items() if k != "span"} for item in alternatives],
+                           count_alternatives=[{k: v for k, v in item.items() if k not in ("span", "read_by")}
+                                               for item in alternatives],
                            facts=record.facts_list(), fact_conflicts=list(record.conflicts),
                            **dict(zip(("only_inputs", "only_inputs_quote"), only_inputs(task, proposal)))), rejected
 
@@ -627,8 +633,8 @@ def _why_not(item: CheckedRequirement) -> list[str]:
 def _line(item: CheckedRequirement, provisional: bool = False, gap_unconfirmed: bool = False) -> str:
     line = _status_line(item, provisional, gap_unconfirmed)
     if item.file_checked and item.status in ("available", "with_step", "partial"):
-        return f"{line} {file_checked_note(item)}"
-    return line
+        line = f"{line} {file_checked_note(item)}"
+    return f"{line} {note}" if (note := file_count_note(item)) else line
 
 
 def _status_line(item: CheckedRequirement, provisional: bool = False, gap_unconfirmed: bool = False) -> str:

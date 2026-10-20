@@ -50,6 +50,7 @@ from ..interpretation.capability_check import (
     wait_on_asked, workflow_description,
 )
 from ..interpretation.method_conditions import unbound_settings, verified_controls
+from ..interpretation.input_bindings import bound_expression_samples
 from ..interpretation.request_facts import run_fact_bindings
 from ..interpretation.requirement_split import apply_own_sentence_answers
 from .data_facts_call import invoke_data_facts
@@ -483,7 +484,8 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     if proposal is None or (decision.action != "no_tool") != (shadow_status is not None):
         return result
     claims = frozenset(claim for claim, _ in (result.routing_state.get("study_purpose") or {}).get("claims") or ())
-    check, rejected = build_capability_check(user_task, proposal, claims)
+    counted = bound_expression_samples(user_task)  # ROUND-07 (G3): a sample-count doubt the named file answers
+    check, rejected = build_capability_check(user_task, proposal, claims, counted)
     record_event(context, state, "routing.capability_checked", "classify", {
         "proposal": proposal.model_dump(), "rejected": rejected, "check": check.model_dump(),
     })
@@ -495,7 +497,7 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         reread, usage, warnings = request_capability_reread(context, state, user_task, passages, usage, warnings)
         if reread is not None:
             reread_check, unplaced = build_capability_check(
-                user_task, reread_as_proposal(reread, getattr(proposal, "conditions", None)), claims)
+                user_task, reread_as_proposal(reread, getattr(proposal, "conditions", None)), claims, counted)
             check = merge_reread(user_task, check, reread_check, passages, unplaced)
         record_event(context, state, "routing.capability_reread", "classify", {
             "passages": passages, "reread": reread.model_dump() if reread is not None else None,

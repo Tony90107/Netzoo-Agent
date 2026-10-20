@@ -18,6 +18,7 @@ from ..workflow_conditions import (
     named_workflows, setting_issue,
     stated_numbers,
 )
+from .count_words import side_by_side
 from .request_spans import _span
 
 __all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "run_setting_value",
@@ -65,11 +66,14 @@ def verified_method(task: str, item) -> dict:
     if settings:
         found["settings"] = settings
     count, words = getattr(item, "sample_count", None), _stated(task, getattr(item, "sample_count_quote", ""))
-    if count is not None and words and count in stated_numbers(words):
+    # ROUND-07 (G1): a number whose words give another beside it ("two or ten paired samples") is one of the user's
+    # candidates, not the count: `request_facts.FactRecord` keeps the candidates, never this one number.
+    if count is not None and words and count in stated_numbers(words) and not side_by_side(words, count):
         found.update(samples=count, samples_quote=words)
     features = {}
     for stated in getattr(item, "feature_counts", None) or []:
-        if (words := _stated(task, stated.quote)) and stated.count in stated_numbers(words):
+        if (words := _stated(task, stated.quote)) and stated.count in stated_numbers(words) \
+                and not side_by_side(words, stated.count):
             features.setdefault(_span(task, stated.quote), stated.count)
     if features:
         found["features"] = sum(features.values())

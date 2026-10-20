@@ -15,7 +15,8 @@ from ..workflow_conditions import stated_numbers
 from .method_conditions import method_fitting
 from .request_spans import _span
 
-__all__ = ["count_line", "count_outcome_lines", "count_question", "count_update", "verified_count_alternatives"]
+__all__ = ["count_line", "count_outcome_lines", "count_question", "count_update", "file_count_note",
+           "verified_count_alternatives", "weigh_sample_doubts"]
 
 _DIMENSION = {"samples": "sample_count", "features": "feature_count"}
 _LABEL = {"sample_count": "samples", "feature_count": "features"}
@@ -86,7 +87,7 @@ def count_update(task: str, alternatives: list[dict], method: dict, keys: list[s
     """
     where = _span(task, quote)
     for alternative in alternatives:
-        if not keys or not single_result and (
+        if not keys or not single_result and quote not in alternative.get("read_by", ()) and (
                 where is None or not (where[0] < alternative["span"][1] and alternative["span"][0] < where[1])):
             continue
         base = _base(task, method, alternative)
@@ -107,6 +108,48 @@ def count_update(task: str, alternatives: list[dict], method: dict, keys: list[s
             return {"status": "not_available", "delivered_by": [], "method": base,
                     "limits": [*base_limits, *(f"with {int(value):,}: {note}" for value, note in notes.items())]}
     return None
+
+
+def weigh_sample_doubts(record, result: str, methods: list[dict], applicable: list, alternatives: list[dict],
+                        counted: tuple[int, str] | None):
+    """ROUND-07: one result's sample count when the user is unsure of it; returns (methods, applicable unknowns,
+    candidate counts still to judge).
+
+    G3: `counted` -- (samples, path) code counted in the expression file the request names, given only for a request
+    asking one result -- settles the doubt when it is one of the user's candidates (or the user gave none, only said
+    they do not know): the methods take the file's count, and the doubt is neither asked nor judged again. A count
+    that is none of the candidates settles nothing. G2: otherwise a stated count beside a count the user said they do
+    not know is taken off, as before, and recorded as set aside (`record`, the turn's `FactRecord`)."""
+    unknown = any(about == "sample_count" for about, _said, _domain in applicable)
+    doubts = [found for found in alternatives if found["of"] == "samples"]
+    choices = [domain["values"] for about, _said, domain in applicable
+               if about == "sample_count" and domain and domain.get("kind") == "choices" and domain.get("values")]
+    if counted and (doubts or unknown):
+        count, path = counted
+        file_fact = record.read_file_count(count, path)
+        settled = all(count in values for values in [*(found["values"] for found in doubts), *choices])
+        record.note_file_count(result, file_fact, [fact_id for found in doubts
+                                                   for fact_id in record.unsure_at("sample_count", found["span"])],
+                               settled)
+        if settled:
+            methods = [{**{key: value for key, value in method.items() if key not in ("samples", "samples_quote")},
+                        "samples": count, "samples_file": path} for method in methods]
+            return (methods, [found for found in applicable if found[0] != "sample_count"],
+                    [found for found in alternatives if found["of"] != "samples"])
+    if unknown:
+        before, methods = methods, [{key: value for key, value in method.items() if key != "samples"}
+                                    for method in methods]
+        for prior, now in zip(before, methods):
+            record.note_set_aside(result, prior, now, unknown=True)
+    return methods, applicable, alternatives
+
+
+def file_count_note(item) -> str:
+    """ROUND-07 (G3): the sentence a result whose sample count the named file settled is said with."""
+    if not item.method.get("samples_file") or item.status == "needs_fact":
+        return ""
+    return (f"{item.method['samples_file']} has {int(item.method['samples']):,} samples (counted from the file), "
+            "which settles the sample count.")
 
 
 def _names(names: list[str]) -> str:

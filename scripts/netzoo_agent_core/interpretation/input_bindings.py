@@ -130,3 +130,25 @@ def request_input_bindings(
                 resolved.add(field)
     return RequestInputBindings(values, frozenset(labelled).intersection(fields), frozenset(resolved), directory,
                                 named_paths=named, missing_directories=missing)
+
+
+def bound_expression_samples(task: str, root: Path = PROJECT_ROOT) -> tuple[int, str] | None:
+    """ROUND-07 (G3): (samples, path) of the expression file the request names, counted as preflight counts them
+    (`data.inspection.expression_sample_count`); None when no expression file is bound, the binding is in doubt, or
+    the file is missing or does not read as an expression matrix. A doubt about the sample count that this file
+    answers is checked here instead of being asked."""
+    from ..data.inspection import expression_sample_count
+
+    bindings = request_input_bindings(task, ("expression_file",), root)
+    value = bindings.values.get("expression_file")
+    if not value or bindings.issues:
+        return None
+    path = Path(value).expanduser()
+    path = path if path.is_absolute() else root / path
+    if not path.is_file():
+        return None
+    try:
+        count, _header = expression_sample_count(str(path))
+    except Exception:  # noqa: BLE001 -- an unreadable file is preflight's to report, never a count
+        return None
+    return (count, value) if count > 0 else None
