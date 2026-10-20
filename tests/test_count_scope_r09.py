@@ -96,3 +96,38 @@ def test_splits_candidates_reads_only_the_numbers_a_question_states():
     assert splits_candidates("Do you have at least three expression samples?", [2, 14])
     assert splits_candidates("Will it end up as 9?", [5, 9])
     assert splits_candidates("Is the export already filtered?", [9, 17])  # no number: cannot judge, kept
+
+
+def _waiting(quote, unknown, outcomes, notes=None):
+    from netzoo_agent_core.contracts.capability_check import CheckedRequirement
+
+    return CheckedRequirement(quote=quote, kind="result", status="needs_fact", depends_on="sample_count", by_code=True,
+                              unknown_quote=unknown, outcomes=outcomes, outcome_notes=notes or {},
+                              delivered_by=[k for keys in outcomes.values() for k in keys])
+
+
+def test_one_count_question_when_two_results_wait_on_the_same_doubt():
+    """Live attempt-04 T03: the first reading's result and the re-read's each waited on "2 or 14", asked twice."""
+    from netzoo_agent_core.contracts.capability_check import CapabilityCheck
+
+    task = ("Could you start LIONESS-PANDA to build one TF-to-gene network per biological sample from pine_bulk.tsv? "
+            "The export contains either 2 or 14 samples.")
+    key = "lioness_panda.per_sample_networks"
+    check = CapabilityCheck(requirements=[
+        _waiting("one TF-to-gene network per biological sample", "either 2 or 14 samples", {"2": [], "14": [key]}),
+        _waiting("Could you start LIONESS-PANDA", "2 or 14 samples", {"2": [], "14": [key]},
+                 {"2": "LIONESS-PANDA needs at least 3 samples"})])
+    core = decide_core(_decision(check), task)
+    assert core.kind == "ASK" and [f.question for f in core.facts] == ["Which of these is right: 2 or 14?"]
+    assert core.facts[0].notes == {"2": "LIONESS-PANDA needs at least 3 samples"}
+
+
+def test_different_candidates_or_words_stay_separate_questions():
+    from netzoo_agent_core.contracts.capability_check import CapabilityCheck
+
+    task = "The confirmed set has either 2 or 14 samples. The archive set has either 2 or 6 samples."
+    key = "lioness_panda.per_sample_networks"
+    check = CapabilityCheck(requirements=[
+        _waiting("The confirmed set", "either 2 or 14 samples", {"2": [], "14": [key]}),
+        _waiting("The archive set", "either 2 or 6 samples", {"2": [], "6": [key]})])
+    assert len(decide_core(_decision(check), task).facts) == 2
