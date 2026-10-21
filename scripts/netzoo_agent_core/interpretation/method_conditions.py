@@ -21,7 +21,8 @@ from ..workflow_conditions import (
 from .count_words import side_by_side
 from .request_spans import _span
 
-__all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "run_setting_value",
+__all__ = ["method_fitting", "named_limits", "request_method", "request_method_for", "request_method_limit",
+           "run_setting_value",
            "settings_apart", "stated_no_value", "typed_setting", "unbound_settings", "verified_controls", "verified_method",
            "with_request_method", "unresolved_settings"]
 
@@ -168,6 +169,23 @@ def method_fitting(method: dict, keys: list[str]) -> tuple[list[str], list[str],
     if instead and not kept and named not in (None, UNREGISTERED):
         limits.insert(0, f"NetZoo's {named} does not give this result")
     return kept, list(dict.fromkeys(limits)), list(dict.fromkeys(instead)), list(dict.fromkeys(defaults))
+
+
+def named_limits(method: dict) -> list[str]:
+    """Why the named workflow cannot run as asked, from its own contract, for a result nothing was credited to.
+
+    ROUND-18 (live 2026-10-21): "I'd like GIRAFFE run on 75 AML samples with a custom learning rate of 0.001, 5,000
+    iterations ..." (H40) and C08 were read naming GIRAFFE but crediting no workflow, the settings typed as OTTER's
+    controls, so the decline said only "not matched to any registered workflow". Judged against GIRAFFE's own contract
+    (a setting typed for another workflow is one GIRAFFE does not have), the reply says GIRAFFE passes no settings.
+    Reasons only: nothing is credited, and a named workflow its contract does not stop adds nothing.
+    """
+    named = method.get("named")
+    if not named or named not in registered_workflows():
+        return []
+    keys = [key for key, found in sheet_entries().items()
+            if found.kind == "produces" and found.level == "direct" and found.workflow == named]
+    return method_fitting(method, keys)[1]
 
 
 def request_method(task: str, proposal) -> dict:

@@ -33,7 +33,7 @@ from .count_alternatives import (count_update, file_count_note, verified_count_a
 from .request_spans import _locate_tokens, _span, distinct_passages  # noqa: F401 -- research tools import _span
 from .request_readings import only_inputs, ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal  # noqa: F401
 from .method_conditions import (
-    method_fitting, request_method_for, request_method_limit, settings_apart, typed_setting,
+    method_fitting, named_limits, request_method_for, request_method_limit, settings_apart, typed_setting,
     verified_method, with_request_method,
 )
 from .request_facts import FactRecord
@@ -477,6 +477,8 @@ def build_capability_check(
         blocks = list(dict.fromkeys(known[k].workflow for keys, (kept, _r, others, _d) in zip(pre, fitted)
                                     for k in keys if k not in kept and k not in others))  # ROUND-17: run limits
         method = next((found for found in methods if found), {})
+        if not any(pre) and (named_reasons := named_limits(method)):  # ROUND-18: why the named one cannot run
+            limits, blocks = limits or named_reasons, blocks or [method["named"]]
         delivered = list(dict.fromkeys(k for keys in readings for k in keys))
         not_by = list(dict.fromkeys(
             k for item in items for k in item.not_by
