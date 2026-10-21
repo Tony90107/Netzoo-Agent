@@ -1,0 +1,128 @@
+== Q1 gold pieces and extra results, per round
+round | D read / missed / as question | Q as result | P as result | extra E1 E2(first read) E2(re-read) E3 | all right
+p4b | 44/1/5 | 3/8 | 1/6 | 2 6 6 7 | 31/56
+p4c | 42/3/5 | 3/8 | 3/6 | 3 5 4 9 | 30/56
+p5r | 42/2/6 | 5/8 | 1/6 | 2 4 9 9 | 28/56
+g4o1 | 43/2/4 | 7/8 | 5/6 | 1 4 16 14 | 24/55
+g4o2 | 44/2/4 | 6/8 | 5/6 | 1 4 19 15 | 24/56
+v7-0 | 41/9/0 | 4/8 | 0/6 | 0 0 0 5 | 42/56
+v7-1 | 42/8/0 | 4/8 | 0/6 | 0 1 0 6 | 41/56
+
+== Q1 stability: same outcome for the same gold piece in two reads
+p4b vs p4c: piece outcome same 56/64; reading all-right agrees 45/56; flips ['C04:P right/as_result', 'C07:P right/as_result', 'C09:Q right/as_result', 'C12:D read/missed', 'C32:D as_question/read', 'C49:D read/missed', 'C51:D read/as_question', 'C54:Q as_result/right']
+g4o1 vs g4o2: piece outcome same 60/63; reading all-right agrees 51/55; flips ['C16:D missed/read', 'C41:Q as_result/right', 'C54:D read/missed']
+v7-0 vs v7-1: piece outcome same 63/64; reading all-right agrees 53/56; flips ['C14:D missed/read']
+
+== Q1 attribution: readings with a piece error, by B call right / wrong (mini)
+B wrong: 22/37 readings have a piece error
+B right: 57/131 readings have a piece error
+
+== Q2 mini: 168 readings, B wrong 37
+O-a: fixed 2 ['p4c:C23', 'p5r:C37']; broke 0 []
+O-b: fixed 0 []; broke 1 ['p4b:C08']
+O-c: fixed 3 ['p4b:C57', 'p4c:C34', 'p5r:C34']; broke 18 ['p4b:C12', 'p4b:C15', 'p4b:C19', 'p4b:C23', 'p4b:C37', 'p4b:C49', 'p4b:C53', 'p4c:C09', 'p4c:C15', 'p4c:C19', 'p4c:C37', 'p4c:C49', 'p5r:C09', 'p5r:C12', 'p5r:C15', 'p5r:C19', 'p5r:C23', 'p5r:C49']
+O-ab: fixed 2 ['p4c:C23', 'p5r:C37']; broke 1 ['p4b:C08']
+O: fixed 4 ['p4b:C57', 'p4c:C34', 'p5r:C34', 'p5r:C37']; broke 14 ['p4b:C08', 'p4b:C12', 'p4b:C15', 'p4b:C19', 'p4b:C37', 'p4b:C49', 'p4b:C53', 'p4c:C15', 'p4c:C19', 'p4c:C49', 'p5r:C12', 'p5r:C15', 'p5r:C19', 'p5r:C49']
+B wrong calls by gold -> B kind/basis:
+   7 ('DECLINE', 'DO', 'results_given')
+   4 ('ASK', 'UNCHECKED', 'routing_failed')
+   3 ('ASK', 'CLARIFY', 'no_result_read')
+   3 ('CLARIFY', 'DECLINE', 'full_gap')
+   3 ('ASK', 'CLARIFY', 'goal_unclear')
+   2 ('CLARIFY', 'ASK', 'fact_agent')
+   2 ('DECLINE', 'CLARIFY', 'goal_unclear')
+   2 ('DECLINE', 'DO', 'run_held')
+   2 ('ASK', 'DO', 'results_given')
+   2 ('CLARIFY', 'DO', 'results_given')
+   1 ('ASK', 'UNCHECKED', 'run_held_unconfirmed')
+   1 ('DO', 'DECLINE', 'full_gap')
+   1 ('ASK', 'DO', 'run_held')
+   1 ('ASK', 'DECLINE', 'full_gap')
+   1 ('ASK', 'DO', 'run')
+   1 ('DO', 'DECLINE', 'all_results_not_available')
+   1 ('DO', 'UNCHECKED', 'run_held_unconfirmed')
+B differs from the recorded call: 9
+  p4b:C10 gold CLARIFY recorded UNCHECKED B CLARIFY (goal_unclear)
+  p4b:C18 gold DECLINE recorded DECLINE B DO (results_given)
+  p4b:C27 gold DECLINE recorded DECLINE B DO (results_given)
+  p4b:C31 gold ASK recorded ASK B UNCHECKED (routing_failed)
+  p4b:C51 gold DO recorded UNCHECKED B DECLINE (full_gap)
+  p4c:C10 gold CLARIFY recorded UNCHECKED B CLARIFY (goal_unclear)
+  p4c:C18 gold DECLINE recorded DECLINE B DO (results_given)
+  p4c:C31 gold ASK recorded ASK B UNCHECKED (routing_failed)
+  p5r:C18 gold DECLINE recorded DECLINE B DO (results_given)
+
+== Q2 gpt-4o: 111 readings, B wrong 25
+O-a: fixed 4 ['g4o1:C23', 'g4o1:C26', 'g4o2:C23', 'g4o2:C26']; broke 0 []
+O-b: fixed 0 []; broke 2 ['g4o1:C08', 'g4o2:C08']
+O-c: fixed 0 []; broke 11 ['g4o1:C12', 'g4o1:C15', 'g4o1:C19', 'g4o1:C49', 'g4o1:C54', 'g4o1:C60', 'g4o2:C12', 'g4o2:C15', 'g4o2:C19', 'g4o2:C49', 'g4o2:C60']
+O-ab: fixed 4 ['g4o1:C23', 'g4o1:C26', 'g4o2:C23', 'g4o2:C26']; broke 2 ['g4o1:C08', 'g4o2:C08']
+O: fixed 1 ['g4o2:C26']; broke 11 ['g4o1:C08', 'g4o1:C12', 'g4o1:C15', 'g4o1:C19', 'g4o1:C49', 'g4o1:C54', 'g4o2:C08', 'g4o2:C12', 'g4o2:C15', 'g4o2:C19', 'g4o2:C49']
+B wrong calls by gold -> B kind/basis:
+   7 ('CLARIFY', 'DECLINE', 'full_gap')
+   4 ('DECLINE', 'DO', 'results_given')
+   4 ('CLARIFY', 'DO', 'results_given')
+   3 ('ASK', 'DO', 'results_given')
+   2 ('DECLINE', 'DO', 'routed')
+   2 ('CLARIFY', 'ASK', 'fact_agent')
+   1 ('DO', 'DECLINE', 'full_gap')
+   1 ('ASK', 'CLARIFY', 'goal_unclear')
+   1 ('ASK', 'UNCHECKED', 'routing_failed')
+B differs from the recorded call: 8
+  g4o1:C18 gold DECLINE recorded DECLINE B DO (results_given)
+  g4o1:C43 gold ASK recorded DO B ASK (count_fact)
+  g4o1:C44 gold ASK recorded DECLINE B DO (results_given)
+  g4o2:C10 gold CLARIFY recorded DECLINE B CLARIFY (goal_unclear)
+  g4o2:C18 gold DECLINE recorded DECLINE B DO (results_given)
+  g4o2:C31 gold ASK recorded ASK B UNCHECKED (routing_failed)
+  g4o2:C43 gold ASK recorded DO B ASK (count_fact)
+  g4o2:C44 gold ASK recorded DECLINE B DO (results_given)
+
+== every call O-ab changed (p4b/p4c/p5r)
+BREAK p4b:C08 gold DECLINE: DECLINE/all_results_not_available -> CLARIFY/goal_unclear {'removed E1': 1}
+FIX   p4c:C23 gold CLARIFY: DECLINE/full_gap -> CLARIFY/goal_unclear {'removed P': 1}
+other p5r:C08 gold DECLINE: DO/results_given -> CLARIFY/goal_unclear {'removed E1': 1, 'removed E3': 1}
+FIX   p5r:C37 gold CLARIFY: DECLINE/full_gap -> CLARIFY/goal_unclear {'removed Q': 2}
+
+== every call O changed (p4b/p4c/p5r)
+BREAK p4b:C08 gold DECLINE: DECLINE/all_results_not_available -> CLARIFY/goal_unclear {'removed E1': 1}
+BREAK p4b:C12 gold CLARIFY: CLARIFY/goal_unclear -> DECLINE/full_gap {'removed E3': 1, 'goal -> result_named': 1}
+BREAK p4b:C15 gold CLARIFY: CLARIFY/goal_unclear -> DECLINE/full_gap {'goal -> result_named': 1}
+BREAK p4b:C19 gold CLARIFY: CLARIFY/goal_unclear -> DO/results_given {'goal -> result_named': 1}
+BREAK p4b:C37 gold CLARIFY: CLARIFY/goal_unclear -> DECLINE/full_gap {'removed Q': 2, 'goal -> method_named': 1}
+BREAK p4b:C49 gold CLARIFY: CLARIFY/goal_unclear -> DECLINE/full_gap {'goal -> result_named': 1}
+BREAK p4b:C53 gold CLARIFY: CLARIFY/goal_unclear -> DO/results_given {'goal -> result_named': 1}
+FIX   p4b:C57 gold DECLINE: CLARIFY/goal_unclear -> DECLINE/full_gap {'goal -> result_named': 1}
+BREAK p4c:C15 gold CLARIFY: CLARIFY/goal_unclear -> DECLINE/full_gap {'goal -> result_named': 1}
+BREAK p4c:C19 gold CLARIFY: CLARIFY/goal_unclear -> DO/results_given {'goal -> result_named': 1}
+FIX   p4c:C34 gold ASK: CLARIFY/goal_unclear -> ASK/needs_fact {'removed E3': 2, 'goal -> result_named': 1}
+BREAK p4c:C49 gold CLARIFY: CLARIFY/goal_unclear -> DECLINE/full_gap {'goal -> result_named': 1}
+other p5r:C08 gold DECLINE: DO/results_given -> CLARIFY/goal_unclear {'removed E1': 1, 'removed E3': 1}
+BREAK p5r:C12 gold CLARIFY: CLARIFY/goal_unclear -> DO/results_given {'goal -> result_named': 1}
+BREAK p5r:C15 gold CLARIFY: CLARIFY/goal_unclear -> DECLINE/full_gap {'goal -> result_named': 1}
+BREAK p5r:C19 gold CLARIFY: CLARIFY/goal_unclear -> DO/results_given {'goal -> result_named': 1}
+FIX   p5r:C34 gold ASK: CLARIFY/goal_unclear -> ASK/needs_fact {'removed E3': 2, 'removed E2': 2, 'goal -> result_named': 1}
+other p5r:C36 gold ASK: CLARIFY/goal_unclear -> DO/results_given {'goal -> result_named': 1}
+FIX   p5r:C37 gold CLARIFY: DECLINE/full_gap -> CLARIFY/goal_unclear {'removed Q': 2}
+BREAK p5r:C49 gold CLARIFY: CLARIFY/goal_unclear -> DECLINE/full_gap {'goal -> result_named': 1}
+
+== Q3 v7 calls
+forms: {'same': 108, 'fixed': 4}
+extras: {'same': 106, 'broke': 2, 'fixed': 4}
+O: {'same': 100, 'fixed': 10, 'broke': 2}
+other v7-0:C08 gold DECLINE: CLARIFY -> ASK {'question_to_us->deliverable': 1}
+other v7-1:C08 gold DECLINE: CLARIFY -> ASK {'question_to_us->deliverable': 1}
+FIX   v7-0:C09 gold CLARIFY: ASK -> CLARIFY {'deliverable->question_to_us': 1}
+FIX   v7-1:C09 gold CLARIFY: ASK -> CLARIFY {'deliverable->question_to_us': 1}
+FIX   v7-0:C10 gold CLARIFY: ASK -> CLARIFY {'deliverable->question_to_us': 1, 'extra->context': 1}
+FIX   v7-1:C10 gold CLARIFY: ASK -> CLARIFY {'deliverable->question_to_us': 1, 'extra->context': 1}
+other v7-0:C14 gold DECLINE: CLARIFY -> DO {'question_to_us->deliverable': 1}
+FIX   v7-0:C26 gold CLARIFY: ASK -> CLARIFY {'deliverable->question_to_us': 1}
+FIX   v7-1:C26 gold CLARIFY: ASK -> CLARIFY {'deliverable->question_to_us': 1}
+BREAK v7-0:C34 gold ASK: ASK -> CLARIFY {'extra->context': 2}
+BREAK v7-1:C34 gold ASK: ASK -> CLARIFY {'extra->context': 2}
+FIX   v7-0:C37 gold CLARIFY: ASK -> CLARIFY {'extra->context': 1}
+FIX   v7-1:C37 gold CLARIFY: ASK -> CLARIFY {'extra->context': 1}
+FIX   v7-0:C41 gold CLARIFY: ASK -> CLARIFY {'extra->context': 1}
+FIX   v7-1:C41 gold CLARIFY: ASK -> CLARIFY {'extra->context': 1}
+B right 75/112; O right 83/112
