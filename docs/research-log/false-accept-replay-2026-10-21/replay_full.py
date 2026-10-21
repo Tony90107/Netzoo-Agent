@@ -100,6 +100,30 @@ def _answer(check, pairs, recorded: dict):
     return done, answers, missing
 
 
+GOAL_READS: dict[str, dict] = {}
+"""ROUND-21: offline goal reads by request text, for readings recorded before the read existed (`goal-read-2026-10-21`)."""
+GOAL_TRIGGERED: list[str] = []
+"""The requests whose replay reached the goal read with no recorded or cached answer (what to ask offline)."""
+
+
+def _goal_read(check, decision, task: str, found: list[dict], steps: list[str]):
+    """ROUND-21 (R21-A): the goal read where live makes it -- recorded, else the offline cache, else none (DECLINE)."""
+    try:
+        from netzoo_agent_core.contracts.capability_check import GoalRead
+        from netzoo_agent_core.interpretation.goal_read import needs_goal_read, with_goal_read
+    except ImportError:  # a checkout before ROUND-21
+        return check
+    if not needs_goal_read(check, decision.model_copy(update={"capability_check": check}), task):
+        return check
+    recorded = _first(found, "core.goal_read")
+    read = recorded.get("read") if recorded is not None else GOAL_READS.get(task)
+    if read is None:
+        GOAL_TRIGGERED.append(task)
+        return check
+    steps.append("goal read")
+    return with_goal_read(check, task, GoalRead.model_validate(read))
+
+
 def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: list[dict]) -> dict:
     from replay import _proposal
     from netzoo_agent_core.contracts import TaskDecision
@@ -227,6 +251,8 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
         check = without_legacy_waits(check)
     if check.needed_facts():
         decision = waiting_decision(decision, check)
+    else:
+        check = _goal_read(check, decision, task, found, steps)
     update = {"capability_check": check}
     if check.full_gap:
         update.update({"matched_actions": [], "hypothesis_actions": [], "recommended_actions": [],
