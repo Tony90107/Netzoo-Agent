@@ -82,11 +82,18 @@ def test_words_the_reading_typed_as_stated_are_not_asked(policy):
     assert check.accepted == [] and check.rejected[0].rule.startswith("R4")
 
 
-def test_a_fact_the_input_check_settles_on_a_run_is_said_not_asked(policy):
+def test_a_fact_the_input_check_could_settle_is_still_asked_on_a_run(policy):
+    # ROUND-21 (user decision): R5 withdrawn -- the user is asked first, the file check never stands in for them.
     proposal = _proposal(contract_quote="at least three total samples")
     run = _kept(policy, proposal, decision=_decision(action="run_bonobo"))
     question = _kept(policy, proposal)
-    assert run.accepted[0].settled_by_input_check and not question.accepted[0].settled_by_input_check
+    assert not run.accepted[0].settled_by_input_check and not question.accepted[0].settled_by_input_check
+    decision = _decision(action="run_bonobo")
+    decision = decision.model_copy(update={"fact_check": run})
+    assert (decide_core(decision, TASK).kind, decide_core(decision, TASK).basis) == ("ASK", "fact_agent")
+    recorded = run.model_copy(update={"accepted": [f.model_copy(update={"settled_by_input_check": True})
+                                                   for f in run.accepted]})  # a decision recorded under R5
+    assert decide_core(decision.model_copy(update={"fact_check": recorded}), TASK).kind == "ASK"
 
 
 def test_at_most_two_questions_in_the_requests_order(policy):
@@ -147,22 +154,6 @@ def test_the_ask_reply_and_card_carry_the_question_outcomes_and_both_quotes(poli
     assert "If yes" not in text and "If no" not in text  # open item 1: outcomes are not said, only kept for R3
     card = _core_card("ask_facts", decision, None, "")
     assert (card.kind, card.points) == ("clarification", ["Were the values log-transformed before they were centered?"])
-
-
-def test_a_settled_fact_is_said_after_a_do_reply(policy):
-    from netzoo_agent_core.contracts import AIMessage
-    from netzoo_agent_core.interpretation.ask_facts import with_settled_notes
-
-    decision = _decision(action="run_bonobo")
-    decision = decision.model_copy(update={"fact_check": _kept(
-        policy, _proposal(contract_quote="at least three total samples"), decision=decision)})
-    decision = with_core(decision, decide_core(decision, TASK))
-    assert decision.core.kind == "DO" and decision.core.facts[0].settled_by_input_check
-    result = with_settled_notes({"messages": [AIMessage(content="Plan ready.")], "reply_kind": "needs_input"},
-                                {"decision": decision.model_dump()},
-                                lambda text, kind: {"messages": [AIMessage(content=text)], "reply_kind": kind})
-    assert "Checked from your files before anything runs" in result["messages"][-1].content
-    assert "at least three total samples" in result["messages"][-1].content
 
 
 def test_the_contract_quotes_input_checks_must_be_the_contracts_own_words(policy, tmp_path):

@@ -10,7 +10,8 @@ readings) could not be asked at all. The agent may propose any fact, but code ke
 - R2 the contract words that make it decide are in that candidate workflow's contract;
 - R3 a yes and a no lead to different outcomes;
 - R4 the reading did not type it as stated (its words are not inside a definite condition, method or setting);
-- R5 when the workflow's own input check covers it and the turn runs on named files, it is said, not asked;
+- R5 (withdrawn, user decision 2026-10-21): a fact the workflow's own input check could settle on a run was said and
+  not asked; the user is asked first (ROUND-21: M38 "either 8 or 15 tumours", L40, C44 ran on what they did not know);
 - R6 at most two are asked, in the request's order;
 - R7 (phase 5c, spec 13.4) a fact about the wanted result is asked only when the request names at least two options
   in its own words; with fewer it is a goal to clarify (`FactCheck.open_results`; rounds p4b/p4c C24: "I don't know
@@ -24,7 +25,7 @@ from __future__ import annotations
 from workflow_registry import OUTPUT_CAPABILITIES, workflow_name
 
 from ..capability_sheet import entry
-from ..contract_text import check_text, contract_text, file_checkable, normalized
+from ..contract_text import contract_text, normalized
 from ..contracts.core_decision import FactQuestion
 from ..contracts.fact_check import FactCheck, RejectedFact
 from ..method_names import registered_workflows, workflows_in
@@ -108,14 +109,13 @@ def _named_options(task: str, alternatives) -> list[tuple[int, int]]:
 
 
 def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> FactCheck:
-    """R1-R6 over the agent's proposals; what is kept is what the turn may ask (or say, R5)."""
+    """R1-R6 over the agent's proposals; what is kept is what the turn may ask."""
     actions = fact_candidates(decision, policy)
     by_name = _workflow_actions(policy)
     names = set(by_name)
     check = decision.capability_check
     stated = list(getattr(check, "stated_quotes", []) or [])
     uncertain = list(getattr(check, "uncertain_quotes", []) or [])
-    running = decision.action.startswith("run_") or bool(getattr(decision, "execution_requested", False))
     kept, rejected, seen, open_results = [], [], set(), []
     for proposal in getattr(proposals, "facts", None) or []:
         raw = proposal.model_dump()
@@ -157,18 +157,13 @@ def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> Fa
             reject("R6 the same words already ask a fact")
             continue
         seen.add(span)
-        settled = running and any(normalized(check_text(item)) in normalized(proposal.contract_quote)
-                                  or normalized(proposal.contract_quote) in normalized(check_text(item))
-                                  for item in spec.input_checks if file_checkable(item))
         workflows = [spec.workflow, *(o.split(":", 1)[1] for o in (yes, no) if o.startswith("other_workflow:"))]
         kept.append((span[0], FactQuestion(
             question=proposal.question.strip(), user_quote=task[span[0]:span[1]], workflows=list(dict.fromkeys(workflows)),
-            contract_quote=proposal.contract_quote.strip(), uncertainty=proposal.uncertainty, if_yes=yes, if_no=no,
-            settled_by_input_check=settled)))
+            contract_quote=proposal.contract_quote.strip(), uncertainty=proposal.uncertainty, if_yes=yes, if_no=no)))
     kept.sort(key=lambda item: item[0])
-    asked = [fact for _, fact in kept if not fact.settled_by_input_check]
-    said = [fact for _, fact in kept if fact.settled_by_input_check]
+    asked = [fact for _, fact in kept]
     for fact in asked[MAX_ASKED:]:
         rejected.append(RejectedFact(rule="R6 more than two questions", proposal=fact.model_dump()))
     return FactCheck(status="checked", model=model, candidates=[workflow_name(a) for a in actions],
-                     accepted=[*asked[:MAX_ASKED], *said], rejected=rejected, open_results=open_results)
+                     accepted=asked[:MAX_ASKED], rejected=rejected, open_results=open_results)

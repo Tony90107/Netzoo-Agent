@@ -1,13 +1,13 @@
 """Core decision spec, phase 2: the replies for the fact agent's facts (section 6).
 
 An ASK call is the whole turn: each kept question, with the user's words and the contract words that make it
-decide (open item 1: not what each answer leads to); nothing is selected or run before the answer. A fact the workflow's own input check settles (R5) is never
-asked: a DO reply says the check will settle it before anything runs.
+decide (open item 1: not what each answer leads to); nothing is selected or run before the answer. A fact the
+workflow's own input check could settle is asked too (ROUND-21, user decision: R5 withdrawn).
 """
 
 from __future__ import annotations
 
-__all__ = ["ASK_KIND", "ask_result", "with_settled_notes"]
+__all__ = ["ASK_KIND", "ask_result"]
 
 ASK_KIND = "ask_facts"
 
@@ -19,9 +19,8 @@ def ask_reply(core) -> str:
     outcomes and code cannot check their direction in general (p2b C06 "If no: PUMA does it instead", C36 "If no:
     no registered workflow"; p2 C31 had the yes-branch inverted). They stay on the fact for R3 and the trace.
     """
-    asked = [fact for fact in core.facts if not fact.settled_by_input_check]
     lines = []
-    for fact in asked:
+    for fact in core.facts:
         if fact.by_code:  # phase 5b: each candidate count was judged in code, so what it leads to is said
             from .count_alternatives import count_outcome_lines
 
@@ -50,19 +49,3 @@ def ask_result(state, reply) -> dict | None:
         return None
     return reply(ask_reply(core), ASK_KIND)
 
-
-def with_settled_notes(result: dict, state, reply) -> dict:
-    """R5: the facts a DO turn's input check will settle, said after the reply (never asked)."""
-    from ..contracts import TaskDecision
-
-    core = TaskDecision.model_validate(state["decision"]).core
-    settled = [fact for fact in (core.facts if core is not None and core.kind == "DO" else [])
-               if fact.settled_by_input_check]
-    if not settled or not result.get("messages"):
-        return result
-    notes = "\n".join(f"- You wrote \"{fact.user_quote}\". Before it runs, "
-                      f"{fact.workflows[0] if fact.workflows else 'the workflow'}'s input check verifies this from "
-                      f"your files: \"{fact.contract_quote}\"; if they do not meet it, nothing runs." for fact in settled)
-    text = f"{result['messages'][-1].content}\n\nChecked from your files before anything runs:\n{notes}"
-    return {**reply(text, result["reply_kind"]),
-            **{key: value for key, value in result.items() if key not in ("messages", "reply_kind")}}
