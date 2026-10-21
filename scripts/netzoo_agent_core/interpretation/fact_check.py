@@ -9,7 +9,8 @@ readings) could not be asked at all. The agent may propose any fact, but code ke
   dev set m3: the agent alone asked on 10-20 of 27 supported requests);
 - R2 the contract words that make it decide are in that candidate workflow's contract;
 - R3 a yes and a no lead to different outcomes;
-- R4 the reading did not type it as stated (its words are not inside a definite condition, method or setting);
+- R4 the reading did not type it as stated (its words are not inside a definite condition, method or setting, and
+  hold no stated setting -- ROUND-22: live M25 and C35's subtype ranges, typed as kmin/kmax, were made open results);
 - R5 (withdrawn, user decision 2026-10-21): a fact the workflow's own input check could settle on a run was said and
   not asked; the user is asked first (ROUND-21: M38 "either 8 or 15 tumours", L40, C44 ran on what they did not know);
 - R6 at most two are asked, in the request's order;
@@ -31,7 +32,7 @@ from ..contracts.fact_check import FactCheck, RejectedFact
 from ..method_names import registered_workflows, workflows_in
 from .request_spans import _span
 
-__all__ = ["FACT_INSTRUCTIONS", "fact_candidates", "fact_messages_text", "kept_facts"]
+__all__ = ["FACT_INSTRUCTIONS", "fact_candidates", "fact_messages_text", "holds_stated_setting", "kept_facts"]
 
 MAX_CANDIDATES = 4
 MAX_ASKED = 2
@@ -100,6 +101,20 @@ def _inside(quote: str, outer: list[str]) -> bool:
     return any(q and q in normalized(item) for item in outer)
 
 
+def holds_stated_setting(task: str, check, quote: str) -> bool:
+    """Whether the words hold a setting the check read as stated with its value -- by the reading (its fact record) or
+    the settings read (a result's method). A count the user is unsure of (M38) and a setting named without a value
+    (h2 J21 "lam should be 1.5, or maybe 0.15; the decimal point is smudged") are not settled: they are still asked."""
+    span = _span(task, quote) if quote.strip() else None
+    if span is None or check is None:
+        return False
+    typed = [found for fact in check.facts if fact.property == "setting" and fact.state == "stated" and fact.value.strip()
+             for found in (fact.span, fact.value_span) if len(found) == 2]
+    typed += [item["span"] for row in check.requirements for item in row.method.get("settings", [])
+              if len(item.get("span") or []) == 2 and str(item.get("value", "")).strip()]
+    return any(span[0] <= start and end <= span[1] for start, end in typed)
+
+
 def _named_options(task: str, alternatives) -> list[tuple[int, int]]:
     """R7: the options a wanted-result fact names in the request's own words -- placed, and none inside another."""
     spans = list(dict.fromkeys(span for words in alternatives or () if (words or "").strip()
@@ -140,7 +155,7 @@ def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> Fa
             continue
         if proposal.about == "wanted_result" and len(_named_options(task, proposal.alternatives)) < 2:
             # R7 (phase 5c): a result the user is unsure of, with fewer than two options named, is a goal to clarify
-            if _inside(proposal.user_quote, stated):
+            if _inside(proposal.user_quote, stated) or holds_stated_setting(task, check, proposal.user_quote):
                 reject("R4 the reading typed it as stated")
             elif (words := task[span[0]:span[1]]) not in open_results:
                 open_results.append(words)
@@ -150,7 +165,7 @@ def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> Fa
         if yes is None or no is None or yes == no:
             reject("R3 yes and no do not lead to different outcomes")
             continue
-        if _inside(proposal.user_quote, stated):
+        if _inside(proposal.user_quote, stated) or holds_stated_setting(task, check, proposal.user_quote):
             reject("R4 the reading typed it as stated")
             continue
         if span in seen:
