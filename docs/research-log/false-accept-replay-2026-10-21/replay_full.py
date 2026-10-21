@@ -100,6 +100,32 @@ def _answer(check, pairs, recorded: dict):
     return done, answers, missing
 
 
+SETTINGS_READS: dict[str, dict] = {}
+"""ROUND-22: offline settings reads by "task\x00workflow", for readings recorded before the read existed."""
+SETTINGS_TRIGGERED: list[tuple[str, str]] = []
+"""(request, workflow) whose replay reached the settings read with no recorded or cached answer."""
+
+
+def _settings_reads(check, task: str, found: list[dict], steps: list[str]):
+    """ROUND-22 (R22-B): the settings read where live makes it -- recorded, else the offline cache, else none."""
+    try:
+        from netzoo_agent_core.interpretation.settings_read import (
+            settings_read_model, settings_read_triggers, with_settings_read)
+    except ImportError:  # a checkout before ROUND-22
+        return check
+    recorded = {(e["payload"]["quote"], e["payload"]["workflow"]): e["payload"].get("read")
+                for e in found if e["event_type"] == "core.settings_read"}
+    for index, workflow in settings_read_triggers(check, task)[:2]:
+        key = (check.requirements[index].quote, workflow)
+        read = recorded[key] if key in recorded else SETTINGS_READS.get(f"{task}\x00{workflow}")
+        if read is None:
+            SETTINGS_TRIGGERED.append((task, workflow))
+            continue
+        steps.append("settings read")
+        check = with_settings_read(check, task, index, workflow, settings_read_model(workflow).model_validate(read))
+    return check
+
+
 GOAL_READS: dict[str, dict] = {}
 """ROUND-21: offline goal reads by request text, for readings recorded before the read existed (`goal-read-2026-10-21`)."""
 GOAL_TRIGGERED: list[str] = []
@@ -238,6 +264,14 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
     if (lifted := without_ruled_out(check, stated_inputs)) is not check:
         check = lifted
         steps.append("ruled out")
+    try:  # ROUND-22 (R22-A): a named CONDOR with no network, as routing applies it
+        from netzoo_agent_core.interpretation.ruled_out import without_unbuilt_network
+    except ImportError:
+        without_unbuilt_network = None
+    if without_unbuilt_network is not None and (built := without_unbuilt_network(check, task)) is not check:
+        check = built
+        steps.append("unbuilt network held")
+    check = _settings_reads(check, task, found, steps)
     try:  # ROUND-17: rows resting only on a workflow another row blocks are held (absent from older checkouts)
         from netzoo_agent_core.interpretation.same_run import same_run_holds
     except ImportError:
@@ -249,6 +283,18 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
     # 8-9: the recorded fact check, waits, the full-gap update, the call
     if decision.fact_check is not None and decision.fact_check.status == "checked":
         check = without_legacy_waits(check)
+        try:  # ROUND-22: R4 also rejects words that hold a stated setting (absent from older checkouts)
+            from netzoo_agent_core.interpretation.fact_check import holds_stated_setting
+        except ImportError:
+            holds_stated_setting = None
+        agent = decision.fact_check
+        if holds_stated_setting is not None:
+            kept = [fact for fact in agent.accepted if not holds_stated_setting(task, check, fact.user_quote)]
+            opened = [words for words in agent.open_results if not holds_stated_setting(task, check, words)]
+            if (kept, opened) != (agent.accepted, agent.open_results):
+                decision = decision.model_copy(update={"fact_check": agent.model_copy(
+                    update={"accepted": kept, "open_results": opened})})
+                steps.append("R4 stated setting")
     if check.needed_facts():
         decision = waiting_decision(decision, check)
     else:
