@@ -81,6 +81,7 @@ export function makeOption(overrides: Partial<ReplyOption> = {}): ReplyOption {
     available: true,
     reason: "",
     action: "run_panda",
+    compare_actions: [],
     granularity: null,
     resolution: "confirm_workflow",
     paths: [],
