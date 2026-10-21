@@ -42,11 +42,15 @@ def decline_reply(core) -> str:
     lines = [f"{index}. {part.line or chr(34) + part.quote + chr(34) + ' -- not available here as asked.'}"
              for index, part in enumerate(core.declined, 1)]
     head = ["What I understood you are asking for:", *lines] if lines else [
-        "What you asked for is not something a registered NetZoo workflow produces."]
+        "What you asked for was not matched to any registered NetZoo workflow."]  # ROUND-21: no row says why
+    from .capability_check import NOT_MATCHED
+
     many = len(core.declined) > 1
-    return "\n\n".join(["\n".join(head),
-                        f"No registered workflow can give {'these' if many else 'this'} as you asked, so none is "
-                        f"offered as asked.", _CLOSING])
+    if lines and all(part.line.endswith(NOT_MATCHED) for part in core.declined):  # ROUND-21: nothing to say why
+        closing = f"{'These were' if many else 'This was'} {NOT_MATCHED[:-1]}, so none is offered."
+    else:
+        closing = f"No registered workflow can give {'these' if many else 'this'} as you asked, so none is offered as asked."
+    return "\n\n".join(["\n".join(head), closing, _CLOSING])
 
 
 def unchecked_reply(core) -> str:

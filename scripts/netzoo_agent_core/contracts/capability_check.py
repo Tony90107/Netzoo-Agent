@@ -24,7 +24,8 @@ from .strict_schema import strict_json_schema
 
 __all__ = ["APPROVING_RUN_VERDICTS", "CONDITIONS", "CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES",
            "RequirementKind", "RunVerdict", "RunVerdictName",
-           "SecondOpinionAnswer", "condition_check_model", "conditions_model", "full_gap", "proposal_model",
+           "GoalRead", "SecondOpinionAnswer", "condition_check_model", "conditions_model", "full_gap",
+           "proposal_model",
            "proposal_sentences",
            "reading_version", "reread_as_proposal", "reread_model", "schema_version", "second_opinion_model",
            "unstated_conditions"]
@@ -591,6 +592,21 @@ def proposal_sentences(proposal) -> list:
     return [getattr(proposal, f"s{index}") for index in range(1, count + 1)]
 
 
+class GoalRead(BaseModel):
+    """ROUND-21 (R21-A): a full gap no reason can be given for, read once more in another shape -- one question over the
+    whole request instead of the check's sentence-by-sentence entries (ExtractConf). The model only quotes and picks;
+    it is never asked whether the request is ambiguous (CLAMBER), and code decides from the quoted words."""
+
+    model_config = ConfigDict(extra="forbid")
+    asked_words: str = Field(description=(
+        "The request's own words, copied exactly, that say what the user wants from the analysis."))
+    result: Literal["names_a_result", "names_no_result"] = Field(description=(
+        "names_a_result: those words name a particular output -- a kind of network, communities, subtypes, a list, a "
+        "file, a score, a model or a statistic -- whether or not any tool makes it. names_no_result: they ask for an "
+        "analysis, a view, figures, help or the results without saying which output, or ask which method to use or "
+        "what can be done."))
+
+
 class CheckedRequirement(BaseModel):
     """One verified requirement and what the sheet says about it."""
 
@@ -694,6 +710,9 @@ class CapabilityCheck(BaseModel):
     only_inputs: list[str] = Field(default_factory=list)
     only_inputs_quote: str = ""
     """Phase 4b: the input kinds the user says are all they have, with their verified words (the rest are absent)."""
+    open_goal_quote: str = ""
+    """ROUND-21 (R21-A): on a full gap no reason can be given for, the request's verified words asking for an analysis
+    that names no result (`interpretation.goal_read`); the turn is CLARIFY, not DECLINE."""
     claim_sentences: dict[str, list[str]] = Field(default_factory=dict)
     """ROUND-20: for each registry-wide claim (causal, prediction, delivery), the request sentences holding its verified
     words; a registry-wide reason is said only for a result in one of them (`stated_reasons.stated`)."""

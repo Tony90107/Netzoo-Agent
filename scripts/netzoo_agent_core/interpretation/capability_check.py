@@ -615,10 +615,14 @@ def _status_line(item: CheckedRequirement, provisional: bool = False, gap_unconf
         return f"{quote} -- {GAP_UNCONFIRMED_NOT_MATCHED[0].lower()}{GAP_UNCONFIRMED_NOT_MATCHED[1:]}"
     reasons = _why_not(item, check)
     if not reasons:
-        return f"{quote} -- not matched to any registered workflow."
+        return f"{quote} -- {NOT_MATCHED}"
     if item.limits:
         return " ".join([f"{quote} -- not available here as asked.", *reasons])
     return " ".join([f"{quote} -- not available here: no registered workflow produces this.", *reasons])
+
+
+NOT_MATCHED = "not matched to any registered workflow."
+"""A result row with no reason code can verify (ROUND-20); a reply built from such rows claims nothing more."""
 
 
 def understanding_paragraph(check: CapabilityCheck, offers_methods: bool = True) -> str | None:
@@ -652,12 +656,14 @@ def full_gap_reply(check: CapabilityCheck, *, with_note: bool = False) -> str:
     """
     many = len(check.results()) > 1
     them, it = ("these", "them") if many else ("this", "it")
+    said = any(_why_not(item, check) for item in check.results())  # ROUND-21: else no claim beyond "not matched"
     closing = (f"No registered workflow produces {them} as you asked {it}, so none is offered for {it} as asked. "
                "The note below describes the closest route." if with_note else
                # M1: the result exists, but not by the method, settings or data size asked for.
                f"No registered workflow can give {them} as you asked {it} (above), so none is offered as asked."
-               if any(item.limits for item in check.results()) else
-               f"No registered workflow produces {them}, so none is offered as the way to get {it}.")
+               if said and any(item.limits for item in check.results()) else
+               f"No registered workflow produces {them}, so none is offered as the way to get {it}." if said else
+               f"{'These were' if many else 'This was'} {NOT_MATCHED[:-1]}, so none is offered.")
     return "\n\n".join([
         understanding_paragraph(check) or "",
         closing,
