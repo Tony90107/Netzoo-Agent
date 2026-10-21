@@ -9,16 +9,16 @@ nearly all `goal=result_named` -- and differ in whether the request names a resu
 So only such a gap is read again, in another shape (ExtractConf: one question over the whole request, not the check's
 sentence-by-sentence entries), triggered by code (GraphRAG gleaning, Kamoi 2024). The model quotes the words saying
 what the user wants and says whether they name a result; it is never asked whether the request is ambiguous (CLAMBER).
-Code keeps the answer only when the quoted words are in the request and name no single registered workflow -- as in
-`core_decision.goal_unclear`, a question about one named method has a goal (unlabelled ve-m3 N21, "Can PUMA convert
-its signed edge weights into experimentally proven ... labels", was read as naming no result) -- and then the turn is
-CLARIFY. Any other answer, or none, leaves the DECLINE as it was.
+Code keeps the answer only when the quoted words are in the request, and then the turn is CLARIFY. Any other answer,
+or none, leaves the DECLINE as it was. A guard that kept words naming one registered workflow declined (added for the
+unlabelled ve-m3 N21, "Can PUMA convert its signed edge weights into experimentally proven ... labels") was removed
+after the live check: gold-CLARIFY M33, "What could GIRAFFE tell me about our T-cell exhaustion time course? ... I'm not
+sure what question to put to it", was read correctly and then declined by it.
 """
 
 from __future__ import annotations
 
 from ..contracts.capability_check import CapabilityCheck, GoalRead
-from ..method_names import workflows_in
 from .request_spans import _span
 
 __all__ = ["GOAL_READ_INSTRUCTIONS", "needs_goal_read", "with_goal_read"]
@@ -50,7 +50,5 @@ def with_goal_read(check: CapabilityCheck, task: str, read: GoalRead | None) -> 
     """The check with the request's words for an open goal when the read says they name no result."""
     words = (read.asked_words or "").strip() if read is not None else ""
     if read is None or read.result != "names_no_result" or not words or (span := _span(task, words)) is None:
-        return check
-    if len(workflows_in(task[span[0]:span[1]])) == 1:  # a question about one named method has a goal
         return check
     return check.model_copy(update={"open_goal_quote": task[span[0]:span[1]]})
