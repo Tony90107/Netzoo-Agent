@@ -279,6 +279,20 @@ def test_mx12_an_unusable_setting_in_its_own_clause_is_a_requirement_of_its_own(
             in understanding_paragraph(check))
 
 
+C13 = "Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv with lam set to 1.5, so co-expression gets even more weight than PPI."
+
+
+def test_c13_a_control_of_the_credited_workflow_holds_its_run_however_short_the_quote():
+    # ROUND-12: p4c and p5r quoted only "Run OTTER" -- commas in the file list then set lam apart and OTTER ran in part;
+    # p4b quoted the whole sentence and lam held the run. lam is OTTER's own control, so it holds the run either way.
+    lam = [("OTTER.lam", "lam", "1.5")]
+    for quote in ("Run OTTER", C13.split(", so")[0]):
+        check = _check(C13, _ask(quote, ["otter.tf_gene_network"], named="OTTER", named_quote="OTTER",
+                                 settings=lam, regulator_kinds=["tf"]))
+        [result] = check.results()
+        assert result.status == "not_available" and "lam" in result.limits[0], quote
+
+
 F6 = ("Please build LIONESS-PANDA networks for our 40 liver samples with an edge sparsity threshold of 0.3 applied "
       "inside the method; motif and PPI files are ready.")
 

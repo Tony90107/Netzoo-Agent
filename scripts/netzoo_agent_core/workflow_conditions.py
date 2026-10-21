@@ -24,7 +24,8 @@ from .runtime_constraints import runtime_control_constraints
 
 __all__ = [
     "LIONESS_FAMILY", "UNREGISTERED", "SettingLimit", "StatedSetting", "WorkflowConditions", "all_conditions",
-    "boolean_value", "combination_issues", "control_boolean_value", "conditions_for", "data_issue", "enum_value", "method_names",
+    "boolean_value", "combination_issues", "contract_forbids", "control_boolean_value", "conditions_for", "data_issue",
+    "enum_value", "method_names",
     "named_workflows", "setting_issue", "setting_unresolved",
     "setting_names", "stated_numbers",
 ]
@@ -270,6 +271,18 @@ def setting_issue(conditions: WorkflowConditions, setting: StatedSetting) -> str
     return None
 
 
+def contract_forbids(conditions: WorkflowConditions, setting: StatedSetting) -> bool:
+    """Whether the workflow's own numeric control is given a number its contract's range forbids -- the method cannot
+    run so (OTTER's lam is in [0, 1]; "lam set to 1.5"). A value the contract allows but this runtime cannot honour
+    (OTTER's computing=gpu), words naming no allowed choice (C40's genes_axis, asked or read again, never forbidden),
+    and a setting it has no control for are not forbidden by its contract."""
+    if setting.name == UNREGISTERED:
+        return False
+    limit = conditions.settings.get(setting.name.split(".", 1)[-1])
+    return (limit is not None and limit.wired and limit.control_type in ("number", "integer")
+            and setting_issue(conditions, setting) is not None)
+
+
 def setting_unresolved(conditions: WorkflowConditions, setting: StatedSetting) -> str | None:
     """Words naming a supported control whose value they do not settle -- asked, never a violation or the default.
 
@@ -323,7 +336,9 @@ def combination_issues(conditions: WorkflowConditions, settings: list[StatedSett
     DRAGON and LIONESS-DRAGON take both lambdas or neither; SAMBAR needs kmin <= kmax and, clustering, at least
     kmax samples; BONOBO with sparsify needs delta above 0 and below 1/3; and no combination the registry marks
     invalid among its conditional outputs (BONOBO's save_pvals without sparsify). A value the words do not state is
-    never judged; a setting the words name without a value is taken as stated (sparsify, a lambda).
+    never judged; a setting the words name without a value is taken as stated (sparsify). A lambda named without a
+    number is DRAGON's estimate, its contract's empty value, not a manual one (ROUND-12 C17: "the transcript layer's
+    shrinkage is fixed at 0.3, while the metabolite layer's shrinkage is estimated from the data" sets one alone).
     """
     stated = {item.name.split(".", 1)[1]: item for item in settings
               if item.name != UNREGISTERED and item.name.split(".", 1)[1] in conditions.settings}
@@ -340,7 +355,9 @@ def combination_issues(conditions: WorkflowConditions, settings: list[StatedSett
 
     found = []
     if {"lambda1", "lambda2"} <= set(conditions.settings) and stated.keys() & {"lambda1", "lambda2"}:
-        if error := dragon.lambda_pair_error(stated.get("lambda1"), stated.get("lambda2")):
+        manual = {name: stated[name] for name in ("lambda1", "lambda2")
+                  if name in stated and stated_numbers(stated[name].value)}
+        if error := dragon.lambda_pair_error(manual.get("lambda1"), manual.get("lambda2")):
             found.append(f"{conditions.workflow}: {error.rstrip('.')}")
     if conditions.action == "run_sambar":
         kmin, kmax = number("kmin"), number("kmax")
