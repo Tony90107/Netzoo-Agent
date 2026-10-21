@@ -3,11 +3,14 @@
  */
 import { useEffect, useRef } from "react";
 
-import { Entry, SessionState } from "../../transport/session";
+import { Entry, entryTimestamp, SessionState } from "../../transport/session";
+import { Splitter, usePaneSize } from "../../app/Splitter";
+import { buildRuns, type ActivityRun } from "../timeline/model";
 import { Markdown } from "./Markdown";
 import { InputArea } from "./InputArea";
 import { ModeSwitch } from "./ModeSwitch";
 import { ReplyCardView } from "./ReplyCardView";
+import { TurnActivity } from "./TurnActivity";
 
 function Bubble({ entry }: { entry: Entry }) {
   if (entry.kind === "error") {
@@ -51,10 +54,21 @@ export function Conversation({
   onOpenOutputs,
 }: Props) {
   const tail = useRef<HTMLDivElement>(null);
+  const composerSlot = useRef<HTMLDivElement>(null);
+  const followTail = useRef(true);
+  const [choicesHeight, setChoicesHeight] = usePaneSize("choices-height", 320, 190, 1000);
+  const hasChoices = !session.busy && session.view?.prompt_kind === "main" &&
+    Boolean(session.view.card?.choices?.options.some((option) => option.available));
+  const runs = buildRuns(session.trace);
+  const items: ({ kind: "entry"; entry: Entry; at: number; order: number } | { kind: "run"; run: ActivityRun; at: number; order: number })[] = [
+    ...session.entries.map((entry, order) => ({ kind: "entry" as const, entry, at: Date.parse(entryTimestamp(entry) ?? "") || 0, order })),
+    ...runs.map((run, order) => ({ kind: "run" as const, run, at: Date.parse(run.startedAt) || 0, order })),
+  ];
+  items.sort((left, right) => left.at - right.at || (left.kind === "entry" ? 0 : 1) - (right.kind === "entry" ? 0 : 1) || left.order - right.order);
 
   useEffect(() => {
-    tail.current?.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "end" });
-  }, [session.entries.length, session.busy, session.view]);
+    if (followTail.current) tail.current?.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "end" });
+  }, [session.entries.length, session.trace.length, session.busy, session.view]);
 
   return (
     <section className="pane pane--wide">
@@ -67,7 +81,10 @@ export function Conversation({
         />
       </header>
 
-      <div className="thread">
+      <div className="thread" onScroll={(event) => {
+        const node = event.currentTarget;
+        followTail.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100;
+      }}>
         {session.entries.length === 0 && !session.busy ? (
           <div className="thread__empty">
             Describe a NetZoo goal, or ask how a workflow works.
@@ -75,9 +92,9 @@ export function Conversation({
             Nothing runs until you approve a plan.
           </div>
         ) : null}
-        {session.entries.map((entry) => (
-          <Bubble key={entry.id} entry={entry} />
-        ))}
+        {items.map((item) => item.kind === "entry"
+          ? <Bubble key={`entry-${item.entry.id}`} entry={item.entry} />
+          : <TurnActivity key={`run-${item.run.id}`} run={item.run} busy={session.busy && item.run.id === runs.at(-1)?.id} incomplete={session.missedEvents} />)}
         {session.busy ? (
           <div className="thread__progress">
             <span className="thread__spinner" aria-hidden="true" />
@@ -97,7 +114,17 @@ export function Conversation({
         <div ref={tail} />
       </div>
 
-      <div className="composer-slot">
+      {hasChoices ? <Splitter
+        orientation="horizontal"
+        className="splitter--composer"
+        label="Resize choices and conversation: drag or use arrow keys"
+        onDelta={(delta) => setChoicesHeight((composerSlot.current?.getBoundingClientRect().height || choicesHeight) - delta)}
+      /> : null}
+      <div
+        ref={composerSlot}
+        className={`composer-slot${hasChoices ? " composer-slot--resizable" : ""}`}
+        style={hasChoices ? { height: choicesHeight } : undefined}
+      >
         {session.stopped ? (
           <div className="composer composer--busy">This session has ended.</div>
         ) : session.view || session.busy ? (

@@ -58,11 +58,13 @@ export function Splitter({
   orientation,
   onDelta,
   label,
+  className = "",
 }: {
   orientation: "vertical" | "horizontal";
   /** Positive is rightwards or downwards, in CSS pixels. */
   onDelta: (delta: number) => void;
   label: string;
+  className?: string;
 }) {
   const [dragging, setDragging] = useState(false);
   const last = useRef(0);
@@ -88,9 +90,10 @@ export function Splitter({
 
   return (
     <div
-      className={`splitter splitter--${orientation}${dragging ? " is-dragging" : ""}`}
+      className={`splitter splitter--${orientation}${className ? ` ${className}` : ""}${dragging ? " is-dragging" : ""}`}
       role="separator"
       aria-label={label}
+      title={label}
       aria-orientation={orientation === "vertical" ? "vertical" : "horizontal"}
       tabIndex={0}
       onPointerDown={(event) => {
