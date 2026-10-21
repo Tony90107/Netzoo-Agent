@@ -294,6 +294,8 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         return call("UNCHECKED", "check_unconfirmed", workflows=_routed(decision))
     if (boundary := _boundary(decision, task)) is not None:
         return call("DECLINE", boundary[0], declined=[DeclinedPart(quote="", line=boundary[1])])
+    if check is not None and check.full_gap and check.open_goal_quote:  # ROUND-21: no result named, no reason to say
+        return call("CLARIFY", "goal_open", clarify=_clarify_need(decision, check, check.open_goal_quote, task))
     if check is not None and check.full_gap or verdict is not None and verdict.held and verdict.verdict == "gap":
         return call("DECLINE", "full_gap", declined=_declined(results, check))
     if not read and not running and decision.capability_match_status == "unsupported":

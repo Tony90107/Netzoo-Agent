@@ -26,6 +26,7 @@ from ..routing.named_labels import named_registered_action
 from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, record_event
 from .fact_check_call import apply_fact_check, fact_model
+from .goal_read_call import apply_goal_read
 from .required_check_budget import required_fact_check_reserve
 from ..interpretation.ruled_out import without_ruled_out
 from .continuation_invocation import compare_workflows, continue_workflow
@@ -631,6 +632,10 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         decision = decision.model_copy(update={
             "action": "no_tool", "should_execute": False, "intent_type": "answer_question",
             "reason": "No registered workflow produces what the run asks for; it is not planned."})
+    # ROUND-21 (R21-A): a full gap no reason can be given for is read once more; no result named -> CLARIFY.
+    check, usage, warnings = apply_goal_read(context, state, user_task, decision, check, result.usage,
+                                             result.budget_warnings)
+    result = replace(result, usage=usage, budget_warnings=warnings)
     if check.full_gap:
         check = check.model_copy(update={"cleared": list(dict.fromkeys(
             [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions]))})
