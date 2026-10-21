@@ -1,0 +1,19 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.81s)
+● Matching registered workflows…
+✓ Workflow — BONOBO
+✓ Guidance prepared
+What I understood you are asking for:
+1. "write networks" -- available from BONOBO.
+2. "gene IDs in the first column, sample IDs in the header" -- not available here as asked. BONOBO does not meet "gene IDs in the first column, sample IDs in the header".
+
+BONOBO: Infer sample-specific gene-gene co-expression networks with netZooPy BONOBO.
+Registered required inputs: expression_file, output_dir.
+Registered workflow controls: bonobo_output_format (type=enum, default='.h5'), sample_names (type=string_list, default=[]), sparsify (type=boolean, default=False), bonobo_confidence (type=number, default=0.05), save_pvals (type=boolean, default=False), precision (type=enum, default='single'), keep_in_memory (type=boolean, default=False), delta (type=number, default=None), genes_axis (type=enum, default='auto'), log_transformed (type=boolean, default=None), centered (type=boolean, default=None).
+Output: one gene-gene co-expression network per selected sample.
+This is a co-expression result, not a regulatory network (TF/miRNA) or a covariance-decomposition artifact.
+When `sparsify=False` and `save_pvals=False`: full sample-specific gene-gene co-expression matrices; no p-value artifact is written.
+When `sparsify=True` and `save_pvals=False`: upstream thresholds each sample-specific co-expression matrix; no p-value artifact is written.
+When `sparsify=True` and `save_pvals=True`: upstream retains the full co-expression matrix for each selected sample and writes a matching p-value matrix; threshold it from the saved p-value matrix; it does not also emit an already-thresholded network in this mode.
+
+No files were inspected and no analysis ran.

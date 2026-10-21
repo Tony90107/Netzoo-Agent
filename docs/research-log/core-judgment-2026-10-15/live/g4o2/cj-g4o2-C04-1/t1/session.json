@@ -1,0 +1,746 @@
+{
+  "version": 1,
+  "session_id": "cj-g4o2-C04-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792249511.729901,
+  "updated_at": 1792249511.729967,
+  "messages": [
+    {
+      "role": "user",
+      "content": "For each of our 25 diffuse large B-cell lymphoma patients I need that patient's own TF-to-gene regulatory network, built from the cohort's expression matrix together with a human motif prior and a TF PPI, so I can later compare each TF's targeting between responders and non-responders."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"that patient's own TF-to-gene regulatory network\" -- available from LIONESS-PANDA.\n2. \"For each of our 25 diffuse large B-cell lymphoma patients I need\" -- not matched to any registered workflow.\n3. \"built from the cohort's expression matrix together with a human motif prior and a TF PPI, so I can later compare each TF's targeting between responders and non-responders\" -- available from LIONESS-PANDA.\n\nI can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\nUnconfirmed assumptions in these interpretations (please correct me if needed):\n- The human motif prior and TF PPI are used as additional inputs for the network inference.\n\nFor your question (\"compare each TF's targeting between responders and non-responders\"):\n- **PANDA** — Build one network per group on the same genes and priors, then compare edge weights or each regulator's targeting score (out-degree) between the group networks. Two aggregate networks give one value per edge per group: they show where the groups differ, but give no per-sample spread to test it. For a statistical test, use the per-sample (LIONESS) version and test between the groups.\n- **LIONESS-PANDA** — Each sample gets its own network, so each edge weight or targeting score can be tested between the groups across samples -- for example with a linear model such as limma.\n- **OTTER** — Build one network per group on the same genes and priors, then compare edge weights or each regulator's targeting score (out-degree) between the group networks. Two aggregate networks give one value per edge per group: they show where the groups differ, but give no per-sample spread to test it. For a statistical test, use a per-sample method such as LIONESS-PANDA and test between the groups.\n- **GIRAFFE** — The activity matrix compares TF activity, not network wiring, between the conditions; test each TF's activity between them (paired when the same individuals give both).\nNote: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.\nNote: OTTER weights are on a different scale from PANDA's; compare OTTER networks only with other OTTER networks built with the same parameters.\n\nThese all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The user is asking for guidance on building TF-to-gene regulatory networks for each patient, which involves planning and selecting appropriate methods. This is a request for an explanation or guidance, not an execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The user is asking for guidance on building TF-to-gene regulatory networks for each patient, which involves planning and selecting appropriate methods. This is a request for an explanation or guidance, not an execution.",
+      "candidate_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [
+          "tf_gene_regulation"
+        ],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [
+              "tf_gene_regulation"
+            ],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.95,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "TF-to-gene regulatory network",
+              "rationale": "The user wants a TF-to-gene regulatory network for each patient."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "cohort's expression matrix",
+              "rationale": "The cohort's expression matrix is mentioned as an input."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "tf_gene_regulation",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The request involves inferring TF-to-gene regulatory networks."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": [
+            "The human motif prior and TF PPI are used as additional inputs for the network inference."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA.",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a human motif prior and a TF PPI",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a human motif prior and a TF PPI",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a human motif prior and a TF PPI",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a human motif prior and a TF PPI",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a human motif prior and a TF PPI",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "claims",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a human motif prior and a TF PPI",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "that patient's own TF-to-gene regulatory network",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_panda.per_sample_networks"
+            ],
+            "not_by": [
+              "panda.no_complexes",
+              "panda.no_sign",
+              "panda.no_motif_discovery",
+              "panda.no_dynamics",
+              "puma.no_lncrna_cerna",
+              "puma.no_mirna_expression_use",
+              "lioness.no_single_cell",
+              "lioness_panda.no_sign",
+              "lioness_panda.no_complexes",
+              "lioness_puma.no_single_cell",
+              "lioness_puma.no_lncrna_cerna",
+              "otter.no_per_sample",
+              "otter.no_global_optimum",
+              "otter.no_complexes",
+              "otter.no_sign",
+              "giraffe.no_protein_level",
+              "giraffe.no_per_sample_wiring",
+              "dragon.no_flux_or_pathway_activity",
+              "dragon.no_more_layers",
+              "lioness_dragon.no_pvalues",
+              "lioness_dragon.no_flux_or_pathway_activity",
+              "lioness_dragon.no_single_cell",
+              "coexpression.no_regulation",
+              "lioness_coexpression.no_single_cell",
+              "bonobo.no_regulation",
+              "bonobo.no_single_cell",
+              "cobra.no_differential_expression",
+              "cobra.no_pair_significance",
+              "condor.no_two_network_comparison",
+              "condor.no_variant_mapping",
+              "sambar.no_expression_subtypes",
+              "sambar.no_driver_calls"
+            ],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 25,
+              "samples_quote": "our 25 diffuse large B-cell lymphoma patients"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "For each of our 25 diffuse large B-cell lymphoma patients I need",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 25,
+              "samples_quote": "25 diffuse large B-cell lymphoma patients"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "built from the cohort's expression matrix together with a human motif prior and a TF PPI, so I can later compare each TF's targeting between responders and non-responders",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_panda.per_sample_networks"
+            ],
+            "not_by": [
+              "lioness.no_single_cell",
+              "lioness_panda.no_sign",
+              "lioness_panda.no_complexes"
+            ],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "that patient's own TF-to-gene regulatory network",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "our 25 diffuse large B-cell lymphoma patients",
+          "that patient's own TF-to-gene regulatory network"
+        ]
+      },
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "LIONESS-PANDA"
+        ],
+        "declined": [
+          {
+            "quote": "For each of our 25 diffuse large B-cell lymphoma patients I need",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"For each of our 25 diffuse large B-cell lymphoma patients I need\" -- not matched to any registered workflow."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "result",
+              "available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "that patient's own TF-to-gene regulatory network"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o",
+        "candidates": [
+          "LIONESS-PANDA",
+          "PANDA",
+          "OTTER",
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "the cohort's expression matrix",
+              "uncertainty": "two_readings",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "Require at least three expression samples before execution.",
+              "question": "Does the cohort's expression matrix have at least three samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "the cohort's expression matrix",
+              "uncertainty": "two_readings",
+              "workflow": "OTTER",
+              "contract_quote": "expression_file must have a header, a unique gene-ID first column, and at least two unique sample columns.",
+              "question": "Does the cohort's expression matrix have at least two unique sample columns?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 36076,
+    "output_tokens": 2128,
+    "total_tokens": 38204,
+    "calls": [
+      {
+        "call_id": "c486b06c-2532-48e3-b886-a4e0b60e7941",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o",
+        "provider_request_id": "gen-1792249492-Qb9kC2mxjDEGAUxQvsWX",
+        "input_tokens": 5338,
+        "output_tokens": 279,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5617,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 10055,
+        "price_snapshot": null,
+        "duration_ms": 2826,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2b5b2933-0277-4bc2-b1ba-47f1fdbc2549",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o",
+        "provider_request_id": "gen-1792249494-F6PEKZVUvXrKwxE92Cqw",
+        "input_tokens": 1348,
+        "output_tokens": 140,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1488,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 4770,
+        "price_snapshot": null,
+        "duration_ms": 1538,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "797bb943-4bb7-482e-b59c-76fcd42123a8",
+        "role": "intent_router",
+        "model": "openai/gpt-4o",
+        "provider_request_id": null,
+        "input_tokens": 671,
+        "output_tokens": 67,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 738,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1096,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "97f8e892-08a5-45ac-b82c-0bfc449845ac",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o",
+        "provider_request_id": "gen-1792249497-FtTexJJfzU489XnJQh31",
+        "input_tokens": 1735,
+        "output_tokens": 84,
+        "cache_read_tokens": 1664,
+        "cache_write_tokens": 0,
+        "total_tokens": 1819,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 3098,
+        "price_snapshot": null,
+        "duration_ms": 1298,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a1d91c5a-aa80-4f01-9c3a-3a8846b84e57",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o",
+        "provider_request_id": "gen-1792249498-NX7PBLlKzK0Rwhp5KLIz",
+        "input_tokens": 2751,
+        "output_tokens": 198,
+        "cache_read_tokens": 2688,
+        "cache_write_tokens": 0,
+        "total_tokens": 2949,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 5498,
+        "price_snapshot": null,
+        "duration_ms": 2303,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "d42c95e7-5356-414a-ab9d-04ee3c76e225",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-2024-11-20",
+        "provider_request_id": "gen-1792249501-rGtfOOZ36Bu2C0aIxLB3",
+        "input_tokens": 11941,
+        "output_tokens": 693,
+        "cache_read_tokens": 11008,
+        "cache_write_tokens": 0,
+        "total_tokens": 12634,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 23023,
+        "price_snapshot": null,
+        "duration_ms": 3810,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "66dcf112-39ae-402a-848f-a9398c3680ad",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o",
+        "provider_request_id": "gen-1792249505-pSK5JKcsdKmQkN8uyTq5",
+        "input_tokens": 561,
+        "output_tokens": 72,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 633,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2123,
+        "price_snapshot": null,
+        "duration_ms": 1155,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e8d3444a-21bb-4b89-917d-11827dba6db1",
+        "role": "data_facts",
+        "model": "openai/gpt-4o",
+        "provider_request_id": "gen-1792249506-kczi0osmDdOAenruZfDG",
+        "input_tokens": 550,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 594,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1815,
+        "price_snapshot": null,
+        "duration_ms": 969,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e2cd094f-1c3a-4921-b9a5-70024bd89a27",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-2024-11-20",
+        "provider_request_id": "gen-1792249507-wMak5y45xwqh4z3fid1w",
+        "input_tokens": 8294,
+        "output_tokens": 370,
+        "cache_read_tokens": 8192,
+        "cache_write_tokens": 0,
+        "total_tokens": 8664,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 14195,
+        "price_snapshot": null,
+        "duration_ms": 2382,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ae832393-5f27-4f77-8118-fd1f256d6861",
+        "role": "fact_check",
+        "model": "openai/gpt-4o",
+        "provider_request_id": "gen-1792249509-Hwu0ILKl3Ddvza7GAUN8",
+        "input_tokens": 2887,
+        "output_tokens": 181,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 3068,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 9028,
+        "price_snapshot": null,
+        "duration_ms": 2150,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "abc35195-4ea0-4bcd-ac4a-b8303896fcc0"
+}

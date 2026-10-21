@@ -1,0 +1,495 @@
+{
+  "version": 1,
+  "session_id": "cj-p5-C18-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792146398.014179,
+  "updated_at": 1792146398.0145621,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Run CONDOR directly on expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies) to get gene communities. I don't have any motif or PPI files, just this expression table."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"gene communities\" -- not available here as asked. You said \"just this expression table\"; CONDOR needs a regulator-gene network; every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have: you said \"motif\"; OTTER needs a TF motif prior and no registered workflow or tool provides it.\n\nNo registered workflow can give this as you asked it (above), so none is offered as asked.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request explicitly authorizes execution or direct read-only retrieval; deterministic command-language routing selected execute.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": false,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request explicitly authorizes execution or direct read-only retrieval; deterministic command-language routing selected execute.",
+      "candidate_actions": [
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "community_assignment",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "community_assignment",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.5,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "community_assignment",
+              "source": "explicit",
+              "text_span": "get gene communities.",
+              "rationale": "The user is seeking gene communities as the output."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies)",
+              "rationale": "The input is specified as a gene-by-sample RNA-seq expression table."
+            },
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Run CONDOR directly on expr_kidney_fibrosis.tsv to get gene communities.",
+              "rationale": "The user requests to run CONDOR to identify gene communities."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "unsupported",
+      "match_basis": "unverified_evidence",
+      "rejected_methods": [
+        {
+          "action": "run_condor",
+          "workflow": "CONDOR",
+          "reason_code": "unsupported_input",
+          "input_artifacts": [
+            "expression_matrix"
+          ],
+          "accepted_input_artifacts": [
+            "regulatory_network"
+          ],
+          "reason": "The registered CONDOR input contract does not accept expression_matrix for this analysis; it accepts regulatory_network."
+        }
+      ],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [
+        "input_artifacts"
+      ],
+      "clarification_question": null,
+      "operation_authorization": {
+        "requested": [
+          "run"
+        ],
+        "forbidden": [],
+        "explain_only": null,
+        "preview_requested": false,
+        "blocked_action": null
+      },
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "gene communities",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "one_group",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "CONDOR",
+              "named_quote": "CONDOR",
+              "samples": 64,
+              "samples_quote": "64 biopsies"
+            },
+            "limits": [
+              "You said \"just this expression table\"; CONDOR needs a regulator-gene network; every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have: you said \"motif\"; OTTER needs a TF motif prior and no registered workflow or tool provides it"
+            ],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "just this expression table",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "gene communities",
+        "ruled_out": {
+          "motif_prior": "motif",
+          "ppi": "PPI"
+        },
+        "only_inputs": [
+          "expression"
+        ],
+        "only_inputs_quote": "just this expression table",
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "64 biopsies",
+          "CONDOR"
+        ]
+      },
+      "core": {
+        "kind": "DECLINE",
+        "partial": false,
+        "workflows": [],
+        "declined": [
+          {
+            "quote": "gene communities",
+            "reasons": [
+              "You said \"just this expression table\"; CONDOR needs a regulator-gene network; every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have: you said \"motif\"; OTTER needs a TF motif prior and no registered workflow or tool provides it"
+            ],
+            "alternatives": [],
+            "line": "\"gene communities\" -- not available here as asked. You said \"just this expression table\"; CONDOR needs a regulator-gene network; every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have: you said \"motif\"; OTTER needs a TF motif prior and no registered workflow or tool provides it."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "full_gap",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "community_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "gene communities"
+          ],
+          "run_verdict": null
+        }
+      },
+      "missing_inputs": [],
+      "expression_file": "expr_kidney_fibrosis.tsv",
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 38146,
+    "output_tokens": 8460,
+    "total_tokens": 46606,
+    "calls": [
+      {
+        "call_id": "0dbbfd32-b497-4d38-bbbb-a97d754f53b0",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792146175-8XEK8yS86QEDrxqyd4n6",
+        "input_tokens": 5326,
+        "output_tokens": 205,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5531,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 557,
+        "price_snapshot": null,
+        "duration_ms": 2859,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "7785a479-81fa-4b67-a3dc-56272f0048c5",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792146178-VfnXsvjSv0ppo1HwOwKr",
+        "input_tokens": 5300,
+        "output_tokens": 257,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5557,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 652,
+        "price_snapshot": null,
+        "duration_ms": 3042,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "d886c8fb-b523-422c-8c39-aa0bf22001d3",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 696,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 738,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1054,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "17629a50-bb43-42dd-9f38-fd009b8d954f",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792146182-TYJctmzl8PynXG9MV0JY",
+        "input_tokens": 1599,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1615,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 249,
+        "price_snapshot": null,
+        "duration_ms": 866,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bfec0642-5896-4423-b680-20b7adb961ff",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792146183-UW3YvWjhBYzk3EgxrqY6",
+        "input_tokens": 18463,
+        "output_tokens": 4685,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 23148,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 143135,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5319a060-5708-4d7e-9f59-926e187adb97",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792146326-IHyim8d4v13Uj4jYo1zT",
+        "input_tokens": 549,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 560,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 89,
+        "price_snapshot": null,
+        "duration_ms": 1174,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a3e3367b-a2e1-4d53-ae07-8693f66bb995",
+        "role": "capability_reread",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792146327-P92EseZHrd472Dkexs3F",
+        "input_tokens": 6213,
+        "output_tokens": 3244,
+        "cache_read_tokens": 4576,
+        "cache_write_tokens": 0,
+        "total_tokens": 9457,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 70153,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "45cdfd3d-1de6-48ff-ba21-247487fbd813"
+}

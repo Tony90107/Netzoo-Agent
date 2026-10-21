@@ -1,0 +1,513 @@
+{
+  "version": 1,
+  "session_id": "cj-p2-C54-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792084546.877381,
+  "updated_at": 1792084546.877434,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Our grant renewal promises 'network-based insights' into Crohn's disease, and we have bulk RNA-seq from 150 ileal biopsies plus clinical data (disease activity, treatment, biopsy site). I need to propose a concrete analysis by Friday, but nobody has said what the network part should actually be or what question it should answer. We also have matched serology for most of the patients. What can we do?"
+    },
+    {
+      "role": "assistant",
+      "content": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nWith expression data, the registered workflows can give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample (BONOBO)\n\nWhich of these results do you want, or what question should the analysis answer?\n\nNothing was selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request names no result yet; the goal is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.0,
+      "reason": "The request names no result yet; the goal is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_panda",
+        "run_puma",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_otter",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "network part should actually be",
+              "rationale": "The user seeks to understand the network aspect of their analysis."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user has RNA-seq data available for analysis, which is essential for constructing a regulatory network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user is interested in transcription factors as regulators in the context of the regulatory network."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The regulatory network will involve genes as targets of the transcription factors."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "unverified_evidence",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these results do you want, or what question should the analysis answer?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "What can we do?",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 150,
+              "samples_quote": "150 ileal biopsies"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "bulk RNA-seq from 150 ileal biopsies",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "clinical data (disease activity, treatment, biopsy site)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "matched serology for most of the patients",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "purpose_only",
+        "goal_quote": "What can we do?",
+        "uncertain_quotes": [
+          "nobody has said what the network part should actually be or what question it should answer."
+        ],
+        "stated_quotes": [
+          "bulk RNA-seq",
+          "matched serology for most of the patients."
+        ]
+      },
+      "core": {
+        "kind": "CLARIFY",
+        "partial": false,
+        "workflows": [],
+        "declined": [],
+        "facts": [],
+        "clarify": {
+          "missing": "result",
+          "candidates": [
+            "PANDA",
+            "PUMA",
+            "LIONESS-PANDA",
+            "LIONESS-PUMA",
+            "LIONESS-COEXPRESSION",
+            "COBRA",
+            "DRAGON",
+            "LIONESS-DRAGON",
+            "OTTER",
+            "GIRAFFE",
+            "BONOBO"
+          ],
+          "inputs": [
+            "expression_matrix"
+          ],
+          "question": "Which of these results do you want, or what question should the analysis answer?",
+          "goal_quote": "What can we do?"
+        },
+        "run_allowed": false,
+        "basis": "goal_unclear",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": null,
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "purpose_only",
+            "What can we do?"
+          ],
+          "run_verdict": null
+        }
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "5b6668fe777feeb59c62e2637f8f8419d8b04eaab70d17cc32724829b909d73a",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 49518,
+    "output_tokens": 5421,
+    "total_tokens": 54939,
+    "calls": [
+      {
+        "call_id": "f578f88b-b0c0-4b13-bcfb-517c17a67269",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792084439-oe95wivtC8n5EmcnX0Sh",
+        "input_tokens": 5365,
+        "output_tokens": 236,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5601,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 582,
+        "price_snapshot": null,
+        "duration_ms": 3693,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "07ea3976-0b8b-4df7-ad9c-4feef6cfa1c9",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792084446-U4oAAwAuRnas7wggvdxV",
+        "input_tokens": 6190,
+        "output_tokens": 302,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6492,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 812,
+        "price_snapshot": null,
+        "duration_ms": 3375,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f4766194-32db-4374-8744-1bddf5a2cb7d",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792084443-FXhSFTSlYwNnMskkaIVU",
+        "input_tokens": 7856,
+        "output_tokens": 299,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 8155,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1060,
+        "price_snapshot": null,
+        "duration_ms": 6909,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "140186c9-be99-4e1e-bc94-c04a29a2f29b",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792084449-Itcyl1DjnaDmuz9NtXag",
+        "input_tokens": 1445,
+        "output_tokens": 171,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1616,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 319,
+        "price_snapshot": null,
+        "duration_ms": 2360,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "43c77e4b-d6c4-452a-8a64-f5f30b44f850",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 717,
+        "output_tokens": 52,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 769,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1332,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "717a5406-6bf4-4837-aec1-f02f5b41312c",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792084453-dklWilSOSGGGInIDZ4zY",
+        "input_tokens": 1762,
+        "output_tokens": 47,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1809,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 293,
+        "price_snapshot": null,
+        "duration_ms": 1174,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "97b64775-2893-4608-ad35-0a06a70e4633",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792084454-5XjpZ3W43yvHarvrzxI7",
+        "input_tokens": 25595,
+        "output_tokens": 4241,
+        "cache_read_tokens": 22880,
+        "cache_write_tokens": 0,
+        "total_tokens": 29836,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 90741,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bdc43e44-e10b-45e4-a8ce-2fe9a1612d3e",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792084545-zpn0Ppefsu9UJwz7iU2p",
+        "input_tokens": 588,
+        "output_tokens": 73,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 661,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 132,
+        "price_snapshot": null,
+        "duration_ms": 1279,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "422d0979-7aea-48bc-bb5d-839d661c7ef2"
+}

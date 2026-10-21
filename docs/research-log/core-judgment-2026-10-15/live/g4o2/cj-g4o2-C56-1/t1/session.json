@@ -1,0 +1,523 @@
+{
+  "version": 1,
+  "session_id": "cj-g4o2-C56-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792249836.003074,
+  "updated_at": 1792249836.003181,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can SAMBAR subtype our 160 pediatric medulloblastomas? The sequencing core sent a samples-by-genes variant-count matrix along with gene lengths, a cancer-gene list and a KEGG GMT, but their README doesn't say whether the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Are the counts tumour-only somatic mutations?\n  You wrote: \"whether the counts are tumour-only somatic mutations or germline variant calls\". SAMBAR's contract: \"SAMBAR consumes a samples-by-genes somatic mutation CSV\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.95,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_sambar",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [
+          "mutation_matrix"
+        ],
+        "artifact_type": "sample_cluster_assignment",
+        "entity_types": [
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "mutation_matrix"
+            ],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": [
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.95,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "inferred",
+              "text_span": "Can SAMBAR subtype our 160 pediatric medulloblastomas?",
+              "rationale": "Subtyping involves analyzing the mutation data to assign samples to clusters or subtypes."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "sample_cluster_assignment",
+              "source": "inferred",
+              "text_span": "Can SAMBAR subtype our 160 pediatric medulloblastomas?",
+              "rationale": "The goal is to assign subtypes to the samples, which corresponds to a sample cluster assignment."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": "Can SAMBAR subtype our 160 pediatric medulloblastomas?",
+              "rationale": "The request is for a cohort-wide subtyping, not individual sample-specific results."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "inferred",
+              "text_span": "Can SAMBAR subtype our 160 pediatric medulloblastomas?",
+              "rationale": "The subtyping is performed on samples, making sample the relevant entity type."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "mutation_matrix",
+              "source": "explicit",
+              "text_span": "samples-by-genes variant-count matrix",
+              "rationale": "The user mentions a samples-by-genes variant-count matrix, which is a mutation matrix."
+            }
+          ],
+          "assumptions": [
+            "The variant-count matrix is suitable for subtyping despite the uncertainty about whether it contains somatic or germline mutations."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Are the counts tumour-only somatic mutations?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Can SAMBAR subtype our 160 pediatric medulloblastomas?",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [
+              "sambar.no_expression_subtypes"
+            ],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "one_group",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": "mutation_origin",
+            "outcomes": {
+              "somatic": [
+                "sambar.subtypes"
+              ],
+              "germline": []
+            },
+            "unknown_quote": "their README doesn't say whether the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself.",
+            "file_checked": null,
+            "method": {
+              "named": "SAMBAR",
+              "named_quote": "SAMBAR",
+              "samples": 160,
+              "samples_quote": "160 pediatric medulloblastomas"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "The sequencing core sent a samples-by-genes variant-count matrix along with gene lengths, a cancer-gene list and a KEGG GMT",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {
+          "their README doesn't say whether the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself.": [
+            "Can SAMBAR subtype our 160 pediatric medulloblastomas?"
+          ]
+        },
+        "unknowns": [
+          [
+            "mutation_origin",
+            "their README doesn't say whether the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself."
+          ]
+        ],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Can SAMBAR subtype our 160 pediatric medulloblastomas?",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "their README doesn't say whether the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself."
+        ],
+        "stated_quotes": [
+          "SAMBAR"
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Are the counts tumour-only somatic mutations?",
+            "user_quote": "whether the counts are tumour-only somatic mutations or germline variant calls",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "SAMBAR consumes a samples-by-genes somatic mutation CSV",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "sample_cluster_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Can SAMBAR subtype our 160 pediatric medulloblastomas?"
+          ],
+          "run_verdict": null,
+          "legacy_facts": [
+            "Are these acquired somatic mutations, or inherited germline variants?"
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [
+          {
+            "question": "Are the counts tumour-only somatic mutations?",
+            "user_quote": "whether the counts are tumour-only somatic mutations or germline variant calls",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "SAMBAR consumes a samples-by-genes somatic mutation CSV",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [],
+        "legacy": [
+          {
+            "question": "Are these acquired somatic mutations, or inherited germline variants?",
+            "user_quote": "their README doesn't say whether the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself.",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "",
+            "depends_on": "mutation_origin",
+            "outcomes": {
+              "somatic": [
+                "SAMBAR"
+              ],
+              "germline": []
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 24505,
+    "output_tokens": 1061,
+    "total_tokens": 25566,
+    "calls": [
+      {
+        "call_id": "c08bfda9-32b8-4659-8f2f-5e8bdf917e20",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o",
+        "provider_request_id": "gen-1792249821-kgWjp0B7AKWPC66kskDU",
+        "input_tokens": 5348,
+        "output_tokens": 347,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5695,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 10280,
+        "price_snapshot": null,
+        "duration_ms": 5908,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e6ad289c-4255-493a-a1ed-88b20be02e40",
+        "role": "intent_router",
+        "model": "openai/gpt-4o",
+        "provider_request_id": null,
+        "input_tokens": 654,
+        "output_tokens": 61,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 715,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1285,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "974a3035-a84e-424e-81f3-cf5470fe44fe",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o",
+        "provider_request_id": "gen-1792249828-bJtE0Q5nmEifeLtKjFja",
+        "input_tokens": 1645,
+        "output_tokens": 73,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1718,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2923,
+        "price_snapshot": null,
+        "duration_ms": 1464,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "819e8890-8239-413d-bdf6-f004a5435abb",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-2024-11-20",
+        "provider_request_id": "gen-1792249830-VciCd8Dxxw4JbgFPW7bl",
+        "input_tokens": 15076,
+        "output_tokens": 476,
+        "cache_read_tokens": 14848,
+        "cache_write_tokens": 0,
+        "total_tokens": 15552,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 23890,
+        "price_snapshot": null,
+        "duration_ms": 3126,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4c121765-6f51-41c6-a397-51c78ce2731d",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o",
+        "provider_request_id": "gen-1792249833-SlGzDx7Lt5H8KEOp7Fdj",
+        "input_tokens": 571,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 582,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1538,
+        "price_snapshot": null,
+        "duration_ms": 1535,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f7ef7089-83cc-4d64-b4d8-4f51ad8e382a",
+        "role": "fact_check",
+        "model": "openai/gpt-4o",
+        "provider_request_id": "gen-1792249834-URhhPQE6MEAzXB5JhEli",
+        "input_tokens": 1211,
+        "output_tokens": 93,
+        "cache_read_tokens": 1152,
+        "cache_write_tokens": 0,
+        "total_tokens": 1304,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2518,
+        "price_snapshot": null,
+        "duration_ms": 1384,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "df4d394a-76b9-49ab-b3f1-abf4532d1f87"
+}

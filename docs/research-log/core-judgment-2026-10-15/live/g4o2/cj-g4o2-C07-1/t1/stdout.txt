@@ -1,0 +1,26 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.83s)
+● Matching registered workflows…
+✓ Workflow — LIONESS-DRAGON
+✓ Guidance prepared
+What I understood you are asking for:
+1. "a separate network for every patient that links miRNAs and cytokines through partial correlations" -- available from LIONESS-DRAGON or SAMBAR.
+2. "within" -- not available here: no registered workflow produces this. Registered regulatory workflows contain miRNA and TF regulators; none models other regulators. Every registered workflow estimates associations or model coefficients from observational data.
+3. "across the two layers" -- not available here: no registered workflow produces this. Registered regulatory workflows contain miRNA and TF regulators; none models other regulators. Every registered workflow estimates associations or model coefficients from observational data.
+4. "compare survivors with non-survivors patient by patient afterwards" -- available from LIONESS-DRAGON's output plus a step you run outside NetZoo: A statistical test outside NetZoo.
+
+For the sample-specific output you described, use **LIONESS-DRAGON**.
+
+Required inputs:
+   - `omics_layer_1`: Omics layer 1 (samples x features)
+   - `omics_layer_2`: Omics layer 2 (the same samples)
+
+Outputs:
+   - Aggregate network (`output_file`).
+   - Sample-specific network for each patient/sample (`lioness_output`).
+
+You do not need to run **DRAGON** separately; **LIONESS-DRAGON** also produces the aggregate output. Use **DRAGON** alone only when a cohort-level aggregate result is sufficient.
+
+Cost: LIONESS runs DRAGON once on all samples and once more without each sample, so N samples take N+1 DRAGON runs and give N network files (for your 64 patients, 65 DRAGON runs). Plan the runtime and disk space, and filter edges before downstream statistics.
+
+No files were inspected and no analysis ran.

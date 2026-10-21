@@ -1,0 +1,489 @@
+{
+  "version": 1,
+  "session_id": "ve-m3-live-P26-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792035228.700346,
+  "updated_at": 1792035228.700429,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can CONDOR analyze an unweighted two-column source,target edge list from a validated TF-target network, where all source IDs are disjoint from target IDs?"
+    },
+    {
+      "role": "assistant",
+      "content": "I can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\n**TF/miRNA regulatory network**\n- **PUMA** — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Per-sample version: **LIONESS-PUMA**. Needs expression matrix, motif/prior, PPI network and miRNA list.\n\nThese all fit; to choose, tell me: (1) Do the regulators include miRNAs, short non-coding RNAs that repress or degrade their target transcripts after transcription? (yes → PUMA, LIONESS-PUMA) (2) Is the network large enough that memory or runtime is a concern? (yes → OTTER) If none of these applies: PANDA, LIONESS-PANDA, GIRAFFE.\n\n**What your data allows.** PANDA, LIONESS-PANDA and GIRAFFE also need an expression matrix, a motif prior and a PPI network; PUMA and LIONESS-PUMA also need an expression matrix, a motif prior, a PPI network and a miRNA list; OTTER also needs a motif prior, a PPI network and an expression matrix or adjusted co-expression matrix. Do you also have a motif prior and a PPI network?\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is seeking guidance on whether CONDOR can analyze a specific edge list format, which falls under the category of an answer request rather than an execution authorization.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.8,
+      "reason": "The request is seeking guidance on whether CONDOR can analyze a specific edge list format, which falls under the category of an answer request rather than an execution authorization.",
+      "candidate_actions": [
+        "run_panda",
+        "run_puma",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_otter",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "explain",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "explain",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "explain",
+              "source": "explicit",
+              "text_span": "Can CONDOR analyze an unweighted two-column source,target edge list from a validated TF-target network, where all source IDs are disjoint from target IDs?",
+              "rationale": "The user is asking whether a specific tool can analyze a certain type of data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The question discusses the analysis of a TF-target network, which is a type of regulatory network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "unknown",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The scale of the network is not specified, so it is classified as unknown."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_panda",
+        "run_puma",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_otter",
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "These all fit; to choose, tell me: (1) Do the regulators include miRNAs, short non-coding RNAs that repress or degrade their target transcripts after transcription? (yes → PUMA, LIONESS-PUMA) (2) Is the network large enough that memory or runtime is a concern? (yes → OTTER) If none of these applies: PANDA, LIONESS-PANDA, GIRAFFE.",
+      "data_facts": {
+        "source": "model",
+        "priors": "unstated",
+        "priors_quote": "",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_puma",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_puma",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "unstated",
+            "source": "model",
+            "quote": "",
+            "action": "ask"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Can CONDOR analyze an unweighted two-column source,target edge list from a validated TF-target network, where all source IDs are disjoint from target IDs?",
+            "kind": "about_methods",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 28346,
+    "output_tokens": 2624,
+    "total_tokens": 30970,
+    "calls": [
+      {
+        "call_id": "06265f3a-40e0-4536-8adf-f2d3e88a900b",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792035195-7uyCsvmwsKVdvwaDZfBA",
+        "input_tokens": 5310,
+        "output_tokens": 187,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5497,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 544,
+        "price_snapshot": null,
+        "duration_ms": 2261,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3a12d65a-29a6-4c72-92a1-669bd47d2950",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792035197-Kpdd2a9j5fWvk02FOySa",
+        "input_tokens": 1043,
+        "output_tokens": 102,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1145,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 218,
+        "price_snapshot": null,
+        "duration_ms": 1525,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f3c8c3ad-89ea-4cc3-b48f-9bc1ff369724",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792035199-XuNBGlEMN0wS509J4Kra",
+        "input_tokens": 1354,
+        "output_tokens": 9,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1363,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 209,
+        "price_snapshot": null,
+        "duration_ms": 913,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "97951156-f0cc-45bc-bffe-531c633ac587",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 652,
+        "output_tokens": 57,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 709,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1148,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "8c326611-ea04-43a4-8cc5-6b97eb2d5d5a",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792035201-8mJUDHUWuvIyQQomOYME",
+        "input_tokens": 1707,
+        "output_tokens": 58,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1765,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 176,
+        "price_snapshot": null,
+        "duration_ms": 1271,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "49137e0d-001b-4de6-9028-44cc85b2e4ba",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792035202-JkqYbhM4FRhAsPn2WlH3",
+        "input_tokens": 3723,
+        "output_tokens": 223,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 3946,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 692,
+        "price_snapshot": null,
+        "duration_ms": 2596,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7300765b-9940-4377-8db8-860397f7cb31",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792035205-YJU8sTMgwRd9JXdtBdoD",
+        "input_tokens": 13502,
+        "output_tokens": 1887,
+        "cache_read_tokens": 11440,
+        "cache_write_tokens": 0,
+        "total_tokens": 15389,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 20767,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "45f6b1df-d685-46ea-9942-9edae95537e9",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792035226-SveHw1qqfcZir5EdAUzi",
+        "input_tokens": 533,
+        "output_tokens": 57,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 590,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 114,
+        "price_snapshot": null,
+        "duration_ms": 1716,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e641660c-efa4-4cc2-9866-5b1c916507af",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792035227-pfebfPMcM79xKW8h8yJV",
+        "input_tokens": 522,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 566,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 105,
+        "price_snapshot": null,
+        "duration_ms": 905,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "69740916-bfd4-44fd-b9ef-d6547a7ec55c"
+}

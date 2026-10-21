@@ -1,0 +1,679 @@
+{
+  "version": 1,
+  "session_id": "cj-p4b-C28-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792132885.971688,
+  "updated_at": 1792132885.9717638,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Our 140 skeletal-muscle RNA-seq samples (about 18,000 genes after filtering) were sequenced in three runs and come from donors of both sexes. I'd like to see how much of each gene pair's co-expression is associated with sequencing run versus sex, and get an adjusted gene-by-gene co-expression matrix out of it for later network work. Both covariates are already coded as numeric indicator columns in a design table whose rows are exactly the expression sample IDs."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"see how much of each gene pair's co-expression is associated with sequencing run versus sex\" -- available from COBRA.\n2. \"get an adjusted gene-by-gene co-expression matrix out of it\" -- available from COBRA.\n\nSelected path: **COBRA**.\n\nYour question asks for a cohort-level co-expression network. **COBRA** fits that result and scale. COBRA models co-expression as a function of sample covariates through conditional covariance estimation.\n\nCaptured request parameters:\n\n- `expression_file`: sample\n\nWhat you asked about:\n\n- \"get an adjusted gene-by-gene co-expression matrix out of it for later network work\" — Each covariate's component is a gene-by-gene co-expression attributable to that covariate; the adjusted co-expression can be passed to PANDA, PUMA or OTTER as coexpression_file after its identifiers and order are revalidated. Interpret each component relative to how the design matrix codes that covariate (for example, which level is the reference).\n\n**COBRA**: Model covariate-associated gene co-expression with COBRA.\n\nRouting-level input modality: expression matrix.\n\nMethod premise: remove or adjust technical batch effects; estimate how sample covariates change co-expression; model higher-order covariance or correlation structure; assess or remove hospital or site effects; assess or remove sequencing-batch effects.\n\nCOBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `design_file`: sample covariate design matrix\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `coexpression_network`: Inferred gene-to-gene associations.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is for guidance on obtaining an adjusted gene-by-gene co-expression matrix, which falls under the category of answer requests rather than execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request is for guidance on obtaining an adjusted gene-by-gene co-expression matrix, which falls under the category of answer requests rather than execution.",
+      "candidate_actions": [
+        "run_cobra",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_cobra"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "covariate_association"
+        ],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "covariate_association"
+            ],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "get an adjusted gene-by-gene co-expression matrix out of it for later network work.",
+              "rationale": "The user wants to compute an adjusted co-expression matrix."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "get an adjusted gene-by-gene co-expression matrix out of it for later network work.",
+              "rationale": "The user specifically requests a co-expression matrix."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "Our 140 skeletal-muscle RNA-seq samples...",
+              "rationale": "The request implies a single co-expression matrix for all samples."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user specifies RNA-seq samples as the current input for the analysis."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "covariate_association",
+              "source": "explicit",
+              "text_span": "how much of each gene pair's co-expression is associated with sequencing run versus sex",
+              "rationale": "The user wants to see how much of each gene pair's co-expression is associated with sequencing run versus sex."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "registry_features",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_cobra"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "addressed_concerns": [
+        {
+          "action": "run_cobra",
+          "concern": "downstream_use",
+          "text_span": "get an adjusted gene-by-gene co-expression matrix out of it for later network work"
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "see how much of each gene pair's co-expression is associated with sequencing run versus sex",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 1,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 140,
+              "samples_quote": "140 skeletal-muscle RNA-seq samples",
+              "features": 18000,
+              "feature_counts": 1
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "get an adjusted gene-by-gene co-expression matrix out of it",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 1,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 140,
+              "samples_quote": "140 skeletal-muscle RNA-seq samples",
+              "features": 18000,
+              "feature_counts": 1
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "Our 140 skeletal-muscle RNA-seq samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "(about 18,000 genes after filtering)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "sequenced in three runs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "come from donors of both sexes",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "Both covariates are already coded as numeric indicator columns in a design table whose rows are exactly the expression sample IDs.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like to see how much of each gene pair's co-expression is associated with sequencing run versus sex, and get an adjusted gene-by-gene co-expression matrix out of it for later network work.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "skeletal-muscle RNA-seq samples"
+        ]
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like to see how much of each gene pair's co-expression is associated with sequencing run versus sex, and get an adjusted gene-by-gene co-expression matrix out of it for later network work."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "how much of each gene pair's co-expression is associated with sequencing run versus sex",
+              "uncertainty": "said_unknown",
+              "workflow": "COBRA",
+              "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+              "question": "Do you have a labeled gene-by-sample matrix with more genes than samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": ""
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "how much of each gene pair's co-expression is associated with sequencing run versus sex",
+              "uncertainty": "said_unknown",
+              "workflow": "COBRA",
+              "contract_quote": "Design rows must use exactly the expression sample IDs and numeric covariates.",
+              "question": "Do your design rows use exactly the expression sample IDs and numeric covariates?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": ""
+            }
+          }
+        ],
+        "legacy": []
+      },
+      "missing_inputs": [],
+      "expression_file": "sample",
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "24f81166fcc4704944a93e14da58280051788c14037e6bb82d87e0dcbdbc357e",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 48056,
+    "output_tokens": 7839,
+    "total_tokens": 55895,
+    "calls": [
+      {
+        "call_id": "ed3debc9-e79a-4093-929d-4c4bdf6ad4ec",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792132695-IgIfhqHBS7qcJmEfq6kU",
+        "input_tokens": 5376,
+        "output_tokens": 229,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5605,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 579,
+        "price_snapshot": null,
+        "duration_ms": 2890,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "5521a652-27e3-40d1-96c1-9fb91781946f",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792132697-0TIC4CXe48c2HXYmvTZW",
+        "input_tokens": 5638,
+        "output_tokens": 173,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5811,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 652,
+        "price_snapshot": null,
+        "duration_ms": 2093,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1221ad2b-92c5-49ee-8da6-8582ade697a7",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792132700-wmVo0YrIazcM3DDGjoKe",
+        "input_tokens": 1123,
+        "output_tokens": 78,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1201,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 215,
+        "price_snapshot": null,
+        "duration_ms": 1555,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9daecd65-61ae-42d3-ab21-1518e496a184",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 702,
+        "output_tokens": 52,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 754,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1198,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "be9ffb09-62be-4da9-be60-d71225cfdfdf",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792132702-namtMEm2QWBxMlD9qyhU",
+        "input_tokens": 1673,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1718,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 278,
+        "price_snapshot": null,
+        "duration_ms": 1410,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7a144c3a-0350-43dc-844b-2240bceb5288",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792132704-757IbjDFz2cx02755rJk",
+        "input_tokens": 22178,
+        "output_tokens": 5042,
+        "cache_read_tokens": 13728,
+        "cache_write_tokens": 0,
+        "total_tokens": 27220,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 118855,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d8d6e3eb-717f-430b-8f78-8af2b54a7fb4",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792132823-lOThJpqv4YOETdbzSyx0",
+        "input_tokens": 599,
+        "output_tokens": 64,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 663,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 128,
+        "price_snapshot": null,
+        "duration_ms": 1296,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "93b69d19-7a70-44a0-b38d-3d986d8ca218",
+        "role": "capability_reread",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792132824-uu6m2TvYApE1peSJg9kl",
+        "input_tokens": 9905,
+        "output_tokens": 1966,
+        "cache_read_tokens": 9152,
+        "cache_write_tokens": 0,
+        "total_tokens": 11871,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 59199,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "61822359-f469-494b-b6ec-1187bcee38c7",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792132883-7j6msMV6aEdQaXDgK49Y",
+        "input_tokens": 862,
+        "output_tokens": 190,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1052,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 243,
+        "price_snapshot": null,
+        "duration_ms": 2160,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "d95db21b-eeca-4556-a85f-49bb12960d90"
+}

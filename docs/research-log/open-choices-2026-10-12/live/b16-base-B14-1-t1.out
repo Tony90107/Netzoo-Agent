@@ -1,0 +1,35 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (5.53s)
+● Matching registered workflows…
+✓ Matched workflows — PANDA, OTTER, SAMBAR
+✓ Guidance prepared
+What I understood you are asking for:
+1. "infer a regulatory network from the expression" -- available from PANDA, PUMA, OTTER or GIRAFFE.
+2. "cluster the patients by which pathways are mutated" -- available from SAMBAR.
+Not checked against the registered workflows: "Which would you start with?"
+
+There are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data.
+
+For “infer a regulatory network from the expression”:
+
+**PANDA**. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+
+You would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations.
+
+For “infer a regulatory network from the expression”:
+
+**OTTER**. OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+
+You would need motif/prior, PPI network, either expression matrix or adjusted co-expression matrix. The analysis would provide inferred regulator-to-target associations.
+
+For “cluster the patients by which pathways are mutated”:
+
+**SAMBAR**. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.
+
+You would need somatic mutation matrix, gene/exon-size CSV, cancer-gene list, GMT pathway file. The analysis would provide sample-by-gene mutation scores, not pathway scores; pathway-by-sample mutation scores, not cluster labels; sample-to-cluster labels, separate from score and distance matrices; pairwise sample distances, not cluster labels.
+
+To use subtypes for chemotherapy resistance or another clinical outcome, you would also need outcome labels matched to the patients. Check cluster stability and confounding, then evaluate prediction on held-out patients. Fit feature selection and cohort-dependent network estimation within the training split to avoid information leakage.
+
+No files were inspected and no analysis ran.
+
+Which scientific question should we start with, and which of these inputs do you have? We can also investigate the hypotheses in parallel.

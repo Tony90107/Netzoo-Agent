@@ -1,0 +1,679 @@
+{
+  "version": 1,
+  "session_id": "cj-p5r-C51-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792163853.076389,
+  "updated_at": 1792163853.076563,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list? Inputs would be expression for 60 breast tumours (header row, gene IDs in the first column), a TF-by-gene seed edge list, and a TF-TF PPI edge list whose TFs are exactly the seed's TFs."
+    },
+    {
+      "role": "assistant",
+      "content": "There are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data.\n\n**PANDA**. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.\n\nYou would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations.\n\n**PUMA**. PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.\n\nYou would need expression matrix, motif/prior, PPI network, miRNA list. The analysis would provide inferred regulator-to-target associations.\n\n**LIONESS-PANDA**. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.\n\nYou would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations. LIONESS-PANDA also writes the cohort network, so PANDA need not run first.\n\n**LIONESS-PUMA**. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring. PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.\n\nYou would need expression matrix, motif/prior, PPI network, miRNA list. The analysis would provide inferred regulator-to-target associations. LIONESS-PUMA also writes the cohort network, so PUMA need not run first.\n\n**LIONESS-COEXPRESSION**. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.\n\nYou would need expression matrix. The analysis would provide inferred gene-to-gene associations.\n\n**COBRA**. COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.\n\nYou would need expression matrix, sample covariate design matrix. The analysis would provide inferred gene-to-gene associations.\n\n**DRAGON**. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.\n\nYou would need DRAGON omics layer 1, DRAGON omics layer 2. The analysis would provide inferred associations between omics features.\n\n**LIONESS-DRAGON**. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.\n\nYou would need DRAGON omics layer 1, DRAGON omics layer 2. The analysis would provide inferred associations between omics features.\n\n**OTTER**. OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.\n\nYou would need motif/prior, PPI network, either expression matrix or adjusted co-expression matrix. The analysis would provide inferred regulator-to-target associations.\n\n**GIRAFFE**. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.\n\nYou would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations; inferred transcription-factor-by-sample activity values.\n\n**BONOBO**. BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable.\n\nYou would need expression matrix. The analysis would provide inferred gene-to-gene associations; p-value matrix paired with a sample-specific gene-gene co-expression result.\n\nNo files were inspected and no analysis ran.\n\nWhich scientific question should we start with, and which of these inputs do you have? We can also investigate the hypotheses in parallel."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is for guidance on whether OTTER can run with specified parameters and inputs, which falls under the category of an answer request.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request is for guidance on whether OTTER can run with specified parameters and inputs, which falls under the category of an answer request.",
+      "candidate_actions": [
+        "run_panda",
+        "run_puma",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_lioness_coexpression",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "explain",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "unknown",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "explain",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "unknown",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.45,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "explain",
+              "source": "explicit",
+              "text_span": "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list?",
+              "rationale": "The request is asking whether OTTER can run with specific parameters and inputs, not for execution or analysis."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "Inputs would be expression for 60 breast tumours (header row, gene IDs in the first column)",
+              "rationale": "The user specifies an expression matrix as input for the analysis."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "unknown",
+              "source": "explicit",
+              "text_span": "a TF-by-gene seed edge list, and a TF-TF PPI edge list whose TFs are exactly the seed's TFs",
+              "rationale": "The user specifies additional inputs that are relevant to the analysis."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_panda",
+        "run_puma",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_lioness_coexpression",
+        "run_cobra",
+        "run_dragon",
+        "run_lioness_dragon",
+        "run_otter",
+        "run_giraffe",
+        "run_bonobo"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Should the result be aggregate or sample-specific?",
+      "addressed_concerns": [
+        {
+          "action": "run_panda",
+          "concern": "downstream_use",
+          "text_span": "writing the result as an edge list"
+        },
+        {
+          "action": "run_puma",
+          "concern": "downstream_use",
+          "text_span": "writing the result as an edge list"
+        },
+        {
+          "action": "run_lioness_panda",
+          "concern": "downstream_use",
+          "text_span": "writing the result as an edge list"
+        },
+        {
+          "action": "run_lioness_puma",
+          "concern": "downstream_use",
+          "text_span": "writing the result as an edge list"
+        },
+        {
+          "action": "run_lioness_coexpression",
+          "concern": "downstream_use",
+          "text_span": "writing the result as an edge list"
+        },
+        {
+          "action": "run_cobra",
+          "concern": "downstream_use",
+          "text_span": "writing the result as an edge list"
+        }
+      ],
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a TF-by-gene seed edge list, and a TF-TF PPI edge list",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF-by-gene seed edge list, and a TF-TF PPI edge list",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_puma",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF-by-gene seed edge list, and a TF-TF PPI edge list",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF-by-gene seed edge list, and a TF-TF PPI edge list",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_puma",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF-by-gene seed edge list, and a TF-TF PPI edge list",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_coexpression",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_cobra",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_dragon",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_lioness_dragon",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_otter",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF-by-gene seed edge list, and a TF-TF PPI edge list",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF-by-gene seed edge list, and a TF-TF PPI edge list",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_bonobo",
+          "status": "applicable",
+          "basis": []
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list?",
+            "kind": "about_methods",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "Inputs would be expression for 60 breast tumours (header row, gene IDs in the first column), a TF-by-gene seed edge list, and a TF-TF PPI edge list whose TFs are exactly the seed's TFs.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "method_named",
+        "goal_quote": "OTTER",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "OTTER",
+          "CPU",
+          "single precision",
+          "150 iterations",
+          "150",
+          "step size (eta) of 1e-4",
+          "1e-4",
+          "writing the result as an edge list",
+          "edge list"
+        ]
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "COBRA",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "routed",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "unknown",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "about_methods",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "method_named",
+            "OTTER"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "OTTER",
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list?",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "computing=cpu and precision=single/double are validated controls.",
+              "question": "Do you want to run OTTER on CPU in single precision?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list?",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "setting iterations (integer; minimum 1): Number of optimization iterations.",
+              "question": "Do you want to set the number of iterations to 150?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list?",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "setting eta (number; minimum 0): Step size (learning rate) of OTTER's gradient optimization.",
+              "question": "Do you want to set the step size (eta) to 1e-4?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 36467,
+    "output_tokens": 5405,
+    "total_tokens": 41872,
+    "calls": [
+      {
+        "call_id": "a557f8f2-9f29-4425-8668-40cebdce0fb8",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792163712-QU1g7k9jAp4ujI8RwUCG",
+        "input_tokens": 5365,
+        "output_tokens": 194,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5559,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 556,
+        "price_snapshot": null,
+        "duration_ms": 3168,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "47f59718-1ddb-4738-9b4e-1332693a6e95",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792163715-tgZ6SmmsMwGaQDUuN7Sz",
+        "input_tokens": 6318,
+        "output_tokens": 270,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 6588,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 745,
+        "price_snapshot": null,
+        "duration_ms": 3105,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "e6f0595d-1895-455f-af01-7326dc119f92",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 707,
+        "output_tokens": 48,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 755,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1110,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "ecaa676d-6d47-4291-b247-7700cd7994a2",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792163719-op3qKdiZ59m808v1zLYY",
+        "input_tokens": 1802,
+        "output_tokens": 35,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1837,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 291,
+        "price_snapshot": null,
+        "duration_ms": 1325,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2c53d667-1362-411d-805f-3a16c017402c",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792163721-nYoor195yYHCKpwqU32Q",
+        "input_tokens": 18547,
+        "output_tokens": 4393,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 22940,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 125648,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "852ebc2e-4826-4d9b-9460-87ce04f9c7ff",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792163846-EBBoan4VCkxs9ESu9SSr",
+        "input_tokens": 588,
+        "output_tokens": 43,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 631,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 114,
+        "price_snapshot": null,
+        "duration_ms": 1141,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1ff2e201-f5f6-4129-9b7a-cabad855ae53",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792163847-Hg42lQj30MDaNNceWVwt",
+        "input_tokens": 577,
+        "output_tokens": 54,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 631,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 119,
+        "price_snapshot": null,
+        "duration_ms": 1074,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "95206319-58b9-4850-95a4-f8bfffc17189",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792163849-zSiWXEQsKRD78ipbry2E",
+        "input_tokens": 2563,
+        "output_tokens": 368,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2931,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 605,
+        "price_snapshot": null,
+        "duration_ms": 4099,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "114f0218-ceae-4a34-a345-cd9d0f9e9c70"
+}

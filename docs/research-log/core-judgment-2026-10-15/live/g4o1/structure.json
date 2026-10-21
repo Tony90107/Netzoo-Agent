@@ -1,0 +1,5805 @@
+{
+  "cj-g4o1-C04-1": {
+    "item": "C04",
+    "rep": 1,
+    "class": "do",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA.",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "lioness_panda.per_sample_networks"
+        ],
+        "that patient's own TF-to-gene regulatory network"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "For each of our 25 diffuse large B-cell lymphoma patients I need"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "lioness_panda.per_sample_networks"
+        ],
+        "built from the cohort's expression matrix together with a human motif prior and "
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"For each of our 25 diffuse large B-cell lymphoma patients I need\" -- not matched to any registered workflow.",
+          "quote": "For each of our 25 diffuse large B-cell lymphoma patients I need",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "that patient's own TF-to-gene regulatory network"
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "available"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": true,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-PANDA"
+      ]
+    },
+    "views": [
+      "outcome_clarification"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.096363
+  },
+  "cj-g4o1-C06-1": {
+    "item": "C06",
+    "rep": 1,
+    "class": "ask",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Is the list you have for transcription factors?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "dragon.two_layer_network",
+          "dragon.edge_pvalues",
+          "dragon.group_comparison",
+          "lioness_dragon.per_sample_networks",
+          "lioness_dragon.association_tests",
+          "condor.communities",
+          "condor.core_scores",
+          "condor.enrichment",
+          "sambar.subtypes",
+          "sambar.clinical_comparison"
+        ],
+        "a network of how about 150 regulators control their target genes across 60 hepat"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I have the expression matrix, a PPI among those regulators, and a regulator-to-t"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "a network of how about 150 regulators control their target genes across 60 hepatocellular carcinoma samples"
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "Build the source-target-weight edge list from a validated regulator-gene network; CONDOR does not consume the raw expression matrix directly.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Is the list you have for transcription factors?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "I'm not sure which of the two lists I was given.",
+          "workflows": [
+            "CONDOR"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "CONDOR"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.101152
+  },
+  "cj-g4o1-C07-1": {
+    "item": "C07",
+    "rep": 1,
+    "class": "do",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "lioness_dragon.per_sample_networks",
+          "sambar.subtypes"
+        ],
+        "a separate network for every patient that links miRNAs and cytokines through par"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "180 circulating miRNAs (normalized, continuous qPCR values)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "45 plasma cytokines"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "the same 64 sepsis patients"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "both tables have samples in rows, identical patient IDs and no missing values"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "within and across the two layers"
+      ],
+      [
+        "result",
+        "with_step",
+        [
+          "lioness_dragon.association_tests"
+        ],
+        "compare survivors with non-survivors patient by patient afterwards"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"within and across the two layers\" -- not available here: no registered workflow produces this. Registered regulatory workflows contain miRNA and TF regulators; none models other regulators. Every registered workflow estimates associations or model coefficients from observational data.",
+          "quote": "within and across the two layers",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "with_step"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": true,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-DRAGON",
+        "SAMBAR"
+      ]
+    },
+    "views": [
+      "composition"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.083429
+  },
+  "cj-g4o1-C08-1": {
+    "item": "C08",
+    "rep": 1,
+    "class": "dont",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "a TF activity matrix"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "a learning rate of 1e-4"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "2,000 iterations"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "a heavier weight on the PPI term in the loss"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Can GIRAFFE be run with my own optimizer settings?"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "our 52 rice leaf samples from the drought trial"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"a TF activity matrix\" -- not available here: no registered workflow produces this. PANDA does not give it: the PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or stoichiometry.",
+          "quote": "a TF activity matrix",
+          "reasons": []
+        },
+        {
+          "alternatives": [],
+          "line": "\"a learning rate of 1e-4\" -- not available here as asked. NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"a learning rate of 1e-4\" cannot be applied.",
+          "quote": "a learning rate of 1e-4",
+          "reasons": [
+            "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"a learning rate of 1e-4\" cannot be applied"
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"2,000 iterations\" -- not available here as asked. NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"2,000 iterations\" cannot be applied.",
+          "quote": "2,000 iterations",
+          "reasons": [
+            "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"2,000 iterations\" cannot be applied"
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"a heavier weight on the PPI term in the loss\" -- not available here as asked. NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"a heavier weight on the PPI term in the loss\" cannot be applied.",
+          "quote": "a heavier weight on the PPI term in the loss",
+          "reasons": [
+            "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"a heavier weight on the PPI term in the loss\" cannot be applied"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "tf_activity_matrix",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "a TF activity matrix"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.075639
+  },
+  "cj-g4o1-C09-1": {
+    "item": "C09",
+    "rep": 1,
+    "class": "vague",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Should I go with BONOBO"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "Should I go with"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "my 20 Shank3 knockout and wild-type mouse cortex samples"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I'm hoping to learn something about the knockout, but I haven't pinned down what"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "result_open",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "I haven't pinned down what yet",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "unknown",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "Should I go with BONOBO or LIONESS"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.073308
+  },
+  "cj-g4o1-C10-1": {
+    "item": "C10",
+    "rep": 1,
+    "class": "vague",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Should I be using COBRA"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "Should I be using"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "our lupus nephritis cohort"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "I'm not sure what either would give me."
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "result_open",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "I'm not sure what either would give me.",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "Should I be using COBRA or CONDOR"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "research_guidance",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.039251
+  },
+  "cj-g4o1-C11-1": {
+    "item": "C11",
+    "rep": 1,
+    "class": "ask",
+    "form": "run",
+    "capture_verified": false,
+    "exit": 1,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt"
+        ],
+        "legacy_facts": [
+          "Do you want one result for all your samples together, or one per sample?"
+        ],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA"
+      ]
+    },
+    "views": [],
+    "semantic_failed": 0,
+    "check_calls": [],
+    "cost_usd": 0.0,
+    "exceptions": [
+      "IndexError: list index out of range"
+    ]
+  },
+  "cj-g4o1-C12-1": {
+    "item": "C12",
+    "rep": 1,
+    "class": "vague",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "panda.tf_gene_network",
+          "panda.targeting_scores",
+          "panda.condition_comparison",
+          "puma.regulator_gene_network",
+          "puma.targeting_scores",
+          "otter.tf_gene_network",
+          "otter.targeting_scores",
+          "giraffe.signed_regulation",
+          "giraffe.tf_activity",
+          "giraffe.activity_tests"
+        ],
+        "run the network analysis"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "expr_sle_monocytes.tsv"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "send me the results"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "run the network analysis",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "run the network analysis"
+        ],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "result",
+            "not_available"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.05796
+  },
+  "cj-g4o1-C13-1": {
+    "item": "C13",
+    "rep": 1,
+    "class": "dont",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "gap",
+      "held": true
+    },
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv with lam set to 1.5,"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "expr_t2d_islets.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "seed_W.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "ppi_tf.tsv"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow",
+      "routing.run_held"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [
+            "OTTER"
+          ],
+          "line": "\"Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv with lam set to 1.5, so co-expression gets even more weight than PPI.\" -- not available here as asked. OTTER's lam must be between 0 and 1; \"1.5\" is not. OTTER itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+          "quote": "Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv with lam set to 1.5, so co-expression gets even more weight than PPI.",
+          "reasons": [
+            "OTTER's lam must be between 0 and 1; \"1.5\" is not"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv with lam set to 1.5, so co-expression gets even more weight than PPI."
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": {
+          "held": true,
+          "verdict": "gap"
+        }
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "decline"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.039666
+  },
+  "cj-g4o1-C14-1": {
+    "item": "C14",
+    "rep": 1,
+    "class": "dont",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "context",
+        "not_checked",
+        [],
+        "my 45 bovine mammary gland samples"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Can I add an L1 (lasso) sparsity penalty to OTTER's objective so that the TF-gen"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "routed",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "Can I add an L1 (lasso) sparsity penalty to OTTER's objective so that the TF-gene network it returns for my 45 bovine mammary gland samples is sparse, with most edges exactly zero?"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "OTTER"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.039091
+  },
+  "cj-g4o1-C15-1": {
+    "item": "C15",
+    "rep": 1,
+    "class": "vague",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Analyze everything in glioma_bundle/ (expression.tsv, methylation.tsv and mutati"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "glioma_bundle/ (expression.tsv, methylation.tsv and mutations.csv for 80 gliomas"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "Analyze everything in glioma_bundle/ (expression.tsv, methylation.tsv and mutations.csv for 80 gliomas) and tell me what you find.",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "Analyze everything in glioma_bundle/ (expression.tsv, methylation.tsv and mutations.csv for 80 gliomas) and tell me what you find."
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.050427
+  },
+  "cj-g4o1-C16-1": {
+    "item": "C16",
+    "rep": 1,
+    "class": "dont",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "order the cells along a pseudotime trajectory"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"order the cells along a pseudotime trajectory\" -- not available here: no registered workflow produces this. No registered workflow models how the system changes from one time point to the next; time points can only be compared as separate results. Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.",
+          "quote": "order the cells along a pseudotime trajectory",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "community_assignment",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split."
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.062186
+  },
+  "cj-g4o1-C17-1": {
+    "item": "C17",
+    "rep": 1,
+    "class": "dont",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "What supported NetZoo result do you want the agent to produce?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "dragon.two_layer_network"
+        ],
+        "a transcript-metabolite partial-correlation network for 75 NAFLD liver biopsies"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "75 NAFLD liver biopsies"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "a transcript-metabolite partial-correlation network for 75 NAFLD liver biopsies"
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "DRAGON"
+      ]
+    },
+    "views": [
+      "outcome_clarification"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.057917
+  },
+  "cj-g4o1-C18-1": {
+    "item": "C18",
+    "rep": 1,
+    "class": "dont",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Run CONDOR directly on expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 b"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I don't have any motif or PPI files, just this expression table."
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"Run CONDOR directly on expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies) to get gene communities.\" -- not available here as asked. You said \"just this expression table\"; CONDOR needs a regulator-gene network; every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have: you said \"I don't have any motif or PPI files\"; OTTER needs a TF motif prior and no registered workflow or tool provides it.",
+          "quote": "Run CONDOR directly on expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies) to get gene communities.",
+          "reasons": [
+            "You said \"just this expression table\"; CONDOR needs a regulator-gene network; every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have: you said \"I don't have any motif or PPI files\"; OTTER needs a TF motif prior and no registered workflow or tool provides it"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "community_assignment",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Run CONDOR directly on expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies) to get gene communities."
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.053614
+  },
+  "cj-g4o1-C19-1": {
+    "item": "C19",
+    "rep": 1,
+    "class": "vague",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "context",
+        "not_checked",
+        [],
+        "the files in shared/hcc_project/ (expr_mrna.tsv, expr_mirna.tsv, motif_hs.txt an"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "panda.tf_gene_network",
+          "panda.targeting_scores",
+          "panda.condition_comparison",
+          "puma.regulator_gene_network",
+          "puma.targeting_scores",
+          "otter.tf_gene_network",
+          "otter.targeting_scores",
+          "giraffe.signed_regulation",
+          "giraffe.tf_activity",
+          "giraffe.activity_tests"
+        ],
+        "run whichever NetZoo analysis is appropriate"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "run whichever NetZoo analysis is appropriate",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "run whichever NetZoo analysis is appropriate"
+        ],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "result",
+            "available"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.066765
+  },
+  "cj-g4o1-C20-1": {
+    "item": "C20",
+    "rep": 1,
+    "class": "ask",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Is the tumour_profiles_v2.tsv file a gene-by-sample expression matrix?",
+    "run_verdict": {
+      "verdict": "agrees",
+      "held": false
+    },
+    "check_rows": [],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "run_panda",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": null,
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [],
+        "run_verdict": {
+          "held": false,
+          "verdict": "agrees"
+        }
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors, or a validated adjusted gene-by-gene co-expression matrix through coexpression_file.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Is the tumour_profiles_v2.tsv file a gene-by-sample expression matrix?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "our lab saved two genes-by-tumours matrices under similar names, one with log2 expression and one with binary somatic-mutation calls, and I'm not sure which one this is.",
+          "workflows": [
+            "PANDA"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "PANDA"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.045279
+  },
+  "cj-g4o1-C21-1": {
+    "item": "C21",
+    "rep": 1,
+    "class": "ask",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Is the network a TF-to-gene regulatory network from PANDA runs?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "condor.communities"
+        ],
+        "Can CONDOR find communities in network_final.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "network_final.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "It's a three-column source/target/weight table"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "community_assignment",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Can CONDOR find communities in network_final.tsv"
+        ],
+        "legacy_facts": [
+          "Does your network link regulators (such as TFs) to their target genes, or genes to genes?"
+        ],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "CONDOR consumes a weighted source-target bipartite edge list made from a validated regulator-gene network and returns community assignments with regulator-side and gene-side partitions.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Is the network a TF-to-gene regulatory network from PANDA runs?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "I don't know whether it's the TF-to-gene regulatory network from his PANDA runs or the gene-gene co-expression network he also built.",
+          "workflows": [
+            "CONDOR"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "CONDOR"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.069542
+  },
+  "cj-g4o1-C22-1": {
+    "item": "C22",
+    "rep": 1,
+    "class": "dont",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Call somatic SNVs and indels from tumour_07.bam against its matched normal_07.ba"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "tumour_07.bam"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "normal_07.bam"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"Call somatic SNVs and indels from tumour_07.bam against its matched normal_07.bam and give me a filtered VCF.\" -- not matched to any registered workflow.",
+          "quote": "Call somatic SNVs and indels from tumour_07.bam against its matched normal_07.bam and give me a filtered VCF.",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "mutation_matrix",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Call somatic SNVs and indels from tumour_07.bam against its matched normal_07.bam and give me a filtered VCF."
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.043304
+  },
+  "cj-g4o1-C23-1": {
+    "item": "C23",
+    "rep": 1,
+    "class": "vague",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "a systems-level view of what is going on in these animals"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "quite a lot of omics on a pig model of septic shock"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "whole-blood transcriptome, plasma proteome and a few hundred metabolites"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "sampled at baseline and at 24 hours"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Where should we start?"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"a systems-level view of what is going on in these animals\" -- not matched to any registered workflow.",
+          "quote": "a systems-level view of what is going on in these animals",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "a systems-level view of what is going on in these animals"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.055979
+  },
+  "cj-g4o1-C24-1": {
+    "item": "C24",
+    "rep": 1,
+    "class": "vague",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "'a network analysis' of our placenta study"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "can you set something up that would satisfy them"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "mRNA-seq and small-RNA-seq from 45 preeclampsia and control placentas"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Honestly I don't know what kind of network they expect or what it's supposed to "
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "The two groups are roughly balanced and both libraries come from the same placen"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"'a network analysis' of our placenta study\" -- not matched to any registered workflow.",
+          "quote": "'a network analysis' of our placenta study",
+          "reasons": []
+        },
+        {
+          "alternatives": [],
+          "line": "\"can you set something up that would satisfy them\" -- not matched to any registered workflow.",
+          "quote": "can you set something up that would satisfy them",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "'a network analysis' of our placenta study"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.078501
+  },
+  "cj-g4o1-C25-1": {
+    "item": "C25",
+    "rep": 1,
+    "class": "do",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "puma.regulator_gene_network"
+        ],
+        "one regulatory network for my 70 colorectal tumours in which both transcription "
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I have the gene-by-sample expression matrix, a TF motif prior, a TF-TF PPI, a mi"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Nothing per-patient is needed; a single cohort-level network is what goes into t"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "one regulatory network for my 70 colorectal tumours in which both transcription factors and microRNAs act as regulators of their target genes"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "PUMA"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.057638
+  },
+  "cj-g4o1-C26-1": {
+    "item": "C26",
+    "rep": 1,
+    "class": "vague",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "unknown",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Is SAMBAR the right thing to run"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "one of the network methods like PANDA"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "whatever gives the most interesting result"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "somatic mutation calls"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "RNA-seq for the same 90 bladder tumours"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"Is SAMBAR the right thing to run\" -- not matched to any registered workflow.",
+          "quote": "Is SAMBAR the right thing to run",
+          "reasons": []
+        },
+        {
+          "alternatives": [],
+          "line": "\"one of the network methods like PANDA\" -- not matched to any registered workflow.",
+          "quote": "one of the network methods like PANDA",
+          "reasons": []
+        },
+        {
+          "alternatives": [],
+          "line": "\"whatever gives the most interesting result\" -- not matched to any registered workflow.",
+          "quote": "whatever gives the most interesting result",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "whatever gives the most interesting result"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_fallback",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.061149
+  },
+  "cj-g4o1-C27-1": {
+    "item": "C27",
+    "rep": 1,
+    "class": "dont",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "We don't have mutation calls for this cohort, only expression."
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix?\" -- not available here: no registered workflow produces this. SAMBAR does not give it: SAMBAR's input is somatic mutations.",
+          "quote": "Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix?",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "sample_cluster_assignment",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix?"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.051667
+  },
+  "cj-g4o1-C28-1": {
+    "item": "C28",
+    "rep": 1,
+    "class": "do",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "cobra.covariate_components"
+        ],
+        "see how much of each gene pair's co-expression is associated with sequencing run"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "cobra.covariate_components"
+        ],
+        "get an adjusted gene-by-gene co-expression matrix out of it for later network wo"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Our 140 skeletal-muscle RNA-seq samples (about 18,000 genes after filtering) wer"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Both covariates are already coded as numeric indicator columns in a design table"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "coexpression_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "see how much of each gene pair's co-expression is associated with sequencing run versus sex, and get an adjusted gene-by-gene co-expression matrix out of it for later network work."
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "intent_fallback",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "COBRA"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.0873
+  },
+  "cj-g4o1-C29-1": {
+    "item": "C29",
+    "rep": 1,
+    "class": "do",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "condor.communities"
+        ],
+        "split it into communities of TFs and their target genes, with the TF-side and ge"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "an aggregate TF-to-gene regulatory network for glioblastoma, exported as an edge"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "TF and gene IDs don't overlap"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "the weights were thresholded to be non-negative"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "community_assignment",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "split it into communities of TFs and their target genes, with the TF-side and gene-side memberships reported separately"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "CONDOR"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.059704
+  },
+  "cj-g4o1-C30-1": {
+    "item": "C30",
+    "rep": 1,
+    "class": "dont",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "gap",
+      "held": true
+    },
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exo"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "mut_pilot.csv (mutation counts for 5 cholangiocarcinomas)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "exon_len.csv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "cancer_genes.txt"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "hallmark.gmt"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow",
+      "routing.run_held"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [
+            "SAMBAR"
+          ],
+          "line": "\"Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8.\" -- not available here as asked. SAMBAR: kmax cannot exceed the number of mutation samples when clustering is enabled. SAMBAR itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+          "quote": "Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8.",
+          "reasons": [
+            "SAMBAR: kmax cannot exceed the number of mutation samples when clustering is enabled"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "sample_cluster_assignment",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8."
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": {
+          "held": true,
+          "verdict": "gap"
+        }
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "decline"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.049522
+  },
+  "cj-g4o1-C31-1": {
+    "item": "C31",
+    "rep": 1,
+    "class": "ask",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "giraffe.signed_regulation"
+        ],
+        "Can GIRAFFE give us signed TF-to-gene effects, activation versus repression, for"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "giraffe.signed_regulation"
+        ],
+        "My supervisor's notes say we need those signed effects for each biopsy separatel"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "We have expression, a motif prior and a TF PPI."
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Can GIRAFFE give us signed TF-to-gene effects, activation versus repression, for our 40 atopic dermatitis skin biopsies?"
+        ],
+        "legacy_facts": [
+          "Which result do you want: \"those signed effects for each biopsy separately\" or \"one set of signed effects for the whole cohort\"?"
+        ],
+        "match_status": "exact",
+        "reason_code": "research_choices_unavailable",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "GIRAFFE"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.049277
+  },
+  "cj-g4o1-C32-1": {
+    "item": "C32",
+    "rep": 1,
+    "class": "do",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "dragon.two_layer_network"
+        ],
+        "write the partial-correlation network as an edge list rather than a matrix"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "my paired plasma proteomics and metabolomics tables (both with a header, the sam"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Will DRAGON take my paired plasma proteomics and metabolomics tables (both with "
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "write the partial-correlation network as an edge list rather than a matrix"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "DRAGON"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.038401
+  },
+  "cj-g4o1-C33-1": {
+    "item": "C33",
+    "rep": 1,
+    "class": "dont",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "fallback",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "context",
+        "not_checked",
+        [],
+        "my 18 log-transformed, centered endometriosis samples"
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Can BONOBO run with sparsify on at a 0.01 confidence level and delta fixed at 0."
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "log-transformed"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "all_results_not_available",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [
+            "BONOBO"
+          ],
+          "line": "\"log-transformed\" -- not available here as asked. BONOBO's log_transformed needs an explicit true or false value; \"log-transformed\" is unresolved. BONOBO itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+          "quote": "log-transformed",
+          "reasons": [
+            "BONOBO's log_transformed needs an explicit true or false value; \"log-transformed\" is unresolved",
+            "BONOBO's centered needs an explicit true or false value; \"centered\" is unresolved",
+            "BONOBO: with sparsify, delta must be above 0 and below 1/3, got 0.5"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "Can BONOBO run with sparsify on at a 0.01 confidence level and delta fixed at 0.5"
+        ],
+        "legacy_facts": [],
+        "match_status": "fallback",
+        "reason_code": "registry_guidance_fallback",
+        "rows": [
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ],
+          [
+            "result",
+            "not_available"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "decline"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.055432
+  },
+  "cj-g4o1-C34-1": {
+    "item": "C34",
+    "rep": 1,
+    "class": "ask",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Do you need to deliver batch-adjusted gene co-expression to build the regulatory network?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "cobra.adjusted_input_to_regulation"
+        ],
+        "Depending on who you ask in the lab, that means a batch-corrected expression mat"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Our 96 brain RNA-seq samples (about 20,000 genes) were processed in four extract"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I want the batch effect removed"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Batch is recorded per sample as numeric indicator columns"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Depending on who you ask in the lab, that means a batch-corrected expression matrix to hand to other people, or batch-adjusted gene co-expression to build the regulatory network on"
+        ],
+        "legacy_facts": [
+          "Which result do you want: \"a batch-corrected expression matrix to hand to other people\" or \"batch-adjusted gene co-expression to build the regulatory network on\"?"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "research_guidance",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "COBRA consumes a gene-by-sample expression matrix and numeric sample covariates, then produces a covariate-associated covariance decomposition and a labeled adjusted gene-by-gene co-expression artifact.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Do you need to deliver batch-adjusted gene co-expression to build the regulatory network?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "Depending on who you ask in the lab, that means a batch-corrected expression matrix to hand to other people, or batch-adjusted gene co-expression to build the regulatory network on, and I'm not sure which one I'm supposed to deliver.",
+          "workflows": [
+            "COBRA"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "COBRA"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.057284
+  },
+  "cj-g4o1-C35-1": {
+    "item": "C35",
+    "rep": 1,
+    "class": "do",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 2,
+    "action": "run_sambar",
+    "workflow": "SAMBAR",
+    "plan_status": "needs_input",
+    "intent_type": "run_analysis",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "agrees",
+      "held": false
+    },
+    "check_rows": [],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow",
+      "routing.run_controls_bound"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "run",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "run_sambar",
+        "artifact_type": "sample_cluster_assignment",
+        "check_unconfirmed": false,
+        "goal": null,
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [],
+        "run_verdict": {
+          "held": false,
+          "verdict": "agrees"
+        }
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": true,
+      "workflows": [
+        "SAMBAR"
+      ]
+    },
+    "views": [
+      "needs_input"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.058974
+  },
+  "cj-g4o1-C36-1": {
+    "item": "C36",
+    "rep": 1,
+    "class": "ask",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Does 'regulatory strength' mean how active the TF is?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "lioness_panda.per_sample_targeting",
+          "lioness_puma.per_sample_targeting",
+          "giraffe.tf_activity"
+        ],
+        "For each of our 40 kidney cancer patients I need one number per transcription fa"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "lioness_panda.per_sample_targeting",
+          "lioness_puma.per_sample_targeting",
+          "giraffe.tf_activity"
+        ],
+        "I'm honestly not sure whether 'regulatory strength' here should mean how strongl"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "We have expression, a motif prior and a TF-TF PPI."
+      ],
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "I'm honestly not sure whether 'regulatory strength' here should mean how strongl"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "For each of our 40 kidney cancer patients I need one number per transcription factor that captures that TF's regulatory strength in that patient, so we can relate it to survival."
+        ],
+        "legacy_facts": [
+          "Which result do you want: \"how strongly the TF is wired to its targets\" or \"how active the TF is\"?"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "research_guidance",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "about_methods",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "GIRAFFE: Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Does 'regulatory strength' mean how active the TF is?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "I'm honestly not sure whether 'regulatory strength' here should mean how strongly the TF is wired to its targets or how active the TF is; my PI used both phrasings.",
+          "workflows": [
+            "GIRAFFE"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "GIRAFFE"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.063089
+  },
+  "cj-g4o1-C37-1": {
+    "item": "C37",
+    "rep": 1,
+    "class": "vague",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which scientific question should we start with?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "dragon.two_layer_network",
+          "dragon.edge_pvalues",
+          "dragon.group_comparison"
+        ],
+        "DRAGON, OTTER and GIRAFFE"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "bulk transcriptomics, proteomics and some ATAC-seq peaks for a mouse model of pu"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "Which of these should we apply"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "what would we actually learn from each"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "something to show at the next lab meeting"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"bulk transcriptomics, proteomics and some ATAC-seq peaks for a mouse model of pulmonary fibrosis, roughly 30 animals across three time points\" -- not matched to any registered workflow.",
+          "quote": "bulk transcriptomics, proteomics and some ATAC-seq peaks for a mouse model of pulmonary fibrosis, roughly 30 animals across three time points",
+          "reasons": []
+        },
+        {
+          "alternatives": [],
+          "line": "\"Which of these should we apply\" -- not matched to any registered workflow.",
+          "quote": "Which of these should we apply",
+          "reasons": []
+        },
+        {
+          "alternatives": [],
+          "line": "\"what would we actually learn from each\" -- not matched to any registered workflow.",
+          "quote": "what would we actually learn from each",
+          "reasons": []
+        },
+        {
+          "alternatives": [],
+          "line": "\"something to show at the next lab meeting\" -- not matched to any registered workflow.",
+          "quote": "something to show at the next lab meeting",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "Which of these should we apply, and what would we actually learn from each?"
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "research_choices",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": true,
+      "run_allowed": false,
+      "workflows": [
+        "DRAGON"
+      ]
+    },
+    "views": [
+      "hypothesis_routes"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.081334
+  },
+  "cj-g4o1-C38-1": {
+    "item": "C38",
+    "rep": 1,
+    "class": "do",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "giraffe.tf_activity"
+        ],
+        "Can GIRAFFE estimate an activity score for every transcription factor in each of"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I have the gene-by-sample expression table, a TF-by-gene motif prior and a TF-TF"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "tf_activity_matrix",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Can GIRAFFE estimate an activity score for every transcription factor in each of our 30 psoriasis skin samples?"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "GIRAFFE"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.053726
+  },
+  "cj-g4o1-C39-1": {
+    "item": "C39",
+    "rep": 1,
+    "class": "ask",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Are the small RNAs miRNAs?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Can PUMA model the small RNAs from our mouse testis small-RNA-seq as regulators "
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I have expression for 24 testes, a motif prior, a PPI and a small-RNA-to-target "
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Can PUMA model the small RNAs from our mouse testis small-RNA-seq as regulators alongside the TFs?"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "Require one miRNA identifier per line and require every miRNA in prior column one.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Are the small RNAs miRNAs?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "the small RNAs we picked could be miRNAs or piRNAs, and I genuinely don't know which yet.",
+          "workflows": [
+            "PUMA"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "PUMA"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.059247
+  },
+  "cj-g4o1-C40-1": {
+    "item": "C40",
+    "rep": 1,
+    "class": "do",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "partial_gap",
+      "held": true
+    },
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "bonobo.per_sample_networks"
+        ],
+        "Run BONOBO on expr_ms_lesions.tsv"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "log2-transformed"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "centered per gene"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "gene IDs in the first column, sample IDs in the header"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "expr_ms_lesions.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "27 multiple sclerosis lesion samples"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "log2-transformed and centered per gene"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "gene IDs in the first column"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "sample IDs in the header"
+      ],
+      [
+        "result",
+        "available",
+        [
+          "bonobo.per_sample_networks"
+        ],
+        "but only write networks for samples MS_03, MS_11 and MS_19, saved as .csv files"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow",
+      "routing.run_settings_unbound",
+      "routing.run_held"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "run_held",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"log2-transformed\" -- not available here as asked. BONOBO's log_transformed needs an explicit true or false value; \"log2-transformed\" is unresolved.",
+          "quote": "log2-transformed",
+          "reasons": [
+            "BONOBO's log_transformed needs an explicit true or false value; \"log2-transformed\" is unresolved"
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"centered per gene\" -- not available here as asked. BONOBO's centered needs an explicit true or false value; \"centered per gene\" is unresolved.",
+          "quote": "centered per gene",
+          "reasons": [
+            "BONOBO's centered needs an explicit true or false value; \"centered per gene\" is unresolved"
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"gene IDs in the first column, sample IDs in the header\" -- not available here as asked. BONOBO's genes_axis requires one of auto, rows and columns; \"gene IDs in the first column, sample IDs in the header\" does not identify one allowed choice.",
+          "quote": "gene IDs in the first column, sample IDs in the header",
+          "reasons": [
+            "BONOBO's genes_axis requires one of auto, rows and columns; \"gene IDs in the first column, sample IDs in the header\" does not identify one allowed choice"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "coexpression_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "Run BONOBO on expr_ms_lesions.tsv"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "result",
+            "available"
+          ]
+        ],
+        "run_verdict": {
+          "held": true,
+          "verdict": "partial_gap"
+        }
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": true,
+      "run_allowed": false,
+      "workflows": [
+        "BONOBO"
+      ]
+    },
+    "views": [
+      "run_held"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.051222
+  },
+  "cj-g4o1-C41-1": {
+    "item": "C41",
+    "rep": 1,
+    "class": "vague",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Do you want to infer both aggregate and sample-specific networks?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Which one should I run?"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "our zebrafish fin-regeneration RNA-seq"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "Which one should I run?"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI priors to internally infer the aggregate PANDA network and derive sample-specific TF-to-gene networks.",
+          "depends_on": "",
+          "if_no": "other_workflow:PANDA",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Do you want to infer both aggregate and sample-specific networks?",
+          "settled_by_input_check": false,
+          "uncertainty": "two_versions",
+          "user_quote": "PANDA or LIONESS",
+          "workflows": [
+            "LIONESS-PANDA",
+            "PANDA"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-PANDA",
+        "PANDA"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.078949
+  },
+  "cj-g4o1-C42-1": {
+    "item": "C42",
+    "rep": 1,
+    "class": "ask",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Are the values in the methylation file continuous beta values?",
+    "run_verdict": {
+      "verdict": "agrees",
+      "held": false
+    },
+    "check_rows": [],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "run_dragon",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": null,
+        "legacy_facts": [
+          "Are the omics measurements continuous values, or binary indicators?"
+        ],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [],
+        "run_verdict": {
+          "held": false,
+          "verdict": "agrees"
+        }
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "Values must be finite continuous numeric measurements.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Are the values in the methylation file continuous beta values?",
+          "settled_by_input_check": false,
+          "uncertainty": "two_versions",
+          "user_quote": "the methylation file is either the continuous beta values or the binarized methylated/unmethylated calls (0/1)",
+          "workflows": [
+            "DRAGON"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "DRAGON"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.041541
+  },
+  "cj-g4o1-C43-1": {
+    "item": "C43",
+    "rep": 1,
+    "class": "ask",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 2,
+    "action": "run_lioness_panda",
+    "workflow": "LIONESS-PANDA",
+    "plan_status": "needs_input",
+    "intent_type": "run_analysis",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "agrees",
+      "held": false
+    },
+    "check_rows": [],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "run",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "run_lioness_panda",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": null,
+        "legacy_facts": [
+          "How many independent biological samples are available for this result?"
+        ],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [],
+        "run_verdict": {
+          "held": false,
+          "verdict": "agrees"
+        }
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "Require at least three expression samples before execution.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Does the file contain at least three expression samples?",
+          "settled_by_input_check": true,
+          "uncertainty": "said_unknown",
+          "user_quote": "I'm not sure which export this file is: the per-patient matrix (24 patients) or the version where a student averaged the patients into two columns, RA and control.",
+          "workflows": [
+            "LIONESS-PANDA"
+          ]
+        }
+      ],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": true,
+      "workflows": [
+        "LIONESS-PANDA"
+      ]
+    },
+    "views": [
+      "needs_input"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.062399
+  },
+  "cj-g4o1-C44-1": {
+    "item": "C44",
+    "rep": 1,
+    "class": "ask",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "seed_W_mm.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "ppi_tf_mm.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "coexp_liver.tsv"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I have no expression file, only that co-expression file."
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix "
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv\" -- not available here as asked. You said \"I have no expression file, only that co-expression file.\"; OTTER needs a TF motif prior and no registered workflow or tool provides it.",
+          "quote": "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv",
+          "reasons": [
+            "You said \"I have no expression file, only that co-expression file.\"; OTTER needs a TF motif prior and no registered workflow or tool provides it"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.050919
+  },
+  "cj-g4o1-C45-1": {
+    "item": "C45",
+    "rep": 1,
+    "class": "ask",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Is the proteomics data the 200-protein targeted panel?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "lioness_dragon.per_sample_networks"
+        ],
+        "a separate miRNA-protein partial-correlation network for each of our 50 heart-fa"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "50 heart-failure patients"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "300 serum miRNAs"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "a plasma proteomics panel measured on the same patients (complete, continuous, m"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "the files are still on the CRO's server"
+      ]
+    ],
+    "unknown_domains": {
+      "I don't remember whether the proteomics we got back is the 200-protein targeted panel or the 2,000-protein discovery panel": {
+        "kind": "choices",
+        "values": [
+          200,
+          2000
+        ]
+      }
+    },
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "a separate miRNA-protein partial-correlation network"
+        ],
+        "legacy_facts": [
+          "How many independent biological samples are available for this result?"
+        ],
+        "match_status": "exact",
+        "reason_code": "registry_guidance_fallback",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "LIONESS-DRAGON consumes exactly two paired sample-by-feature continuous omics tables, DRAGON's inputs, and produces the aggregate DRAGON matrix plus one partial-correlation network per sample, written as an edge-by-sample table (source, target, one column per sample) with layer-qualified node IDs.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Is the proteomics data the 200-protein targeted panel?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "I don't remember whether the proteomics we got back is the 200-protein targeted panel or the 2,000-protein discovery panel",
+          "workflows": [
+            "LIONESS-DRAGON"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "LIONESS-DRAGON"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.065114
+  },
+  "cj-g4o1-C46-1": {
+    "item": "C46",
+    "rep": 1,
+    "class": "dont",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "the list of genes differentially expressed between 12 drug-treated and 12 vehicl"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "12 drug-treated and 12 vehicle mouse hippocampi"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"the list of genes differentially expressed between 12 drug-treated and 12 vehicle mouse hippocampi, with log2 fold changes and FDR-adjusted p-values like DESeq2 reports\" -- not available here: no registered workflow produces this. COBRA does not give it: COBRA decomposes gene-pair co-expression; it does not test single genes' expression.",
+          "quote": "the list of genes differentially expressed between 12 drug-treated and 12 vehicle mouse hippocampi, with log2 fold changes and FDR-adjusted p-values like DESeq2 reports",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "expression_matrix",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "the list of genes differentially expressed between 12 drug-treated and 12 vehicle mouse hippocampi, with log2 fold changes and FDR-adjusted p-values like DESeq2 reports"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.043682
+  },
+  "cj-g4o1-C47-1": {
+    "item": "C47",
+    "rep": 1,
+    "class": "dont",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "a model that predicts each new patient's overall-survival risk"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "apply to an external validation cohort of 150 patients from another hospital wit"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "the score would also show which genes drive the risk"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "bulk expression and clinical follow-up for 400 lung adenocarcinoma patients"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"a model that predicts each new patient's overall-survival risk\" -- not available here as asked. NetZoo has no registered method or variant \"a penalized Cox model\". PANDA does not give it: one static network per set of samples; time points can only be compared as separate networks.",
+          "quote": "a model that predicts each new patient's overall-survival risk",
+          "reasons": [
+            "NetZoo has no registered method or variant \"a penalized Cox model\""
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"apply to an external validation cohort of 150 patients from another hospital without refitting\" -- not available here: no registered workflow produces this. PANDA does not give it: one static network per set of samples; time points can only be compared as separate networks.",
+          "quote": "apply to an external validation cohort of 150 patients from another hospital without refitting",
+          "reasons": []
+        },
+        {
+          "alternatives": [],
+          "line": "\"the score would also show which genes drive the risk\" -- not available here: no registered workflow produces this. PANDA does not give it: one static network per set of samples; time points can only be compared as separate networks.",
+          "quote": "the score would also show which genes drive the risk",
+          "reasons": []
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "a model that predicts each new patient's overall-survival risk"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.081513
+  },
+  "cj-g4o1-C48-1": {
+    "item": "C48",
+    "rep": 1,
+    "class": "ask",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Are the biopsies from the same 58 people as the fecal samples?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "dragon.two_layer_network"
+        ],
+        "Is DRAGON able to link fecal metabolomics with colon-biopsy transcriptomics for "
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Both tables are complete and continuous"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "the metabolomics came from the 2023 recruitment wave"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "the biopsies may have been taken from a different group of volunteers"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I'm still waiting to hear from the clinic whether they're the same 58 people"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "multi_omic_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Is DRAGON able to link fecal metabolomics with colon-biopsy transcriptomics for our IBS study?"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Are the biopsies from the same 58 people as the fecal samples?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "the biopsies may have been taken from a different group of volunteers; I'm still waiting to hear from the clinic whether they're the same 58 people.",
+          "workflows": [
+            "DRAGON"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "DRAGON"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.043709
+  },
+  "cj-g4o1-C49-1": {
+    "item": "C49",
+    "rep": 1,
+    "class": "vague",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "give me figures for the paper"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I've put tumor_expr.tsv, motifs.txt, ppi.txt and clinical.tsv in the folder."
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "Do whatever makes sense with them and give me figures for the paper.",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "Do whatever makes sense with them and give me figures for the paper."
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.046156
+  },
+  "cj-g4o1-C50-1": {
+    "item": "C50",
+    "rep": 1,
+    "class": "ask",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Were the expression values log-transformed before centering?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "a gene co-expression network for each of our 9 periodontitis gingival biopsies, "
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "The matrix (genes in rows, sample IDs in the header) has been mean-centered per "
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "pvalue_matrix",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "a gene co-expression network for each of our 9 periodontitis gingival biopsies, with a p-value for every edge so I can filter them per sample"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "The agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Were the expression values log-transformed before centering?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "I can't tell whether the values were log-transformed before centering.",
+          "workflows": [
+            "BONOBO"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "BONOBO"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.048774
+  },
+  "cj-g4o1-C51-1": {
+    "item": "C51",
+    "rep": 1,
+    "class": "do",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "about_methods",
+        "not_checked",
+        [],
+        "Is OTTER able to run on CPU in single precision with 150 iterations and a step s"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "Inputs would be expression for 60 breast tumours (header row, gene IDs in the fi"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "routed",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "method_named",
+          "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list?"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "about_methods",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "OTTER"
+      ]
+    },
+    "views": [
+      "workflow_contract"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.046947
+  },
+  "cj-g4o1-C52-1": {
+    "item": "C52",
+    "rep": 1,
+    "class": "do",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "gap",
+      "held": true
+    },
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Can BONOBO build a co-expression network for each of my 6 rhesus macaque lymph n"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "The data are log2-transformed and centered per gene, with genes in rows and samp"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I'd like the per-sample matrices saved as HDF5 and computed in double precision"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow",
+      "routing.run_held"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [
+            "BONOBO"
+          ],
+          "line": "\"Can BONOBO build a co-expression network for each of my 6 rhesus macaque lymph node samples?\" -- not available here as asked. BONOBO's log_transformed needs an explicit true or false value; \"log2-transformed\" is unresolved. BONOBO itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+          "quote": "Can BONOBO build a co-expression network for each of my 6 rhesus macaque lymph node samples?",
+          "reasons": [
+            "BONOBO's log_transformed needs an explicit true or false value; \"log2-transformed\" is unresolved",
+            "BONOBO's centered needs an explicit true or false value; \"centered\" is unresolved"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "coexpression_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Can BONOBO build a co-expression network for each of my 6 rhesus macaque lymph node samples?"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": {
+          "held": true,
+          "verdict": "gap"
+        }
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "decline"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.046428
+  },
+  "cj-g4o1-C53-1": {
+    "item": "C53",
+    "rep": 1,
+    "class": "vague",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Both fit; to choose, tell me: (1) Do you need to separate or adjust co-expression for batch, site or other sample covariates? (co-expression must be separated or adjusted for batch, site or other covariates → COBRA; no sample covariates need to be separated or adjusted → LIONESS-COEXPRESSION)",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "panda.tf_gene_network",
+          "lioness_panda.per_sample_networks",
+          "otter.tf_gene_network",
+          "lioness_coexpression.per_sample_networks",
+          "bonobo.per_sample_networks"
+        ],
+        "how genes are connected in my sorghum heat-stress experiment"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "my sorghum heat-stress experiment"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "coexpression_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "how genes are connected in my sorghum heat-stress experiment"
+        ],
+        "legacy_facts": [],
+        "match_status": "ambiguous",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "OTTER",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ]
+    },
+    "views": [
+      "outcome_clarification"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.075874
+  },
+  "cj-g4o1-C54-1": {
+    "item": "C54",
+    "rep": 1,
+    "class": "vague",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "what the network part should actually be"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "what question it should answer"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "What can we do"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "'network-based insights' into Crohn's disease"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "bulk RNA-seq from 150 ileal biopsies"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "clinical data (disease activity, treatment, biopsy site)"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "matched serology for most of the patients"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 1,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "What can we do",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": null,
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "What can we do"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_fallback",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.061701
+  },
+  "cj-g4o1-C55-1": {
+    "item": "C55",
+    "rep": 1,
+    "class": "do",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "panda.tf_gene_network"
+        ],
+        "Can PANDA build a single TF-to-gene regulatory network for our whole cohort of 4"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I have the gene-by-sample expression matrix, a JASPAR-based motif prior and a mo"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "results_given",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Can PANDA build a single TF-to-gene regulatory network for our whole cohort of 48 mouse liver RNA-seq samples?"
+        ],
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "PANDA"
+      ]
+    },
+    "views": [
+      "verified_guidance"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.042494
+  },
+  "cj-g4o1-C56-1": {
+    "item": "C56",
+    "rep": 1,
+    "class": "ask",
+    "form": "named",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Are the counts tumour-only somatic mutations?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "available",
+        [
+          "sambar.subtypes"
+        ],
+        "Can SAMBAR subtype our 160 pediatric medulloblastomas?"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "The sequencing core sent a samples-by-genes variant-count matrix along with gene"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "fact_agent",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "sample_cluster_assignment",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "Can SAMBAR subtype our 160 pediatric medulloblastomas?"
+        ],
+        "legacy_facts": [
+          "Are these acquired somatic mutations, or inherited germline variants?"
+        ],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [
+        {
+          "by_code": false,
+          "contract_quote": "SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length CSV, a tab-delimited cancer-gene list, and a GMT pathway file.",
+          "depends_on": "",
+          "if_no": "not_supported",
+          "if_yes": "supported",
+          "notes": {},
+          "outcomes": {},
+          "question": "Are the counts tumour-only somatic mutations?",
+          "settled_by_input_check": false,
+          "uncertainty": "said_unknown",
+          "user_quote": "the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself.",
+          "workflows": [
+            "SAMBAR"
+          ]
+        }
+      ],
+      "kind": "ASK",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": [
+        "SAMBAR"
+      ]
+    },
+    "views": [
+      "ask_facts"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.055977
+  },
+  "cj-g4o1-C57-1": {
+    "item": "C57",
+    "rep": 1,
+    "class": "dont",
+    "form": "goal",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "unsupported",
+    "clarification_question": null,
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "how much of the co-expression between those 48 genes is associated with the hosp"
+      ],
+      [
+        "result",
+        "not_available",
+        [],
+        "hospital coded as numeric indicator columns in a design table whose rows match t"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "We ran a 48-gene NanoString inflammation panel on 600 rheumatoid arthritis patie"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "each hospital contributed roughly 150 patients"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "full_gap",
+      "clarify": null,
+      "declined": [
+        {
+          "alternatives": [],
+          "line": "\"how much of the co-expression between those 48 genes is associated with the hospital each sample came from, decomposed per covariate\" -- not available here as asked. COBRA requires more genes than samples; the request has 48 genes and 600 samples. PANDA does not give it: the PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or stoichiometry.",
+          "quote": "how much of the co-expression between those 48 genes is associated with the hospital each sample came from, decomposed per covariate",
+          "reasons": [
+            "COBRA requires more genes than samples; the request has 48 genes and 600 samples"
+          ]
+        },
+        {
+          "alternatives": [],
+          "line": "\"hospital coded as numeric indicator columns in a design table whose rows match the sample IDs exactly\" -- not available here as asked. NetZoo runs COBRA with its package defaults and passes no settings to it, so \"hospital coded as numeric indicator columns in a design table whose rows match the sample IDs exactly\" cannot be applied.",
+          "quote": "hospital coded as numeric indicator columns in a design table whose rows match the sample IDs exactly",
+          "reasons": [
+            "NetZoo runs COBRA with its package defaults and passes no settings to it, so \"hospital coded as numeric indicator columns in a design table whose rows match the sample IDs exactly\" cannot be applied"
+          ]
+        }
+      ],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "coexpression_network",
+        "check_unconfirmed": false,
+        "goal": [
+          "result_named",
+          "how much of the co-expression between those 48 genes is associated with the hospital each sample came from, decomposed per covariate"
+        ],
+        "legacy_facts": [],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "DECLINE",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "capability_check_gap"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.060814
+  },
+  "cj-g4o1-C58-1": {
+    "item": "C58",
+    "rep": 1,
+    "class": "do",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 2,
+    "action": "run_panda",
+    "workflow": "PANDA",
+    "plan_status": "needs_input",
+    "intent_type": "run_analysis",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "agrees",
+      "held": false
+    },
+    "check_rows": [],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "run",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "run_panda",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": null,
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [],
+        "run_verdict": {
+          "held": false,
+          "verdict": "agrees"
+        }
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": true,
+      "workflows": [
+        "PANDA"
+      ]
+    },
+    "views": [
+      "needs_input"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.038766
+  },
+  "cj-g4o1-C59-1": {
+    "item": "C59",
+    "rep": 1,
+    "class": "do",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 2,
+    "action": "run_lioness_puma",
+    "workflow": "LIONESS-PUMA",
+    "plan_status": "needs_input",
+    "intent_type": "run_analysis",
+    "match_status": "exact",
+    "clarification_question": null,
+    "run_verdict": {
+      "verdict": "agrees",
+      "held": false
+    },
+    "check_rows": [],
+    "unknown_domains": {},
+    "gate_events": [
+      "routing.run_check_shadow"
+    ],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "run",
+      "clarify": null,
+      "declined": [],
+      "evidence": {
+        "action": "run_lioness_puma",
+        "artifact_type": "regulatory_network",
+        "check_unconfirmed": false,
+        "goal": null,
+        "legacy_facts": [],
+        "match_status": "exact",
+        "reason_code": "semantic_registry_intent",
+        "rows": [],
+        "run_verdict": {
+          "held": false,
+          "verdict": "agrees"
+        }
+      },
+      "facts": [],
+      "kind": "DO",
+      "partial": false,
+      "run_allowed": true,
+      "workflows": [
+        "LIONESS-PUMA"
+      ]
+    },
+    "views": [
+      "needs_input"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.050707
+  },
+  "cj-g4o1-C60-1": {
+    "item": "C60",
+    "rep": 1,
+    "class": "vague",
+    "form": "run",
+    "capture_verified": true,
+    "exit": 0,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "intent_type": "answer_question",
+    "match_status": "ambiguous",
+    "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "run_verdict": {},
+    "check_rows": [
+      [
+        "result",
+        "not_available",
+        [],
+        "Can you run the right workflow on them?"
+      ],
+      [
+        "context",
+        "not_checked",
+        [],
+        "I uploaded counts_week0.tsv, counts_week4.tsv and counts_week12.tsv from our vac"
+      ]
+    ],
+    "unknown_domains": {},
+    "gate_events": [],
+    "plans_created": 1,
+    "semantic_failed": 0,
+    "core": {
+      "basis": "goal_unclear",
+      "clarify": {
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "goal_quote": "Can you run the right workflow on them?",
+        "inputs": [],
+        "missing": "both",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?"
+      },
+      "declined": [],
+      "evidence": {
+        "action": "no_tool",
+        "artifact_type": "measurement_dataset",
+        "check_unconfirmed": false,
+        "goal": [
+          "purpose_only",
+          "Can you run the right workflow on them?"
+        ],
+        "match_status": "unsupported",
+        "reason_code": "semantic_registry_intent",
+        "rows": [
+          [
+            "result",
+            "not_available"
+          ],
+          [
+            "context",
+            "not_checked"
+          ]
+        ],
+        "run_verdict": null
+      },
+      "facts": [],
+      "kind": "CLARIFY",
+      "partial": false,
+      "run_allowed": false,
+      "workflows": []
+    },
+    "views": [
+      "clarify_goal"
+    ],
+    "check_calls": [
+      [
+        "openai/gpt-4o-2024-11-20",
+        "success"
+      ]
+    ],
+    "exceptions": [],
+    "cost_usd": 0.044326
+  }
+}

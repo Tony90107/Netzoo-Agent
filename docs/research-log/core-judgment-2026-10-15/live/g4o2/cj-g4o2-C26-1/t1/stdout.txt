@@ -1,0 +1,31 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (6.55s)
+● Matching registered workflows…
+✓ Matched workflows — PANDA, OTTER
+✓ Guidance prepared
+What I understood you are asking for:
+1. "Is SAMBAR the right thing to run" -- not matched to any registered workflow.
+2. "one of the network methods like PANDA" -- available from PANDA.
+3. "whatever gives the most interesting result" -- available from PANDA or OTTER.
+
+There are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data.
+
+For “network methods like PANDA”:
+
+**PANDA**. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+
+You would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations.
+
+For “network methods like PANDA”:
+
+**OTTER**. OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+
+You would need motif/prior, PPI network, either expression matrix or adjusted co-expression matrix. The analysis would provide inferred regulator-to-target associations.
+
+For “SAMBAR”, no registered workflow meets the stated requirement. That part needs a clearer measurement or an external method.
+
+**What your data allows.** Your request names expression data and mutation data. PANDA and OTTER need a motif prior and a PPI network, which you said you do not have ("We have somatic mutation calls and RNA-seq for the same 90 bladder tumours"). With expression data and mutation data alone, LIONESS-COEXPRESSION builds one cohort-level gene-gene co-expression network (genes only, no regulator roles) instead.
+
+No files were inspected and no analysis ran.
+
+Which scientific question should we start with, and which of these inputs do you have? We can also investigate the hypotheses in parallel.

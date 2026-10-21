@@ -1,0 +1,28 @@
+● Classifying requested outcome…
+✓ Workflow — BONOBO
+✓ Guidance prepared
+What I understood you are asking for:
+1. "whether I also want a p-value for each edge" -- available from BONOBO.
+
+Selected path: **BONOBO**.
+
+**BONOBO** — Infer sample-specific gene-gene co-expression networks with netZooPy BONOBO. BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+
+Outputs:
+
+- `coexpression_network`: Inferred gene-to-gene associations.
+- `pvalue_matrix`: P-value matrix paired with a sample-specific gene-gene co-expression result.
+
+When `sparsify=False` and `save_pvals=False`: full sample-specific gene-gene co-expression matrices; no p-value artifact is written.
+
+When `sparsify=True` and `save_pvals=False`: upstream thresholds each sample-specific co-expression matrix; no p-value artifact is written.
+
+When `sparsify=True` and `save_pvals=True`: upstream retains the full co-expression matrix for each selected sample and writes a matching p-value matrix; threshold it from the saved p-value matrix; it does not also emit an already-thresholded network in this mode.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+Input compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

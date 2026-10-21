@@ -1,0 +1,34 @@
+● Classifying requested outcome…
+● Matching registered workflows…
+! Interpretation kept, but its quotes could not be matched to your wording
+● Preparing next step…
+What I understood you are asking for:
+1. "Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8." -- not available here as asked. SAMBAR's subset_cancer_genes needs an explicit true or false value; "cancer_genes.txt" is unresolved. SAMBAR itself can still run, with its own settings instead -- an alternative, not the setting you asked for.
+
+Fallback recommendation: **SAMBAR**. The request was interpreted and a candidate was found, but at least one quote supporting that reading could not be located in your text -- often a spelling or rephrasing difference, sometimes a detail the reading added. So this is shown as a candidate rather than a verified match, and nothing will run from it. Please check that the reading matches what you meant.
+
+Your question asks for a cohort-level sample cluster assignment. **SAMBAR** is related to that result and scale.
+
+Why this recommendation:
+
+Pathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.
+
+**SAMBAR** — Subtype somatic-mutation samples through pathway mutation scores with SAMBAR. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.
+
+Required workflow inputs:
+
+- `mutation_file`: somatic mutation matrix
+- `exon_size_file`: gene/exon-size CSV
+- `cancer_gene_file`: cancer-gene list
+- `pathway_file`: GMT pathway file
+
+Outputs:
+
+- `gene_mutation_scores`: Sample-by-gene mutation scores, not pathway scores.
+- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.
+- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.
+- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

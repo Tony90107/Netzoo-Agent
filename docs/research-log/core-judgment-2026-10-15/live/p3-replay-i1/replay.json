@@ -1,0 +1,562 @@
+[
+  {
+    "item": "C04",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "outcome_clarification",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"that patient's own TF-to-gene regulatory network\" -- available from LIONESS-PANDA.\n2. \"built from the cohort's expression matrix together with a human motif prior and a TF PPI, so I can later compare each TF's targeting between responders and non-responders\" -- available from LIONESS-PANDA.\n\nI can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\nAbout your concern that what to do with the result afterwards, for example comparing conditions or relating it to clinical variables:\n- **PANDA**, **OTTER** — Targeting scores: a regulato"
+  },
+  {
+    "item": "C06",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Do you have a list of transcription factors?\n  You wrote: \"I'm not sure which of the two lists I was given\". PANDA's contract: \"PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors, or a validated adjusted gene-by-gene co-expression matrix through coexpression_file\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C07",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "composition",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers, so I can compare survivors with non-survivors patient by patient afterwards.\" -- available from LIONESS-DRAGON.\n\nFor the sample-specific output you described, use **LIONESS-DRAGON**.\n\nRequired inputs:\n   - `omics_layer_1`: Omics layer 1 (samples x features)\n   - `omics_layer_2`: Omics layer 2 (the same samples)\n\nOutputs:\n   - Aggregate network (`output_file`).\n   - Sample-specific network for each patient/sample (`lioness_output`).\n\nYou do not need to run **DRAGON** separately; **LIONESS-DRAGON** also produces the aggregate output. Use **DRAGON** alone only when a cohort-level aggregate result is sufficient.\n\nCost: LIONESS runs DRAGON once on all samples and once more without each sample, so N samples take N+1 DRAGON runs and give N network files (for your 64 patients, 65 DRAGON runs). Plan the runtime and disk space, and filter edges before downstream statistics.\n\nAbout your concern that what to do with the result afterwards, for example comparing conditions or relating it to clinical variables:\n- **LIONESS-DRAGON** — Each sample column holds that sample's edge weights; comparing the columns between groups of samples shows which within- and cross-layer associations differ. A sample's edges are estimated from how removing it changes the cohort network, so they are relative to the cohort th"
+  },
+  {
+    "item": "C08",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "verified_guidance",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"the package defaults gave a TF activity matrix that looked over-smoothed and I'd like to see whether these settings change that.\" -- available from GIRAFFE.\n2. \"learning rate of 1e-4\" -- not available here as asked. NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"learning rate of 1e-4\" cannot be applied.\n3. \"2,000 iterations\" -- not available here as asked. NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"2,000 iterations\" cannot be applied.\n4. \"heavier weight on the PPI term in the loss\" -- not available here as asked. NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"heavier weight on the PPI term in the loss\" cannot be applied.\n\n**GIRAFFE** fits the result you describe if you have a motif prior and a PPI network.\n\nYour question asks for a cohort-level TF activity matrix. **GIRAFFE** fits that result and scale. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors.\n\nWhat you asked about:\n\n- \"I want a learning rate of 1e-4, 2,000 iterations and a heavier weight on the PPI term in the loss\" — The TF-by-sample activity matrix (TFA) can serve as predictors in association tests with sample-level variables -- survival, for example, with a Cox model. Relating per-sample results to sample-level variables needs an annotation or clinical table keyed by the same sample IDs, supplied "
+  },
+  {
+    "item": "C09",
+    "kind": "CLARIFY",
+    "basis": "goal_unclear",
+    "view": "clarify_goal",
+    "recorded_kind": "CLARIFY",
+    "mismatch": false,
+    "error": null,
+    "reply": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples ("
+  },
+  {
+    "item": "C10",
+    "kind": "UNCHECKED",
+    "basis": "routing_failed",
+    "view": "unresolved",
+    "recorded_kind": "UNCHECKED",
+    "mismatch": false,
+    "error": null,
+    "reply": "The research comparison could not be validated; no workflow was selected.\n\nThe requested result is not specific enough to select a workflow. No workflow has been selected. I could not validate every research alternative. Please state each hypothesis and the result you want from it before selecting a workflow.\n\nSpecify the requested result type and whether it should be aggregate or sample-specific. The workflow will be selected only after the result is clear; the captured inputs will be carried forward, and nothing will run yet.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C11",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Does the analysis plan mean one network per diagnostic group?\n  You wrote: \"The analysis plan just says 'a network for each AD and control', and I can't tell if that means one network per diagnostic group or one network per donor;\". OTTER's contract: \"OTTER's official reader/merging behavior is otherwise permissive and its README warns that NAs and non-intersection inputs need care\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C12",
+    "kind": "CLARIFY",
+    "basis": "goal_unclear",
+    "view": "clarify_goal",
+    "recorded_kind": "CLARIFY",
+    "mismatch": false,
+    "error": null,
+    "reply": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples ("
+  },
+  {
+    "item": "C13",
+    "kind": "DECLINE",
+    "basis": "full_gap",
+    "view": "decline",
+    "recorded_kind": "DECLINE",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv with lam set to 1.5, so co-expression gets even more weight than PPI.\" -- not available here as asked. OTTER's lam must be between 0 and 1; \"1.5\" is not. OTTER itself can still run, with its own settings instead -- an alternative, not the setting you asked for.\n\nNo registered workflow can give this as you asked, so none is offered as asked.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C14",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Do you want to proceed without an L1 sparsity penalty?\n  You wrote: \"Can I add an L1 (lasso) sparsity penalty to OTTER's objective so that the TF-gene network it returns for my 45 bovine mammary gland samples is sparse, with most edges exactly zero?\". OTTER's contract: \"The verified API has no independent sparsity penalty or threshold parameter. gamma is an L2-style regularization term, not a sparsity claim; an unknown sparsity argument is rejected rather than silently mapped\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C15",
+    "kind": "CLARIFY",
+    "basis": "goal_unclear",
+    "view": "clarify_goal",
+    "recorded_kind": "CLARIFY",
+    "mismatch": false,
+    "error": null,
+    "reply": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples ("
+  },
+  {
+    "item": "C16",
+    "kind": "DECLINE",
+    "basis": "full_gap",
+    "view": "capability_check_gap",
+    "recorded_kind": "DECLINE",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"order the cells along a pseudotime trajectory\" -- not available here: no registered workflow produces this. No registered workflow models how the system changes from one time point to the next; time points can only be compared as separate results. Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.\n2. \"find the branch point where atrial and ventricular fates split\" -- not available here: no registered workflow produces this. No registered workflow models how the system changes from one time point to the next; time points can only be compared as separate results. Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.\n\nNo registered workflow produces these as you asked them, so none is offered for them as asked. The note below describes the closest route.\n\n**Single-cell data.** The registered workflows are built for bulk samples. Co-expression between individual cells is dominated by dropout, so per-cell LIONESS or BONOBO networks are not advised. A registered route: sum cells into pseudo-bulk profiles per donor and cell state, then run PANDA (or OTTER) once per state with the same genes and the same motif and PPI priors; this needs several donors per state to estimate co-expression. To look within a state, SCORPION (an R package from the Kuijjer lab, not registered here) first aggregates s"
+  },
+  {
+    "item": "C17",
+    "kind": "DECLINE",
+    "basis": "all_results_not_available",
+    "view": "decline",
+    "recorded_kind": "DECLINE",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"I want a transcript-metabolite partial-correlation network\" -- not available here as asked. DRAGON: lambda1 and lambda2 must be supplied together. DRAGON itself can still run, with its own settings instead -- an alternative, not the setting you asked for.\n\nNo registered workflow can give this as you asked, so none is offered as asked.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C18",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "hypothesis_routes",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"to get gene communities\" -- available from CONDOR.\n\nHere is how registered workflows can reach this result, with their algorithmic premises and inputs:\n\nResult: community assignments (aggregate), from expression matrix.\nNo single registered workflow produces this from the stated inputs; a registered handoff does, in two steps:\n- **PANDA → CONDOR** — PANDA infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).\n- **OTTER → CONDOR** — OTTER infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).\n  - Method premise: find communities in a two-mode network; return network modules or community membership\n\nShould we start with PANDA → CONDOR or OTTER → CONDOR? Each step is planned and approved on its own.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C19",
+    "kind": "CLARIFY",
+    "basis": "goal_unclear",
+    "view": "clarify_goal",
+    "recorded_kind": "CLARIFY",
+    "mismatch": false,
+    "error": null,
+    "reply": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples ("
+  },
+  {
+    "item": "C20",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Is the gene-by-sample expression matrix the one with log2 expression?\n  You wrote: \"I'm not sure which one this is\". PANDA's contract: \"PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors, or a validated adjusted gene-by-gene co-expression matrix through coexpression_file\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C21",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Is the network the TF-to-gene regulatory network from his PANDA runs?\n  You wrote: \"I don't know whether it's the TF-to-gene regulatory network from his PANDA runs or the gene-gene co-expression network he also built\". CONDOR's contract: \"CONDOR consumes a weighted source-target bipartite edge list made from a validated regulator-gene network and returns community assignments with regulator-side and gene-side partitions\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C22",
+    "kind": "DECLINE",
+    "basis": "full_gap",
+    "view": "capability_check_gap",
+    "recorded_kind": "DECLINE",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"give me a filtered VCF\" -- not matched to any registered workflow.\n\nNo registered workflow produces this, so none is offered as the way to get it.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C23",
+    "kind": "CLARIFY",
+    "basis": "goal_unclear",
+    "view": "clarify_goal",
+    "recorded_kind": "CLARIFY",
+    "mismatch": false,
+    "error": null,
+    "reply": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples ("
+  },
+  {
+    "item": "C24",
+    "kind": "DECLINE",
+    "basis": "full_gap",
+    "view": "capability_check_gap",
+    "recorded_kind": "DECLINE",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"'a network analysis'\" -- not matched to any registered workflow.\n2. \"can you set something up that would satisfy them?\" -- not matched to any registered workflow.\n\nNo registered workflow produces these, so none is offered as the way to get them.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C25",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "verified_guidance",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"I'd like one regulatory network for my 70 colorectal tumours in which both transcription factors and microRNAs act as regulators of their target genes.\" -- available from PUMA.\n\nSelected path: **PUMA**.\n\nYour question asks for a cohort-level regulatory network. **PUMA** fits that result and scale. PUMA extends PANDA's message passing to miRNA regulators.\n\nCaptured request parameters:\n\n- `network_file`: for\n\n**PUMA**: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA.\n\nRouting-level input modality: gene expression, coexpression.\n\nMethod premise: iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow.\n\nPUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression.\n\nMessage passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revis"
+  },
+  {
+    "item": "C26",
+    "kind": "CLARIFY",
+    "basis": "goal_unclear",
+    "view": "clarify_goal",
+    "recorded_kind": "CLARIFY",
+    "mismatch": false,
+    "error": null,
+    "reply": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nWith expression data and somatic mutations, the registered workflows can give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated wit"
+  },
+  {
+    "item": "C27",
+    "kind": "CLARIFY",
+    "basis": "goal_unclear",
+    "view": "clarify_goal",
+    "recorded_kind": "CLARIFY",
+    "mismatch": false,
+    "error": null,
+    "reply": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples ("
+  },
+  {
+    "item": "C28",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "verified_guidance",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"see how much of each gene pair's co-expression is associated with sequencing run versus sex\" -- available from COBRA.\n2. \"get an adjusted gene-by-gene co-expression matrix out of it for later network work\" -- available from COBRA.\n\nSelected path: **COBRA**.\n\nYour question asks for a cohort-level co-expression network. **COBRA** fits that result and scale. COBRA models co-expression as a function of sample covariates through conditional covariance estimation.\n\nCaptured request parameters:\n\n- `expression_file`: sample\n\nWhat you asked about:\n\n- \"get an adjusted gene-by-gene co-expression matrix out of it for later network work\" — Each covariate's component is a gene-by-gene co-expression attributable to that covariate; the adjusted co-expression can be passed to PANDA, PUMA or OTTER as coexpression_file after its identifiers and order are revalidated. Interpret each component relative to how the design matrix codes that covariate (for example, which level is the reference).\n\n**COBRA**: Model covariate-associated gene co-expression with COBRA.\n\nRouting-level input modality: expression matrix.\n\nMethod premise: remove or adjust technical batch effects; estimate how sample covariates change co-expression; model higher-order covariance or correlation structure; assess or remove hospital or site effects; assess or remove sequencing-batch effects.\n\nCOBRA models co-expression as a function of sample covariates through conditional covariance esti"
+  },
+  {
+    "item": "C29",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "verified_guidance",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"Now I want to split it into communities of TFs and their target genes, with the TF-side and gene-side memberships reported separately.\" -- available from CONDOR.\n\nSelected path: **CONDOR**.\n\nYour question asks for a cohort-level community assignment. **CONDOR** fits that result and scale.\n\n**CONDOR** — Detect communities in a validated bipartite network with CONDOR. CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain separate partitions, and between-partition connectivity is compared with a degree/strength-preserving bipartite null model. A giant community can reflect an unsuitable null model, resolution or weight handling. Hubs alone do not prove every conventional algorithm fails, and bipartite modularity does not guarantee biologically meaningful modules. Verify the edge-weight conventions.\n\nRequired workflow inputs:\n\n- `network_file`: bipartite network\n\nBefore CONDOR: a PANDA or LIONESS network is dense and its edge weights can be negative. netZooR's pandaToCondorObject keeps only edges above a threshold (by default midway between the median weights of prior and non-prior edges) before CONDOR; threshold your network the same way, or otherwise make the weights non-negative, before running it here. CONDOR puts each node in one community and gives each node a core score, its share of its community's modularity, which picks out each module's core regulators.\n\nOutputs:\n\n- `community_assignment`: Network-node co"
+  },
+  {
+    "item": "C30",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "verified_guidance",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"testing every subtype number from 2 through 8\" -- available from SAMBAR.\n\nSelected path: **SAMBAR**.\n\nYour question asks for a cohort-level sample cluster assignment. **SAMBAR** fits that result and scale.\n\nWhy this recommendation:\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR** — Subtype somatic-mutation samples through pathway mutation scores with SAMBAR. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.\n\nRequired workflow inputs:\n\n- `mutation_file`: somatic mutation matrix\n- `exon_size_file`: gene/exon-size CSV\n- `cancer_gene_file`: cancer-gene list\n- `pathway_file`: GMT pathway file\n\nOutputs:\n\n- `gene_mutation_scores`: Sample-by-gene mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: "
+  },
+  {
+    "item": "C31",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "verified_guidance",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"signed TF-to-gene effects, activation versus repression\" -- available from GIRAFFE.\n\nSelected path: **GIRAFFE**.\n\n**GIRAFFE** — Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `motif_file`: motif/prior\n- `ppi_file`: PPI network\n\nOutputs:\n\n- `regulatory_network`: Inferred regulator-to-target associations.\n- `tf_activity_matrix`: Inferred transcription-factor-by-sample activity values.\n\nTF activity is how active a TF is in each sample, apart from its own mRNA level. If you mean how strongly each TF is wired to its targets in each sample, the out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the same inputs.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspect"
+  },
+  {
+    "item": "C32",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "verified_guidance",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"write the partial-correlation network as an edge list rather than a matrix\" -- available from DRAGON.\n\nSelected path: **DRAGON**.\n\nYour question asks for a cohort-level multi-omic network. **DRAGON** fits that result and scale. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage.\n\nCaptured request parameters:\n\n- `network_file`: an\n\n**DRAGON**: Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON.\n\nRouting-level input modality: multi omic continuous.\n\nMethod premise: infer conditional associations using partial correlation.\n\nDRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.\n\nWorkflow-specific scientific notes:\n\n- DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.\n- DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.\n- The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalti"
+  },
+  {
+    "item": "C33",
+    "kind": "DECLINE",
+    "basis": "all_results_not_available",
+    "view": "decline",
+    "recorded_kind": "DECLINE",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"sparsify on at a 0.01 confidence level and delta fixed at 0.5 for my 18 log-transformed, centered\" -- not available here as asked. BONOBO: with sparsify, delta must be above 0 and below 1/3, got 0.5. BONOBO itself can still run, with its own settings instead -- an alternative, not the setting you asked for.\n\nNo registered workflow can give this as you asked, so none is offered as asked.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C34",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Do you need a batch-corrected expression matrix to hand to other people?\n  You wrote: \"I'm not sure which one I'm supposed to deliver\". COBRA's contract: \"COBRA consumes a gene-by-sample expression matrix and numeric sample covariates, then produces a covariate-associated covariance decomposition and a labeled adjusted gene-by-gene co-expression artifact\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C35",
+    "kind": "DO",
+    "basis": "run",
+    "view": "needs_input",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "No tool was executed because the Planner requires additional input.\n\nInput preflight failed, so the Work Plan is not ready:\n\n- SAMBAR inputs: error: mutation_file must be an existing regular file: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-core-p0-run/mutations_ucec.csv\n- SAMBAR inputs: error: exon_size_file must be an existing regular file: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-core-p0-run/exon_lengths.csv\n- SAMBAR inputs: error: cancer_gene_file must be an existing regular file: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-core-p0-run/cancer_genes.txt\n- SAMBAR inputs: error: pathway_file must be an existing regular file: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-core-p0-run/c2.cp.kegg.gmt\n\nPlease provide corrected files or fix the file contents, then I will re-check them."
+  },
+  {
+    "item": "C36",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Do you want to measure how active the TF is?\n  You wrote: \"I'm honestly not sure whether 'regulatory strength' here should mean how strongly the TF is wired to its targets or how active the TF is; my PI used both phrasings\". GIRAFFE's contract: \"R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C37",
+    "kind": "UNCHECKED",
+    "basis": "routing_failed",
+    "view": "unresolved",
+    "recorded_kind": "UNCHECKED",
+    "mismatch": false,
+    "error": null,
+    "reply": "The research comparison could not be validated; no workflow was selected.\n\nThe requested result is not specific enough to select a workflow. No workflow has been selected. I could not validate every research alternative. Please state each hypothesis and the result you want from it before selecting a workflow.\n\nSpecify the requested result type and whether it should be aggregate or sample-specific. The workflow will be selected only after the result is clear; the captured inputs will be carried forward, and nothing will run yet.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C38",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "verified_guidance",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"Can GIRAFFE estimate an activity score for every transcription factor in each of our 30 psoriasis skin samples?\" -- available from GIRAFFE.\n\nSelected path: **GIRAFFE**.\n\nYour question asks for a cohort-level TF activity matrix. **GIRAFFE** fits that result and scale.\n\n**GIRAFFE** — Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `motif_file`: motif/prior\n- `ppi_file`: PPI network\n\nOutputs:\n\n- `regulatory_network`: Inferred regulator-to-target associations.\n- `tf_activity_matrix`: Inferred transcription-factor-by-sample activity values.\n\nTF activity is how active a TF is in each sample, apart from its own mRNA level. If you mean how strongly each TF is wired to its targets in each sample, the out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the same inputs."
+  },
+  {
+    "item": "C39",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Do you have a definitive list of miRNA identifiers?\n  You wrote: \"the small RNAs we picked could be miRNAs or piRNAs, and I genuinely don't know which yet\". PUMA's contract: \"Require one miRNA identifier per line and require every miRNA in prior column one\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C40",
+    "kind": "DO",
+    "basis": "run",
+    "view": "needs_input",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"write networks for samples MS_03, MS_11 and MS_19\" -- available from BONOBO.\n\nNo tool was executed because the Planner requires additional input.\n\nInput preflight failed, so the Work Plan is not ready:\n\n- BONOBO inputs: error: BONOBO expression_file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-core-p0-run/expr_ms_lesions.tsv\n\nPlease provide corrected files or fix the file contents, then I will re-check them."
+  },
+  {
+    "item": "C41",
+    "kind": "CLARIFY",
+    "basis": "goal_unclear",
+    "view": "clarify_goal",
+    "recorded_kind": "CLARIFY",
+    "mismatch": false,
+    "error": null,
+    "reply": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nWith expression data, the registered workflows can give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample (BONOBO)\n\nWhich of these results do you want, or what question should the analysis answer?\n\nNothing was selected and nothing runs befo"
+  },
+  {
+    "item": "C42",
+    "kind": "UNCHECKED",
+    "basis": "run_held_unconfirmed",
+    "view": "run_held",
+    "recorded_kind": "UNCHECKED",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"Run DRAGON on expr_cll_layer.csv and methyl_cll_layer.csv (same 110 patient IDs in rows, no missing cells).\" -- the backup check matched DRAGON to this (not confirmed).\nNot checked against the registered workflows: \"One thing I'm unsure about: the methylation file is either the continuous beta values or the binarized methylated/unmethylated calls (0/1) that another group derived, and both versions were saved under that name.\"\nThe usual capability check could not run this turn, so a backup model read the request; nothing it found is confirmed.\n\nYou asked me to run DRAGON, but the capability check could not confirm this turn that DRAGON gives what you asked for. I have not planned the run.\n\nTell me to run DRAGON anyway, and I will then find your input files and show a preview; nothing runs until you approve it.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C43",
+    "kind": "UNCHECKED",
+    "basis": "run_held_unconfirmed",
+    "view": "run_held",
+    "recorded_kind": "UNCHECKED",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"get a TF-to-gene network per column\" -- the backup check matched LIONESS-PANDA to this (not confirmed).\nThe usual capability check could not run this turn, so a backup model read the request; nothing it found is confirmed.\n\nYou asked me to run LIONESS-PANDA, but the capability check could not confirm this turn that LIONESS-PANDA gives what you asked for. I have not planned the run.\n\nTell me to run LIONESS-PANDA anyway, and I will then find your input files and show a preview; nothing runs until you approve it.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C44",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Is coexp_liver.tsv the full gene-by-gene correlation matrix for the cohort?\n  You wrote: \"I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix for the cohort or the edge-by-sample table from our earlier LIONESS co-expression run\". OTTER's contract: \"coexpression_file is an optional precomputed source supported by this agent's adapter, not by the official OTTER CLI/API signature. It must be a labeled symmetric square gene-by-gene matrix with exact row/column order\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C45",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Do you have the 200-protein targeted panel?\n  You wrote: \"I don't remember whether the proteomics we got back is the 200-protein targeted panel or the 2,000-protein discovery panel\". LIONESS-DRAGON's contract: \"LIONESS-DRAGON consumes exactly two paired sample-by-feature continuous omics tables, DRAGON's inputs, and produces the aggregate DRAGON matrix plus one partial-correlation network per sample\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C46",
+    "kind": "DECLINE",
+    "basis": "full_gap",
+    "view": "capability_check_gap",
+    "recorded_kind": "DECLINE",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"I want the list of genes differentially expressed between 12 drug-treated and 12 vehicle mouse hippocampi, with log2 fold changes and FDR-adjusted p-values like DESeq2 reports.\" -- not available here as asked. NetZoo has no registered method or variant \"DESeq2\".\n\nNo registered workflow can give this as you asked it (above), so none is offered as asked.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C47",
+    "kind": "UNCHECKED",
+    "basis": "routing_failed",
+    "view": "unresolved",
+    "recorded_kind": "UNCHECKED",
+    "mismatch": false,
+    "error": null,
+    "reply": "Semantic routing output failed validation, so no workflow was selected. (ValueError)\n\nThe system could not validate its interpretation. This is not evidence that your question is unclear.\n\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C48",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Are the biopsies from the same 58 people as the metabolomics samples?\n  You wrote: \"the biopsies may have been taken from a different group of volunteers; I'm still waiting to hear from the clinic whether they're the same 58 people\". DRAGON's contract: \"Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C49",
+    "kind": "DECLINE",
+    "basis": "full_gap",
+    "view": "capability_check_gap",
+    "recorded_kind": "DECLINE",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"Do whatever makes sense with them and give me figures for the paper.\" -- not matched to any registered workflow.\n\nNo registered workflow produces this, so none is offered as the way to get it.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C50",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "view": "ask_facts",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "Before I choose a workflow, please tell me:\n- Were the values log-transformed before centering?\n  You wrote: \"I can't tell whether the values were log-transformed before centering\". BONOBO's contract: \"the agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C51",
+    "kind": "CLARIFY",
+    "basis": "goal_unclear",
+    "view": "clarify_goal",
+    "recorded_kind": "CLARIFY",
+    "mismatch": false,
+    "error": null,
+    "reply": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples ("
+  },
+  {
+    "item": "C52",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "workflow_contract",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"Can BONOBO build a co-expression network for each of my 6 rhesus macaque lymph node samples?\" -- available from BONOBO.\n2. \"saved as HDF5\" -- not available here as asked. BONOBO's bonobo_output_format requires one of .h5, .hdf, .txt and .csv; \"HDF5\" does not identify one allowed choice.\n\nBONOBO: Infer sample-specific gene-gene co-expression networks with netZooPy BONOBO.\nRegistered required inputs: expression_file, output_dir.\nRegistered workflow controls: bonobo_output_format (type=enum, default='.h5'), sample_names (type=string_list, default=[]), sparsify (type=boolean, default=False), bonobo_confidence (type=number, default=0.05), save_pvals (type=boolean, default=False), precision (type=enum, default='single'), keep_in_memory (type=boolean, default=False), delta (type=number, default=None), genes_axis (type=enum, default='auto'), log_transformed (type=boolean, default=None), centered (type=boolean, default=None).\nOutput: one gene-gene co-expression network per selected sample.\nThis is a co-expression result, not a regulatory network (TF/miRNA) or a covariance-decomposition artifact.\nWhen `sparsify=False` and `save_pvals=False`: full sample-specific gene-gene co-expression matrices; no p-value artifact is written.\nWhen `sparsify=True` and `save_pvals=False`: upstream thresholds each sample-specific co-expression matrix; no p-value artifact is written.\nWhen `sparsify=True` and `save_pvals=True`: upstream retains the full co-expressi"
+  },
+  {
+    "item": "C53",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "outcome_clarification",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"see how genes are connected\" -- available from LIONESS-COEXPRESSION.\n\nSeveral registered methods fit this result; they differ in their modeling assumptions:\n\n- **LIONESS-COEXPRESSION** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. Needs expression matrix.\n- **COBRA** — COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Needs expression matrix and sample covariate design matrix.\n- **BONOBO** — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. Needs expression matrix.\n\nShould the result be aggregate or sample-specific?\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C54",
+    "kind": "CLARIFY",
+    "basis": "goal_unclear",
+    "view": "clarify_goal",
+    "recorded_kind": "CLARIFY",
+    "mismatch": false,
+    "error": null,
+    "reply": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nWith expression data, the registered workflows can give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample (BONOBO)\n\nWhich of these results do you want, or what question should the analysis answer?\n\nNothing was selected and nothing runs befo"
+  },
+  {
+    "item": "C55",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "verified_guidance",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"Can PANDA build a single TF-to-gene regulatory network for our whole cohort of 48 mouse liver RNA-seq samples?\" -- available from PANDA.\n\nSelected path: **PANDA**.\n\nYour question asks for a cohort-level regulatory network. **PANDA** fits that result and scale.\n\n**PANDA** — Infer an aggregate TF-to-gene regulatory network with PANDA. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `motif_file`: motif/prior\n- `ppi_file`: PPI network\n\nOutputs:\n\n- `regulatory_network`: Inferred regulator-to-target associations.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+  },
+  {
+    "item": "C56",
+    "kind": "UNCHECKED",
+    "basis": "routing_failed",
+    "view": "unresolved",
+    "recorded_kind": "ASK",
+    "mismatch": false,
+    "error": null,
+    "reply": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.\n\nDo the variant-count matrix and other files have a non-empty four-way gene identifier overlap?\n\nNo files were inspected and no analysis ran."
+  },
+  {
+    "item": "C57",
+    "kind": "DO",
+    "basis": "results_given",
+    "view": "verified_guidance",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "What I understood you are asking for:\n1. \"I want to know how much of the co-expression between those 48 genes is associated with the hospital each sample came from, decomposed per covariate\" -- available from COBRA.\n\nSelected path: **COBRA**.\n\n**COBRA** — Model covariate-associated gene co-expression with COBRA. COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `design_file`: sample covariate design matrix\n\nOutputs:\n\n- `coexpression_network`: Inferred gene-to-gene associations.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+  },
+  {
+    "item": "C58",
+    "kind": "DO",
+    "basis": "run",
+    "view": "needs_input",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "No tool was executed because the Planner requires additional input.\n\nInput preflight failed, so the Work Plan is not ready:\n\n- PANDA/PUMA inputs: error: expression file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-core-p0-run/expr_ipf.tsv\n- PANDA/PUMA inputs: error: motif file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-core-p0-run/motif_hg38.tsv\n- PANDA/PUMA inputs: error: PPI file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-core-p0-run/ppi_hs.tsv\n- coexpression_file: co-expression matrix could not be read: [Errno 2] No such file or directory: '/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-core-p0-run/cobra_out/adjusted_coexpression.tsv'\n\nPlease provide corrected files or fix the file contents, then I will re-check them."
+  },
+  {
+    "item": "C59",
+    "kind": "DO",
+    "basis": "run",
+    "view": "needs_input",
+    "recorded_kind": "DO",
+    "mismatch": false,
+    "error": null,
+    "reply": "No tool was executed because the Planner requires additional input.\n\nPlease provide the next missing input. The CLI wizard will ask for each unresolved field one at a time."
+  },
+  {
+    "item": "C60",
+    "kind": "CLARIFY",
+    "basis": "goal_unclear",
+    "view": "clarify_goal",
+    "recorded_kind": "CLARIFY",
+    "mismatch": false,
+    "error": null,
+    "reply": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples ("
+  }
+]

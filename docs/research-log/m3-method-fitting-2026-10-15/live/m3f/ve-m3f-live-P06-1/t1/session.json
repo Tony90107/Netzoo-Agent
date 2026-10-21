@@ -1,0 +1,401 @@
+{
+  "version": 1,
+  "session_id": "ve-m3f-live-P06-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792040730.8170292,
+  "updated_at": 1792040730.817089,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Our plant RNA table has 600 genes and 24 samples; the numeric design table has exactly those 24 sample IDs and an intercept. Can COBRA produce the adjusted gene-by-gene co-expression artifact?"
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Can COBRA produce the adjusted gene-by-gene co-expression artifact?\" -- available from COBRA.\n\nNo single registered workflow produces this result from all the stated inputs together. Each stated input is listed on its own, with the registered workflows that fit it, their algorithmic premises and inputs:\n\nResult: co-expression networks (aggregate), from expression matrix and measurement dataset.\nEach stated input on its own:\n- From the expression matrix:\n  - **Gene co-expression network — LIONESS-COEXPRESSION**\n    - Registered purpose: Infer aggregate and sample-specific co-expression networks with LIONESS.\n    - Method premise: derive each sample network from all-sample and leave-one-out networks\n    - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.\n    - Required inputs: all of: expression matrix.\n    - Declared output: co-expression networks (cohort-level aggregate; sample-specific, one network per sample).\n- From the measurement dataset:\n  No registered workflow produces this result from this input.\n  Registered workflows that accept it, and what they produce instead: **DRAGON** (multi omic network); **LIONESS-DRAGON** (multi omic network).\n\nWhich should we start with: the expression matrix (LIONESS-COEXPRESSION), the measurement dataset (no registered workflow)? If you meant a different result for one of the inputs, say which.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited COBRA for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The capability check credited COBRA for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_cobra"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix",
+          "measurement_dataset"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix",
+              "measurement_dataset"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "adjusted gene-by-gene co-expression artifact",
+              "rationale": "The user is asking about producing a co-expression artifact."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "plant RNA table has 600 genes and 24 samples",
+              "rationale": "The RNA table with genes and samples serves as the input for co-expression analysis."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "measurement_dataset",
+              "source": "explicit",
+              "text_span": "numeric design table has exactly those 24 sample IDs",
+              "rationale": "The numeric design table provides necessary sample IDs for the analysis."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "adjusted gene-by-gene co-expression artifact",
+              "rationale": "The user is asking about producing an adjusted gene-by-gene co-expression artifact, which implies that the granularity is aggregate as it refers to the overall co-expression across the samples."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [
+        {
+          "action": "run_cobra",
+          "workflow": "COBRA",
+          "reason_code": "unsupported_input",
+          "input_artifacts": [
+            "measurement_dataset"
+          ],
+          "accepted_input_artifacts": [
+            "expression_matrix"
+          ],
+          "reason": "The registered COBRA input contract does not accept measurement_dataset for this analysis; it accepts expression_matrix."
+        }
+      ],
+      "matched_actions": [
+        "run_cobra"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Can COBRA produce the adjusted gene-by-gene co-expression artifact?",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 1,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "COBRA",
+              "named_quote": "COBRA",
+              "samples": 24,
+              "samples_quote": "24 samples",
+              "features": 600
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "Our plant RNA table has 600 genes and 24 samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "the numeric design table has exactly those 24 sample IDs and an intercept",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 28534,
+    "output_tokens": 3312,
+    "total_tokens": 31846,
+    "calls": [
+      {
+        "call_id": "f5ed4144-c5d7-43e1-b3a3-6a20004ed0ab",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792040673-j8rYE6H8eGqc2I9y1ZiJ",
+        "input_tokens": 5320,
+        "output_tokens": 227,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5547,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 541,
+        "price_snapshot": null,
+        "duration_ms": 3127,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "d34c87fb-2c91-486b-975f-12e34d8824fe",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792040675-YuzmoDFNIf3c7W3TNVbA",
+        "input_tokens": 4371,
+        "output_tokens": 62,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 4433,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 482,
+        "price_snapshot": null,
+        "duration_ms": 1248,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "37d059cf-8b7e-40af-ab12-fab6c76b37c0",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 723,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 767,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1082,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "1d282b80-6d5b-44ee-85aa-f98844b3df5e",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792040678-Olzwip3xYucwBCG63LFF",
+        "input_tokens": 17577,
+        "output_tokens": 2946,
+        "cache_read_tokens": 13728,
+        "cache_write_tokens": 0,
+        "total_tokens": 20523,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 51581,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9be8cad2-ffdd-4860-ae95-b3f45da74515",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792040729-Cye3BD8EJWSh9xV9ofA3",
+        "input_tokens": 543,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 576,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 101,
+        "price_snapshot": null,
+        "duration_ms": 1009,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "fa67bf9f-cb07-4287-90a0-95cd5a51901f"
+}

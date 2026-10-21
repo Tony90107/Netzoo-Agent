@@ -1,0 +1,13 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.42s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "order the cells along a pseudotime trajectory" -- not available here: no registered workflow produces this. No registered workflow models how the system changes from one time point to the next; time points can only be compared as separate results. Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+2. "find the branch point where atrial and ventricular fates split" -- not available here: no registered workflow produces this. No registered workflow models how the system changes from one time point to the next; time points can only be compared as separate results. Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+
+No registered workflow produces these as you asked them, so none is offered for them as asked. The note below describes the closest route.
+
+**Single-cell data.** The registered workflows are built for bulk samples. Co-expression between individual cells is dominated by dropout, so per-cell LIONESS or BONOBO networks are not advised. A registered route: sum cells into pseudo-bulk profiles per donor and cell state, then run PANDA (or OTTER) once per state with the same genes and the same motif and PPI priors; this needs several donors per state to estimate co-expression. To look within a state, SCORPION (an R package from the Kuijjer lab, not registered here) first aggregates similar cells into metacells and then runs PANDA on them, giving comparable networks per sample or state.
+
+No files were inspected and no analysis ran.

@@ -1,0 +1,591 @@
+{
+  "version": 1,
+  "session_id": "cj-p0-C16-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792054073.8675861,
+  "updated_at": 1792054073.867647,
+  "messages": [
+    {
+      "role": "user",
+      "content": "From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"order the cells along a pseudotime trajectory\" -- not available here: no registered workflow produces this. No registered workflow models how the system changes from one time point to the next; time points can only be compared as separate results. Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.\n2. \"find the branch point where atrial and ventricular fates split\" -- not available here: no registered workflow produces this. No registered workflow models how the system changes from one time point to the next; time points can only be compared as separate results. Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.\n\nNo registered workflow produces these as you asked them, so none is offered for them as asked. The note below describes the closest route.\n\n**Single-cell data.** The registered workflows are built for bulk samples. Co-expression between individual cells is dominated by dropout, so per-cell LIONESS or BONOBO networks are not advised. A registered route: sum cells into pseudo-bulk profiles per donor and cell state, then run PANDA (or OTTER) once per state with the same genes and the same motif and PPI priors; this needs several donors per state to estimate co-expression. To look within a state, SCORPION (an R package from the Kuijjer lab, not registered here) first aggregates similar cells into metacells and then runs PANDA on them, giving comparable networks per sample or state.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is for guidance on ordering cells along a pseudotime trajectory and identifying branch points, which falls under the category of answer requests rather than execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request is for guidance on ordering cells along a pseudotime trajectory and identifying branch points, which falls under the category of answer requests rather than execution.",
+      "candidate_actions": [
+        "run_panda",
+        "run_puma",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_lioness_coexpression",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "unknown",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "unknown",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "order the cells along a pseudotime trajectory",
+              "rationale": "The user wants to order cells along a pseudotime trajectory, which involves inferring a latent structure from single-cell RNA-seq data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "unknown",
+              "source": "explicit",
+              "text_span": "find the branch point where atrial and ventricular fates split",
+              "rationale": "The specific type of artifact resulting from the pseudotime analysis is not defined in the request."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user provided RNA-seq data as the current input for the analysis."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "unsupported",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "unstated",
+        "priors_quote": "",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_puma",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_puma",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_coexpression",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_cobra",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_dragon",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_lioness_dragon",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_otter",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_bonobo",
+          "status": "applicable",
+          "basis": []
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "order the cells along a pseudotime trajectory",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "single_cells",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "find the branch point where atrial and ventricular fates split",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "single_cells",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_panda",
+          "run_puma",
+          "run_lioness_panda",
+          "run_lioness_puma",
+          "run_lioness_coexpression",
+          "run_cobra",
+          "run_dragon",
+          "run_lioness_dragon",
+          "run_otter",
+          "run_giraffe",
+          "run_bonobo"
+        ],
+        "conditions": {
+          "data_unit": "single_cells",
+          "time_model": "dynamic"
+        },
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false
+      },
+      "core": {
+        "kind": "DECLINE",
+        "partial": false,
+        "workflows": [],
+        "declined": [
+          {
+            "quote": "order the cells along a pseudotime trajectory",
+            "reasons": [],
+            "alternatives": []
+          },
+          {
+            "quote": "find the branch point where atrial and ventricular fates split",
+            "reasons": [],
+            "alternatives": []
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "full_gap",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "unknown",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "run_verdict": null
+        }
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 28372,
+    "output_tokens": 4808,
+    "total_tokens": 33180,
+    "calls": [
+      {
+        "call_id": "c28b5e56-5365-431e-b038-7294674a44e7",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792053958-vhVNYpTxtUm53S4PC0Qx",
+        "input_tokens": 5324,
+        "output_tokens": 177,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5501,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 540,
+        "price_snapshot": null,
+        "duration_ms": 2623,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "5f8cbbc7-c142-49ec-8e07-4d0cefd94297",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792053960-0SUNfJ3j2NBma6bq7hbf",
+        "input_tokens": 5780,
+        "output_tokens": 214,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5994,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 698,
+        "price_snapshot": null,
+        "duration_ms": 3041,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e3116d3e-950f-4960-8cb4-5d8be1d9e157",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 689,
+        "output_tokens": 57,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 746,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1113,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "ad61d390-c2c4-44a0-aa57-aac8bf272c8b",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792053964-EqiV5aX1FRKOwn4Pv5kQ",
+        "input_tokens": 1761,
+        "output_tokens": 104,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1865,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 327,
+        "price_snapshot": null,
+        "duration_ms": 2101,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1d2d1e5e-a144-4fef-aede-0a49b7df30ae",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792053967-0enA8BXzL0K7HA62CRLy",
+        "input_tokens": 13735,
+        "output_tokens": 4190,
+        "cache_read_tokens": 9152,
+        "cache_write_tokens": 0,
+        "total_tokens": 17925,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 104749,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5038b601-9863-4464-86dc-cef7da40b68f",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792054071-6Wt60BbPXfzJWaYQQwyA",
+        "input_tokens": 547,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 580,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 102,
+        "price_snapshot": null,
+        "duration_ms": 1121,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "45575b16-90bf-404d-933c-5661a35956f9",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792054072-9RGip6OBDfSWitzNaKiI",
+        "input_tokens": 536,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 569,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 100,
+        "price_snapshot": null,
+        "duration_ms": 839,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "f7fbf932-b78b-4a2f-948f-c149613f3b33"
+}

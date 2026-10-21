@@ -1,0 +1,806 @@
+{
+  "version": 1,
+  "session_id": "cj-p4b-C55-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792133779.481896,
+  "updated_at": 1792133779.481982,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can PANDA build a single TF-to-gene regulatory network for our whole cohort of 48 mouse liver RNA-seq samples? I have the gene-by-sample expression matrix, a JASPAR-based motif prior and a mouse TF-TF PPI from STRING, all using the same gene symbols."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Can PANDA build a single TF-to-gene regulatory network for our whole cohort of 48 mouse liver RNA-seq samples?\" -- available from PANDA.\n\nI can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\nWhat artifact should NetZoo produce?\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is for guidance on whether PANDA can build a regulatory network, which falls under answer requests rather than execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.8,
+      "reason": "The request is for guidance on whether PANDA can build a regulatory network, which falls under answer requests rather than execution.",
+      "candidate_actions": [
+        "run_panda",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Can PANDA build a single TF-to-gene regulatory network for our whole cohort of 48 mouse liver RNA-seq samples?",
+              "rationale": "The user is asking if PANDA can build a regulatory network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "a single TF-to-gene regulatory network",
+              "rationale": "The user specifies the desired output as a TF-to-gene regulatory network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "for our whole cohort of 48 mouse liver RNA-seq samples",
+              "rationale": "The user mentions constructing a network for the whole cohort, indicating a single network output."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        },
+        {
+          "outcome": {
+            "operation": "prepare",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "expression_matrix",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "I have the gene-by-sample expression matrix",
+              "rationale": "The user provides a gene-by-sample expression matrix as input."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "gene-by-sample expression matrix",
+              "rationale": "The expression matrix consists of gene expression data."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "explicit",
+              "text_span": "gene-by-sample expression matrix",
+              "rationale": "The expression matrix is organized by samples."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "I have the gene-by-sample expression matrix",
+              "rationale": "The user provides a gene-by-sample expression matrix as input."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "for our whole cohort of 48 mouse liver RNA-seq samples",
+              "rationale": "The user mentions constructing a network for the whole cohort, indicating a single network output."
+            }
+          ],
+          "assumptions": []
+        },
+        {
+          "outcome": {
+            "operation": "prepare",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "input_artifact",
+              "value": "unknown",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user mentions a JASPAR-based motif prior, which is relevant for regulatory network construction."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "unknown",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user mentions a mouse TF-TF PPI from STRING, which can inform the regulatory network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "a single TF-to-gene regulatory network",
+              "rationale": "The user specifies the desired output as a TF-to-gene regulatory network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "for our whole cohort of 48 mouse liver RNA-seq samples",
+              "rationale": "The user mentions constructing a network for the whole cohort, indicating a single network output."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_panda",
+        "run_otter",
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "What artifact should NetZoo produce?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a JASPAR-based motif prior and a mouse TF-TF PPI from STRING",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a JASPAR-based motif prior and a mouse TF-TF PPI from STRING",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a JASPAR-based motif prior and a mouse TF-TF PPI from STRING",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a JASPAR-based motif prior and a mouse TF-TF PPI from STRING",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a JASPAR-based motif prior and a mouse TF-TF PPI from STRING",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Can PANDA build a single TF-to-gene regulatory network for our whole cohort of 48 mouse liver RNA-seq samples?",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "panda.tf_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "PANDA",
+              "named_quote": "PANDA",
+              "samples": 48,
+              "samples_quote": "48"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "gene-by-sample expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "a JASPAR-based motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "a mouse TF-TF PPI from STRING",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "all using the same gene symbols.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "single TF-to-gene regulatory network",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "PANDA"
+        ]
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "PANDA"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": null,
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "single TF-to-gene regulatory network"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "PANDA",
+          "OTTER",
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Can PANDA build a single TF-to-gene regulatory network for our whole cohort of 48 mouse liver RNA-seq samples?",
+              "uncertainty": "said_unknown",
+              "workflow": "PANDA",
+              "contract_quote": "PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors, or a validated adjusted gene-by-gene co-expression matrix through coexpression_file.",
+              "question": "Do you have a gene-by-sample expression matrix, a JASPAR-based motif prior, and a mouse TF-TF PPI from STRING?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": ""
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I have the gene-by-sample expression matrix, a JASPAR-based motif prior and a mouse TF-TF PPI from STRING, all using the same gene symbols.",
+              "uncertainty": "said_unknown",
+              "workflow": "PANDA",
+              "contract_quote": "Use a gene-by-sample expression matrix and compatible motif and PPI identifiers.",
+              "question": "Are the gene symbols in your files compatible?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": ""
+            }
+          }
+        ],
+        "legacy": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "24f81166fcc4704944a93e14da58280051788c14037e6bb82d87e0dcbdbc357e",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 47075,
+    "output_tokens": 6623,
+    "total_tokens": 53698,
+    "calls": [
+      {
+        "call_id": "f12e62b1-2115-4698-9dea-b3405d5b797e",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792133641-k2GQUqZBtvx2LoVHZzqk",
+        "input_tokens": 5339,
+        "output_tokens": 512,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5851,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 743,
+        "price_snapshot": null,
+        "duration_ms": 5091,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "7a72525f-0844-4e05-b853-a5e21250e756",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792133649-0jpJGV7eSMKs1Aq3cVW1",
+        "input_tokens": 6317,
+        "output_tokens": 239,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 6556,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 880,
+        "price_snapshot": null,
+        "duration_ms": 2810,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ae581b84-1d81-4815-82bd-d35a65db1190",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792133646-H1mFvkks3iRsVkrj30R2",
+        "input_tokens": 6649,
+        "output_tokens": 236,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6885,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 841,
+        "price_snapshot": null,
+        "duration_ms": 5664,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "656db3d3-42f5-4b8b-801b-227522d6a45e",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792133652-zqJ0tczWIj7JqlZBxbdU",
+        "input_tokens": 2055,
+        "output_tokens": 242,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2297,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 453,
+        "price_snapshot": null,
+        "duration_ms": 3273,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "30c53dc1-75e7-47db-856e-04da268a028e",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 665,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 710,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1004,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "bf25aa73-c335-4c95-bf1f-483e4f225f3d",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792133657-L6o91Za7m5fj4r9dMJ86",
+        "input_tokens": 1736,
+        "output_tokens": 46,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1782,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 288,
+        "price_snapshot": null,
+        "duration_ms": 1491,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "da84e27c-039d-42f7-8e6f-12db0f07adb8",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792133658-yTzAMeVFYEwnDvSklUR8",
+        "input_tokens": 2366,
+        "output_tokens": 132,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2498,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 434,
+        "price_snapshot": null,
+        "duration_ms": 1990,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "58a2ee74-9858-471e-9070-93c647cf9b3a",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792133660-uAmZcDBFyraR8pwLPcdY",
+        "input_tokens": 18258,
+        "output_tokens": 4830,
+        "cache_read_tokens": 13728,
+        "cache_write_tokens": 0,
+        "total_tokens": 23088,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 114282,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1c275f20-cdf2-4bfb-9caa-9d013518a8bf",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792133774-HWfgt2rSpAc0ouUMTKnb",
+        "input_tokens": 562,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 606,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 111,
+        "price_snapshot": null,
+        "duration_ms": 1137,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "af52e980-8967-4fa8-a8ba-27f1a7d6092d",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792133775-EzFXE8I7Pqc6mLuE05Yh",
+        "input_tokens": 551,
+        "output_tokens": 53,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 604,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 114,
+        "price_snapshot": null,
+        "duration_ms": 974,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c615808e-8c74-4cca-b05e-5e3f01a6aa9f",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792133776-gSUfXjuVASQHY4QcuAA4",
+        "input_tokens": 2577,
+        "output_tokens": 244,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2821,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 533,
+        "price_snapshot": null,
+        "duration_ms": 2612,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "86e5f7ff-78a6-450e-b0c1-9de5654aa5bb"
+}

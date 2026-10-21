@@ -1,0 +1,34 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.16s)
+● Matching registered workflows…
+! Fallback recommendation — not an exact semantic match
+✓ Guidance prepared
+What I understood you are asking for:
+1. "For our 52 rice leaf samples from the drought trial I want a learning rate of 1e-4, 2,000 iterations and a heavier weight on the PPI term in the loss, because in a pilot the package defaults gave a TF activity matrix that looked over-smoothed and I'd like to see whether these settings change that." -- not available here as asked. NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so "learning rate of 1e-4" cannot be applied. GIRAFFE itself can still run, with its own settings instead -- an alternative, not the setting you asked for.
+
+Fallback candidate: **GIRAFFE**, if you have a motif prior and a PPI network. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.
+
+Your question asks for a cohort-level TF activity matrix. **GIRAFFE** is related to that result and scale. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors.
+
+**GIRAFFE**: Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.
+
+Routing-level input modality: expression matrix.
+
+Method premise: factor gene expression using motif and TF-protein interaction priors; jointly infer a TF-gene regulatory matrix and a TF-by-sample activity matrix; interpret TF-gene regulatory weights as coefficients in a linear expression model; estimate positive activating and negative inhibitory partial regulatory effects; model gene expression with transcription factor activities as predictors.
+
+GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+- `motif_file`: motif/prior
+- `ppi_file`: PPI network
+
+Distinct declared output artifacts (availability depends on workflow options):
+
+- `regulatory_network`: Inferred regulator-to-target associations.
+- `tf_activity_matrix`: Inferred transcription-factor-by-sample activity values.
+
+TF activity is how active a TF is in each sample, apart from its own mRNA level. If you mean how strongly each TF is wired to its targets in each sample, the out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the same inputs.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

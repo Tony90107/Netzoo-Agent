@@ -1,0 +1,533 @@
+{
+  "version": 1,
+  "session_id": "ve-m3-live-N24-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792034713.623235,
+  "updated_at": 1792034713.623281,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can OTTER preserve the exact fractional PPI interaction confidence values inside P? I prohibit binarization."
+    },
+    {
+      "role": "assistant",
+      "content": "I can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\n**TF/miRNA regulatory network**\n- **PUMA** — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Per-sample version: **LIONESS-PUMA**. Needs expression matrix, motif/prior, PPI network and miRNA list.\n\nAbout your concern that what to do with the result afterwards, for example comparing conditions or relating it to clinical variables:\n- **PANDA**, **PUMA**, **OTTER** — Targeting scores: a regulator's outdegree or a gene's indegree summarizes the network per regulator or per gene; comparing them between networks built separately for each condition shows regulators whose targeting changes. Comparing conditions needs one run per condition on matched inputs (the same genes and the same motif and PPI priors); edge weights are comparable only within that shared setup.\n- **PANDA** — For per-sample scores to test against clinical variables, use LIONESS-PANDA instead.\n- **PUMA** — For per-sample scores to test against clinical variables, use LIONESS-PUMA instead.\n- **LIONESS-PANDA**, **LIONESS-PUMA** — Per-sample targeting scores: a regulator's outdegree (the sum of its edge weights to its targets) or a gene's indegree, computed in each sample's network, gives a regulator-by-sample (or gene-by-sample) matrix you can relate to sample-level variables -- survival, for example, with a Cox model. An ordered variable such as disease stage can be tested for a trend, for example with ordinal or linear regression on stage; testing every regulator or edge needs multiple-testing correction (for example Benjamini-Hochberg). Stages seen in different patients are cross-sectional, so a trend across them is not one patient's progression. That association needs a clinical table (for survival: follow-up time and event status) keyed by the same sample IDs as the expression matrix; it is not a workflow input, so supply it separately. All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in the association test, which is a later analysis step rather than part of this workflow.\n- **OTTER** — OTTER weights are on a different scale from PANDA's; compare OTTER networks only with other OTTER networks built with the same parameters.\n- **GIRAFFE** — The TF-by-sample activity matrix (TFA) can serve as predictors in association tests with sample-level variables -- survival, for example, with a Cox model. Relating per-sample results to sample-level variables needs an annotation or clinical table keyed by the same sample IDs, supplied separately. Signs in the regulatory matrix are partial linear effects (positive for activation, negative for repression); read them as model coefficients, not as proof of direct binding.\n\nThese all fit; to choose, tell me: (1) Do the regulators include miRNAs, short non-coding RNAs that repress or degrade their target transcripts after transcription? (yes → PUMA, LIONESS-PUMA) (2) Is the network large enough that memory or runtime is a concern? (yes → OTTER) If none of these applies: PANDA, LIONESS-PANDA, GIRAFFE.\n\n**What your data allows.** PANDA, LIONESS-PANDA and GIRAFFE also need an expression matrix; PUMA and LIONESS-PUMA also need an expression matrix and a miRNA list; OTTER also needs an expression matrix or adjusted co-expression matrix. PANDA, PUMA, LIONESS-PANDA, LIONESS-PUMA, OTTER and GIRAFFE need a motif prior and a PPI network, which you said you do not have (\"I prohibit binarization.\").\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The user is seeking guidance on whether OTTER can maintain fractional PPI interaction confidence values without binarization, which falls under the category of an answer request.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The user is seeking guidance on whether OTTER can maintain fractional PPI interaction confidence values without binarization, which falls under the category of an answer request.",
+      "candidate_actions": [
+        "run_panda",
+        "run_puma",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_otter",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "explain",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "explain",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "explain",
+              "source": "explicit",
+              "text_span": "Can OTTER preserve the exact fractional PPI interaction confidence values inside P?",
+              "rationale": "The user is seeking to understand the capabilities of OTTER regarding PPI interaction confidence values."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The question discusses the preservation of interaction confidence values in a protein-protein interaction (PPI) context, which relates to regulatory networks."
+            },
+            {
+              "dimension": "granularity",
+              "value": "unknown",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The scale of the preservation of values is not specified, making it unknown."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_panda",
+        "run_puma",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_otter",
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "These all fit; to choose, tell me: (1) Do the regulators include miRNAs, short non-coding RNAs that repress or degrade their target transcripts after transcription? (yes → PUMA, LIONESS-PUMA) (2) Is the network large enough that memory or runtime is a concern? (yes → OTTER) If none of these applies: PANDA, LIONESS-PANDA, GIRAFFE.",
+      "addressed_concerns": [
+        {
+          "action": "run_panda",
+          "concern": "downstream_use",
+          "text_span": "I prohibit binarization."
+        },
+        {
+          "action": "run_puma",
+          "concern": "downstream_use",
+          "text_span": "I prohibit binarization."
+        },
+        {
+          "action": "run_lioness_panda",
+          "concern": "downstream_use",
+          "text_span": "I prohibit binarization."
+        },
+        {
+          "action": "run_lioness_puma",
+          "concern": "downstream_use",
+          "text_span": "I prohibit binarization."
+        },
+        {
+          "action": "run_otter",
+          "concern": "downstream_use",
+          "text_span": "I prohibit binarization."
+        },
+        {
+          "action": "run_giraffe",
+          "concern": "downstream_use",
+          "text_span": "I prohibit binarization."
+        }
+      ],
+      "data_facts": {
+        "source": "model",
+        "priors": "ruled_out",
+        "priors_quote": "I prohibit binarization.",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "not_applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "ruled_out",
+              "quote": "I prohibit binarization.",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_puma",
+          "status": "not_applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "ruled_out",
+              "quote": "I prohibit binarization.",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "not_applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "ruled_out",
+              "quote": "I prohibit binarization.",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_puma",
+          "status": "not_applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "ruled_out",
+              "quote": "I prohibit binarization.",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "not_applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "ruled_out",
+              "quote": "I prohibit binarization.",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "not_applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "ruled_out",
+              "quote": "I prohibit binarization.",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Can OTTER preserve the exact fractional PPI interaction confidence values inside P?",
+            "kind": "about_methods",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          },
+          {
+            "quote": "I prohibit binarization.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 32062,
+    "output_tokens": 1501,
+    "total_tokens": 33563,
+    "calls": [
+      {
+        "call_id": "b7a0ab09-508e-4824-8742-d1426fb58da6",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792034693-6wAcL32bHwIgO5BbjNiz",
+        "input_tokens": 5299,
+        "output_tokens": 165,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5464,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 529,
+        "price_snapshot": null,
+        "duration_ms": 3042,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bc5c5093-43cd-412e-b207-4b3dfc2c0567",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792034696-kWK23tNc5xowylwCh7kj",
+        "input_tokens": 1032,
+        "output_tokens": 154,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1186,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 247,
+        "price_snapshot": null,
+        "duration_ms": 2386,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f9b11dee-e6a8-4f06-9350-b7193720dc7e",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792034698-s7DtUghrgw20BuC11QRJ",
+        "input_tokens": 1333,
+        "output_tokens": 9,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1342,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 205,
+        "price_snapshot": null,
+        "duration_ms": 997,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3b9188de-20af-47fc-9295-1b3e3dc9e423",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 643,
+        "output_tokens": 56,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 699,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1073,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "604510d3-3f94-4547-bd2e-6351d7d07701",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792034701-ccoAtNtrZ429q4oBKleS",
+        "input_tokens": 1696,
+        "output_tokens": 34,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1730,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 275,
+        "price_snapshot": null,
+        "duration_ms": 1467,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6800bbcc-a2d9-4bd4-8523-f37845f5c07a",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792034702-clVlRCbClvWwuIVj1ujr",
+        "input_tokens": 3712,
+        "output_tokens": 87,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 3799,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 609,
+        "price_snapshot": null,
+        "duration_ms": 1516,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c320fbfa-4eb4-48da-9fcb-36742588009b",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792034704-qhIunSH9lqRmch87sM2b",
+        "input_tokens": 17314,
+        "output_tokens": 920,
+        "cache_read_tokens": 16016,
+        "cache_write_tokens": 0,
+        "total_tokens": 18234,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 6630,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d3aa1b68-1aac-4cde-a798-6ec7d263cc73",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792034710-trTHIUaUnZPCdgExuf8P",
+        "input_tokens": 522,
+        "output_tokens": 36,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 558,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 100,
+        "price_snapshot": null,
+        "duration_ms": 1532,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d12fce40-c5fe-4a4d-803d-d35d8fbe6c65",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792034712-j1d3iihzy9UjyxGshRuh",
+        "input_tokens": 511,
+        "output_tokens": 40,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 551,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 101,
+        "price_snapshot": null,
+        "duration_ms": 1380,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "1fcc77d6-e86b-4d0f-9377-db8e97e118a1"
+}
