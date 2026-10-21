@@ -14,8 +14,9 @@ from __future__ import annotations
 from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, workflow_name
 
 from ..capability_sheet import entry
+from ..contracts.capability_check import full_gap
 
-__all__ = ["INPUT_KIND", "route_available", "without_ruled_out"]
+__all__ = ["INPUT_KIND", "NO_PROVIDER", "rests_on_inference", "route_available", "without_ruled_out"]
 
 INPUT_KIND = {
     "motif_file": "motif_prior", "ppi_file": "ppi", "mirna_file": "mirna_list", "design_file": "covariates",
@@ -29,6 +30,8 @@ _LABEL = {
 }
 _TOOLS = {"ppi": "STRING download"}
 """A registered tool that provides the input (`download_string` writes a PPI network)."""
+NO_PROVIDER = "and no registered workflow or tool provides it"
+"""How `route_available` ends at an input kind nothing registered provides."""
 
 
 def _producers(kind: str, consumer: str) -> list[str]:
@@ -63,8 +66,7 @@ def route_available(action: str, ruled_out: dict[str, str], lacking: frozenset[s
             continue
         name = definition.workflow
         if kind in ruled_out and not producers:
-            return (f'You said "{ruled_out[kind]}"; {name} needs {_LABEL[kind]} and no registered workflow or tool '
-                    "provides it")
+            return f'You said "{ruled_out[kind]}"; {name} needs {_LABEL[kind]} {NO_PROVIDER}'
         said = f'You said "{ruled_out[kind]}"; ' if kind in ruled_out else ""
         blocked = sorted({workflow_name(producer) for producer in producers})
         reasons = sorted({route_available(producer, ruled_out, lacking - {kind}, depth + 1) or ""
@@ -72,6 +74,19 @@ def route_available(action: str, ruled_out: dict[str, str], lacking: frozenset[s
         return (f"{said}{name} needs {_LABEL[kind]}; every registered route to one ({', '.join(blocked)}) needs an "
                 f"input you do not have" + (f": {reasons[0][0].lower()}{reasons[0][1:]}" if reasons else ""))
     return None
+
+
+def rests_on_inference(check, reason: str) -> bool:
+    """Whether a `route_available` reason ends at an input kind the user never said they lack (ROUND-20 D).
+
+    An "only these" statement rules out every other kind, and the reading of it can be wrong: C44 "I have no expression
+    file, only that co-expression file" ruled out the motif prior the user named as seed_W_mm.tsv, and the reply said
+    OTTER needs one nothing provides. A kind the user's own words rule out (`check.ruled_out`: C18 "I don't have any
+    motif or PPI files") is said; the network CONDOR needs on the way there is not the end of the route.
+    """
+    said = set(getattr(check, "ruled_out", None) or {})
+    ends = [kind for kind, label in _LABEL.items() if f"needs {label} {NO_PROVIDER}" in reason]
+    return any(kind not in said for kind in ends)
 
 
 _NETWORKS = frozenset({"regulatory_network", "coexpression_network"})
@@ -90,7 +105,6 @@ def without_ruled_out(check, stated_inputs: frozenset[str] = frozenset()):
     # "I only have expr_liver.tsv": every kind not among them is ruled out, in the user's own words.
     ruled_out = {**{kind: check.only_inputs_quote for kind in _LABEL if only and kind not in only}, **check.ruled_out}
     no_network = bool(stated_inputs) and not stated_inputs & _NETWORKS
-    from .capability_check import _full_gap
 
     rows = []
     for row in check.requirements:
@@ -112,4 +126,4 @@ def without_ruled_out(check, stated_inputs: frozenset[str] = frozenset()):
                                          "status": row.status if kept else "not_available"})
         rows.append(row)
     results = [row for row in rows if row.kind == "result"]
-    return check.model_copy(update={"requirements": rows, "full_gap": _full_gap(results, check.unchecked)})
+    return check.model_copy(update={"requirements": rows, "full_gap": full_gap(results, check.unchecked)})

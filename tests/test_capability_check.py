@@ -913,7 +913,9 @@ def test_a_violating_workflow_is_removed_and_satisfies_or_unrelated_change_nothi
     gap = apply_condition_answers(check, pairs, ["violates"])
     assert gap.results()[0].status == "not_available" and gap.full_gap
     assert gap.results()[0].violations == [f'PUMA does not meet "{MIRNA_RULE}"']
-    assert f'PUMA does not meet "{MIRNA_RULE}".' in understanding_paragraph(gap)
+    # ROUND-20 B: the condition check's answer is the model's judgment -- it decides, and is never said as the reason.
+    assert "does not meet" not in understanding_paragraph(gap)
+    assert "-- not matched to any registered workflow." in understanding_paragraph(gap)
     assert second_opinion_pairs(gap, ["run_puma"]) == []  # never asked again
 
 

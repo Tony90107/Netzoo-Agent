@@ -486,7 +486,8 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     # Verdict layer step 1: a run is checked only in shadow (`shadow_status`), and its decision is left as it is.
     if proposal is None or (decision.action != "no_tool") != (shadow_status is not None):
         return result
-    claims = frozenset(claim for claim, _ in (result.routing_state.get("study_purpose") or {}).get("claims") or ())
+    # ROUND-20: with their words, so a registry-wide reason is said only for a result the claim's sentence holds.
+    claims = {claim: quote for claim, quote in (result.routing_state.get("study_purpose") or {}).get("claims") or ()}
     counted = bound_expression_samples(user_task)  # ROUND-07 (G3): a sample-count doubt the named file answers
     check, rejected = build_capability_check(user_task, proposal, claims, counted)
     record_event(context, state, "routing.capability_checked", "classify", {

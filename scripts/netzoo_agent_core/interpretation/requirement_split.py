@@ -14,6 +14,8 @@ Final acceptance a24b, false refusals and silent omissions:
 
 from __future__ import annotations
 
+import re
+
 from ..capability_sheet import sheet_entries
 from ..contracts.capability_check import CheckedRequirement
 from .input_bindings import _DIRECTORY_TOKEN
@@ -21,7 +23,19 @@ from .discovery import _UNLABELED_PATH_RE
 from .request_spans import _span
 
 __all__ = ["FORM_CONDITIONS", "ask_conditions", "condition_requirements", "delivery_requirements",
-           "form_condition_spans", "split_additions", "apply_own_sentence_answers"]
+           "form_condition_spans", "split_additions", "apply_own_sentence_answers", "model_judged", "unmet"]
+
+
+def unmet(workflow: str, quote: str) -> str:
+    """A condition-check answer, as the check states it: the model's judgment that the workflow does not meet the
+    words (`apply_condition_answers` keeps it in `violations`; an own-sentence answer is a row's `limits`)."""
+    return f'{workflow} does not meet "{quote}"'
+
+
+def model_judged(reason: str) -> bool:
+    """Whether the reason is a condition-check answer (`unmet`), not one code derived from a contract."""
+    return re.match(r'^\S+ does not meet "', reason) is not None
+
 
 FORM_CONDITIONS = ("group_membership", "spatial", "time_model")
 """Conditions on the result's form; the others (data unit, matched samples) are facts about the user's data, and
@@ -183,7 +197,7 @@ def apply_own_sentence_answers(check, pairs: list[tuple[int, str, list[str], str
     for (_index, _action, keys, quote), answer in zip(pairs, answers):
         verdicts.setdefault(quote, {}).setdefault(answer, []).append(entry(keys[0]).workflow)
     added = [CheckedRequirement(quote=quote.strip().rstrip(" .;,!?"), kind="result", status="not_available",
-                                limits=[f'{name} does not meet "{quote.strip().rstrip(" .;,!?")}"'
+                                limits=[unmet(name, quote.strip().rstrip(" .;,!?"))
                                         for name in dict.fromkeys(found["violates"])])
              for quote, found in verdicts.items() if found.get("violates") and not found.get("satisfies")]
     return check.model_copy(update={"requirements": [*check.requirements, *added]}) if added else check

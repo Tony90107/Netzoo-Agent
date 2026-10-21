@@ -80,7 +80,7 @@ def _declined(rows, check=None) -> list[DeclinedPart]:
 
     provisional = bool(check is not None and check.provisional)
     return [DeclinedPart(quote=row.quote, reasons=[*row.limits, *row.violations],
-                         alternatives=_names([*row.instead, *row.defaults]), line=_status_line(row, provisional))
+                         alternatives=_names([*row.instead, *row.defaults]), line=_status_line(row, provisional, check=check))
             for row in rows if row.status == "not_available"]
 
 
