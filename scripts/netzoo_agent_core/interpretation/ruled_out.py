@@ -15,8 +15,10 @@ from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, workflow_
 
 from ..capability_sheet import entry
 from ..contracts.capability_check import full_gap
+from ..method_names import workflows_in
 
-__all__ = ["INPUT_KIND", "NO_PROVIDER", "rests_on_inference", "route_available", "without_ruled_out"]
+__all__ = ["INPUT_KIND", "NO_PROVIDER", "rests_on_inference", "route_available", "without_ruled_out",
+           "without_unbuilt_network"]
 
 INPUT_KIND = {
     "motif_file": "motif_prior", "ppi_file": "ppi", "mirna_file": "mirna_list", "design_file": "covariates",
@@ -125,5 +127,53 @@ def without_ruled_out(check, stated_inputs: frozenset[str] = frozenset()):
             row = row.model_copy(update={"delivered_by": kept, "limits": [*row.limits, *dict.fromkeys(limits)],
                                          "status": row.status if kept else "not_available"})
         rows.append(row)
+    results = [row for row in rows if row.kind == "result"]
+    return check.model_copy(update={"requirements": rows, "full_gap": full_gap(results, check.unchecked)})
+
+
+def without_unbuilt_network(check, task: str):
+    """ROUND-22 (R22-A): a workflow the request names for a result, which runs on a regulator-gene network (CONDOR), is
+    not available as asked when no existing network is given -- the reading reads none, or the user's own words rule
+    one out -- and the request names no workflow that builds one.
+
+    H27 "I need CONDOR run directly on rnaseq_tpm.tsv ... without building any network first" and L48 "Run CONDOR right
+    away on counts/brain_rnaseq_counts.tsv ... We haven't built any network yet" were run or answered: a route through
+    PANDA, PUMA or OTTER counted as available though the user named neither it nor a motif prior or PPI. As for a named
+    method (M1), that route is a different request -- said as an alternative, never run in its place. A route the user
+    names ("PANDA, then CONDOR") is the request, and stands. The workflow is blocked for the run (ROUND-17).
+    """
+    if check is None:
+        return check
+    named_here, rows, changed = set(workflows_in(task)), [], False
+    for row in check.requirements:
+        named = row.method.get("named")
+        absent = row.attrs.get("input_network") in ("none", None) or "network" in check.ruled_out
+        if row.kind != "result" or row.status not in ("available", "with_step", "partial") or not named or not absent:
+            rows.append(row)
+            continue
+        held, reasons = [], []
+        for key in row.delivered_by:
+            found = entry(key)
+            definition = ACTION_DEFINITIONS.get(found.action)
+            if found.workflow != named or definition is None or "network" not in {
+                    INPUT_KIND.get(name) for name in definition.required_inputs}:
+                continue
+            builders = sorted({workflow_name(action) for action in _producers("network", found.action)})
+            if set(builders) & named_here:
+                continue
+            held.append(key)
+            said = f'You said "{check.ruled_out["network"]}"; ' if "network" in check.ruled_out else ""
+            reasons.append(f"{said}{named} runs only on {found.inputs[0] if found.inputs else _LABEL['network']}; "
+                           f"building one first ({', '.join(builders)}) is a separate run the request does not name")
+        if not held:
+            rows.append(row)
+            continue
+        kept = [key for key in row.delivered_by if key not in held]
+        rows.append(row.model_copy(update={
+            "delivered_by": kept, "status": row.status if kept else "not_available",
+            "limits": [*row.limits, *dict.fromkeys(reasons)], "blocks": list(dict.fromkeys([*row.blocks, named]))}))
+        changed = True
+    if not changed:
+        return check
     results = [row for row in rows if row.kind == "result"]
     return check.model_copy(update={"requirements": rows, "full_gap": full_gap(results, check.unchecked)})
