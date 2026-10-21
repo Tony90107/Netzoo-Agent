@@ -1,0 +1,712 @@
+{
+  "version": 1,
+  "session_id": "hb-h5main-Q19-2",
+  "profile_id": "hb-h5main-Q19-2",
+  "auto_generated": false,
+  "created_at": 1792596350.526489,
+  "updated_at": 1792596350.5265641,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Our 180 colon tumors were sequenced at three centers, and we have 15,000 genes per sample plus a numeric design table (center indicator columns and age). I want to know how much of the gene-gene co-expression is tied to sequencing center versus age."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"how much of the gene-gene co-expression is tied to sequencing center versus age\" -- available from COBRA.\n\nSelected path: **COBRA**.\n\nYour question asks for a cohort-level co-expression network. **COBRA** fits that result and scale.\n\n**COBRA** — Model covariate-associated gene co-expression with COBRA. COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `design_file`: sample covariate design matrix\n\nOutputs:\n\n- `coexpression_network`: Inferred gene-to-gene associations.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is for guidance on analyzing gene-gene co-expression related to sequencing center and age, which falls under the category of answer requests rather than execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request is for guidance on analyzing gene-gene co-expression related to sequencing center and age, which falls under the category of answer requests rather than execution.",
+      "candidate_actions": [
+        "run_cobra",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_cobra"
+      ],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "covariate_association"
+        ],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "covariate_association"
+            ],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "how much of the gene-gene co-expression is tied to sequencing center versus age.",
+              "rationale": "The user wants to assess the properties of gene-gene co-expression."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "gene-gene co-expression",
+              "rationale": "The user is interested in gene-gene co-expression."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "how much of the gene-gene co-expression is tied to sequencing center versus age.",
+              "rationale": "The user is interested in how much of the gene-gene co-expression is tied to sequencing center versus age, which implies a need to analyze the co-expression network."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "covariate_association",
+              "source": "explicit",
+              "text_span": "how much of the gene-gene co-expression is tied to sequencing center versus age.",
+              "rationale": "The user wants to assess how much of the gene-gene co-expression is tied to sequencing center versus age."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "registry_features",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_cobra"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "how much of the gene-gene co-expression is tied to sequencing center versus age",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 180,
+              "samples_quote": "180 colon tumors",
+              "features": 15000,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  66,
+                  89,
+                  15000
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@4-20",
+              "feature_count@66-89"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "180 colon tumors",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "sequenced at three centers",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "15,000 genes per sample",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "numeric design table (center indicator columns and age)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "how much of the gene-gene co-expression is tied to sequencing center versus age.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@4-20",
+            "property": "sample_count",
+            "name": "",
+            "value": "180",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "180 colon tumors",
+            "span": [
+              4,
+              20
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "180 colon tumors",
+                "span": [
+                  4,
+                  20
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "180 colon tumors",
+                "span": [
+                  4,
+                  20
+                ],
+                "result": "how much of the gene-gene co-expression is tied to sequencing center versus age",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@66-89",
+            "property": "feature_count",
+            "name": "",
+            "value": "15000",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "15,000 genes per sample",
+            "span": [
+              66,
+              89
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "15,000 genes per sample",
+                "span": [
+                  66,
+                  89
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "15,000 genes per sample",
+                "span": [
+                  66,
+                  89
+                ],
+                "result": "how much of the gene-gene co-expression is tied to sequencing center versus age",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "how much of the gene-gene co-expression is tied to sequencing center versus age."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "how much of the gene-gene co-expression is tied to sequencing center versus age",
+              "uncertainty": "two_versions",
+              "workflow": "COBRA",
+              "contract_quote": "COBRA consumes a gene-by-sample expression matrix and numeric sample covariates, then produces a covariate-associated covariance decomposition and a labeled adjusted gene-by-gene co-expression artifact.",
+              "question": "Do you want to analyze the gene-gene co-expression tied to sequencing center or age?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "sequencing center",
+                "age"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 35183,
+    "output_tokens": 1389,
+    "total_tokens": 36572,
+    "calls": [
+      {
+        "call_id": "2a0635f1-c4f0-4b8b-8426-e26b2ad185d8",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596325-OwBeosFO9UzNbl5apv8z",
+        "input_tokens": 5333,
+        "output_tokens": 313,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5646,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 623,
+        "price_snapshot": null,
+        "duration_ms": 5122,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "e7d819d6-7b75-4744-8c96-170ccd47ed7e",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596330-CQOMa2F1WYXbrFnLvJhZ",
+        "input_tokens": 4517,
+        "output_tokens": 67,
+        "cache_read_tokens": 3712,
+        "cache_write_tokens": 0,
+        "total_tokens": 4584,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 439,
+        "price_snapshot": null,
+        "duration_ms": 1628,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e6cdcdc6-727b-4fb2-b108-624095e430be",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596331-lohgVaeOWsNB391vlHYr",
+        "input_tokens": 1281,
+        "output_tokens": 79,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1360,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 240,
+        "price_snapshot": null,
+        "duration_ms": 2049,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bb211741-1e82-4379-8e9c-1e2da4b9657b",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 646,
+        "output_tokens": 56,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 702,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 131,
+        "price_snapshot": {
+          "snapshot_id": "285a765e-57b3-553b-9cfa-bccee1016be7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-21T15:08:50.827708Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1506,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "68f368d4-77b5-4531-bf7b-c9b6f45b0897",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596335-Xk0hvKmN3wzKsrjlbmG9",
+        "input_tokens": 1630,
+        "output_tokens": 46,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1676,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 272,
+        "price_snapshot": null,
+        "duration_ms": 1641,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3aa77085-4c56-41c9-9030-4f9513540ab9",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792596337-jpQYkRUXpeRzSGW9M71o",
+        "input_tokens": 15046,
+        "output_tokens": 448,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15494,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1470,
+        "price_snapshot": null,
+        "duration_ms": 5403,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "eda20dc1-b117-4f4c-8425-69fe9801ccc4",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596342-ZOovoY7NOO1VUzmpDNSR",
+        "input_tokens": 556,
+        "output_tokens": 69,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 625,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 125,
+        "price_snapshot": null,
+        "duration_ms": 2253,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2409b707-98fb-4c25-99e7-2ab0a5fbf1aa",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792596344-IjDAZQbY2tWFniZxcDqt",
+        "input_tokens": 5249,
+        "output_tokens": 176,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5425,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 509,
+        "price_snapshot": null,
+        "duration_ms": 3327,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "210a03d0-89f2-4de2-872c-5a8ca908255a",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596348-fH1QSCwzB4nNq3xIp5eM",
+        "input_tokens": 925,
+        "output_tokens": 135,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1060,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 220,
+        "price_snapshot": null,
+        "duration_ms": 2380,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "9d616654-ca8a-484f-b222-7fc4350aec34"
+}

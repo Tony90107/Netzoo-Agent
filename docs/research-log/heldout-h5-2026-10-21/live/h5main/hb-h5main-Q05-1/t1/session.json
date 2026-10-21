@@ -1,0 +1,845 @@
+{
+  "version": 1,
+  "session_id": "hb-h5main-Q05-1",
+  "profile_id": "hb-h5main-Q05-1",
+  "auto_generated": false,
+  "created_at": 1792595403.783218,
+  "updated_at": 1792595403.783277,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I'd like to use PUMA on our 94 high-grade serous ovarian tumors. I have the RNA-seq matrix, one prior file with TF motif edges plus TargetScan miRNA-target pairs, a STRING PPI, and a one-per-line list of the miRNAs in that prior. What I want is a single network for the whole cohort showing which TFs and miRNAs regulate which genes."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like to use PUMA on our 94 high-grade serous ovarian tumors.\" -- not matched to any registered workflow.\n2. \"What I want is a single network for the whole cohort showing which TFs and miRNAs regulate which genes.\" -- available from PUMA.\n\nPUMA: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA.\nRegistered required inputs: expression_file, motif_file, ppi_file, mirna_file, output_file.\nOutput: aggregate TF/miRNA-to-gene regulatory networks.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_puma"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "mirna",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf",
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "mirna",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf",
+              "mirna"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "What I want is a single network for the whole cohort showing which TFs and miRNAs regulate which genes.",
+              "rationale": "The user wants to construct a regulatory network from the provided data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "What I want is a single network for the whole cohort showing which TFs and miRNAs regulate which genes.",
+              "rationale": "The user explicitly requests a regulatory network as the output."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "inferred",
+              "text_span": "showing which TFs and miRNAs regulate which genes.",
+              "rationale": "The user mentions TFs as regulators in the requested network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "mirna",
+              "source": "inferred",
+              "text_span": "showing which TFs and miRNAs regulate which genes.",
+              "rationale": "The user mentions miRNAs as regulators in the requested network."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": "showing which TFs and miRNAs regulate which genes.",
+              "rationale": "The user specifies genes as the targets of regulation in the network."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user specifies RNA-seq data as the current input for the analysis."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "single network for the whole cohort",
+              "rationale": "The request explicitly states the output granularity."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_puma"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "one prior file with TF motif edges plus TargetScan miRNA-target pairs, a STRING PPI",
+        "mirna": "stated",
+        "mirna_quote": "one-per-line list of the miRNAs in that prior"
+      },
+      "applicability": [
+        {
+          "action": "run_puma",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "one prior file with TF motif edges plus TargetScan miRNA-target pairs, a STRING PPI",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "stated",
+              "quote": "one-per-line list of the miRNAs in that prior",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "one prior file with TF motif edges plus TargetScan miRNA-target pairs, a STRING PPI",
+            "action": "none"
+          },
+          {
+            "kind": "mirna",
+            "state": "stated",
+            "source": "model",
+            "quote": "one-per-line list of the miRNAs in that prior",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like to use PUMA on our 94 high-grade serous ovarian tumors.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "PUMA",
+              "named_quote": "PUMA",
+              "samples": 94,
+              "samples_quote": "94"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@28-30"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "What I want is a single network for the whole cohort showing which TFs and miRNAs regulate which genes.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "puma.regulator_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "PUMA",
+              "named_quote": "PUMA",
+              "samples": 94,
+              "samples_quote": "94"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@28-30"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "our 94 high-grade serous ovarian tumors",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "RNA-seq matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "one prior file with TF motif edges plus TargetScan miRNA-target pairs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a STRING PPI",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a one-per-line list of the miRNAs in that prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "a single network for the whole cohort showing which TFs and miRNAs regulate which genes.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "PUMA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@28-30",
+            "property": "sample_count",
+            "name": "",
+            "value": "94",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "94",
+            "span": [
+              28,
+              30
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "94",
+                "span": [
+                  28,
+                  30
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "94",
+                "span": [
+                  28,
+                  30
+                ],
+                "result": "I'd like to use PUMA on our 94 high-grade serous ovarian tumors.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "94",
+                "span": [
+                  28,
+                  30
+                ],
+                "result": "What I want is a single network for the whole cohort showing which TFs and miRNAs regulate which genes.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "PUMA"
+        ],
+        "declined": [
+          {
+            "quote": "I'd like to use PUMA on our 94 high-grade serous ovarian tumors.",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"I'd like to use PUMA on our 94 high-grade serous ovarian tumors.\" -- not matched to any registered workflow."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "a single network for the whole cohort showing which TFs and miRNAs regulate which genes."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "PUMA"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I have the RNA-seq matrix, one prior file with TF motif edges plus TargetScan miRNA-target pairs, a STRING PPI, and a one-per-line list of the miRNAs in that prior.",
+              "uncertainty": "said_unknown",
+              "workflow": "PUMA",
+              "contract_quote": "Require one miRNA identifier per line and require every miRNA in prior column one.",
+              "question": "Do you have one miRNA identifier per line and include every miRNA in the prior column one?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "What I want is a single network for the whole cohort showing which TFs and miRNAs regulate which genes.",
+              "uncertainty": "said_unknown",
+              "workflow": "PUMA",
+              "contract_quote": "PUMA produces a weighted regulator-to-gene network.",
+              "question": "Are you looking for a weighted regulator-to-gene network?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I have the RNA-seq matrix, one prior file with TF motif edges plus TargetScan miRNA-target pairs, a STRING PPI, and a one-per-line list of the miRNAs in that prior.",
+              "uncertainty": "said_unknown",
+              "workflow": "PUMA",
+              "contract_quote": "When coexpression_file is supplied, its labeled gene IDs, square dimensions, and symmetry must match PUMA's filtered gene axis.",
+              "question": "Does your RNA-seq matrix have labeled gene IDs, square dimensions, and symmetry that match PUMA's filtered gene axis?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 32436,
+    "output_tokens": 1812,
+    "total_tokens": 34248,
+    "calls": [
+      {
+        "call_id": "55fe975c-8e54-45d3-9514-cc1fc4f8e886",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595377-Ay0nRNrPdqo5XWCkOxH4",
+        "input_tokens": 5359,
+        "output_tokens": 368,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5727,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 660,
+        "price_snapshot": null,
+        "duration_ms": 4826,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "0d826054-47d7-4b32-8688-a378ac223631",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595382-ynVh3TA7Gus7nbNzxQff",
+        "input_tokens": 5735,
+        "output_tokens": 319,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6054,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 754,
+        "price_snapshot": null,
+        "duration_ms": 4514,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4318bd4d-1863-49d2-9c71-42def26f9cef",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 668,
+        "output_tokens": 40,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 708,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 124,
+        "price_snapshot": {
+          "snapshot_id": "285a765e-57b3-553b-9cfa-bccee1016be7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-21T15:08:50.827708Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1203,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "cf87b88a-2ddb-4235-a61c-14e58c7f5f59",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595387-zU1egi1DwUrKSvg3MfHd",
+        "input_tokens": 329,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 333,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 52,
+        "price_snapshot": null,
+        "duration_ms": 836,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "98d6d800-7279-4306-9ce0-e90aac496969",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792595388-bOQTWBranTVlt0I8IZPv",
+        "input_tokens": 18213,
+        "output_tokens": 606,
+        "cache_read_tokens": 8064,
+        "cache_write_tokens": 0,
+        "total_tokens": 18819,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2491,
+        "price_snapshot": null,
+        "duration_ms": 7722,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a9b1e0cb-8b66-461f-a8b5-66d6d590b86e",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595396-tONvlS0FltbJpueMCZ2B",
+        "input_tokens": 582,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 615,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 107,
+        "price_snapshot": null,
+        "duration_ms": 1120,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4586263b-9c9f-41fa-aca5-1956e4e02052",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595397-FDOo8ejEEAXPfa43f60T",
+        "input_tokens": 571,
+        "output_tokens": 67,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 638,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 126,
+        "price_snapshot": null,
+        "duration_ms": 1860,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9e424476-98f7-4220-839c-c2824f3dc5a9",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595399-ih0HBga3ejswEAZMhcLY",
+        "input_tokens": 979,
+        "output_tokens": 375,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1354,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 372,
+        "price_snapshot": null,
+        "duration_ms": 4278,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "6a5efd08-4069-40ed-b5be-9c24d0413725"
+}

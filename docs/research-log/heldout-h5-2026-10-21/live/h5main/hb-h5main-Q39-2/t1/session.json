@@ -1,0 +1,845 @@
+{
+  "version": 1,
+  "session_id": "hb-h5main-Q39-2",
+  "profile_id": "hb-h5main-Q39-2",
+  "auto_generated": false,
+  "created_at": 1792596631.5803788,
+  "updated_at": 1792596631.580441,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want a regulator-to-target network for each of our 85 endometriosis lesions. We have RNA-seq, TF motif and PPI priors, and TargetScan predictions for our small-RNA panel, but we haven't decided whether to bring those miRNAs in as regulators or stick to transcription factors only."
+    },
+    {
+      "role": "assistant",
+      "content": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nWith expression data, the registered workflows can give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample (BONOBO)\n\nWhich of these results do you want, or what question should the analysis answer?\n\nNothing was selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request names no result yet; the goal is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request names no result yet; the goal is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "I want a regulator-to-target network for each of our 85 endometriosis lesions.",
+              "rationale": "The user explicitly requests a regulator-to-target network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "stick to transcription factors only.",
+              "rationale": "The user mentions transcription factors as potential regulators."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "Regulatory networks typically involve genes as targets."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user states they have RNA-seq data available for analysis."
+            }
+          ],
+          "assumptions": [
+            "The user has RNA-seq data available for analysis.",
+            "The user is considering using transcription factors as regulators."
+          ]
+        },
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [
+              "mirna",
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.8,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "I want a regulator-to-target network for each of our 85 endometriosis lesions.",
+              "rationale": "The user explicitly requests a regulator-to-target network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "mirna",
+              "source": "explicit",
+              "text_span": "bring those miRNAs in as regulators.",
+              "rationale": "The user mentions considering miRNAs as potential regulators."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "Regulatory networks typically involve genes as targets."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The role is inferred from the structured TF-gene outcome; it is not a quoted user claim."
+            }
+          ],
+          "assumptions": [
+            "The user has RNA-seq data available for analysis.",
+            "The user is considering using both transcription factors and miRNAs as regulators."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these results do you want, or what question should the analysis answer?",
+      "stated_hypotheses": [
+        {
+          "axis": "unclear_goal",
+          "basis": "unsupported",
+          "text_span": "bring those miRNAs in as regulators",
+          "target_artifact": "regulatory_network",
+          "target_granularity": "sample_specific"
+        },
+        {
+          "axis": "unclear_goal",
+          "basis": "unsupported",
+          "text_span": "stick to transcription factors only",
+          "target_artifact": "regulatory_network",
+          "target_granularity": "sample_specific"
+        }
+      ],
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "TF motif and PPI priors",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "TF motif and PPI priors",
+            "action": "none"
+          },
+          {
+            "kind": "mirna",
+            "state": "unstated",
+            "source": "model",
+            "quote": "",
+            "action": "ask"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want a regulator-to-target network for each of our 85 endometriosis lesions.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_panda.per_sample_networks",
+              "lioness_puma.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 85,
+              "samples_quote": "85"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@53-55"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "but we haven't decided whether to bring those miRNAs in as regulators or stick to transcription factors only.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_puma.per_sample_networks",
+              "lioness_panda.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "choice",
+            "outcomes": {
+              "bring those miRNAs in as regulators": [
+                "lioness_puma.per_sample_networks"
+              ],
+              "stick to transcription factors only": [
+                "lioness_panda.per_sample_networks"
+              ]
+            },
+            "unknown_quote": "but we haven't decided whether to bring those miRNAs in as regulators or stick to transcription factors only.",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "RNA-seq",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "TF motif and PPI priors",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "TargetScan predictions for our small-RNA panel",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "but we haven't decided whether to bring those miRNAs in as regulators or stick to transcription factors only.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want a regulator-to-target network for each of our 85 endometriosis lesions.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "but we haven't decided whether to bring those miRNAs in as regulators or stick to transcription factors only."
+        ],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@53-55",
+            "property": "sample_count",
+            "name": "",
+            "value": "85",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "85",
+            "span": [
+              53,
+              55
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "85",
+                "span": [
+                  53,
+                  55
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "85",
+                "span": [
+                  53,
+                  55
+                ],
+                "result": "I want a regulator-to-target network for each of our 85 endometriosis lesions.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "CLARIFY",
+        "partial": false,
+        "workflows": [],
+        "declined": [],
+        "facts": [],
+        "clarify": {
+          "missing": "result",
+          "candidates": [
+            "PANDA",
+            "PUMA",
+            "LIONESS-PANDA",
+            "LIONESS-PUMA",
+            "LIONESS-COEXPRESSION",
+            "COBRA",
+            "DRAGON",
+            "LIONESS-DRAGON",
+            "OTTER",
+            "GIRAFFE",
+            "BONOBO"
+          ],
+          "inputs": [
+            "expression_matrix"
+          ],
+          "question": "Which of these results do you want, or what question should the analysis answer?",
+          "goal_quote": "we haven't decided whether to bring those miRNAs in as regulators or stick to transcription factors only."
+        },
+        "run_allowed": false,
+        "basis": "result_open",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want a regulator-to-target network for each of our 85 endometriosis lesions."
+          ],
+          "run_verdict": null
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PANDA",
+          "LIONESS-PUMA"
+        ],
+        "accepted": [],
+        "rejected": [],
+        "legacy": [
+          {
+            "question": "Which result do you want: \"bring those miRNAs in as regulators\" or \"stick to transcription factors only\"?",
+            "user_quote": "but we haven't decided whether to bring those miRNAs in as regulators or stick to transcription factors only.",
+            "workflows": [
+              "LIONESS-PUMA",
+              "LIONESS-PANDA"
+            ],
+            "contract_quote": "",
+            "depends_on": "choice",
+            "outcomes": {
+              "bring those miRNAs in as regulators": [
+                "LIONESS-PUMA"
+              ],
+              "stick to transcription factors only": [
+                "LIONESS-PANDA"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "open_results": [
+          "we haven't decided whether to bring those miRNAs in as regulators or stick to transcription factors only."
+        ]
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 38770,
+    "output_tokens": 2530,
+    "total_tokens": 41300,
+    "calls": [
+      {
+        "call_id": "860b9968-9ee7-4737-b138-bcd48eac5589",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596594-rE78oLh4GbjBBM4LVzsj",
+        "input_tokens": 5341,
+        "output_tokens": 520,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5861,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 748,
+        "price_snapshot": null,
+        "duration_ms": 6682,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "855c60e6-e305-4d7f-b0d1-0086b64f8034",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596601-gqmStVooS5fLfzLsi32G",
+        "input_tokens": 6677,
+        "output_tokens": 235,
+        "cache_read_tokens": 6656,
+        "cache_write_tokens": 0,
+        "total_tokens": 6912,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 643,
+        "price_snapshot": null,
+        "duration_ms": 3132,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3f3c47d9-9099-4c0b-8472-2250641452e2",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596604-R0q4oqgnAWQx3X9cYwCb",
+        "input_tokens": 1633,
+        "output_tokens": 99,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1732,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 304,
+        "price_snapshot": null,
+        "duration_ms": 2346,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ca03b669-4941-47a8-8978-d641df58699c",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 720,
+        "output_tokens": 49,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 769,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 137,
+        "price_snapshot": {
+          "snapshot_id": "285a765e-57b3-553b-9cfa-bccee1016be7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-21T15:08:50.827708Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1401,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "ef5b3b3f-448a-493d-97b4-72afe6810dba",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596607-WPVgvfYu5NCt6FqfhPzh",
+        "input_tokens": 1738,
+        "output_tokens": 127,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1865,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 337,
+        "price_snapshot": null,
+        "duration_ms": 2234,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "13d0a83f-1026-4a7f-b13c-33a087768fa2",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792596610-HDo6fBUPgaueD6ezEFFF",
+        "input_tokens": 15062,
+        "output_tokens": 925,
+        "cache_read_tokens": 14848,
+        "cache_write_tokens": 0,
+        "total_tokens": 15987,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1701,
+        "price_snapshot": null,
+        "duration_ms": 11628,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "041ffc05-551d-4680-879f-bc289e779ff4",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596621-5oW6pRBW92rKkbT5Uroh",
+        "input_tokens": 564,
+        "output_tokens": 40,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 604,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 109,
+        "price_snapshot": null,
+        "duration_ms": 1777,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d9d5cd85-39ef-49f8-ab1d-ff56d86761c4",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596623-rJfjvGJV7NZQbIBCUDbq",
+        "input_tokens": 553,
+        "output_tokens": 55,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 608,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 116,
+        "price_snapshot": null,
+        "duration_ms": 1557,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d7fd7300-2338-43d8-9ec6-bcb8b103e83b",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792596625-EDCq8T2iKsXGOspzTcRR",
+        "input_tokens": 5268,
+        "output_tokens": 325,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5593,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 601,
+        "price_snapshot": null,
+        "duration_ms": 4003,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1dd34d49-09af-4a09-a282-73a4599c1e51",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596629-nKUEjWs3o8cmnR9Z77zQ",
+        "input_tokens": 1214,
+        "output_tokens": 155,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1369,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 275,
+        "price_snapshot": null,
+        "duration_ms": 2406,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "af879a94-becc-4b8a-94e4-30f852e225cb"
+}

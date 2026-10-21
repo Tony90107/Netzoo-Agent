@@ -126,6 +126,30 @@ def _settings_reads(check, task: str, found: list[dict], steps: list[str]):
     return check
 
 
+def _known_fields(model, data):
+    """The recorded object validated by this checkout's model, without the fields it reports as unknown (ROUND-24: a
+    newer recording -- `blocks`, `claim_sentences`, `open_goal_quote` -- replayed by the code before ROUND-17). The code
+    of the recording itself knows every field, so nothing is dropped for it."""
+    import copy
+
+    from pydantic import ValidationError
+
+    data = copy.deepcopy(data)
+    for _attempt in range(100):
+        try:
+            return model.model_validate(data)
+        except ValidationError as error:
+            extra = [found["loc"] for found in error.errors() if found["type"] == "extra_forbidden"]
+            if not extra:
+                raise
+            for loc in extra:
+                target = data
+                for part in loc[:-1]:
+                    target = target[part]
+                target.pop(loc[-1], None)
+    return model.model_validate(data)
+
+
 GOAL_READS: dict[str, dict] = {}
 """ROUND-21: offline goal reads by request text, for readings recorded before the read existed (`goal-read-2026-10-21`)."""
 GOAL_TRIGGERED: list[str] = []
@@ -187,7 +211,7 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
         check = merge_reread_(task, check, again, reread.get("passages") or [], unplaced)
         steps.append("reread")
     session = json.loads((folder / "session.json").read_text())
-    decision = TaskDecision.model_validate(session["plan"]["decision"])
+    decision = _known_fields(TaskDecision, session["plan"]["decision"])
 
     # 3: the condition check, this checkout's pairs answered from the recording
     quotes = _row_quotes(found)
@@ -308,8 +332,11 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
     recorded_core = next((e["payload"] for e in reversed(found) if e["event_type"] == "core.decision"), {})
     reason = recorded_core.get("evidence", {}).get("reason_code", "") or ""
     kinds = {e["event_type"] for e in found}
+    from netzoo_agent_core.graph import router_invocation as routing  # ROUND-21's C31 fix, only in code that has it
+    import inspect
+
     if (reason == "research_choices_unavailable" and "routing.hypothesis_bases_matched" in kinds
-            and "routing.hypothesis_bases_failed" not in kinds):
+            and "routing.hypothesis_bases_failed" not in kinds and "research_choices_unread" in inspect.getsource(routing)):
         # ROUND-21 (C31), as routing now does: the reader answered "no stated hypotheses" -- not a failure.
         reason = "research_choices_unread"
         decision = decision.model_copy(update={"match_basis": "unverified_evidence", "clarification_question": None})

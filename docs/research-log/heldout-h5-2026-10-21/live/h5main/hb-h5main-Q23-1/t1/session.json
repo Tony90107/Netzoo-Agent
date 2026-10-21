@@ -1,0 +1,787 @@
+{
+  "version": 1,
+  "session_id": "hb-h5main-Q23-1",
+  "profile_id": "hb-h5main-Q23-1",
+  "auto_generated": false,
+  "created_at": 1792595692.252866,
+  "updated_at": 1792595692.2529228,
+  "messages": [
+    {
+      "role": "user",
+      "content": "My collaborator suggested LIONESS-PANDA to get each TF's regulatory strength in each of our 70 lupus patients from their blood RNA-seq, using human motif and PPI priors. I'm not sure whether I mean how strongly each TF is connected to its targets in each patient, or how active the TF itself is in each patient."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"to get each TF's regulatory strength in each of our 70 lupus patients from their blood RNA-seq, using human motif and PPI priors.\" -- available from LIONESS-PANDA's output plus a step you run outside NetZoo: Sum edge weights per TF per sample from the edge-by-sample table; NetZoo does not compute it.\n2. \"how strongly each TF is connected to its targets in each patient\" -- available from LIONESS-PANDA's output plus a step you run outside NetZoo: Sum edge weights per TF per sample from the edge-by-sample table; NetZoo does not compute it.\n3. \"how active the TF itself is in each patient\" -- not available here: no registered workflow produces this. LIONESS-PANDA does not give it: edge weights are unsigned support scores.\n4. \"My collaborator suggested\" -- not matched to any registered workflow.\n\nThere are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data.\n\nFor “how strongly each TF is connected to its targets in each patient”:\n\n**LIONESS-PANDA**. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.\n\nYou would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations. LIONESS-PANDA also writes the cohort network, so PANDA need not run first.\n\nFor “how active the TF itself is in each patient”:\n\n**GIRAFFE**. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.\n\nYou would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations; inferred transcription-factor-by-sample activity values.\n\nNo files were inspected and no analysis ran.\n\nWhich scientific question should we start with, and which of these inputs do you have? We can also investigate the hypotheses in parallel."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Compare the stated research hypotheses before choosing a workflow.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.0,
+      "reason": "Compare the stated research hypotheses before choosing a workflow.",
+      "candidate_actions": [],
+      "recommended_actions": [],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_lioness_panda",
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which scientific question should we start with?",
+      "stated_hypotheses": [
+        {
+          "axis": "unclear_goal",
+          "basis": "run_lioness_panda",
+          "text_span": "how strongly each TF is connected to its targets in each patient",
+          "target_artifact": "regulatory_network",
+          "target_granularity": "sample_specific"
+        },
+        {
+          "axis": "unclear_goal",
+          "basis": "run_giraffe",
+          "text_span": "how active the TF itself is in each patient",
+          "target_artifact": "tf_activity_matrix",
+          "target_granularity": "aggregate"
+        }
+      ],
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "human motif and PPI priors",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_lioness_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "human motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "human motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "none",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "to get each TF's regulatory strength in each of our 70 lupus patients from their blood RNA-seq, using human motif and PPI priors.",
+            "kind": "result",
+            "status": "with_step",
+            "delivered_by": [
+              "lioness_panda.per_sample_targeting"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PANDA",
+              "named_quote": "LIONESS-PANDA",
+              "samples": 70,
+              "samples_quote": "70 lupus patients"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@92-109"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "how strongly each TF is connected to its targets in each patient",
+            "kind": "result",
+            "status": "with_step",
+            "delivered_by": [
+              "lioness_panda.per_sample_targeting"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PANDA",
+              "named_quote": "LIONESS-PANDA",
+              "samples": 70,
+              "samples_quote": "70 lupus patients"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@92-109"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "how active the TF itself is in each patient",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [
+              "lioness_panda.no_sign"
+            ],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PANDA",
+              "named_quote": "LIONESS-PANDA",
+              "samples": 70,
+              "samples_quote": "70 lupus patients"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@92-109"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "LIONESS-PANDA",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "70 lupus patients",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "blood RNA-seq",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "human motif and PPI priors",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "My collaborator suggested",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PANDA",
+              "named_quote": "LIONESS-PANDA",
+              "samples": 70,
+              "samples_quote": "70 lupus patients"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@92-109"
+            ],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "to get each TF's regulatory strength in each of our 70 lupus patients from their blood RNA-seq, using human motif and PPI priors.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "LIONESS-PANDA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@92-109",
+            "property": "sample_count",
+            "name": "",
+            "value": "70",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "70 lupus patients",
+            "span": [
+              92,
+              109
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "70 lupus patients",
+                "span": [
+                  92,
+                  109
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "70 lupus patients",
+                "span": [
+                  92,
+                  109
+                ],
+                "result": "to get each TF's regulatory strength in each of our 70 lupus patients from their blood RNA-seq, using human motif and PPI priors.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "70 lupus patients",
+                "span": [
+                  92,
+                  109
+                ],
+                "result": "how strongly each TF is connected to its targets in each patient",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "70 lupus patients",
+                "span": [
+                  92,
+                  109
+                ],
+                "result": "how active the TF itself is in each patient",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "70 lupus patients",
+                "span": [
+                  92,
+                  109
+                ],
+                "result": "My collaborator suggested",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "70 lupus patients",
+                "span": [
+                  92,
+                  109
+                ],
+                "result": "I'm not sure whether I mean how strongly each TF is connected to its targets in each patient, or how active the TF itself is in each patient.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "LIONESS-PANDA"
+        ],
+        "declined": [
+          {
+            "quote": "how active the TF itself is in each patient",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"how active the TF itself is in each patient\" -- not available here: no registered workflow produces this. LIONESS-PANDA does not give it: edge weights are unsigned support scores."
+          },
+          {
+            "quote": "My collaborator suggested",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"My collaborator suggested\" -- not matched to any registered workflow."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": null,
+          "reason_code": "research_choices",
+          "rows": [
+            [
+              "result",
+              "with_step"
+            ],
+            [
+              "result",
+              "with_step"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "result",
+              "not_available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "to get each TF's regulatory strength in each of our 70 lupus patients from their blood RNA-seq, using human motif and PPI priors."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PANDA",
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure whether I mean how strongly each TF is connected to its targets in each patient, or how active the TF itself is in each patient.",
+              "uncertainty": "two_versions",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI priors to internally infer the aggregate PANDA network and derive sample-specific TF-to-gene networks.",
+              "question": "Are you interested in how strongly each TF is connected to its targets?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "other_workflow",
+              "no_workflow": "GIRAFFE",
+              "about": "wanted_result",
+              "alternatives": [
+                "how strongly each TF is connected to its targets in each patient",
+                "how active the TF itself is in each patient"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 27629,
+    "output_tokens": 1447,
+    "total_tokens": 29076,
+    "calls": [
+      {
+        "call_id": "a5cd205a-905f-4c9b-81f4-c89ffc2912b1",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595669-j2W4hNb8ZClpHiE28F54",
+        "input_tokens": 1620,
+        "output_tokens": 115,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1735,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 312,
+        "price_snapshot": null,
+        "duration_ms": 2212,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c75327e2-0de8-41a8-a882-f03f87036210",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792595671-5pWVqEM5f1vaiJPGuhY0",
+        "input_tokens": 15074,
+        "output_tokens": 761,
+        "cache_read_tokens": 14848,
+        "cache_write_tokens": 0,
+        "total_tokens": 15835,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1604,
+        "price_snapshot": null,
+        "duration_ms": 9823,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5cd0ae8a-0674-4cfb-8dc4-280388824b1c",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595681-EPFT5ho3SlWbfLZMapGH",
+        "input_tokens": 570,
+        "output_tokens": 53,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 623,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 117,
+        "price_snapshot": null,
+        "duration_ms": 1610,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "55032d13-6a26-49f5-b895-3da1add8a9f4",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595683-0LSbSJ8g427nTGbiQrJq",
+        "input_tokens": 559,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 601,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 109,
+        "price_snapshot": null,
+        "duration_ms": 1208,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "88eec1de-9f1c-4cf7-a9df-1c1297546089",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792595684-X1V5hjAeRpifp7dCgSAr",
+        "input_tokens": 8263,
+        "output_tokens": 306,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 8569,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1058,
+        "price_snapshot": null,
+        "duration_ms": 4857,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8c12165d-9a10-473f-802b-cf5427d48d11",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595689-JKFq4nmOjjlEkZsADpNt",
+        "input_tokens": 1543,
+        "output_tokens": 170,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1713,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 333,
+        "price_snapshot": null,
+        "duration_ms": 2900,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "28618277-75cb-42eb-aa65-ab0c6e1383aa"
+}

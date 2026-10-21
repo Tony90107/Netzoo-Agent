@@ -1,0 +1,808 @@
+{
+  "version": 1,
+  "session_id": "hb-h5main-Q15-1",
+  "profile_id": "hb-h5main-Q15-1",
+  "auto_generated": false,
+  "created_at": 1792595552.0289202,
+  "updated_at": 1792595552.02898,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can I get a TF-to-gene regulatory network out of the somatic mutation matrix (samples by genes, 0/1 calls) for our 200 lung adenocarcinomas, using standard human motif and PPI priors? We don't have expression data for these tumors."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Can I get a TF-to-gene regulatory network out of the somatic mutation matrix (samples by genes, 0/1 calls) for our 200 lung adenocarcinomas, using standard human motif and PPI priors?\" -- available from OTTER.\n\nI can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\nUnconfirmed assumptions in these interpretations (please correct me if needed):\n- The somatic mutation matrix can provide sufficient information for inferring regulatory interactions.\n\nThese all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is for guidance on whether a TF-to-gene regulatory network can be inferred from a somatic mutation matrix without expression data, which falls under answer requests.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.8,
+      "reason": "The request is for guidance on whether a TF-to-gene regulatory network can be inferred from a somatic mutation matrix without expression data, which falls under answer requests.",
+      "candidate_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.8,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "TF-to-gene regulatory network",
+              "rationale": "The user requests a TF-to-gene regulatory network as the desired output."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression data",
+              "rationale": "The user explicitly mentioned the need for expression data to infer the regulatory network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": [
+            "The somatic mutation matrix can provide sufficient information for inferring regulatory interactions."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA.",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "standard human motif and PPI priors",
+        "mirna": "ruled_out",
+        "mirna_quote": "we don't have expression data for these tumors"
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "standard human motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "standard human motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "standard human motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "standard human motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "standard human motif and PPI priors",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Can I get a TF-to-gene regulatory network out of the somatic mutation matrix (samples by genes, 0/1 calls) for our 200 lung adenocarcinomas, using standard human motif and PPI priors?",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "otter.tf_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "binary",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 200,
+              "samples_quote": "200 lung adenocarcinomas"
+            },
+            "limits": [
+              "You said \"We don't have expression data for these tumors.\"; PANDA needs expression data and no registered workflow or tool provides it",
+              "You said \"We don't have expression data for these tumors.\"; PUMA needs expression data and no registered workflow or tool provides it",
+              "You said \"We don't have expression data for these tumors.\"; GIRAFFE needs expression data and no registered workflow or tool provides it",
+              "You said \"We don't have expression data for these tumors.\"; LIONESS-PANDA needs expression data and no registered workflow or tool provides it",
+              "You said \"We don't have expression data for these tumors.\"; LIONESS-PUMA needs expression data and no registered workflow or tool provides it"
+            ],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@115-139"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "somatic mutation matrix (samples by genes, 0/1 calls)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "200 lung adenocarcinomas",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "standard human motif and PPI priors",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "We don't have expression data for these tumors.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Can I get a TF-to-gene regulatory network out of the somatic mutation matrix (samples by genes, 0/1 calls) for our 200 lung adenocarcinomas, using standard human motif and PPI priors?",
+        "ruled_out": {
+          "expression": "We don't have expression data for these tumors."
+        },
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@115-139",
+            "property": "sample_count",
+            "name": "",
+            "value": "200",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "200 lung adenocarcinomas",
+            "span": [
+              115,
+              139
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "200 lung adenocarcinomas",
+                "span": [
+                  115,
+                  139
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "200 lung adenocarcinomas",
+                "span": [
+                  115,
+                  139
+                ],
+                "result": "Can I get a TF-to-gene regulatory network out of the somatic mutation matrix (samples by genes, 0/1 calls) for our 200 lung adenocarcinomas, using standard human motif and PPI priors?",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "200 lung adenocarcinomas",
+                "span": [
+                  115,
+                  139
+                ],
+                "result": "Can I get a TF-to-gene regulatory network out of the somatic mutation matrix (samples by genes, 0/1 calls) for our 200 lung adenocarcinomas, using standard human motif and PPI priors?",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "OTTER"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Can I get a TF-to-gene regulatory network out of the somatic mutation matrix (samples by genes, 0/1 calls) for our 200 lung adenocarcinomas, using standard human motif and PPI priors?"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "OTTER",
+          "PANDA",
+          "LIONESS-PANDA",
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "We don't have expression data for these tumors.",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "expression_file must have a header, a unique gene-ID first column, and at least two unique sample columns.",
+              "question": "Do you have a gene-by-sample expression matrix for these tumors?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "OTTER",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "using standard human motif and PPI priors?",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "motif_file is OTTER's TF-by-gene seed/prior W; it is not a request to use OTTER's PPI or co-expression as a PANDA motif prior.",
+              "question": "Do you have a TF-by-gene seed/prior matrix for OTTER?",
+              "yes_outcome": "supported",
+              "yes_workflow": "OTTER",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Can I get a TF-to-gene regulatory network out of the somatic mutation matrix (samples by genes, 0/1 calls)",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI projection P, and either a gene-by-sample expression matrix (from which C is computed) or a validated labeled gene-by-gene co-expression matrix.",
+              "question": "Is the somatic mutation matrix a valid TF-by-gene edge list for OTTER?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "OTTER",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": "samples by genes, 0/1 calls",
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 36553,
+    "output_tokens": 1830,
+    "total_tokens": 38383,
+    "calls": [
+      {
+        "call_id": "5be2016f-1d25-4982-b71d-a350dc8a4da2",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595520-5LMSmyXeMscExaOmGaCI",
+        "input_tokens": 5336,
+        "output_tokens": 192,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5528,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 551,
+        "price_snapshot": null,
+        "duration_ms": 2895,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "ecd8eb04-441a-4262-878b-96c50a07e6c2",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595522-Ds9wNuCAAB0X8jrgPtQm",
+        "input_tokens": 5711,
+        "output_tokens": 211,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5922,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 686,
+        "price_snapshot": null,
+        "duration_ms": 3187,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c0ba5866-afd2-4b77-8f65-3a0f4b142d39",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595526-lVlX5XFtfF53XKRGw5ys",
+        "input_tokens": 1301,
+        "output_tokens": 9,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1310,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 201,
+        "price_snapshot": null,
+        "duration_ms": 825,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c2f58c07-6612-40d9-8dae-820abd199a8e",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 669,
+        "output_tokens": 56,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 725,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 134,
+        "price_snapshot": {
+          "snapshot_id": "285a765e-57b3-553b-9cfa-bccee1016be7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-21T15:08:50.827708Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 2398,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "fedbd8e7-7cc9-4465-9cba-8d634e57c85f",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595529-p5aIjWoTDEQK2pnKJsCt",
+        "input_tokens": 1733,
+        "output_tokens": 46,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1779,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 288,
+        "price_snapshot": null,
+        "duration_ms": 1928,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f17fa201-096b-4f6b-942d-4bd36c372697",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595531-TsLpNbIVgtg34myfj2lQ",
+        "input_tokens": 2749,
+        "output_tokens": 84,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2833,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 463,
+        "price_snapshot": null,
+        "duration_ms": 2027,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8e44bcb1-2679-4392-b389-72f0e9e938ba",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792595533-n7KN17YsWlzFzvWb27AN",
+        "input_tokens": 15052,
+        "output_tokens": 730,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15782,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1640,
+        "price_snapshot": null,
+        "duration_ms": 9213,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "fc5e94e1-a5f0-45d7-b5da-71ff89b9703e",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595542-ZNWuXUPmcbkJhCoIYstX",
+        "input_tokens": 559,
+        "output_tokens": 71,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 630,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 126,
+        "price_snapshot": null,
+        "duration_ms": 1648,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4b87c7b1-b610-4d28-a800-08279537f1a2",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595544-p59Jb3nydjEanHQAoRSJ",
+        "input_tokens": 548,
+        "output_tokens": 53,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 601,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 114,
+        "price_snapshot": null,
+        "duration_ms": 2704,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "fed3e9a6-3617-451b-a663-bc4bd5a1f2d5",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595547-TDCVjqy4WjofnP1oPuhj",
+        "input_tokens": 2895,
+        "output_tokens": 378,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 3273,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 661,
+        "price_snapshot": null,
+        "duration_ms": 4970,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "d2d204e8-28a6-409e-afeb-4a61889e16e0"
+}

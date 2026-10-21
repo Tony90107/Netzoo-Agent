@@ -1,0 +1,123 @@
+[
+ {
+  "id": "F01",
+  "request": "I have CSF proteomics on 64 people from our Parkinson's cohort and blood RNA-seq from the same study, and I'd like one partial-correlation network linking the proteins and the transcripts. I honestly don't know whether the RNA-seq was done on those same 64 participants or on a separate recruitment wave.",
+  "deciding_fact": "Whether the RNA-seq layer comes from the same 64 participants as the proteomics layer: same participants -> do (DRAGON); different participants -> dont (the layers are not paired, so the sample-ID sets cannot be equal).",
+  "questions_asked": [
+   "Was the RNA-seq done on the same 64 participants?"
+  ]
+ },
+ {
+  "id": "F02",
+  "request": "Run PUMA with expr_alz.tsv, regulator_prior.tsv (TF motif edges plus miRNA-target pairs), ppi_hs.tsv and mirna_ids.txt, output to puma_alz.txt. I pulled the miRNA list straight from miRBase, so I don't know whether every miRNA in it actually shows up as a regulator in the prior.",
+  "deciding_fact": "Whether every miRNA in mirna_ids.txt appears in the first (regulator) column of regulator_prior.tsv: all present -> do (PUMA); some absent -> dont as asked (the contract requires every listed miRNA in prior column one).",
+  "questions_asked": [
+   "Does every miRNA in your list appear as a regulator in the prior?"
+  ]
+ },
+ {
+  "id": "F03",
+  "request": "I have CSF proteomics on 64 people from our Parkinson's cohort and blood RNA-seq from the same study, and I'd like one partial-correlation network linking the proteins and the transcripts. I honestly don't know whether the RNA-seq was done on those same 64 participants or on a separate recruitment wave.",
+  "deciding_fact": "Whether the RNA-seq layer comes from the same 64 participants as the proteomics layer: same participants -> do (DRAGON); different participants -> dont (the layers are not paired, so the sample-ID sets cannot be equal).",
+  "questions_asked": [
+   "Was the RNA-seq done on the same 64 participants?"
+  ]
+ },
+ {
+  "id": "F04",
+  "request": "We'd like pathway-based subtypes for 85 soft-tissue sarcomas from our gene panel table (samples by genes), and we also have exon lengths, a cancer gene list and a GMT file. I'm not sure whether the values in that table are somatic mutation counts or copy-number log2 ratios, which go negative.",
+  "deciding_fact": "What the panel table holds: somatic mutation counts (non-negative) -> do (SAMBAR); copy-number log2 ratios (negative values, not somatic mutation data) -> dont.",
+  "questions_asked": [
+   "Are the values in the table non-negative numeric values?"
+  ]
+ },
+ {
+  "id": "F05",
+  "request": "Can BONOBO give me per-sample co-expression networks for our 22 adipose biopsies? The core facility says the matrix is mean-centered per gene, but I don't know whether the values were log-transformed before centering or are just normalized counts.",
+  "deciding_fact": "Whether the values are log-transformed: yes -> do (BONOBO with log_transformed=true, centered=true); no -> dont as asked (BONOBO requires log-transformed input).",
+  "questions_asked": [
+   "Were the values log-transformed before centering?"
+  ]
+ },
+ {
+  "id": "F06",
+  "request": "I want LIONESS-COEXPRESSION networks, one per donor, for our rare-disease fibroblast study. The third donor's library is still being re-checked, so right now I don't know if we'll have two usable samples or three.",
+  "deciding_fact": "Number of usable samples: three -> do (LIONESS-COEXPRESSION); two -> dont (fewer than three samples).",
+  "questions_asked": [
+   "Which of these is right: 2 or 3?"
+  ]
+ },
+ {
+  "id": "F07",
+  "request": "We'd like pathway-based subtypes for 85 soft-tissue sarcomas from our gene panel table (samples by genes), and we also have exon lengths, a cancer gene list and a GMT file. I'm not sure whether the values in that table are somatic mutation counts or copy-number log2 ratios, which go negative.",
+  "deciding_fact": "What the panel table holds: somatic mutation counts (non-negative) -> do (SAMBAR); copy-number log2 ratios (negative values, not somatic mutation data) -> dont.",
+  "questions_asked": [
+   "Are the values in the table non-negative numeric values?"
+  ]
+ },
+ {
+  "id": "F08",
+  "request": "Can BONOBO give me per-sample co-expression networks for our 22 adipose biopsies? The core facility says the matrix is mean-centered per gene, but I don't know whether the values were log-transformed before centering or are just normalized counts.",
+  "deciding_fact": "Whether the values are log-transformed: yes -> do (BONOBO with log_transformed=true, centered=true); no -> dont as asked (BONOBO requires log-transformed input).",
+  "questions_asked": [
+   "Is the matrix mean-centered per gene?",
+   "Were the values log-transformed before centering?"
+  ]
+ },
+ {
+  "id": "F09",
+  "request": "Run PANDA on ra_synovium_expr.tsv (34 patients) with motif_hs.tsv and ppi_hs.tsv. Actually, I'm not sure whether my analysis needs one network for the whole cohort or a separate network for each patient.",
+  "deciding_fact": "Whether one cohort-wide network or one network per patient is needed: cohort-wide -> PANDA (do); per patient -> LIONESS-PANDA (do; 34 samples >= 3).",
+  "questions_asked": [
+   "Do you want a separate network for each patient?"
+  ]
+ },
+ {
+  "id": "F10",
+  "request": "For each of 50 liver-disease patients I want a separate partial-correlation network spanning their plasma metabolites (100) and proteins, both measured in the same 50 people. Depending on how strict our QC filter is we'll keep either 500 or 1,500 proteins, and I haven't decided which.",
+  "deciding_fact": "How many proteins are kept: 500 (600 features, 8,985,000 values) -> do (LIONESS-DRAGON); 1,500 (1,600 features, 63,960,000 values) -> dont (over the 20,000,000-value limit).",
+  "questions_asked": [
+   "Which of these is right: 500 or 1,500?"
+  ]
+ },
+ {
+  "id": "F11",
+  "request": "For each of 50 liver-disease patients I want a separate partial-correlation network spanning their plasma metabolites (100) and proteins, both measured in the same 50 people. Depending on how strict our QC filter is we'll keep either 500 or 1,500 proteins, and I haven't decided which.",
+  "deciding_fact": "How many proteins are kept: 500 (600 features, 8,985,000 values) -> do (LIONESS-DRAGON); 1,500 (1,600 features, 63,960,000 values) -> dont (over the 20,000,000-value limit).",
+  "questions_asked": [
+   "Do you have at least three samples?"
+  ]
+ },
+ {
+  "id": "F12",
+  "request": "I want LIONESS-COEXPRESSION networks, one per donor, for our rare-disease fibroblast study. The third donor's library is still being re-checked, so right now I don't know if we'll have two usable samples or three.",
+  "deciding_fact": "Number of usable samples: three -> do (LIONESS-COEXPRESSION); two -> dont (fewer than three samples).",
+  "questions_asked": [
+   "Which of these is right: 2 or 3?"
+  ]
+ },
+ {
+  "id": "F13",
+  "request": "I'd like COBRA to estimate how smoking (coded 0/1) and age shape gene co-expression in our 400 airway brushings. We haven't decided whether to restrict the analysis to the 150 inflammation genes on our panel or use the 2,000 most variable genes.",
+  "deciding_fact": "Which gene set is used: the 150 panel genes (150 < 400 samples) -> dont; the 2,000 most variable genes (2,000 > 400 samples) -> do (COBRA).",
+  "questions_asked": [
+   "Do you want to restrict the analysis to the 150 inflammation genes?"
+  ]
+ },
+ {
+  "id": "F14",
+  "request": "Run PANDA on ra_synovium_expr.tsv (34 patients) with motif_hs.tsv and ppi_hs.tsv. Actually, I'm not sure whether my analysis needs one network for the whole cohort or a separate network for each patient.",
+  "deciding_fact": "Whether one cohort-wide network or one network per patient is needed: cohort-wide -> PANDA (do); per patient -> LIONESS-PANDA (do; 34 samples >= 3).",
+  "questions_asked": [
+   "Do you want a separate network for each patient?"
+  ]
+ },
+ {
+  "id": "F15",
+  "request": "Run PUMA with expr_alz.tsv, regulator_prior.tsv (TF motif edges plus miRNA-target pairs), ppi_hs.tsv and mirna_ids.txt, output to puma_alz.txt. I pulled the miRNA list straight from miRBase, so I don't know whether every miRNA in it actually shows up as a regulator in the prior.",
+  "deciding_fact": "Whether every miRNA in mirna_ids.txt appears in the first (regulator) column of regulator_prior.tsv: all present -> do (PUMA); some absent -> dont as asked (the contract requires every listed miRNA in prior column one).",
+  "questions_asked": [
+   "Does every miRNA in your list show up as a regulator in the prior?"
+  ]
+ }
+]

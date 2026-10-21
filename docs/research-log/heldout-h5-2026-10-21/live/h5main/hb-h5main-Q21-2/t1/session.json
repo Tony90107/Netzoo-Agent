@@ -1,0 +1,1122 @@
+{
+  "version": 1,
+  "session_id": "hb-h5main-Q21-2",
+  "profile_id": "hb-h5main-Q21-2",
+  "auto_generated": false,
+  "created_at": 1792596382.6886022,
+  "updated_at": 1792596382.6886709,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Please use DRAGON on our paired plasma proteomics (412 proteins) and metabolomics (230 metabolites) from the same 85 participants; both tables are complete, log-scaled, with samples in rows. Set lambda1 to 0.3 and lambda2 to 0.6, and give me the result as an edge list."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Please use DRAGON on our paired plasma proteomics (412 proteins) and metabolomics (230 metabolites) from the same 85 participants; both tables are complete, log-scaled, with samples in rows.\" -- available from DRAGON.\n2. \"Set lambda1 to 0.3 and lambda2 to 0.6, and give me the result as an edge list.\" -- available from DRAGON.\n\nSelected path: **DRAGON**.\n\nYour question asks for a cohort-level multi-omic network. **DRAGON** fits that result and scale.\n\n**DRAGON** — Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.\n\nRequired workflow inputs:\n\n- `omics_layer_1`: DRAGON omics layer 1\n- `omics_layer_2`: DRAGON omics layer 2\n\nOutputs:\n\n- `multi_omic_network`: Inferred associations between omics features.\n\nWorkflow-specific scientific notes:\n\n- DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.\n- DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.\n- The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited DRAGON for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The capability check credited DRAGON for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "run_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_dragon"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "multi_omic_network",
+        "entity_types": [
+          "protein",
+          "metabolite"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "multi_omic_network",
+            "entity_types": [
+              "protein",
+              "metabolite"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.5,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Please use DRAGON on our paired plasma proteomics and metabolomics.",
+              "rationale": "The user explicitly requests to infer a multi-omic network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "multi_omic_network",
+              "source": "explicit",
+              "text_span": "give me the result as an edge list.",
+              "rationale": "The user specifies the desired output as a multi-omic network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The request involves paired data from the same participants, implying a cohort-wide analysis."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "protein",
+              "source": "explicit",
+              "text_span": "paired plasma proteomics (412 proteins)",
+              "rationale": "The user mentions plasma proteomics, indicating proteins as part of the network."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "metabolite",
+              "source": "explicit",
+              "text_span": "and metabolomics (230 metabolites)",
+              "rationale": "The user mentions plasma metabolomics, indicating metabolites as part of the network."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_dragon"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Please use DRAGON on our paired plasma proteomics (412 proteins) and metabolomics (230 metabolites) from the same 85 participants; both tables are complete, log-scaled, with samples in rows.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "dragon.two_layer_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "DRAGON",
+              "named_quote": "DRAGON",
+              "samples": 85,
+              "samples_quote": "85 participants",
+              "features": 642,
+              "feature_counts": 2,
+              "feature_items": [
+                [
+                  51,
+                  63,
+                  412
+                ],
+                [
+                  83,
+                  98,
+                  230
+                ]
+              ],
+              "settings": [
+                {
+                  "name": "DRAGON.lambda1",
+                  "quote": "Set lambda1 to 0.3",
+                  "value": "0.3",
+                  "span": [
+                    191,
+                    209
+                  ],
+                  "at": 206
+                },
+                {
+                  "name": "DRAGON.lambda2",
+                  "quote": "lambda2 to 0.6",
+                  "value": "0.6",
+                  "span": [
+                    214,
+                    228
+                  ],
+                  "at": 225
+                },
+                {
+                  "name": "DRAGON.output_format",
+                  "quote": "give me the result as an edge list",
+                  "value": "",
+                  "span": [
+                    234,
+                    268
+                  ],
+                  "at": 234
+                }
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "setting:DRAGON.lambda1@191-209",
+              "setting:DRAGON.lambda2@214-228",
+              "setting:DRAGON.output_format@234-268",
+              "sample_count@114-129",
+              "feature_count@51-63",
+              "feature_count@83-98",
+              "feature_count=feature_count@51-63+feature_count@83-98"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "Set lambda1 to 0.3 and lambda2 to 0.6, and give me the result as an edge list.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "dragon.two_layer_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "DRAGON",
+              "named_quote": "DRAGON",
+              "settings": [
+                {
+                  "name": "DRAGON.lambda1",
+                  "quote": "Set lambda1 to 0.3",
+                  "value": "0.3",
+                  "span": [
+                    191,
+                    209
+                  ],
+                  "at": 206
+                },
+                {
+                  "name": "DRAGON.lambda2",
+                  "quote": "lambda2 to 0.6",
+                  "value": "0.6",
+                  "span": [
+                    214,
+                    228
+                  ],
+                  "at": 225
+                },
+                {
+                  "name": "DRAGON.output_format",
+                  "quote": "give me the result as an edge list",
+                  "value": "",
+                  "span": [
+                    234,
+                    268
+                  ],
+                  "at": 234
+                }
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "setting:DRAGON.lambda1@191-209",
+              "setting:DRAGON.lambda2@214-228",
+              "setting:DRAGON.output_format@234-268"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "paired plasma proteomics (412 proteins)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "metabolomics (230 metabolites)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "85 participants",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "both tables are complete",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "log-scaled",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "samples in rows",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Please use DRAGON on our paired plasma proteomics (412 proteins) and metabolomics (230 metabolites) from the same 85 participants; both tables are complete, log-scaled, with samples in rows.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "from the same 85 participants",
+          "DRAGON",
+          "Set lambda1 to 0.3",
+          "0.3",
+          "lambda2 to 0.6",
+          "0.6",
+          "give me the result as an edge list"
+        ],
+        "facts": [
+          {
+            "id": "setting:DRAGON.lambda1@191-209",
+            "property": "setting",
+            "name": "DRAGON.lambda1",
+            "value": "0.3",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "Set lambda1 to 0.3",
+            "span": [
+              191,
+              209
+            ],
+            "value_quote": "0.3",
+            "value_span": [
+              206,
+              209
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "Set lambda1 to 0.3",
+                "span": [
+                  191,
+                  209
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "Set lambda1 to 0.3",
+                "span": [
+                  191,
+                  209
+                ],
+                "result": "Set lambda1 to 0.3 and lambda2 to 0.6, and give me the result as an edge list.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:DRAGON.lambda2@214-228",
+            "property": "setting",
+            "name": "DRAGON.lambda2",
+            "value": "0.6",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "lambda2 to 0.6",
+            "span": [
+              214,
+              228
+            ],
+            "value_quote": "0.6",
+            "value_span": [
+              225,
+              228
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "lambda2 to 0.6",
+                "span": [
+                  214,
+                  228
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "lambda2 to 0.6",
+                "span": [
+                  214,
+                  228
+                ],
+                "result": "Set lambda1 to 0.3 and lambda2 to 0.6, and give me the result as an edge list.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:DRAGON.output_format@234-268",
+            "property": "setting",
+            "name": "DRAGON.output_format",
+            "value": "",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "give me the result as an edge list",
+            "span": [
+              234,
+              268
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "give me the result as an edge list",
+                "span": [
+                  234,
+                  268
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "give me the result as an edge list",
+                "span": [
+                  234,
+                  268
+                ],
+                "result": "Set lambda1 to 0.3 and lambda2 to 0.6, and give me the result as an edge list.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@114-129",
+            "property": "sample_count",
+            "name": "",
+            "value": "85",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "85 participants",
+            "span": [
+              114,
+              129
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "85 participants",
+                "span": [
+                  114,
+                  129
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "85 participants",
+                "span": [
+                  114,
+                  129
+                ],
+                "result": "Please use DRAGON on our paired plasma proteomics (412 proteins) and metabolomics (230 metabolites) from the same 85 participants; both tables are complete, log-scaled, with samples in rows.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@51-63",
+            "property": "feature_count",
+            "name": "",
+            "value": "412",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "412 proteins",
+            "span": [
+              51,
+              63
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "412 proteins",
+                "span": [
+                  51,
+                  63
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "412 proteins",
+                "span": [
+                  51,
+                  63
+                ],
+                "result": "Please use DRAGON on our paired plasma proteomics (412 proteins) and metabolomics (230 metabolites) from the same 85 participants; both tables are complete, log-scaled, with samples in rows.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@83-98",
+            "property": "feature_count",
+            "name": "",
+            "value": "230",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "230 metabolites",
+            "span": [
+              83,
+              98
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "230 metabolites",
+                "span": [
+                  83,
+                  98
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "230 metabolites",
+                "span": [
+                  83,
+                  98
+                ],
+                "result": "Please use DRAGON on our paired plasma proteomics (412 proteins) and metabolomics (230 metabolites) from the same 85 participants; both tables are complete, log-scaled, with samples in rows.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count=feature_count@51-63+feature_count@83-98",
+            "property": "feature_count",
+            "name": "",
+            "value": "642",
+            "values": [],
+            "state": "stated",
+            "origin": "derived",
+            "quote": "",
+            "span": [],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "412 proteins",
+                "span": [
+                  51,
+                  63
+                ],
+                "result": "",
+                "role": "operand"
+              },
+              {
+                "reader": "request",
+                "quote": "230 metabolites",
+                "span": [
+                  83,
+                  98
+                ],
+                "result": "",
+                "role": "operand"
+              }
+            ],
+            "derived_from": [
+              "feature_count@51-63",
+              "feature_count@83-98"
+            ],
+            "formula": "412 + 230",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "DRAGON"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "multi_omic_network",
+          "reason_code": "registry_guidance_fallback",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Please use DRAGON on our paired plasma proteomics (412 proteins) and metabolomics (230 metabolites) from the same 85 participants; both tables are complete, log-scaled, with samples in rows."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "DRAGON"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "both tables are complete, log-scaled, with samples in rows.",
+              "uncertainty": "said_unknown",
+              "workflow": "DRAGON",
+              "contract_quote": "Values must be finite continuous numeric measurements. Missing values, non-numeric fields, duplicate sample IDs, and duplicate feature IDs are rejected; no imputation or normalization is implicit.",
+              "question": "Are both tables complete with finite continuous numeric measurements?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Set lambda1 to 0.3 and lambda2 to 0.6",
+              "uncertainty": "said_unknown",
+              "workflow": "DRAGON",
+              "contract_quote": "Manual shrinkage is allowed only when both values are supplied in [0, 1].",
+              "question": "Are both lambda1 and lambda2 values between 0 and 1?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "give me the result as an edge list",
+              "uncertainty": "said_unknown",
+              "workflow": "DRAGON",
+              "contract_quote": "setting output_format (enum; allowed: matrix, edge_list): matrix: a labeled symmetric partial-correlation matrix; edge_list: one row per feature pair (source, target, partial_correlation, precision).",
+              "question": "Do you want the output format to be an edge list?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "edge_list"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 30460,
+    "output_tokens": 1870,
+    "total_tokens": 32330,
+    "calls": [
+      {
+        "call_id": "01b800df-cf08-45f3-b80d-c730aeed1c8c",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596357-2SnbpJvTCIHggFC7MK5h",
+        "input_tokens": 5347,
+        "output_tokens": 254,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5601,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 590,
+        "price_snapshot": null,
+        "duration_ms": 3317,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "f1b70b73-46b8-4ce1-a32b-eca577d63b2b",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596360-vv3Lw5dzGsPa7MI5tCf0",
+        "input_tokens": 7023,
+        "output_tokens": 294,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 7317,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 865,
+        "price_snapshot": null,
+        "duration_ms": 4379,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "efd97edc-0bb8-4a7c-8835-2799f3a55420",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 648,
+        "output_tokens": 39,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 687,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 121,
+        "price_snapshot": {
+          "snapshot_id": "285a765e-57b3-553b-9cfa-bccee1016be7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-21T15:08:50.827708Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1120,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "3e8649dc-e7c5-485c-a162-0aa4de8e83e0",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596366-iQwdCsVDT1Hh72YVz1x6",
+        "input_tokens": 315,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 319,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 50,
+        "price_snapshot": null,
+        "duration_ms": 906,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2f482c41-b24c-4e21-a7b5-b15592974ca9",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792596367-SjzJ3Gqs55UxkBiHuMqC",
+        "input_tokens": 15074,
+        "output_tokens": 887,
+        "cache_read_tokens": 14848,
+        "cache_write_tokens": 0,
+        "total_tokens": 15961,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1680,
+        "price_snapshot": null,
+        "duration_ms": 9244,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "600ded97-a484-477e-a213-68da34dda92a",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596376-V8W1yAjj8QY93ECyBd4o",
+        "input_tokens": 570,
+        "output_tokens": 51,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 621,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 116,
+        "price_snapshot": null,
+        "duration_ms": 2585,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "741e83f8-2739-4b81-99cf-a41efa70fac2",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596378-DUAYixpye2i3Ybw0OFLm",
+        "input_tokens": 1483,
+        "output_tokens": 341,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1824,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 427,
+        "price_snapshot": null,
+        "duration_ms": 3770,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "f3da0df7-7b5b-493a-a00a-900dba8fede4"
+}

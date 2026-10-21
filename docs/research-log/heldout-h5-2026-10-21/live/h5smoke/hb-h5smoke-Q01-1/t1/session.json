@@ -1,0 +1,602 @@
+{
+  "version": 1,
+  "session_id": "hb-h5smoke-Q01-1",
+  "profile_id": "hb-h5smoke-Q01-1",
+  "auto_generated": false,
+  "created_at": 1792595314.445975,
+  "updated_at": 1792595314.446034,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I have CSF proteomics on 64 people from our Parkinson's cohort and blood RNA-seq from the same study, and I'd like one partial-correlation network linking the proteins and the transcripts. I honestly don't know whether the RNA-seq was done on those same 64 participants or on a separate recruitment wave."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Was the RNA-seq done on the same 64 participants?\n  You wrote: \"I honestly don't know whether the RNA-seq was done on those same 64 participants or on a separate recruitment wave\". DRAGON's contract: \"Require at least three samples in each layer before execution\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.0,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_dragon",
+        "run_lioness_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "multi_omic_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like one partial-correlation network linking the proteins and the transcripts.",
+              "rationale": "The user is seeking to construct a network based on the provided data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "multi_omic_network",
+              "source": "explicit",
+              "text_span": "linking the proteins and the transcripts.",
+              "rationale": "The user specifies a network linking two different omics layers: proteomics and RNA-seq."
+            },
+            {
+              "dimension": "granularity",
+              "value": "unknown",
+              "source": "explicit",
+              "text_span": "I honestly don't know whether the RNA-seq was done on those same 64 participants or on a separate recruitment wave.",
+              "rationale": "The user is uncertain whether the RNA-seq data corresponds to the same participants as the proteomics data."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user explicitly mentions RNA-seq data, which corresponds to gene-by-sample expression measurements."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Was the RNA-seq done on the same 64 participants?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like one partial-correlation network linking the proteins and the transcripts.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "dragon.two_layer_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 64,
+              "samples_quote": "64 people"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@25-34"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "CSF proteomics on 64 people from our Parkinson's cohort",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "blood RNA-seq from the same study",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {
+          "I honestly don't know whether the RNA-seq was done on those same 64 participants or on a separate recruitment wave.": []
+        },
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "one partial-correlation network linking the proteins and the transcripts.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I honestly don't know whether the RNA-seq was done on those same 64 participants or on a separate recruitment wave."
+        ],
+        "stated_quotes": [
+          "one partial-correlation network linking the proteins and the transcripts"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@25-34",
+            "property": "sample_count",
+            "name": "",
+            "value": "64",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "64 people",
+            "span": [
+              25,
+              34
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "64 people",
+                "span": [
+                  25,
+                  34
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "64 people",
+                "span": [
+                  25,
+                  34
+                ],
+                "result": "I'd like one partial-correlation network linking the proteins and the transcripts.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "DRAGON"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Was the RNA-seq done on the same 64 participants?",
+            "user_quote": "I honestly don't know whether the RNA-seq was done on those same 64 participants or on a separate recruitment wave.",
+            "workflows": [
+              "DRAGON"
+            ],
+            "contract_quote": "Require at least three samples in each layer before execution.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": null,
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "one partial-correlation network linking the proteins and the transcripts."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "DRAGON"
+        ],
+        "accepted": [
+          {
+            "question": "Was the RNA-seq done on the same 64 participants?",
+            "user_quote": "I honestly don't know whether the RNA-seq was done on those same 64 participants or on a separate recruitment wave.",
+            "workflows": [
+              "DRAGON"
+            ],
+            "contract_quote": "Require at least three samples in each layer before execution.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 36788,
+    "output_tokens": 1409,
+    "total_tokens": 38197,
+    "calls": [
+      {
+        "call_id": "911ee7c1-8640-46b5-a2e0-eadc5575efe9",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595283-J6AftiI5JbXxXbHk8fbh",
+        "input_tokens": 5342,
+        "output_tokens": 236,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5578,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 578,
+        "price_snapshot": null,
+        "duration_ms": 10498,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "d7f4a7d5-65fc-49f7-bb19-23dc83988db2",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595293-oW6xodf6Vo5bL2XPICg8",
+        "input_tokens": 5598,
+        "output_tokens": 173,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5771,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 646,
+        "price_snapshot": null,
+        "duration_ms": 2774,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "05041d95-d71f-4082-a879-fc17c49f4e84",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595296-uQSeNzmg5bxWVAbxgl5X",
+        "input_tokens": 1097,
+        "output_tokens": 119,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1216,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 236,
+        "price_snapshot": null,
+        "duration_ms": 1764,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "60903b65-f586-4650-8a3e-5096fa79917a",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 681,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 725,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 129,
+        "price_snapshot": {
+          "snapshot_id": "a7681524-1aa3-5bd1-bf32-3760c6d53669",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-21T15:07:34.515770Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1080,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "edd2315c-6abd-443b-b066-ef71830f5621",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595299-yTb6jf3NlNacYzleyfh9",
+        "input_tokens": 1683,
+        "output_tokens": 47,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1730,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 281,
+        "price_snapshot": null,
+        "duration_ms": 1658,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "58aa2136-09d5-49d9-9c1b-91676a4c725b",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792595301-9XfLrHrRZfPf4KxLC4Sf",
+        "input_tokens": 15064,
+        "output_tokens": 465,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15529,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1483,
+        "price_snapshot": null,
+        "duration_ms": 7009,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ab1e18d7-8075-4e4e-888b-7347dadeb9b5",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595308-BhVvtqKWRqWK1F6e3pN3",
+        "input_tokens": 565,
+        "output_tokens": 47,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 612,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 113,
+        "price_snapshot": null,
+        "duration_ms": 1700,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b64406a5-ae0d-4fc6-8f51-acf89c33312b",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792595310-OeXG8JMUGHoR4s9mFspy",
+        "input_tokens": 5280,
+        "output_tokens": 161,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5441,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 505,
+        "price_snapshot": null,
+        "duration_ms": 2521,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f4ace63e-3430-4fde-a0d0-e86694555182",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792595312-9NWWWNAmwVkqhVHYS6Y9",
+        "input_tokens": 1478,
+        "output_tokens": 117,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1595,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 292,
+        "price_snapshot": null,
+        "duration_ms": 1906,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "428e5901-03ef-49eb-9816-9b03d86a5df9"
+}

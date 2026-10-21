@@ -1,0 +1,837 @@
+{
+  "version": 1,
+  "session_id": "hb-h5main-Q46-1",
+  "profile_id": "hb-h5main-Q46-1",
+  "auto_generated": false,
+  "created_at": 1792596037.0999548,
+  "updated_at": 1792596037.10001,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We already have a hospital-adjusted gene-by-gene co-expression matrix for 140 breast tumors collected at two hospitals. Now I want a TF and miRNA-to-gene network for each tumor built on that adjusted matrix, so every tumor's network is free of the hospital effect."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"a TF and miRNA-to-gene network for each tumor built on that adjusted matrix\" -- available from LIONESS-PUMA.\n2. \"Now I want\" -- available from LIONESS-PUMA.\n3. \"so every tumor's network is free of the hospital effect\" -- available from LIONESS-PUMA.\n\nFor the sample-specific output you described, use **LIONESS-PUMA**.\n\nRequired inputs:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n\nOutputs:\n   - Aggregate network (`output_file`).\n   - Sample-specific network for each patient/sample (`lioness_output`).\n\nYou do not need to run **PUMA** separately; **LIONESS-PUMA** also produces the aggregate output. Use **PUMA** alone only when a cohort-level aggregate result is sufficient.\n\nCost: LIONESS runs PUMA once on all samples and once more without each sample, so N samples take N+1 PUMA runs and give N network files (for your 140 tumors, 141 PUMA runs). Plan the runtime and disk space, and filter edges before downstream statistics.\n\nOut-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.\n\n**What your data allows.** Your request names expression data. LIONESS-PUMA and PUMA need a motif prior, a PPI network and a miRNA list, which you said you do not have (\"we already have a hospital-adjusted gene-by-gene co-expression matrix\").\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_lioness_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_puma",
+        "run_lioness_puma"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "mirna",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf",
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "mirna",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf",
+              "mirna"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I want a TF and miRNA-to-gene network for each tumor built on that adjusted matrix.",
+              "rationale": "The user wants to construct a network from the existing co-expression matrix."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "TF and miRNA-to-gene network for each tumor.",
+              "rationale": "The user specifies the desired output as a TF and miRNA-to-gene network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The request specifies that each tumor should have its own network, indicating sample-specific granularity."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF and miRNA-to-gene network.",
+              "rationale": "The user explicitly mentions TFs as part of the network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "mirna",
+              "source": "explicit",
+              "text_span": "TF and miRNA-to-gene network.",
+              "rationale": "The user explicitly mentions miRNAs as part of the network."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF and miRNA-to-gene network.",
+              "rationale": "The user specifies genes as the targets in the network."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user specifies the current input as an expression matrix for constructing the networks."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_lioness_puma"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "ruled_out",
+        "priors_quote": "we already have a hospital-adjusted gene-by-gene co-expression matrix",
+        "mirna": "ruled_out",
+        "mirna_quote": "I want a TF and miRNA-to-gene network for each tumor"
+      },
+      "applicability": [
+        {
+          "action": "run_lioness_puma",
+          "status": "not_applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "ruled_out",
+              "quote": "we already have a hospital-adjusted gene-by-gene co-expression matrix",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "ruled_out",
+              "quote": "I want a TF and miRNA-to-gene network for each tumor",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_puma",
+          "status": "not_applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "ruled_out",
+              "quote": "we already have a hospital-adjusted gene-by-gene co-expression matrix",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "ruled_out",
+              "quote": "I want a TF and miRNA-to-gene network for each tumor",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "ruled_out",
+            "source": "model",
+            "quote": "we already have a hospital-adjusted gene-by-gene co-expression matrix",
+            "action": "say_ruled_out"
+          },
+          {
+            "kind": "mirna",
+            "state": "ruled_out",
+            "source": "model",
+            "quote": "I want a TF and miRNA-to-gene network for each tumor",
+            "action": "say_ruled_out"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "a TF and miRNA-to-gene network for each tumor built on that adjusted matrix",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_puma.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "one_group",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 140,
+              "samples_quote": "140 breast tumors"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@74-91"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "a hospital-adjusted gene-by-gene co-expression matrix for 140 breast tumors collected at two hospitals",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "Now I want",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_puma.per_sample_networks",
+              "lioness_puma.per_sample_targeting",
+              "lioness_puma.association_tests"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": true,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 140,
+              "samples_quote": "140 breast tumors"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@74-91"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "so every tumor's network is free of the hospital effect",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_puma.per_sample_networks",
+              "lioness_puma.per_sample_targeting",
+              "lioness_puma.association_tests"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": true,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 140,
+              "samples_quote": "140 breast tumors"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@74-91"
+            ],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "a TF and miRNA-to-gene network for each tumor built on that adjusted matrix",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "a TF and miRNA-to-gene network for each tumor built on that adjusted matrix"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@74-91",
+            "property": "sample_count",
+            "name": "",
+            "value": "140",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "140 breast tumors",
+            "span": [
+              74,
+              91
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "140 breast tumors",
+                "span": [
+                  74,
+                  91
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "140 breast tumors",
+                "span": [
+                  74,
+                  91
+                ],
+                "result": "a TF and miRNA-to-gene network for each tumor built on that adjusted matrix",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "140 breast tumors",
+                "span": [
+                  74,
+                  91
+                ],
+                "result": "Now I want",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "140 breast tumors",
+                "span": [
+                  74,
+                  91
+                ],
+                "result": "so every tumor's network is free of the hospital effect",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "LIONESS-PUMA"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "a TF and miRNA-to-gene network for each tumor built on that adjusted matrix"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PUMA",
+          "PUMA"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "every tumor's network is free of the hospital effect",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-PUMA",
+              "contract_quote": "sample-specific COBRA adjustment would need to be recomputed inside each leave-one-out construction.",
+              "question": "Do you want to recompute the sample-specific COBRA adjustment for each tumor?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "networks free of the hospital effect"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "every tumor's network is free of the hospital effect",
+              "uncertainty": "said_unknown",
+              "workflow": "PUMA",
+              "contract_quote": "PUMA consumes a gene-by-sample expression matrix plus motif, PPI, and miRNA priors, or a validated adjusted gene-by-gene co-expression matrix through coexpression_file.",
+              "question": "Do you have a validated adjusted gene-by-gene co-expression matrix to use with PUMA?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "networks free of the hospital effect"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": "for",
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 38127,
+    "output_tokens": 1694,
+    "total_tokens": 39821,
+    "calls": [
+      {
+        "call_id": "fe526504-3dbe-4e10-aee0-e404c6b2ea2b",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596000-qeibWvoIShPHi7LF7fqK",
+        "input_tokens": 5335,
+        "output_tokens": 354,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5689,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 648,
+        "price_snapshot": null,
+        "duration_ms": 5857,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "9f2d6c6d-ff1e-4640-9430-80e76c6da58a",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596006-RrGZaFexglidfjZf65S7",
+        "input_tokens": 5696,
+        "output_tokens": 189,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5885,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 670,
+        "price_snapshot": null,
+        "duration_ms": 2744,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ebbd1fd7-9565-456c-a84f-55c46caeeedc",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 650,
+        "output_tokens": 55,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 705,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 131,
+        "price_snapshot": {
+          "snapshot_id": "285a765e-57b3-553b-9cfa-bccee1016be7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-21T15:08:50.827708Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1379,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "3472b1e1-3683-464a-a063-6760f067e9d3",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596013-2bof2IDKndaWwCr4lJsZ",
+        "input_tokens": 305,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 309,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 48,
+        "price_snapshot": null,
+        "duration_ms": 3423,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ce11f5c1-dd1e-4d1c-b301-aac00af5e4e2",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792596014-bAZvvQYxN9hIs0hYZ7g8",
+        "input_tokens": 15050,
+        "output_tokens": 448,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15498,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1470,
+        "price_snapshot": null,
+        "duration_ms": 6258,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c954734c-ef77-49ae-85c6-aae0e87732f5",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596020-dpPwLoGWAHFgfQMAyfcg",
+        "input_tokens": 558,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 599,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 108,
+        "price_snapshot": null,
+        "duration_ms": 1961,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9d8f3381-c198-4f44-960d-184e8650bb18",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596022-4cFXCzs35uAXOOnLmI8B",
+        "input_tokens": 547,
+        "output_tokens": 65,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 612,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 121,
+        "price_snapshot": null,
+        "duration_ms": 1529,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "54aa08c1-d724-4edf-be7c-436177799222",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792596024-mMP2y8WipwMfNfvHC50x",
+        "input_tokens": 8256,
+        "output_tokens": 288,
+        "cache_read_tokens": 8064,
+        "cache_write_tokens": 0,
+        "total_tokens": 8544,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 806,
+        "price_snapshot": null,
+        "duration_ms": 5026,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "afe09cde-16f4-41b4-865a-593673ad3fd3",
+        "role": "capability_second_opinion",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792596029-CExzezdw3L9pUkzVmXaj",
+        "input_tokens": 545,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 556,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 88,
+        "price_snapshot": null,
+        "duration_ms": 1201,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "65f2100a-972a-487a-8c21-7b1e3c6eba89",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792596030-aOqg9l9MO2C6X8OrxlJy",
+        "input_tokens": 1185,
+        "output_tokens": 239,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1424,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 321,
+        "price_snapshot": null,
+        "duration_ms": 6751,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "f0c0aa09-41e5-4e81-8d01-8415d634e7ab"
+}
