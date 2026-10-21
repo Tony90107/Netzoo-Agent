@@ -116,6 +116,13 @@ def test_combination_rules_are_the_executors():
                                                                                 "0.3")])
     assert not combination_issues(conditions_for("DRAGON"), [StatedSetting("DRAGON.lambda1", "lambdas", "0.2"),
                                                              StatedSetting("DRAGON.lambda2", "lambdas", "0.6")])
+    # ROUND-12 C17: one lambda fixed, the other named without a number (estimated) -- one manual value alone.
+    assert combination_issues(conditions_for("DRAGON"), [
+        StatedSetting("DRAGON.lambda1", "the transcript layer's shrinkage is fixed at 0.3", "0.3"),
+        StatedSetting("DRAGON.lambda2", "the metabolite layer's shrinkage is estimated from the data", "")])
+    # h2 J11: both named without a number -- both estimated, the default.
+    assert not combination_issues(conditions_for("DRAGON"), [StatedSetting("DRAGON.lambda1", "lambda1", ""),
+                                                             StatedSetting("DRAGON.lambda2", "lambda2", "")])
     assert combination_issues(conditions_for("SAMBAR"), [StatedSetting("SAMBAR.kmin", "kmin", "5")])  # default kmax 4
     assert combination_issues(conditions_for("SAMBAR"), [StatedSetting("SAMBAR.kmax", "kmax", "6")], samples=4)
     assert not combination_issues(conditions_for("SAMBAR"), [StatedSetting("SAMBAR.kmax", "kmax", "6")], samples=200)

@@ -14,8 +14,8 @@ from ..capability_sheet import entry, sheet_entries
 from ..contracts.capability_check import CheckedRequirement
 from ..method_names import LIONESS_FAMILY, registered_workflows
 from ..workflow_conditions import (
-    UNREGISTERED, StatedSetting, combination_issues, control_boolean_value, conditions_for, data_issue, enum_value,
-    named_workflows, setting_issue, setting_unresolved,
+    UNREGISTERED, StatedSetting, combination_issues, contract_forbids, control_boolean_value, conditions_for,
+    data_issue, enum_value, named_workflows, setting_issue, setting_unresolved,
     stated_numbers,
 )
 from .count_words import side_by_side
@@ -369,6 +369,12 @@ def settings_apart(task: str, method: dict, keys: list[str], asked: list[tuple[i
     setting some credited workflow can use, and any rule settings break together. Only the workflows the named method
     allows are weighed: a setting of an unregistered method ("the TIGER Bayesian model and an L1 penalty of 0.1") is
     that method's, not a credited workflow's.
+
+    ROUND-12 (C13): a value a credited workflow's own control takes but its contract forbids holds that run wherever
+    its words sit (`contract_forbids`). "Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv with lam set to
+    1.5" split lam off whenever the ask's quote stopped before the file list (two reads of three), so OTTER ran in
+    part; read with the whole sentence, lam held the run. A setting no credited workflow has (MX12's learning rate,
+    MX05's lambda for GIRAFFE) or a value only this runtime cannot honour (MX04's GPU) still stands apart.
     """
     named = method.get("named")
     allowed = named_workflows(named) if named else None
@@ -382,7 +388,8 @@ def settings_apart(task: str, method: dict, keys: list[str], asked: list[tuple[i
         where = _setting_words(task, item)
         setting = StatedSetting(item["name"], item["quote"], item.get("value", ""))
         issues = [setting_issue(conditions, setting) for conditions in found]
-        if all(issues) and all(_own_clause(task, where, ask) for ask in asked):
+        forbidden = any(contract_forbids(conditions, setting) for conditions in found)
+        if all(issues) and not forbidden and all(_own_clause(task, where, ask) for ask in asked):
             words = task[where[0]:where[1]].strip().rstrip(" .;,!?")
             apart.append(CheckedRequirement(quote=words, kind="result", status="not_available",
                                             method={"settings": [item]}, limits=list(dict.fromkeys(issues))))
