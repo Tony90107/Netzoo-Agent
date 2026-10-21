@@ -14,8 +14,8 @@ from ..capability_sheet import entry, sheet_entries
 from ..contracts.capability_check import CheckedRequirement
 from ..method_names import LIONESS_FAMILY, registered_workflows
 from ..workflow_conditions import (
-    UNREGISTERED, StatedSetting, boolean_value, combination_issues, conditions_for, data_issue, enum_value,
-    named_workflows, setting_issue,
+    UNREGISTERED, StatedSetting, combination_issues, control_boolean_value, conditions_for, data_issue, enum_value,
+    named_workflows, setting_issue, setting_unresolved,
     stated_numbers,
 )
 from .count_words import side_by_side
@@ -23,7 +23,7 @@ from .request_spans import _span
 
 __all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "run_setting_value",
            "settings_apart", "stated_no_value", "typed_setting", "unbound_settings", "verified_controls", "verified_method",
-           "with_request_method"]
+           "with_request_method", "unresolved_settings"]
 
 
 def _folded(text: str) -> str:
@@ -58,7 +58,9 @@ def verified_method(task: str, item) -> dict:
     settings = []
     for setting in getattr(item, "settings", None) or []:
         if (span := _span(task, setting.quote) if setting.quote.strip() else None) is not None:
-            value = _span(task, setting.value_quote) if setting.value_quote.strip() else None
+            local = _span(task[span[0]:span[1]], setting.value_quote) if setting.value_quote.strip() else None
+            value = ((span[0] + local[0], span[0] + local[1]) if local is not None
+                     else _span(task, setting.value_quote) if setting.value_quote.strip() else None)
             name = setting.name if setting.name in setting_names() else UNREGISTERED
             settings.append({"name": name, "quote": task[span[0]:span[1]],
                              "value": task[value[0]:value[1]] if value else "", "span": list(span),
@@ -79,6 +81,29 @@ def verified_method(task: str, item) -> dict:
         found["features"] = sum(features.values())
         found["feature_counts"] = len(features)  # phase 4a: a relation is judged on one stated count only
         found["feature_items"] = [[*span, count] for span, count in features.items()]  # 5b: where each count is
+    return found
+
+
+def unresolved_settings(method: dict, keys: list[str]) -> list[dict]:
+    """Explicit values that need a grounded question before any candidate can run with default settings."""
+    named = method.get("named")
+    allowed = named_workflows(named) if named else None
+    workflows = list(dict.fromkeys(entry(key).workflow for key in keys if entry(key).workflow
+                                   and (allowed is None or entry(key).workflow in allowed)))
+    found = []
+    for setting in method.get("settings", []):
+        if setting["name"] == UNREGISTERED:
+            continue
+        for workflow in workflows:
+            conditions = conditions_for(workflow)
+            owner = setting["name"].split(".", 1)[0]
+            if conditions is None or workflow not in named_workflows(owner):
+                continue
+            stated = StatedSetting(setting["name"], setting["quote"], setting.get("value", ""))
+            if reason := setting_unresolved(conditions, stated):
+                found.append({"name": setting["name"], "workflow": workflow,
+                              "control": setting["name"].split(".", 1)[1], "quote": setting["quote"],
+                              "value": setting.get("value", ""), "reason": reason})
     return found
 
 
@@ -396,6 +421,8 @@ def typed_setting(method: dict, workflow: str, quote: str) -> bool:
             continue
         if setting_issue(conditions, StatedSetting(name, item["quote"], item.get("value", ""))) is not None:
             continue
+        if setting_unresolved(conditions, StatedSetting(name, item["quote"], item.get("value", ""))) is not None:
+            continue
         if (item["quote"] or "").strip().casefold() not in quote.casefold():
             continue
         own = set(re.findall(r"[0-9a-z]+", f'{item["quote"]} {item.get("value", "")}'.casefold()))
@@ -408,8 +435,8 @@ def _control_value(limit, words: str, quote: str = ""):
     """A stated value as the control takes it: a number in range, the one allowed choice the words name, or a
     boolean the value words -- or, given none, the words naming it -- settle."""
     if limit.control_type in ("number", "integer"):
-        numbers = stated_numbers(words)
-        if not numbers:
+        numbers = list(dict.fromkeys(stated_numbers(words)))
+        if len(numbers) != 1:
             return None
         number = numbers[0]
         if limit.control_type == "integer":
@@ -418,7 +445,7 @@ def _control_value(limit, words: str, quote: str = ""):
     if limit.control_type == "enum":
         return enum_value(limit, words)
     if limit.control_type == "boolean":
-        return boolean_value(words, quote)
+        return control_boolean_value(limit, words, quote)
     return None  # names and lists are not read from prose
 
 
@@ -439,6 +466,9 @@ def run_setting_value(limit, conditions, setting: dict):
     Taken from the words only: an allowed choice they alone name (`enum_value`), or the single number they state; the
     value is then checked as a stated value is (`setting_issue`), so the range and choices are never bypassed.
     """
+    if setting_unresolved(conditions, StatedSetting(setting["name"], setting.get("quote", ""),
+                                                    setting.get("value", ""))) is not None:
+        return None
     value = _control_value(limit, setting.get("value", ""), setting.get("quote", ""))
     if value is not None or not stated_no_value(limit, setting):
         return value

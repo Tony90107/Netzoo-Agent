@@ -103,7 +103,10 @@ def test_a_confirmed_gap_is_answered_and_the_run_is_not_planned(monkeypatch):
 
 def _unchanged_but_verdict(updated, invocation, verdict):
     assert updated.decision.run_verdict.verdict == verdict and not updated.decision.run_verdict.held
-    assert updated.decision.model_copy(update={"run_verdict": None}) == invocation.decision
+    # Approval must retain its complete check so core still sees the goal, facts and settings (J29).
+    assert updated.decision.capability_check is not None or verdict == "no_check_model"
+    assert updated.decision.model_copy(update={"run_verdict": None,
+                                               "capability_check": invocation.decision.capability_check}) == invocation.decision
 
 
 def test_a_run_its_workflow_gives_is_left_as_it_was(monkeypatch):

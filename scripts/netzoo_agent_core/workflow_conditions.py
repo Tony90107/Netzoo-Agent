@@ -24,8 +24,8 @@ from .runtime_constraints import runtime_control_constraints
 
 __all__ = [
     "LIONESS_FAMILY", "UNREGISTERED", "SettingLimit", "StatedSetting", "WorkflowConditions", "all_conditions",
-    "boolean_value", "combination_issues", "conditions_for", "data_issue", "enum_value", "method_names",
-    "named_workflows", "setting_issue",
+    "boolean_value", "combination_issues", "control_boolean_value", "conditions_for", "data_issue", "enum_value", "method_names",
+    "named_workflows", "setting_issue", "setting_unresolved",
     "setting_names", "stated_numbers",
 ]
 
@@ -187,7 +187,10 @@ _AFFIRMATIONS = frozenset({"yes", "true", "on", "enable", "enabled", "1"})
 
 
 def _tokens(words: str) -> set[str]:
-    return set(_fold(words).replace("don_t", "dont").split("_"))
+    # Keep decimal/scientific numbers whole: confidence 0.05 is neither the boolean 0 nor 1.
+    words = re.sub(r"don['\u2019]t", "dont", (words or "").casefold())
+    return set(re.findall(r"(?<![a-z0-9.])[-+]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[-+]?\d+)?(?![a-z0-9.])"
+                          r"|[a-z][a-z0-9]*", words))
 
 
 def boolean_value(words: str, quote: str = "") -> bool | None:
@@ -210,6 +213,21 @@ def boolean_value(words: str, quote: str = "") -> bool | None:
     return True if affirmed or "with" in tokens else None
 
 
+def control_boolean_value(limit: SettingLimit, words: str, quote: str = "") -> bool | None:
+    """A boolean control's value, also when the words state the control itself as done.
+
+    `boolean_value` reads yes/no words; when they settle nothing, value words that name the control -- a word of its
+    own name ("log2-transformed" for log_transformed, "centered per gene" for centered, "each patient's mutation
+    burden" for norm_patient) -- with no negation say it holds. Derived from the control's name, never a phrase list.
+    """
+    value = boolean_value(words, quote)
+    if value is not None or not (words or "").strip():
+        return value
+    own = {token for token in _tokens(limit.name.replace("_", " ")) if len(token) > 3 and not token.isdigit()}
+    tokens = _tokens(words)
+    return True if own & tokens and not tokens & _NEGATIONS else None
+
+
 def setting_issue(conditions: WorkflowConditions, setting: StatedSetting) -> str | None:
     """Why the workflow cannot run with this setting, or None when it can or the words do not say.
 
@@ -228,8 +246,8 @@ def setting_issue(conditions: WorkflowConditions, setting: StatedSetting) -> str
                 f"{_names(wired)}")
     value = setting.value or ""
     if limit.control_type in ("number", "integer"):
-        numbers = stated_numbers(value)
-        if not numbers:
+        numbers = list(dict.fromkeys(stated_numbers(value)))
+        if len(numbers) != 1:
             return None
         number = numbers[0]
         low = limit.minimum if limit.minimum is not None else float("-inf")
@@ -244,13 +262,36 @@ def setting_issue(conditions: WorkflowConditions, setting: StatedSetting) -> str
         return None
     if limit.control_type == "enum":
         chosen = enum_value(limit, value)
-        if value.strip() and chosen is None:
+        if value.strip() and chosen is None and setting_unresolved(conditions, setting) is None:
             return (f'{conditions.workflow}\'s {limit.name} requires one of {_names(map(str, limit.allowed_values))}; '
                     f'"{value}" does not identify one allowed choice')
         if chosen is not None and str(chosen).casefold() in limit.unavailable_values:
             return limit.unavailable_message.rstrip(".")
-    if limit.control_type == "boolean" and value.strip() and boolean_value(value) is None:
-        return f'{conditions.workflow}\'s {limit.name} needs an explicit true or false value; "{value}" is unresolved'
+    return None
+
+
+def setting_unresolved(conditions: WorkflowConditions, setting: StatedSetting) -> str | None:
+    """Words naming a supported control whose value they do not settle -- asked, never a violation or the default.
+
+    A boolean whose words read as neither true nor false (h2 J17 "keep the normalization"); a number given as more than
+    one value ("0.2 or 0.5"); an enum value naming more than one allowed choice. One concrete disallowed enum value is
+    still a violation (`setting_issue`), and a number stated without digits is no value (`stated_no_value`).
+    """
+    control = setting.name.split(".", 1)[-1] if setting.name != UNREGISTERED else None
+    limit = conditions.settings.get(control) if control else None
+    value = (setting.value or "").strip()
+    if limit is None or not limit.wired or not value:
+        return None
+    if limit.control_type == "boolean" and control_boolean_value(limit, value, setting.quote) is None:
+        return f'{conditions.workflow}\'s {limit.name} value "{value}" is unresolved; clarify whether to enable it'
+    if limit.control_type in ("number", "integer") and len(set(stated_numbers(value))) > 1:
+        return f'{conditions.workflow}\'s {limit.name} value "{value}" does not settle one number'
+    if limit.control_type == "enum":
+        folded = f"_{_fold(value)}_"
+        candidates = {choice for name, choice in [*((v, v) for v in limit.allowed_values), *limit.value_names]
+                      if (key := _fold(str(name))) and f"_{key}_" in folded}
+        if len(candidates) > 1:
+            return f'{conditions.workflow}\'s {limit.name} value "{value}" does not settle one allowed choice'
     return None
 
 
@@ -288,14 +329,14 @@ def combination_issues(conditions: WorkflowConditions, settings: list[StatedSett
               if item.name != UNREGISTERED and item.name.split(".", 1)[1] in conditions.settings}
 
     def number(name: str) -> float | None:
-        values = stated_numbers(stated[name].value) if name in stated else []
-        return values[0] if values else None
+        values = list(dict.fromkeys(stated_numbers(stated[name].value))) if name in stated else []
+        return values[0] if len(values) == 1 else None
 
     def enabled(name: str) -> bool | None:
         if name not in stated:
             return conditions.settings[name].default
         # A bare request to sparsify/cluster enables it; an explicit false must not.
-        return boolean_value(stated[name].value, stated[name].quote)
+        return control_boolean_value(conditions.settings[name], stated[name].value, stated[name].quote)
 
     found = []
     if {"lambda1", "lambda2"} <= set(conditions.settings) and stated.keys() & {"lambda1", "lambda2"}:
@@ -340,11 +381,12 @@ def _invalid_output(conditions: WorkflowConditions, stated: dict[str, StatedSett
             values[name] = limit.default
             continue
         if limit.control_type == "boolean":
-            value = boolean_value(said.value, said.quote)
+            value = control_boolean_value(limit, said.value, said.quote)
         elif limit.control_type == "enum":
             value = enum_value(limit, said.value)
         elif limit.control_type in ("number", "integer"):
-            value = next(iter(stated_numbers(said.value)), None)
+            numbers = list(dict.fromkeys(stated_numbers(said.value)))
+            value = numbers[0] if len(numbers) == 1 else None
         else:
             value = None
         if value is None:

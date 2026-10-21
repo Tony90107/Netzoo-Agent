@@ -95,7 +95,8 @@ def checked_match(decision, workflows) -> object:
     if (decision.action != "no_tool" or check is None or check.unconfirmed() or check.full_gap or check.unchecked
             or decision.stated_hypotheses or is_unmapped(decision) or decision.match_basis in _USER_CHOSEN):
         return decision
-    common = [action for action in credited_workflows(check) or [] if action in workflows]
+    rejected = {item.action for item in decision.rejected_methods}
+    common = [action for action in credited_workflows(check) or [] if action in workflows and action not in rejected]
     if len(common) != 1:
         return decision
     action = common[0]

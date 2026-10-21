@@ -228,7 +228,9 @@ def test_p08_a_verified_setting_is_not_sent_to_the_condition_check():
     task = P08.replace("cluster=false", "cluster=maybe")
     _proposal_, unresolved = _p08("set cluster=maybe", "maybe", task)
     assert [(item.quote, item.status) for item in unresolved.results()] == [
-        (P08_ASK, "available"), ("cluster=maybe", "not_available")]  # "maybe" settles no boolean
+        (P08_ASK, "available")]  # "maybe" is unresolved, not a known setting violation.
+    from netzoo_agent_core.interpretation.method_conditions import unresolved_settings
+    assert unresolved_settings(unresolved.results()[0].method, ["sambar.subtypes"])
     assert [quote for *_rest, quote in condition_pairs(unresolved, ["set cluster=maybe"])] == ["set cluster=maybe"]
 
 

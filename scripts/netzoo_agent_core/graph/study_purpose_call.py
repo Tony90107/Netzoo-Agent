@@ -65,10 +65,12 @@ def invoke_study_purpose(
     budget, budget_warnings = preflight_budget(
         (reading := with_reading_allowance(context, usage)), call_state, role="study_purpose",
         model=context.semantic_model_name, input_text=input_text,
-        reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
+        reserved_output_tokens=context.router_max_tokens + max(0, state.get("required_check_reserve", 0)),
+        allow_reserve=False,
     )
     if budget.status == "blocked":
-        usage.budget_exhausted = True
+        if not state.get("required_check_reserve", 0):
+            usage.budget_exhausted = True
         return _witness_state(context, state, user_task, "budget"), usage, budget_warnings
     started_ns = time.monotonic_ns()
     raw = None

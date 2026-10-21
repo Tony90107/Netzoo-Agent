@@ -121,9 +121,9 @@ def test_k06_settings_dragon_has_and_takes_stay_available():
 
 
 def test_enum_settings_are_checked_and_bound_with_the_same_choices():
-    from netzoo_agent_core.interpretation.method_conditions import verified_controls
+    from netzoo_agent_core.interpretation.method_conditions import unbound_settings, unresolved_settings, verified_controls
 
-    for words, allowed, bound in (("half", False, None), ("single or double", False, None),
+    for words, allowed, bound in (("half", False, None), ("single or double", True, None),
                                   ("single precision", True, "single"), ("double", True, "double")):
         task = f"Run OTTER with precision set to {words} to build a TF-gene network."
         check = _check(task, _ask(task, ["otter.tf_gene_network"], named="OTTER", named_quote="OTTER",
@@ -131,6 +131,10 @@ def test_enum_settings_are_checked_and_bound_with_the_same_choices():
                                  settings=[("OTTER.precision", "precision", words)]))
         assert (run_check_verdict(check, "run_otter")["verdict"] == "agrees") is allowed
         assert verified_controls(check, "run_otter").get("precision") == bound
+        if words == "single or double":
+            # Both choices are supported; the unresolved choice is held rather than claimed impossible.
+            assert unresolved_settings(_result(check).method, ["otter.tf_gene_network"])
+            assert unbound_settings(check, "run_otter") == ["precision"]
 
 
 def test_a_value_outside_the_controls_range_is_not_given():
