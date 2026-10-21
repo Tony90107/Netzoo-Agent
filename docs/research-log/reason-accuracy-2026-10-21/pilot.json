@@ -1,0 +1,407 @@
+{
+ "model": "openai/gpt-4o-mini-2024-07-18",
+ "tokens": [
+  4660,
+  421
+ ],
+ "usd": 0.001,
+ "system": "You audit the statements an assistant made when it said that part of a bioinformatics analysis request cannot be done. You are given the user's request, the correct decision and the correct reason written by experts (and, when present, the workflow contract text it rests on), and numbered statements from the assistant's reply, each under the request words it is about. Judge each statement only on whether it is TRUE for this request; never judge style or completeness.\n- true_main: true, and it gives the same reason as the expert reason (the same fact, in any words).\n- true_other: true -- consistent with the user's own words and with the expert reason or contract -- but not the expert's main reason.\n- false: it misstates the request (a value, a setting, a data type or a requirement the user did not state, or attributes the user's words to the wrong setting or quantity), misstates what a workflow can do, or says something cannot be done when the correct decision is DO.\n- not_a_reason: it gives no reason (for example an offer of an alternative) and states nothing false. An offer such as 'X itself can still run, with its own settings instead' is false only if X cannot in fact give what is asked with its own settings.\n- unsure: the request and the expert reason do not let you decide.\nGive each verdict with one short sentence saying why.",
+ "rows": [
+  {
+   "key": "fa89d6485bb7de1e",
+   "session": "cj-p4c-C33-1",
+   "item": "C33",
+   "task": "Can BONOBO run with sparsify on at a 0.01 confidence level and delta fixed at 0.5 for my 18 log-transformed, centered endometriosis samples?",
+   "gold": "DECLINE",
+   "gold_reason": "With sparsify, BONOBO's delta must be above 0 and below 1/3; 0.5 is outside that range. No other workflow has a delta control.",
+   "gold_evidence": "workflows/bonobo.yaml: 'name: delta ... Weight of the sample in its covariance; empty estimates it per sample. With sparsify it must be above 0 and below 1/3'",
+   "kind": "DECLINE",
+   "basis": "all_results_not_available",
+   "partial": false,
+   "lines": [
+    {
+     "quote": "sparsify on at a 0.01 confidence level and delta fixed at 0.5 for my 18 log-transformed, centered",
+     "status": "not_available",
+     "type": "R1",
+     "text": "BONOBO: with sparsify, delta must be above 0 and below 1/3, got 0.5."
+    },
+    {
+     "quote": "sparsify on at a 0.01 confidence level and delta fixed at 0.5 for my 18 log-transformed, centered",
+     "status": "not_available",
+     "type": "ALT",
+     "text": "BONOBO itself can still run, with its own settings instead -- an alternative, not the setting you asked for."
+    }
+   ],
+   "missing_from_reply": [],
+   "reply": "What I understood you are asking for:\n1. \"sparsify on at a 0.01 confidence level and delta fixed at 0.5 for my 18 log-transformed, centered\" -- not available here as asked. BONOBO: with sparsify, delta must be above 0 and below 1/3, got 0.5. BONOBO itself can still run, with its own settings instead -- an alternative, not the setting you asked for.\n\nNo registered workflow can give this as you asked, so none is offered as asked.\n\nNo files were inspected and no analysis ran.",
+   "judged": [
+    {
+     "quote": "sparsify on at a 0.01 confidence level and delta fixed at 0.5 for my 18 log-transformed, centered",
+     "status": "not_available",
+     "type": "R1",
+     "text": "BONOBO: with sparsify, delta must be above 0 and below 1/3, got 0.5.",
+     "verdict": "true_main",
+     "why": "This statement accurately reflects the expert reason regarding the delta requirement for BONOBO with sparsify."
+    },
+    {
+     "quote": "sparsify on at a 0.01 confidence level and delta fixed at 0.5 for my 18 log-transformed, centered",
+     "status": "not_available",
+     "type": "ALT",
+     "text": "BONOBO itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+     "verdict": "not_a_reason",
+     "why": "This statement offers an alternative without addressing the user's specific request or providing a reason for the decline."
+    }
+   ],
+   "tokens": [
+    700,
+    67
+   ]
+  },
+  {
+   "key": "072a68f2179536b7",
+   "session": "hb-h4main-M40-1",
+   "item": "M40",
+   "task": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv (54 matched samples, identical IDs in both). Set lambda1 to 0.3 by hand but let lambda2 be estimated from the data. Matrix output to dragon/rna_mirna.tsv, please.",
+   "gold": "DECLINE",
+   "gold_reason": "A manual DRAGON shrinkage value needs lambda1 and lambda2 together; one manual and one estimated is not allowed.",
+   "gold_evidence": "",
+   "kind": "DECLINE",
+   "basis": "all_results_not_available",
+   "partial": false,
+   "lines": [
+    {
+     "quote": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv (54 matched samples, identical IDs in both).",
+     "status": "not_available",
+     "type": "R1",
+     "text": "DRAGON: lambda1 and lambda2 must be supplied together."
+    },
+    {
+     "quote": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv (54 matched samples, identical IDs in both).",
+     "status": "not_available",
+     "type": "ALT",
+     "text": "DRAGON itself can still run, with its own settings instead -- an alternative, not the setting you asked for."
+    },
+    {
+     "quote": "Matrix output to dragon/rna_mirna.tsv, please.",
+     "status": "not_available",
+     "type": "R1",
+     "text": "DRAGON: lambda1 and lambda2 must be supplied together."
+    },
+    {
+     "quote": "Matrix output to dragon/rna_mirna.tsv, please.",
+     "status": "not_available",
+     "type": "ALT",
+     "text": "DRAGON itself can still run, with its own settings instead -- an alternative, not the setting you asked for."
+    }
+   ],
+   "missing_from_reply": [],
+   "reply": "What I understood you are asking for:\n1. \"Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv (54 matched samples, identical IDs in both).\" -- not available here as asked. DRAGON: lambda1 and lambda2 must be supplied together. DRAGON itself can still run, with its own settings instead -- an alternative, not the setting you asked for.\n2. \"Matrix output to dragon/rna_mirna.tsv, please.\" -- not available here as asked. DRAGON: lambda1 and lambda2 must be supplied together. DRAGON itself can still run, with its own settings instead -- an alternative, not the setting you asked for.\n\nNo registered workflow can give these as you asked, so none is offered as asked.\n\nNo files were inspected and no analysis ran.",
+   "judged": [
+    {
+     "quote": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv (54 matched samples, identical IDs in both).",
+     "status": "not_available",
+     "type": "R1",
+     "text": "DRAGON: lambda1 and lambda2 must be supplied together.",
+     "verdict": "true_main",
+     "why": "This statement accurately reflects the requirement that both lambda1 and lambda2 must be supplied together for DRAGON."
+    },
+    {
+     "quote": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv (54 matched samples, identical IDs in both).",
+     "status": "not_available",
+     "type": "ALT",
+     "text": "DRAGON itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+     "verdict": "not_a_reason",
+     "why": "This statement offers an alternative without addressing the specific requirement of lambda1 and lambda2 together."
+    },
+    {
+     "quote": "Matrix output to dragon/rna_mirna.tsv, please.",
+     "status": "not_available",
+     "type": "R1",
+     "text": "DRAGON: lambda1 and lambda2 must be supplied together.",
+     "verdict": "true_main",
+     "why": "This statement accurately reflects the requirement that both lambda1 and lambda2 must be supplied together for DRAGON."
+    },
+    {
+     "quote": "Matrix output to dragon/rna_mirna.tsv, please.",
+     "status": "not_available",
+     "type": "ALT",
+     "text": "DRAGON itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+     "verdict": "not_a_reason",
+     "why": "This statement offers an alternative without addressing the specific requirement of lambda1 and lambda2 together."
+    }
+   ],
+   "tokens": [
+    817,
+    134
+   ]
+  },
+  {
+   "key": "96a480843d8d9897",
+   "session": "cj-p5r-C30-1",
+   "item": "C30",
+   "task": "Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8.",
+   "gold": "DECLINE",
+   "gold_reason": "kmax = 8 exceeds the 5 mutation samples; SAMBAR requires kmax <= number of samples when clustering.",
+   "gold_evidence": "workflows/sambar.yaml: 'cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.'; 'name: kmax ... Largest number of sample subtypes (clusters) tried; at least kmin and at most the number of samples.'",
+   "kind": "DECLINE",
+   "basis": "all_results_not_available",
+   "partial": false,
+   "lines": [
+    {
+     "quote": "Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8.",
+     "status": "not_available",
+     "type": "R1",
+     "text": "SAMBAR: kmax cannot exceed the number of mutation samples when clustering is enabled."
+    },
+    {
+     "quote": "Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8.",
+     "status": "not_available",
+     "type": "ALT",
+     "text": "SAMBAR itself can still run, with its own settings instead -- an alternative, not the setting you asked for."
+    }
+   ],
+   "missing_from_reply": [],
+   "reply": "What I understood you are asking for:\n1. \"Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8.\" -- not available here as asked. SAMBAR: kmax cannot exceed the number of mutation samples when clustering is enabled. SAMBAR itself can still run, with its own settings instead -- an alternative, not the setting you asked for.\n\nNo registered workflow can give this as you asked, so none is offered as asked.\n\nNo files were inspected and no analysis ran.",
+   "judged": [
+    {
+     "quote": "Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8.",
+     "status": "not_available",
+     "type": "R1",
+     "text": "SAMBAR: kmax cannot exceed the number of mutation samples when clustering is enabled.",
+     "verdict": "true_main",
+     "why": "This statement correctly identifies that kmax cannot exceed the number of mutation samples, aligning with the expert reason."
+    },
+    {
+     "quote": "Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8.",
+     "status": "not_available",
+     "type": "ALT",
+     "text": "SAMBAR itself can still run, with its own settings instead -- an alternative, not the setting you asked for.",
+     "verdict": "not_a_reason",
+     "why": "This statement offers an alternative without addressing the user's specific request or providing a valid reason for the decline."
+    }
+   ],
+   "tokens": [
+    716,
+    70
+   ]
+  },
+  {
+   "key": "b51613a695158c66",
+   "session": "cj-p2-C27-1",
+   "item": "C27",
+   "task": "Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix? We don't have mutation calls for this cohort, only expression.",
+   "gold": "DECLINE",
+   "gold_reason": "SAMBAR accepts only somatic-mutation input and lists the expression matrix as incompatible; SAMBAR is the only workflow that produces sample cluster assignments.",
+   "gold_evidence": "workflows/sambar.yaml: 'accepted_input_modalities: [somatic_mutation]'; 'incompatible_input_artifacts: [expression_matrix]'; 'produced_artifacts: [gene_mutation_scores, pathway_mutation_matrix, sample_cluster_assignment, sample_distance_matrix]' (no other YAML produces sample_cluster_assignment)",
+   "kind": "DECLINE",
+   "basis": "full_gap",
+   "partial": false,
+   "lines": [
+    {
+     "quote": "subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix",
+     "status": "not_available",
+     "type": "R3",
+     "text": "SAMBAR does not give it: SAMBAR's input is somatic mutations."
+    }
+   ],
+   "missing_from_reply": [],
+   "reply": "What I understood you are asking for:\n1. \"subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix\" -- not available here: no registered workflow produces this. SAMBAR does not give it: SAMBAR's input is somatic mutations.\n\nNo registered workflow produces this, so none is offered as the way to get it.\n\nNo files were inspected and no analysis ran.",
+   "judged": [
+    {
+     "quote": "subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix",
+     "status": "not_available",
+     "type": "R3",
+     "text": "SAMBAR does not give it: SAMBAR's input is somatic mutations.",
+     "verdict": "true_main",
+     "why": "The statement correctly identifies that SAMBAR requires somatic mutation input, which aligns with the expert reason."
+    }
+   ],
+   "tokens": [
+    571,
+    35
+   ]
+  },
+  {
+   "key": "a42c702497cc8119",
+   "session": "hb-h1-H37-1",
+   "item": "H37",
+   "task": "Launch CONDOR on panda_lung_edges.tsv, please. It is our PANDA TF-to-gene network exported as source, target and weight columns and already thresholded, so every weight is positive and TF and gene IDs do not overlap. Output directory condor_lung/, prefix lung.",
+   "gold": "DO",
+   "gold_reason": "CONDOR accepts a source-target-weight edge list from a regulator-gene network such as PANDA's, and prefix is an exposed control.",
+   "gold_evidence": "",
+   "kind": "DECLINE",
+   "basis": "routing_unsupported",
+   "partial": false,
+   "lines": [],
+   "missing_from_reply": [],
+   "reply": "What you asked for is not something a registered NetZoo workflow produces.\n\nNo registered workflow can give this as you asked, so none is offered as asked.\n\nNo files were inspected and no analysis ran.",
+   "judged": [],
+   "tokens": [
+    0,
+    0
+   ]
+  },
+  {
+   "key": "1c3606f0824f88cd",
+   "session": "cj-p2-C22-1",
+   "item": "C22",
+   "task": "Call somatic SNVs and indels from tumour_07.bam against its matched normal_07.bam and give me a filtered VCF.",
+   "gold": "DECLINE",
+   "gold_reason": "Out of scope: no registered workflow takes aligned reads or calls variants. SAMBAR starts from an existing samples-by-genes mutation matrix.",
+   "gold_evidence": "workflows/sambar.yaml: 'SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length CSV, a tab-delimited cancer-gene list, and a GMT pathway file.'; no YAML lists a BAM/VCF input or a variant-call artifact_type",
+   "kind": "DECLINE",
+   "basis": "full_gap",
+   "partial": false,
+   "lines": [
+    {
+     "quote": "give me a filtered VCF",
+     "status": "not_available",
+     "type": "R0",
+     "text": ""
+    }
+   ],
+   "missing_from_reply": [],
+   "reply": "What I understood you are asking for:\n1. \"give me a filtered VCF\" -- not matched to any registered workflow.\n\nNo registered workflow produces this, so none is offered as the way to get it.\n\nNo files were inspected and no analysis ran.",
+   "judged": [],
+   "tokens": [
+    0,
+    0
+   ]
+  },
+  {
+   "key": "e99f5b1bdc8cfb7c",
+   "session": "cj-g4o1-C18-1",
+   "item": "C18",
+   "task": "Run CONDOR directly on expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies) to get gene communities. I don't have any motif or PPI files, just this expression table.",
+   "gold": "DECLINE",
+   "gold_reason": "CONDOR consumes a bipartite regulator-gene network, never raw expression. Without motif and PPI no workflow can build a regulator-gene network (PANDA, OTTER and GIRAFFE all require both), and co-expression outputs (LIONESS-COEXPRESSION, BONOBO, COBRA) are gene-gene coexpression_network artifacts, not CONDOR's input.",
+   "gold_evidence": "workflows/condor.yaml: 'CONDOR does not consume the raw expression matrix directly.'; 'input_artifacts: [regulatory_network]'; workflows/panda.yaml: 'required_inputs: [expression_file, motif_file, ppi_file, output_file]'",
+   "kind": "DECLINE",
+   "basis": "full_gap",
+   "partial": false,
+   "lines": [
+    {
+     "quote": "Run CONDOR directly on expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies) to get gene communities.",
+     "status": "not_available",
+     "type": "R1",
+     "text": "You said \"just this expression table\"; CONDOR needs a regulator-gene network; every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have: you said \"I don't have any motif or PPI files\"; OTTER needs a TF motif prior and no registered workflow or tool provides it."
+    }
+   ],
+   "missing_from_reply": [],
+   "reply": "What I understood you are asking for:\n1. \"Run CONDOR directly on expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies) to get gene communities.\" -- not available here as asked. You said \"just this expression table\"; CONDOR needs a regulator-gene network; every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have: you said \"I don't have any motif or PPI files\"; OTTER needs a TF motif prior and no registered workflow or tool provides it.\n\nNo registered workflow can give this as you asked it (above), so none is offered as asked.\n\nNo files were inspected and no analysis ran.",
+   "judged": [
+    {
+     "quote": "Run CONDOR directly on expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies) to get gene communities.",
+     "status": "not_available",
+     "type": "R1",
+     "text": "You said \"just this expression table\"; CONDOR needs a regulator-gene network; every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have: you said \"I don't have any motif or PPI files\"; OTTER needs a TF motif prior and no registered workflow or tool provides it.",
+     "verdict": "true_main",
+     "why": "The statement correctly explains that CONDOR requires a regulator-gene network and that the user lacks the necessary motif and PPI files."
+    }
+   ],
+   "tokens": [
+    698,
+    42
+   ]
+  },
+  {
+   "key": "ae4282a44e3827e7",
+   "session": "cj-p0-C27-1",
+   "item": "C27",
+   "task": "Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix? We don't have mutation calls for this cohort, only expression.",
+   "gold": "DECLINE",
+   "gold_reason": "SAMBAR accepts only somatic-mutation input and lists the expression matrix as incompatible; SAMBAR is the only workflow that produces sample cluster assignments.",
+   "gold_evidence": "workflows/sambar.yaml: 'accepted_input_modalities: [somatic_mutation]'; 'incompatible_input_artifacts: [expression_matrix]'; 'produced_artifacts: [gene_mutation_scores, pathway_mutation_matrix, sample_cluster_assignment, sample_distance_matrix]' (no other YAML produces sample_cluster_assignment)",
+   "kind": "DECLINE",
+   "basis": "full_gap",
+   "partial": false,
+   "lines": [
+    {
+     "quote": "Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix?",
+     "status": "not_available",
+     "type": "R3",
+     "text": "SAMBAR does not give it: SAMBAR's input is somatic mutations."
+    }
+   ],
+   "missing_from_reply": [],
+   "reply": "What I understood you are asking for:\n1. \"Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix?\" -- not available here: no registered workflow produces this. SAMBAR does not give it: SAMBAR's input is somatic mutations.\n\nNo registered workflow produces this, so none is offered as the way to get it.\n\nNo files were inspected and no analysis ran.",
+   "judged": [
+    {
+     "quote": "Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix?",
+     "status": "not_available",
+     "type": "R3",
+     "text": "SAMBAR does not give it: SAMBAR's input is somatic mutations.",
+     "verdict": "true_main",
+     "why": "The statement correctly identifies that SAMBAR requires somatic mutation input, aligning with the expert reason."
+    }
+   ],
+   "tokens": [
+    574,
+    34
+   ]
+  },
+  {
+   "key": "454423be4b972498",
+   "session": "cj-p0-C09-1",
+   "item": "C09",
+   "task": "Should I go with BONOBO or LIONESS for my 20 Shank3 knockout and wild-type mouse cortex samples? I'm hoping to learn something about the knockout, but I haven't pinned down what yet.",
+   "gold": "CLARIFY",
+   "gold_reason": "The question about the knockout and the kind of per-sample network are both unstated.",
+   "gold_evidence": "workflows/bonobo.yaml: 'granularities: [sample_specific]'; workflows/lioness-coexpression.yaml: 'artifact_type: coexpression_network'; workflows/lioness-panda.yaml: 'artifact_type: regulatory_network'",
+   "kind": "DECLINE",
+   "basis": "full_gap",
+   "partial": false,
+   "lines": [
+    {
+     "quote": "Should I go with BONOBO or LIONESS for my 20 Shank3 knockout and wild-type mouse cortex samples?",
+     "status": "not_available",
+     "type": "R0",
+     "text": ""
+    }
+   ],
+   "missing_from_reply": [],
+   "reply": "What I understood you are asking for:\n1. \"Should I go with BONOBO or LIONESS for my 20 Shank3 knockout and wild-type mouse cortex samples?\" -- not matched to any registered workflow.\n\nNo registered workflow produces this, so none is offered as the way to get it.\n\nNo files were inspected and no analysis ran.",
+   "judged": [],
+   "tokens": [
+    0,
+    0
+   ]
+  },
+  {
+   "key": "978a30d6c38c367c",
+   "session": "cj-p2-C32-1",
+   "item": "C32",
+   "task": "Will DRAGON take my paired plasma proteomics and metabolomics tables (both with a header, the same 85 participant IDs in the first column, samples in rows, complete continuous values with no NAs) and write the partial-correlation network as an edge list rather than a matrix?",
+   "gold": "DO",
+   "gold_reason": "Two paired, complete, continuous sample-by-feature tables with identical sample IDs are exactly DRAGON's input; edge_list is an allowed output_format.",
+   "gold_evidence": "workflows/dragon.yaml: 'DRAGON consumes exactly two paired sample-by-feature continuous omics tables'; 'name: output_format ... allowed_values: [matrix, edge_list]'; 'output_format=edge_list writes one undirected row per pair with source, target, partial_correlation, and precision.'",
+   "kind": "DO",
+   "basis": "results_given",
+   "partial": true,
+   "lines": [
+    {
+     "quote": "complete continuous values with no NAs",
+     "status": "not_available",
+     "type": "R1",
+     "text": "DRAGON does not meet \"complete continuous values with no NAs\"."
+    }
+   ],
+   "missing_from_reply": [],
+   "reply": "[paragraph only] What I understood you are asking for:\n1. \"write the partial-correlation network as an edge list rather than a matrix\" -- available from DRAGON.\n2. \"complete continuous values with no NAs\" -- not available here as asked. DRAGON does not meet \"complete continuous values with no NAs\".",
+   "judged": [
+    {
+     "quote": "complete continuous values with no NAs",
+     "status": "not_available",
+     "type": "R1",
+     "text": "DRAGON does not meet \"complete continuous values with no NAs\".",
+     "verdict": "false",
+     "why": "The assistant incorrectly states that DRAGON does not accept complete continuous values with no NAs, which contradicts the user's request."
+    }
+   ],
+   "tokens": [
+    584,
+    39
+   ]
+  }
+ ]
+}

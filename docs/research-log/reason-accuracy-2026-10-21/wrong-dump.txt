@@ -1,0 +1,259 @@
+#1 hb-h4main-M32-1 | gold DECLINE | system DECLINE
+  REQ: Using matched DNA methylation and RNA-seq from 60 colon biopsies, I need a directed network showing whether each methylation site drives its gene's expression or the other way round, so we can claim causal regulation in the paper rather than mere correlation.
+  GOLD: The closest workflow, DRAGON, gives an undirected association network and explicitly not a causal graph.
+  FALSE [R4] about "a directed network showing whether each methylation site dri": Registered regulatory workflows contain miRNA and TF regulators; none models other regulators.
+     judge: It misstates the user's request by incorrectly attributing the inability to model causal relationships to the absence of specific regulators, rather than the nature of the workflow itself.
+#2 hb-h2main-J20-1 | gold DECLINE | system DECLINE
+  REQ: Launch LIONESS-DRAGON on rna_all.csv (60 samples by 2,000 genes) and prot_all.csv (the same 60 samples by 500 proteins). Estimate the lambdas automatically, write the all-sample matrix to agg_dragon.tsv and the per-sample table to per_sample_edges.tsv, and start it right away.
+  GOLD: 2,500 features give 3,123,750 feature pairs, times 60 samples = 187,425,000 values, far above the 20,000,000 limit.
+  FALSE [R1] about "Launch LIONESS-DRAGON on rna_all.csv (60 samples by 2,000 ge": NetZoo's LIONESS-DRAGON has no setting for "Estimate the lambdas automatically"; the settings it passes are lambda1 and lambda2.
+     judge: It misstates the request by claiming there is no setting for estimating lambdas automatically, while the user did request it.
+  FALSE [R1] about "write the all-sample matrix to agg_dragon.tsv": NetZoo's LIONESS-DRAGON has no setting for "write the all-sample matrix to agg_dragon.tsv"; the settings it passes are lambda1 and lambda2.
+     judge: It misstates the request by claiming there is no setting for writing the all-sample matrix, while the user did request it.
+  FALSE [R1] about "the per-sample table to per_sample_edges.tsv": NetZoo's LIONESS-DRAGON has no setting for "the per-sample table to per_sample_edges.tsv"; the settings it passes are lambda1 and lambda2.
+     judge: It misstates the request by claiming there is no setting for writing the per-sample table, while the user did request it.
+  FALSE [R1] about "start it right away": NetZoo's LIONESS-DRAGON has no setting for "start it right away"; the settings it passes are lambda1 and lambda2.
+     judge: It misstates the request by claiming there is no setting for starting the process right away, while the user did request it.
+#3 hb-h2main-J31-1 | gold DECLINE | system DECLINE
+  REQ: From matched liver RNA-seq and metabolomics on 70 mice, I need a network that proves which metabolites causally drive which genes, with arrows showing the direction of each effect, to support a mechanistic claim in our paper.
+  GOLD: The closest workflow gives an undirected association network, and the contract states it is not causal.
+  FALSE [R4] about "I need a network that proves which metabolites causally driv": Registered regulatory workflows contain miRNA and TF regulators; none models other regulators.
+     judge: It misstates the user's request by implying that only miRNA and TF regulators are relevant, while the user specifically asked for a causal network involving metabolites and genes.
+#4 hb-h2main-J33-1 | gold DECLINE | system DECLINE
+  REQ: I have just two RNA-seq samples from one patient, tumour and matched normal, and want a separate TF-to-gene regulatory network for each of the two, built from motif and PPI priors, so I can compare them edge by edge.
+  GOLD: Per-sample TF-to-gene networks need at least three expression samples; two is below the minimum.
+  FALSE [R3] about "separate TF-to-gene regulatory network for each of the two": OTTER does not give it: no per-sample OTTER is registered.
+     judge: The statement incorrectly claims that OTTER cannot provide per-sample networks, which is not relevant to the user's request.
+#5 hb-h2main-J46-1 | gold DECLINE | system DECLINE
+  REQ: Please run CONDOR directly on expr_tpm_brain.tsv (genes by 40 cortex samples) to find gene communities, and write the output to condor_brain/ today. We don't want any network-building step first.
+  GOLD: CONDOR needs a regulator-gene bipartite edge list and does not take a raw expression matrix.
+  FALSE [R2] about "to find gene communities": CONDOR does not meet "We don't want any network-building step first.".
+     judge: It misstates the user's request by incorrectly interpreting the requirement about network-building steps as a reason for decline.
+#6 hb-h1-H14-1 | gold DECLINE | system DECLINE
+  REQ: From matched liver transcriptomics and metabolomics in 80 mice, I need to establish which metabolites causally drive the expression of lipid-metabolism genes, including the direction of each effect, for a mechanistic figure in our paper.
+  GOLD: DRAGON's partial correlations are conditional associations in an undirected graph, not causal relationships or effect directions.
+  FALSE [R4] about "establish which metabolites causally drive the expression of": Registered regulatory workflows contain miRNA and TF regulators; none models other regulators.
+     judge: It misstates the user's request by implying that only miRNA and TF regulators are relevant, ignoring metabolites.
+#7 hb-h1-H40-1 | gold DECLINE | system DECLINE
+  REQ: I'd like GIRAFFE run on 75 AML samples with a custom learning rate of 0.001, 5,000 iterations and a heavier weight on the PPI term in the loss - with the defaults it seemed to stop before the TF activities stabilised.
+  GOLD: GIRAFFE exposes no controls and the agent uses the package defaults for all optional parameters, so learning rate, iterations and loss weights cannot be set.
+  FALSE [R1] about "TF activities stabilised": NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so "custom learning rate of 0.001" cannot be applied.
+     judge: It misattributes the request for a custom learning rate to the wrong context of TF activities stabilizing.
+  FALSE [R1] about "TF activities stabilised": NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so "5,000 iterations" cannot be applied.
+     judge: It misattributes the request for 5,000 iterations to the wrong context of TF activities stabilizing.
+#8 cj-g4o1-C07-1 | gold DO | system DO(p)
+  REQ: We measured 180 circulating miRNAs (normalized, continuous qPCR values) and 45 plasma cytokines in the same 64 sepsis patients; both tables have samples in rows, identical patient IDs and no missing values. What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within an
+  GOLD: Per-sample two-layer partial-correlation networks are LIONESS-DRAGON's output; 64 >= 3 samples; size is 225 features -> 25,200 pairs x 64 samples = 1,612,800 values, under the 20,000,000 limit. DRAGON alone is aggregate only.
+  FALSE [R4] about "within and across the two layers": Registered regulatory workflows contain miRNA and TF regulators; none models other regulators.
+     judge: The statement misstates the capabilities of the workflows by incorrectly implying that they cannot model associations across layers.
+  FALSE [R5] about "within and across the two layers": Every registered workflow estimates associations or model coefficients from observational data.
+     judge: The statement does not address the user's request for specific network outputs and misrepresents the workflow's capabilities.
+#9 cj-g4o1-C08-1 | gold DECLINE | system DECLINE
+  REQ: Can GIRAFFE be run with my own optimizer settings? For our 52 rice leaf samples from the drought trial I want a learning rate of 1e-4, 2,000 iterations and a heavier weight on the PPI term in the loss, because in a pilot the package defaults gave a TF activity matrix that looked over-smoothed and I'd like to see whether these se
+  GOLD: GIRAFFE declares no controls and always uses the package defaults for optional parameters, so learning rate, iterations and loss weights cannot be set; no other workflow produces GIRAFFE's TF activity.
+  FALSE [R3] about "a TF activity matrix": PANDA does not give it: the PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or sto
+     judge: It misstates what PANDA provides, as it does not relate to the user's request about GIRAFFE's TF activity matrix.
+#10 cj-g4o1-C16-1 | gold DECLINE | system DECLINE
+  REQ: From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split.
+  GOLD: Out of scope: no registered workflow infers cell trajectories or pseudotime.
+  FALSE [R4] about "order the cells along a pseudotime trajectory": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The statement incorrectly asserts that all workflows take bulk samples, which is not relevant to the user's request about single-cell RNA-seq.
+#11 cj-g4o1-C40-1 | gold DO | system DO(p)
+  REQ: Run BONOBO on expr_ms_lesions.tsv (27 multiple sclerosis lesion samples; log2-transformed and centered per gene; gene IDs in the first column, sample IDs in the header), but only write networks for samples MS_03, MS_11 and MS_19, saved as .csv files.
+  GOLD: BONOBO's sample_names control takes explicit sample IDs, .csv is an allowed format, 27 >= 3 samples, and log/centered are declared.
+  FALSE [R1] about "gene IDs in the first column, sample IDs in the header": BONOBO's genes_axis requires one of auto, rows and columns; "gene IDs in the first column, sample IDs in the header" does not identify one allowed choice.
+     judge: The assistant misstates the requirement for the genes_axis by implying that the user's description does not meet the criteria.
+#12 cj-g4o1-C44-1 | gold ASK | system DECLINE
+  REQ: Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv; I have no expression file, only that co-expression file. I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix for the cohort or the edge-by-sample table from our earlier LIONESS co-expression run.
+  GOLD: Without an expression file OTTER needs an aggregate, labeled, symmetric gene-by-gene co-expression matrix; the file's form decides support.
+  FALSE [R1] about "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.": You said "I have no expression file, only that co-expression file."; OTTER needs a TF motif prior and no registered workflow or tool provides it.
+     judge: The assistant misstates the user's request by incorrectly asserting that OTTER needs a TF motif prior, which is not mentioned in the user's request.
+#13 cj-g4o1-C47-1 | gold DECLINE | system DECLINE
+  REQ: Using bulk expression and clinical follow-up for 400 lung adenocarcinoma patients, I need a model that predicts each new patient's overall-survival risk, something like a penalized Cox model that outputs a risk score, which I can then lock and apply to an external validation cohort of 150 patients from another hospital without r
+  GOLD: Out of scope: no registered workflow fits a survival or predictive model; none takes clinical outcomes as input.
+  FALSE [R1] about "a model that predicts each new patient's overall-survival ri": NetZoo has no registered method or variant "a penalized Cox model".
+     judge: The assistant incorrectly states that NetZoo has no method for a penalized Cox model, which is not relevant to the user's request.
+  FALSE [R3] about "a model that predicts each new patient's overall-survival ri": PANDA does not give it: one static network per set of samples; time points can only be compared as separate networks.
+     judge: The statement misrepresents PANDA's capabilities, as it does not address the user's request for a survival risk prediction model.
+  FALSE [R3] about "apply to an external validation cohort of 150 patients from ": PANDA does not give it: one static network per set of samples; time points can only be compared as separate networks.
+     judge: This statement misstates the capabilities of PANDA regarding external validation cohorts and does not relate to the user's request.
+  FALSE [R3] about "the score would also show which genes drive the risk": PANDA does not give it: one static network per set of samples; time points can only be compared as separate networks.
+     judge: The assistant's statement about PANDA does not address the user's request for identifying genes driving risk and misrepresents its functionality.
+#14 cj-g4o1-C57-1 | gold DECLINE | system DECLINE
+  REQ: We ran a 48-gene NanoString inflammation panel on 600 rheumatoid arthritis patients recruited at four hospitals. I want to know how much of the co-expression between those 48 genes is associated with the hospital each sample came from, decomposed per covariate, with hospital coded as numeric indicator columns in a design table w
+  GOLD: This points to COBRA (covariate-associated co-expression), but COBRA requires more genes than samples and here 48 genes < 600 samples. No other workflow decomposes co-expression by covariate.
+  FALSE [R3] about "how much of the co-expression between those 48 genes is asso": PANDA does not give it: the PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or sto
+     judge: This statement misstates the capabilities of PANDA and does not address the user's request regarding co-expression decomposition by covariate.
+  FALSE [R1] about "hospital coded as numeric indicator columns in a design tabl": NetZoo runs COBRA with its package defaults and passes no settings to it, so "hospital coded as numeric indicator columns in a design table whose rows match the sample IDs exactly" cannot be applied.
+     judge: This statement incorrectly claims that NetZoo cannot apply the user's design table requirements, which is not supported by the expert reason.
+#15 cj-g4o2-C07-1 | gold DO | system DO(p)
+  REQ: We measured 180 circulating miRNAs (normalized, continuous qPCR values) and 45 plasma cytokines in the same 64 sepsis patients; both tables have samples in rows, identical patient IDs and no missing values. What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within an
+  GOLD: Per-sample two-layer partial-correlation networks are LIONESS-DRAGON's output; 64 >= 3 samples; size is 225 features -> 25,200 pairs x 64 samples = 1,612,800 values, under the 20,000,000 limit. DRAGON alone is aggregate only.
+  FALSE [R4] about "within": Registered regulatory workflows contain miRNA and TF regulators; none models other regulators.
+     judge: It misstates the capabilities of the workflows by implying they can model regulators other than miRNAs and TFs.
+  FALSE [R4] about "across the two layers": Registered regulatory workflows contain miRNA and TF regulators; none models other regulators.
+     judge: It misstates the capabilities of the workflows by implying they can model regulators other than miRNAs and TFs.
+#16 cj-g4o2-C08-1 | gold DECLINE | system DECLINE
+  REQ: Can GIRAFFE be run with my own optimizer settings? For our 52 rice leaf samples from the drought trial I want a learning rate of 1e-4, 2,000 iterations and a heavier weight on the PPI term in the loss, because in a pilot the package defaults gave a TF activity matrix that looked over-smoothed and I'd like to see whether these se
+  GOLD: GIRAFFE declares no controls and always uses the package defaults for optional parameters, so learning rate, iterations and loss weights cannot be set; no other workflow produces GIRAFFE's TF activity.
+  FALSE [R3] about "a TF activity matrix": PANDA does not give it: the PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or sto
+     judge: It misstates what PANDA provides, as it does not relate to the user's request about GIRAFFE's TF activity matrix.
+#17 cj-g4o2-C16-1 | gold DECLINE | system DECLINE
+  REQ: From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split.
+  GOLD: Out of scope: no registered workflow infers cell trajectories or pseudotime.
+  FALSE [R4] about "order the cells along a pseudotime trajectory": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user specifically mentioned single-cell RNA-seq, and the assistant incorrectly states that all workflows take bulk samples, which is not true for the user's data type.
+  FALSE [R4] about "find the branch point where atrial and ventricular fates spl": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user specifically mentioned single-cell RNA-seq, and the assistant incorrectly states that all workflows take bulk samples, which is not true for the user's data type.
+#18 cj-g4o2-C40-1 | gold DO | system DO(p)
+  REQ: Run BONOBO on expr_ms_lesions.tsv (27 multiple sclerosis lesion samples; log2-transformed and centered per gene; gene IDs in the first column, sample IDs in the header), but only write networks for samples MS_03, MS_11 and MS_19, saved as .csv files.
+  GOLD: BONOBO's sample_names control takes explicit sample IDs, .csv is an allowed format, 27 >= 3 samples, and log/centered are declared.
+  FALSE [R1] about "gene IDs in the first column, sample IDs in the header": BONOBO's genes_axis requires one of auto, rows and columns; "gene IDs in the first column, sample IDs in the header" does not identify one allowed choice.
+     judge: The assistant misstates the requirement for the genes_axis by incorrectly asserting that the user's description does not identify an allowed choice.
+#19 cj-g4o2-C44-1 | gold ASK | system DECLINE
+  REQ: Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv; I have no expression file, only that co-expression file. I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix for the cohort or the edge-by-sample table from our earlier LIONESS co-expression run.
+  GOLD: Without an expression file OTTER needs an aggregate, labeled, symmetric gene-by-gene co-expression matrix; the file's form decides support.
+  FALSE [R1] about "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.": You said "I have no expression file, only that co-expression file."; OTTER needs a TF motif prior and no registered workflow or tool provides it.
+     judge: The assistant incorrectly states that OTTER needs a TF motif prior, which is not mentioned in the user's request or the expert reason.
+  FALSE [R3] about "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.": OTTER does not give it: no per-sample OTTER is registered.
+     judge: The assistant misstates the capabilities of OTTER by claiming no per-sample OTTER is registered, which is irrelevant to the user's request.
+#20 cj-g4o2-C47-1 | gold DECLINE | system DECLINE
+  REQ: Using bulk expression and clinical follow-up for 400 lung adenocarcinoma patients, I need a model that predicts each new patient's overall-survival risk, something like a penalized Cox model that outputs a risk score, which I can then lock and apply to an external validation cohort of 150 patients from another hospital without r
+  GOLD: Out of scope: no registered workflow fits a survival or predictive model; none takes clinical outcomes as input.
+  FALSE [R1] about "a model that predicts each new patient's overall-survival ri": NetZoo has no registered method or variant "something like a penalized Cox model".
+     judge: The assistant incorrectly states that NetZoo has no method similar to a penalized Cox model, while the expert reason indicates that no workflows fit predictive models at all.
+#21 cj-g4o2-C57-1 | gold DECLINE | system DECLINE
+  REQ: We ran a 48-gene NanoString inflammation panel on 600 rheumatoid arthritis patients recruited at four hospitals. I want to know how much of the co-expression between those 48 genes is associated with the hospital each sample came from, decomposed per covariate, with hospital coded as numeric indicator columns in a design table w
+  GOLD: This points to COBRA (covariate-associated co-expression), but COBRA requires more genes than samples and here 48 genes < 600 samples. No other workflow decomposes co-expression by covariate.
+  FALSE [R3] about "how much of the co-expression between those 48 genes is asso": PANDA does not give it: the PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or sto
+     judge: This statement misstates the capabilities of PANDA and does not address the user's request regarding co-expression decomposition by covariate.
+  FALSE [R1] about "rows match the sample IDs exactly": NetZoo runs COBRA with its package defaults and passes no settings to it, so "rows match the sample IDs exactly" cannot be applied.
+     judge: This statement incorrectly claims that NetZoo cannot apply the sample ID matching, which is not relevant to the user's request.
+#22 cj-p0-C16-1 | gold DECLINE | system DECLINE
+  REQ: From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split.
+  GOLD: Out of scope: no registered workflow infers cell trajectories or pseudotime.
+  FALSE [R4] about "order the cells along a pseudotime trajectory": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user specifically mentioned single-cell RNA-seq, which contradicts the statement about all workflows taking bulk samples.
+  FALSE [R4] about "find the branch point where atrial and ventricular fates spl": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user specifically mentioned single-cell RNA-seq, which contradicts the statement about all workflows taking bulk samples.
+#23 cj-p0-C40-1 | gold DO | system DO(p)
+  REQ: Run BONOBO on expr_ms_lesions.tsv (27 multiple sclerosis lesion samples; log2-transformed and centered per gene; gene IDs in the first column, sample IDs in the header), but only write networks for samples MS_03, MS_11 and MS_19, saved as .csv files.
+  GOLD: BONOBO's sample_names control takes explicit sample IDs, .csv is an allowed format, 27 >= 3 samples, and log/centered are declared.
+  FALSE [R2] about "gene IDs in the first column, sample IDs in the header": BONOBO does not meet "gene IDs in the first column, sample IDs in the header".
+     judge: The assistant misstates the request by claiming BONOBO does not meet the requirement for gene IDs and sample IDs, which is incorrect.
+#24 cj-p0-C47-1 | gold DECLINE | system DO(p)
+  REQ: Using bulk expression and clinical follow-up for 400 lung adenocarcinoma patients, I need a model that predicts each new patient's overall-survival risk, something like a penalized Cox model that outputs a risk score, which I can then lock and apply to an external validation cohort of 150 patients from another hospital without r
+  GOLD: Out of scope: no registered workflow fits a survival or predictive model; none takes clinical outcomes as input.
+  FALSE [R1] about "I need a model that predicts each new patient's overall-surv": NetZoo has no registered method or variant "penalized Cox model".
+     judge: The assistant incorrectly states that NetZoo has no method for a penalized Cox model, which is not relevant to the user's request.
+#25 cj-p0-C51-1 | gold DO | system DECLINE
+  REQ: Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list? Inputs would be expression for 60 breast tumours (header row, gene IDs in the first column), a TF-by-gene seed edge list, and a TF-TF PPI edge list whose TFs are exactly the seed's TFs.
+  GOLD: Every requested setting is a declared OTTER control with a legal value (computing=cpu, precision=single, iterations=150 >= 1, eta=1e-4 >= 0, output_format=edge_list); expression has a header and >= 2 sample columns; PPI TF set equals the seed TF set.
+  FALSE [R1] about "header row, gene IDs in the first column": NetZoo's OTTER has no setting for "header row, gene IDs in the first column"; the settings it passes are output_format, computing, precision, lam, gamma, iterations, eta and bexp.
+     judge: The assistant incorrectly states that there is no setting for the header row and gene IDs, which is a requirement in the user's request.
+#26 cj-p1-C16-1 | gold DECLINE | system DECLINE
+  REQ: From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split.
+  GOLD: Out of scope: no registered workflow infers cell trajectories or pseudotime.
+  FALSE [R4] about "order the cells along a pseudotime trajectory": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request specifically involves single-cell RNA-seq, which contradicts the statement about all workflows taking bulk samples.
+  FALSE [R4] about "find the branch point where atrial and ventricular fates spl": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request specifically involves single-cell RNA-seq, which contradicts the statement about all workflows taking bulk samples.
+#27 cj-p1-C47-1 | gold DECLINE | system DO(p)
+  REQ: Using bulk expression and clinical follow-up for 400 lung adenocarcinoma patients, I need a model that predicts each new patient's overall-survival risk, something like a penalized Cox model that outputs a risk score, which I can then lock and apply to an external validation cohort of 150 patients from another hospital without r
+  GOLD: Out of scope: no registered workflow fits a survival or predictive model; none takes clinical outcomes as input.
+  FALSE [R1] about "I need a model that predicts each new patient's overall-surv": NetZoo has no registered method or variant "penalized Cox model".
+     judge: The assistant incorrectly states that NetZoo has no method for a penalized Cox model, which is not the user's request.
+#28 cj-p2-C16-1 | gold DECLINE | system DECLINE
+  REQ: From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split.
+  GOLD: Out of scope: no registered workflow infers cell trajectories or pseudotime.
+  FALSE [R4] about "order the cells along a pseudotime trajectory": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request specifically involves single-cell RNA-seq, which contradicts the statement about all workflows taking bulk samples.
+  FALSE [R4] about "find the branch point where atrial and ventricular fates spl": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request specifically involves single-cell RNA-seq, which contradicts the statement about all workflows taking bulk samples.
+#29 cj-p2-C32-1 | gold DO | system DO(p)
+  REQ: Will DRAGON take my paired plasma proteomics and metabolomics tables (both with a header, the same 85 participant IDs in the first column, samples in rows, complete continuous values with no NAs) and write the partial-correlation network as an edge list rather than a matrix?
+  GOLD: Two paired, complete, continuous sample-by-feature tables with identical sample IDs are exactly DRAGON's input; edge_list is an allowed output_format.
+  FALSE [R2] about "complete continuous values with no NAs": DRAGON does not meet "complete continuous values with no NAs".
+     judge: The assistant incorrectly states that DRAGON does not accept complete continuous values with no NAs, which contradicts the user's request and the expert's reason.
+#30 cj-p2-C46-1 | gold DECLINE | system DECLINE
+  REQ: I want the list of genes differentially expressed between 12 drug-treated and 12 vehicle mouse hippocampi, with log2 fold changes and FDR-adjusted p-values like DESeq2 reports.
+  GOLD: Out of scope: no registered workflow performs differential expression; every output is a network, co-expression, community, TF activity or mutation-score artifact.
+  FALSE [R1] about "I want the list of genes differentially expressed between 12": NetZoo has no registered method or variant "DESeq2".
+     judge: The statement incorrectly attributes the lack of differential expression analysis to the absence of DESeq2, rather than the overall scope of available workflows.
+#31 cj-p3-C16-1 | gold DECLINE | system DECLINE
+  REQ: From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split.
+  GOLD: Out of scope: no registered workflow infers cell trajectories or pseudotime.
+  FALSE [R4] about "order the cells along a pseudotime trajectory": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request involves single-cell RNA-seq, which is not accurately represented by the assistant's statement about bulk samples.
+  FALSE [R4] about "find the branch point where atrial and ventricular fates spl": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request involves single-cell RNA-seq, which is not accurately represented by the assistant's statement about bulk samples.
+#32 cj-p3b-C47-1 | gold DECLINE | system DECLINE
+  REQ: Using bulk expression and clinical follow-up for 400 lung adenocarcinoma patients, I need a model that predicts each new patient's overall-survival risk, something like a penalized Cox model that outputs a risk score, which I can then lock and apply to an external validation cohort of 150 patients from another hospital without r
+  GOLD: Out of scope: no registered workflow fits a survival or predictive model; none takes clinical outcomes as input.
+  FALSE [R1] about "I need a model that predicts each new patient's overall-surv": NetZoo has no registered method or variant "penalized Cox model".
+     judge: The assistant incorrectly states that NetZoo has no method for a 'penalized Cox model', which is not the reason for declining the request.
+#33 cj-p4b-C16-1 | gold DECLINE | system DECLINE
+  REQ: From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split.
+  GOLD: Out of scope: no registered workflow infers cell trajectories or pseudotime.
+  FALSE [R4] about "order the cells along a pseudotime trajectory": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request involves single-cell RNA-seq, which is not accurately represented by the assistant's statement about bulk samples.
+  FALSE [R4] about "find the branch point where atrial and ventricular fates spl": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request involves single-cell RNA-seq, which is not accurately represented by the assistant's statement about bulk samples.
+#34 cj-p4b-C47-1 | gold DECLINE | system DECLINE
+  REQ: Using bulk expression and clinical follow-up for 400 lung adenocarcinoma patients, I need a model that predicts each new patient's overall-survival risk, something like a penalized Cox model that outputs a risk score, which I can then lock and apply to an external validation cohort of 150 patients from another hospital without r
+  GOLD: Out of scope: no registered workflow fits a survival or predictive model; none takes clinical outcomes as input.
+  FALSE [R1] about "Using bulk expression and clinical follow-up for 400 lung ad": NetZoo has no registered method or variant "penalized Cox model".
+     judge: The statement incorrectly claims that NetZoo has no method for a penalized Cox model, which is not relevant to the user's request.
+#35 cj-p4c-C16-1 | gold DECLINE | system DECLINE
+  REQ: From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split.
+  GOLD: Out of scope: no registered workflow infers cell trajectories or pseudotime.
+  FALSE [R4] about "order the cells along a pseudotime trajectory": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request specifically involves single-cell RNA-seq, which contradicts the statement about all workflows taking bulk samples.
+  FALSE [R4] about "find the branch point where atrial and ventricular fates spl": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request specifically involves single-cell RNA-seq, which contradicts the statement about all workflows taking bulk samples.
+#36 cj-p4c-C17-1 | gold DECLINE | system DECLINE
+  REQ: I want a transcript-metabolite partial-correlation network for 75 NAFLD liver biopsies in which the transcript layer's shrinkage is fixed at 0.3, as in our previous paper, while the metabolite layer's shrinkage is estimated from the data.
+  GOLD: This is DRAGON (two-layer partial correlations with layer-specific shrinkage), but a manual shrinkage value needs lambda1 and lambda2 supplied together; fixing one and estimating the other is not allowed. LIONESS-DRAGON has the same rule.
+  FALSE [ALT] about "transcript-metabolite partial-correlation network": DRAGON itself can still run, with its own settings instead -- an alternative, not the setting you asked for.
+     judge: The assistant incorrectly implies that DRAGON can run with its own settings, which contradicts the requirement for both shrinkage values to be supplied.
+#37 cj-p4c-C47-1 | gold DECLINE | system DECLINE
+  REQ: Using bulk expression and clinical follow-up for 400 lung adenocarcinoma patients, I need a model that predicts each new patient's overall-survival risk, something like a penalized Cox model that outputs a risk score, which I can then lock and apply to an external validation cohort of 150 patients from another hospital without r
+  GOLD: Out of scope: no registered workflow fits a survival or predictive model; none takes clinical outcomes as input.
+  FALSE [R1] about "I need a model that predicts each new patient's overall-surv": NetZoo has no registered method or variant "penalized Cox model".
+     judge: The assistant incorrectly states that NetZoo has no method for a 'penalized Cox model', which is not the reason for declining the request.
+  FALSE [R1] about "Ideally the score would also show which genes drive the risk": NetZoo has no registered method or variant "penalized Cox model".
+     judge: The assistant incorrectly states that NetZoo has no method for a 'penalized Cox model', which is not the reason for declining the request.
+#38 cj-p4c-C52-1 | gold DO | system DECLINE
+  REQ: Can BONOBO build a co-expression network for each of my 6 rhesus macaque lymph node samples? The data are log2-transformed and centered per gene, with genes in rows and sample IDs in the header, and I'd like the per-sample matrices saved as HDF5 and computed in double precision.
+  GOLD: Per-sample gene-gene co-expression is BONOBO's output; 6 >= 3 samples; log-transformed and centered are declared; labelled header present; .h5 and double are allowed control values.
+  FALSE [R2] about "Can BONOBO build a co-expression network for each of my 6 rh": BONOBO does not meet "The data are log2-transformed and centered per gene".
+     judge: The assistant misstates the request by incorrectly asserting that BONOBO does not meet the requirement for log-transformed and centered data, which the user has already declared.
+#39 cj-p5-C16-1 | gold DECLINE | system DECLINE
+  REQ: From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split.
+  GOLD: Out of scope: no registered workflow infers cell trajectories or pseudotime.
+  FALSE [R4] about "order the cells along a pseudotime trajectory": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request specifically involves single-cell RNA-seq, which contradicts the claim that all workflows take bulk samples.
+  FALSE [R4] about "find the branch point where atrial and ventricular fates spl": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request specifically involves single-cell RNA-seq, which contradicts the claim that all workflows take bulk samples.
+#40 cj-p5r-C16-1 | gold DECLINE | system DECLINE
+  REQ: From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates split.
+  GOLD: Out of scope: no registered workflow infers cell trajectories or pseudotime.
+  FALSE [R4] about "order the cells along a pseudotime trajectory": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request specifically involves single-cell RNA-seq, which contradicts the assistant's claim about all workflows taking bulk samples.
+  FALSE [R4] about "find the branch point where atrial and ventricular fates spl": Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+     judge: The user's request specifically involves single-cell RNA-seq, which contradicts the assistant's claim about all workflows taking bulk samples.
+#41 cj-p5r-C18-1 | gold DECLINE | system DECLINE
+  REQ: Run CONDOR directly on expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies) to get gene communities. I don't have any motif or PPI files, just this expression table.
+  GOLD: CONDOR consumes a bipartite regulator-gene network, never raw expression. Without motif and PPI no workflow can build a regulator-gene network (PANDA, OTTER and GIRAFFE all require both), and co-expression outputs (LIONESS-COEXPRESSION, BONOBO, COBRA) are gene
+  FALSE [R4] about "to get gene communities.": Registered regulatory workflows contain miRNA and TF regulators; none models other regulators.
+     judge: The statement incorrectly implies that CONDOR can only use miRNA and TF regulators, which misrepresents the requirements for the analysis.
+#42 cj-p5r-C32-1 | gold DO | system DECLINE
+  REQ: Will DRAGON take my paired plasma proteomics and metabolomics tables (both with a header, the same 85 participant IDs in the first column, samples in rows, complete continuous values with no NAs) and write the partial-correlation network as an edge list rather than a matrix?
+  GOLD: Two paired, complete, continuous sample-by-feature tables with identical sample IDs are exactly DRAGON's input; edge_list is an allowed output_format.
+  FALSE [R1] about "write the partial-correlation network as an edge list rather": NetZoo's DRAGON has no setting for "edge list"; the settings it passes are output_format, lambda1 and lambda2.
+     judge: The assistant incorrectly states that there is no setting for 'edge list', while the expert confirms it is an allowed output format.
+#43 cj-p5r-C47-1 | gold DECLINE | system DECLINE
+  REQ: Using bulk expression and clinical follow-up for 400 lung adenocarcinoma patients, I need a model that predicts each new patient's overall-survival risk, something like a penalized Cox model that outputs a risk score, which I can then lock and apply to an external validation cohort of 150 patients from another hospital without r
+  GOLD: Out of scope: no registered workflow fits a survival or predictive model; none takes clinical outcomes as input.
+  FALSE [R1] about "I need a model that predicts each new patient's overall-surv": NetZoo has no registered method or variant "penalized Cox model".
+     judge: The assistant incorrectly states that NetZoo has no method for a 'penalized Cox model', which is not the reason for declining the request.
