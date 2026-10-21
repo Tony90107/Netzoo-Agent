@@ -707,7 +707,7 @@ def _route_request(
                 usage=usage, budget_warnings=warnings, reason_code=("research_choices" if comparison else "research_guidance"),
             )
         if (not any(c.role == "hypothesis_bases" for c in usage.calls)
-                or usage.budget_exhausted or draft.match_basis == "unverified_evidence"
+                or usage.budget_exhausted
                 or any(c.role == "hypothesis_bases" and c.status == "failed" for c in usage.calls)):
             # Failed interpretation must not silently revert to selecting one
             # tool for a question that explicitly asks to compare hypotheses.
@@ -718,6 +718,19 @@ def _route_request(
             return _RouterInvocation(
                 decision=draft, routing_state=outcome_routing_state(draft, request_mode="guidance"),
                 usage=usage, budget_warnings=warnings, reason_code="research_choices_unavailable",
+            )
+        if draft.match_basis == "unverified_evidence":
+            # ROUND-21 (C31): the reader answered -- the request states no hypotheses to compare ("not sure" opened this
+            # path: C31 is unsure which result her supervisor wants). That is a reading, not a failure: no workflow is
+            # selected here, and the capability check and the fact agent decide the turn (C31 x4, L14 asked; M33 was
+            # clarified -- all labelled a routing failure before).
+            draft = draft.model_copy(update={
+                "clarification_question": None,
+                "reason": "The request states no research hypotheses to compare; no workflow was selected here.",
+            })
+            return _RouterInvocation(
+                decision=draft, routing_state=outcome_routing_state(draft, request_mode="guidance"),
+                usage=usage, budget_warnings=warnings, reason_code="research_choices_unread",
             )
     interpretation, usage, budget_warnings, semantic_error, restored_tags = (
         _invoke_semantic_interpreter(context, state, user_task, usage)
