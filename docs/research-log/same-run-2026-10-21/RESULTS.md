@@ -54,4 +54,23 @@
 
 - H27、M25、M46、J15、L48、C14 ×2（gpt-4o）這些「該拒卻做了」，原因各不相同，見 ROUND-12、16。
 - 回覆中相同的原因會在每一列重複出現（例如 L21 的三個設定），可讀性還可以再整理。
-- 沒有 live 驗證。
+- live 驗證見下一節：判斷 6/6 正確，但新規則沒有被觸發，原因說明只有 3/6 正確。
+
+## Live 驗證（2026-10-21，gpt-4o-mini，6 個 session，US$0.025）
+
+程式為 `abc42cc4`。工具：`live-check/run_live.py`（沿用 judgment-live attempt-08 的執行器），結果在 `live-check/analysis.txt`。沒有執行任何分析。
+
+| 題目 | 預期 | live 判斷 | same-run 規則是否啟動 | 回覆說明的原因 |
+|---|---|---|---|---|
+| L13 | 不能做 | 不能做（full_gap） | 否 | 正確：資料量 3.7 億值，超過 2,000 萬上限 |
+| L21 | 不能做 | 不能做（full_gap） | 否 | 正確：GIRAFFE 只用預設值，「learning rate 0.0005」無法套用 |
+| J44 | 不能做 | 不能做（full_gap） | 否 | 正確：這個執行環境沒有開 GPU |
+| H18 | 不能做 | 不能做（all_results_not_available） | 否 | **不準確**：說成「lambda1 和 lambda2 要一起給」。真正的原因是 DRAGON 沒有 lambda_inter；讀題把「lambda_inter of 0.2」標成了 `DRAGON.lambda2` |
+| H40 | 不能做 | 不能做（full_gap） | 否 | **沒說出原因**：只說「not matched to any registered workflow」。讀題點名了 GIRAFFE，卻沒有把結果歸給它，還把設定標成 OTTER 的 eta、iterations、lam |
+| C08 | 不能做 | 不能做（full_gap） | 否 | **沒說出原因**：同 H40。這一題的 semantic 讀取失敗，routing 沒有對到任何 workflow |
+
+- **判斷 6/6 符合預期，但 same-run 規則一次都沒有啟動。** 這次 live 讀題的形狀和錄製時不同：全部的結果列本來就是「不可做」，沒有「可做」的列需要擋下。所以 live 只確認了判斷結果，沒有驗證到新規則。新規則的效果，目前只有離線重放的證據（9 份改對、0 份改錯）。
+- **原因說明只有 3/6 正確。** 問題出在讀題，不在新規則：
+  - 結果沒有歸給點名的 workflow（H40、C08）；
+  - 設定被標到別的 workflow 的設定上（H40、C08 標成 OTTER），或標錯設定（H18 的 lambda_inter）。
+- **可能的修法（還沒做）：** 使用者點名的 workflow 沒拿到任何結果時，仍由程式拿它的規格書去核對使用者寫的設定。標到別的 workflow 的設定，對點名的 workflow 來說就是「沒有這個設定」。這樣回覆就能說出「GIRAFFE 只用預設值、無法設定 learning rate」。
