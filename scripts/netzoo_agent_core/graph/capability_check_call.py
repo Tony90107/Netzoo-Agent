@@ -31,6 +31,7 @@ from ..settings import ROUTER_CONTEXT_MAX_CHARS
 from .context import _GraphContext, preflight_budget, record_event
 from ..contracts.strict_schema import expanded_enum_values
 from .structured_calls import _serialized_structured_input, _validation_issue_types
+from .required_check_budget import check_output_reserve, retryable_check_error
 
 __all__ = ["capability_check_system", "build_capability_check_messages", "build_reread_messages",
            "request_capability_reread", "request_capability_check", "request_condition_check",
@@ -187,7 +188,7 @@ def request_condition_check(context, state, pairs: list[tuple[str, str, str, str
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(
         (reading := with_reading_allowance(context, usage)), call_state, role="capability_condition_check", model=model,
-        input_text=input_text, reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
+        input_text=input_text, reserved_output_tokens=check_output_reserve(context, llm), allow_reserve=False,
     )
     if budget.status == "blocked":
         return None, usage, budget_warnings
@@ -231,7 +232,7 @@ def _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnin
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(
         (reading := with_reading_allowance(context, usage)), call_state, role="capability_second_opinion", model=model,
-        input_text=input_text, reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
+        input_text=input_text, reserved_output_tokens=check_output_reserve(context, llm), allow_reserve=False,
     )
     if budget.status == "blocked":
         usage.budget_exhausted = True
@@ -320,7 +321,7 @@ def request_capability_check(
     before the advisory reads; verification waits for the study-purpose claims
     (`interpretation.capability_check.build_capability_check`). A reply the model sent
     that could not be decoded or validated is asked once more (TEST_PROMPTS r9 test9);
-    a timeout is not, since the free model already took a minute. When the check has its
+    a temporary transport/provider failure is also eligible for this single retry. When the check has its
     own model, the second attempt is the study-purpose model's, after any failure (Log 401,
     TEST_PROMPTS r15 test9: nemotron answered nothing twice, about a minute each).
     """
@@ -338,22 +339,27 @@ def request_capability_check(
     input_text = _serialized_structured_input(messages, schema)
     budget_context = reading = with_reading_allowance(context)
     for attempt in (1, 2):
+        if llm is fallback_llm and expanded_enum_values(schema.model_json_schema()) > _ENUM_LIMIT:
+            schema = proposal_model(count, compact=True, version=version)
+        input_text = _serialized_structured_input(messages, schema)
+        if usage.budget_exhausted:
+            return None, usage, budget_warnings, "blocked"
         call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
         budget, budget_warnings = preflight_budget(
             budget_context, call_state, role="capability_check",
             model=model, input_text=input_text,
-            reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
+            reserved_output_tokens=check_output_reserve(context, llm), allow_reserve=False,
         )
         if budget.status == "blocked":
             return None, usage, budget_warnings, "blocked"
         started_ns = time.monotonic_ns()
         raw = payload = proposal = None
         output_text, call_status, retry = "", "failed", False
-        if llm is fallback_llm and expanded_enum_values(schema.model_json_schema()) > _ENUM_LIMIT:
-            schema = proposal_model(count, compact=True, version=version)  # M2 (live m2b P30): the backup provider's enum limit
         try:
             adapter = llm.with_structured_output(schema, method="function_calling", include_raw=True, strict=True)
-            payload, raw = semantic_payload(adapter.invoke(messages))
+            response = adapter.invoke(messages)
+            raw = response.get("raw") if isinstance(response, dict) else None
+            payload, raw = semantic_payload(response)
             if isinstance(payload, BaseModel):
                 payload = payload.model_dump()
             proposal = schema.model_validate(payload)
@@ -362,7 +368,7 @@ def request_capability_check(
         except BaseException as error:
             if _is_fatal_exception(error):
                 raise
-            retry = isinstance(error, ValueError)  # undecodable or invalid; pydantic errors are ValueErrors
+            retry = retryable_check_error(error)
             record_event(context, state, "routing.capability_check_failed", "classify", {
                 "attempt": attempt,
                 "error_type": type(error).__name__,
@@ -410,7 +416,7 @@ def request_capability_reread(context, state, user_task: str, passages: list[str
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(
         (reading := with_reading_allowance(context, usage)), call_state, role="capability_reread", model=model,
-        input_text=input_text, reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
+        input_text=input_text, reserved_output_tokens=check_output_reserve(context, llm), allow_reserve=False,
     )
     if budget.status == "blocked":
         return None, usage, budget_warnings

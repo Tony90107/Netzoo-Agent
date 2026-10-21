@@ -13,15 +13,14 @@ from dataclasses import replace
 
 from pydantic import BaseModel
 
-from ..contracts import HumanMessage, SystemMessage
 from ..contracts.fact_check import FactCheck, FactProposals
-from ..interpretation.fact_check import FACT_INSTRUCTIONS, fact_candidates, fact_messages_text, kept_facts
+from ..interpretation.fact_check import fact_candidates, kept_facts
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage
 from .capability_check_call import _check_model, with_reading_allowance
 from .context import preflight_budget, record_event
-from .structured_calls import _serialized_structured_input
+from .required_check_budget import check_output_reserve, fact_check_input, retryable_check_error
 
 __all__ = ["apply_fact_check", "fact_model", "invoke_fact_agent", "request_fact_check", "without_legacy_waits"]
 
@@ -35,13 +34,13 @@ def fact_model(context):
 
 def invoke_fact_agent(llm, task: str, actions: list[str], policy):
     """One structured call; (proposals or None, raw, input text, output text, error)."""
-    messages = [SystemMessage(content=FACT_INSTRUCTIONS),
-                HumanMessage(content=fact_messages_text(task, actions, policy))]
-    input_text = _serialized_structured_input(messages, FactProposals)
+    messages, input_text = fact_check_input(task, actions, policy)
     raw = payload = None
     try:
         adapter = llm.with_structured_output(FactProposals, method="function_calling", include_raw=True, strict=True)
-        payload, raw = semantic_payload(adapter.invoke(messages))
+        response = adapter.invoke(messages)
+        raw = response.get("raw") if isinstance(response, dict) else None
+        payload, raw = semantic_payload(response)
         if isinstance(payload, BaseModel):
             payload = payload.model_dump()
         parsed = FactProposals.model_validate(payload)
@@ -58,28 +57,35 @@ def request_fact_check(context, state, user_task: str, decision, usage, budget_w
     actions = fact_candidates(decision, policy) if policy is not None else []
     if llm is None or not actions:
         return FactCheck(status="not_run"), usage, budget_warnings
-    messages_text = fact_messages_text(user_task, actions, policy)
-    call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
-    budget, budget_warnings = preflight_budget(
-        (reading := with_reading_allowance(context, usage)), call_state, role="fact_check", model=model,
-        input_text=FACT_INSTRUCTIONS + messages_text, reserved_output_tokens=context.router_max_tokens,
-        allow_reserve=False,
-    )
-    if budget.status == "blocked":
-        return FactCheck(status="blocked", model=model or ""), usage, budget_warnings
-    started_ns = time.monotonic_ns()
-    proposals, raw, input_text, output_text, error = invoke_fact_agent(llm, user_task, actions, policy)
-    if error is not None:
-        record_event(context, state, "core.fact_check_failed", "classify", {
-            "error_type": type(error).__name__, "error_message": str(error)[:2000]})
-    usage = append_llm_usage(
-        usage, role="fact_check", model=model, response=raw, input_text=input_text, output_text=output_text,
-        budget_tokens=reading.task_token_budget, duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
-        status="success" if error is None else "failed", price_catalog=context.price_catalog,
-    )
-    if proposals is None:
-        return FactCheck(status="failed", model=model or ""), usage, budget_warnings
-    return kept_facts(user_task, proposals, decision, policy, model=model or ""), usage, budget_warnings
+    names = [policy.workflows[action].workflow for action in actions]
+    _, input_text = fact_check_input(user_task, actions, policy)
+    reading = with_reading_allowance(context, usage)
+    for attempt in (1, 2):
+        if usage.budget_exhausted:
+            return FactCheck(status="blocked", model=model or "", candidates=names), usage, budget_warnings
+        call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
+        budget, budget_warnings = preflight_budget(
+            reading, call_state, role="fact_check", model=model, input_text=input_text,
+            reserved_output_tokens=check_output_reserve(context, llm), allow_reserve=False,
+        )
+        if budget.status == "blocked":
+            return FactCheck(status="blocked", model=model or "", candidates=names), usage, budget_warnings
+        started_ns = time.monotonic_ns()
+        proposals, raw, input_text, output_text, error = invoke_fact_agent(llm, user_task, actions, policy)
+        if error is not None:
+            record_event(context, state, "core.fact_check_failed", "classify", {
+                "attempt": attempt, "error_type": type(error).__name__, "error_message": str(error)[:2000]})
+        usage = append_llm_usage(
+            usage, role="fact_check", model=model, response=raw, input_text=input_text, output_text=output_text,
+            budget_tokens=reading.task_token_budget,
+            duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
+            status="success" if error is None else "failed", price_catalog=context.price_catalog,
+        )
+        if proposals is not None:
+            return kept_facts(user_task, proposals, decision, policy, model=model or ""), usage, budget_warnings
+        if not retryable_check_error(error):
+            break
+    return FactCheck(status="failed", model=model or "", candidates=names), usage, budget_warnings
 
 
 def without_legacy_waits(check):
@@ -103,7 +109,7 @@ def apply_fact_check(context, state, user_task: str, result, decision, check):
     """
     from ..interpretation.core_decision import _facts, goal_unclear
 
-    if goal_unclear(check):  # CLARIFY comes first (spec section 3)
+    if goal_unclear(check, decision, user_task):  # CLARIFY comes first (spec section 3)
         return result, decision, check
     facts, usage, warnings = request_fact_check(context, state, user_task,
                                                 decision.model_copy(update={"capability_check": check}),

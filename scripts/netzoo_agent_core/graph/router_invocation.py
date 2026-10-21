@@ -25,7 +25,8 @@ from ..routing.capability import (
 from ..routing.named_labels import named_registered_action
 from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, record_event
-from .fact_check_call import apply_fact_check
+from .fact_check_call import apply_fact_check, fact_model
+from .required_check_budget import required_fact_check_reserve
 from ..interpretation.ruled_out import without_ruled_out
 from .continuation_invocation import compare_workflows, continue_workflow
 from .intent_invocation import _invoke_intent_router
@@ -180,12 +181,14 @@ def invoke_router(
             proposal, usage, warnings, check_status = request_capability_check(
                 context, state, user_task, result.usage, result.budget_warnings)
             result = replace(result, usage=usage, budget_warnings=warnings)
+        advisory_state = dict(state, required_check_reserve=required_fact_check_reserve(
+            context, user_task, result.decision, proposal, fact_llm=fact_model(context)[1]))
         purpose, usage, warnings = invoke_study_purpose(
-            context, state, user_task, result.usage, result.budget_warnings,
+            context, advisory_state, user_task, result.usage, result.budget_warnings,
         )
         result = replace(result, usage=usage, budget_warnings=warnings,
                          routing_state={**result.routing_state, "study_purpose": purpose})
-        result = _with_applicability(context, state, user_task, result)
+        result = _with_applicability(context, advisory_state, user_task, result)
         result = _with_capability_check(context, state, user_task, result, proposal,
                                         provisional=check_status == "fallback")
         result = _with_run_check(context, state, user_task, result, proposal, check_status)
@@ -344,7 +347,7 @@ def _with_requested_run(context, state, user_task: str, result: _RouterInvocatio
             "offered": held.recommended_actions, "check_status": "ok"})
         return replace(result, decision=held, routing_state={**result.routing_state, **outcome_routing_state(held)})
     record_event(context, state, "routing.requested_run_adopted", "classify", {"action": action})
-    return replace(result, decision=run.model_copy(update={"run_verdict": verdict, **controls}))
+    return replace(result, decision=run.model_copy(update={"capability_check": bound, "run_verdict": verdict, **controls}))
 
 
 def _with_run_check(context, state, user_task: str, result: _RouterInvocation, proposal,
@@ -425,7 +428,7 @@ def _on_run_verdict(context, state, user_task: str, result: _RouterInvocation, c
     approved = verdict.verdict in APPROVING_RUN_VERDICTS
     _record_run_bindings(context, state, check, decision.action, set_by_request, approved, controls)
     if approved:
-        return replace(result, decision=decision.model_copy(update={"run_verdict": verdict, **controls}))
+        return replace(result, decision=decision.model_copy(update={"capability_check": check, "run_verdict": verdict, **controls}))
     guidance = decision.model_copy(update={
         "action": "no_tool", "should_execute": False, "intent_type": "answer_question", "execution_requested": True,
         "capability_check": check if check is not None else CapabilityCheck(unavailable=True), "run_verdict": verdict,

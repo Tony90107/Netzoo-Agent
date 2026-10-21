@@ -142,7 +142,7 @@ def _same_words(task: str, a: str, b: str) -> bool:
     return _overlaps(a, b)
 
 
-def goal_unclear(check) -> bool:
+def goal_unclear(check, decision=None, task: str = "") -> bool:
     """Spec section 5: the request names no result, by the check's own confirmed reading and its verified words.
 
     The methods the goal's words name are the registry's to count (`workflows_in`): one named method is the goal --
@@ -151,6 +151,10 @@ def goal_unclear(check) -> bool:
     """
     if check is None or check.unconfirmed() or not check.goal_quote:
         return False
+    from .goal_evidence import method_choice
+
+    if method_choice(check, decision, task):
+        return True
     named = workflows_in(check.goal_quote)
     if len(named) == 1:
         return False
@@ -162,9 +166,22 @@ def goal_unclear(check) -> bool:
     return check.goal == "result_named" and not any(_overlaps(check.goal_quote, quote) for quote in asked)
 
 
-def _clarify_need(decision, check, goal_quote: str = "") -> ClarifyNeed:
+def _clarify_need(decision, check, goal_quote: str = "", task: str = "") -> ClarifyNeed:
     """The results the request's stated data can give -- listed as possible, never as fitting. `goal_quote`: the
     user's words for the open result (phase 5c), else the check's goal words."""
+    from .goal_evidence import method_choice
+
+    choices = method_choice(check, decision, task)
+    if choices:
+        from ..method_names import registered_workflows
+        from ..routing.clarification_planner import plan_clarification
+
+        actions = [registered_workflows()[name] for name in choices]
+        planned = plan_clarification(actions)
+        return ClarifyNeed(missing="result", candidates=choices,
+                           question=(planned.question if planned and planned.dimension == "granularity"
+                                     else "Which of these results do you want?"),
+                           goal_quote=goal_quote or check.goal_quote)
     stated = {*decision.guidance_input_artifacts,
               *(artifact for hypothesis in decision.outcome_hypotheses
                 for artifact in hypothesis.outcome.input_artifacts)} - {"unknown"}
@@ -183,7 +200,14 @@ def _clarify_need(decision, check, goal_quote: str = "") -> ClarifyNeed:
 def with_core(decision, core: CoreDecision):
     """The decision a call leaves: CLARIFY (phase 1) and an agent's ASK (phase 2) select, refuse and run nothing;
     the other kinds change nothing yet."""
-    if core.kind == "ASK" and core.basis in ("fact_agent", "count_fact", "hybrid_requirement", "contract_veto_fact"):
+    if core.kind == "UNCHECKED" and core.basis == "fact_check_incomplete":
+        return decision.model_copy(update={
+            "core": core, "action": "no_tool", "should_execute": False, "execution_requested": False,
+            "intent_type": "answer_question", "matched_actions": [], "recommended_actions": [],
+            "hypothesis_actions": [], "alternative_actions": [],
+            "reason": "A necessary fact check could not finish; no workflow is approved."})
+    if core.kind == "ASK" and core.basis in ("fact_agent", "count_fact", "hybrid_requirement", "contract_veto_fact",
+                                            "setting_unresolved"):
         asked = [fact.question for fact in core.facts if not fact.settled_by_input_check]
         return decision.model_copy(update={
             "core": core, "action": "no_tool", "should_execute": False, "execution_requested": False,
@@ -191,7 +215,7 @@ def with_core(decision, core: CoreDecision):
             "hypothesis_actions": [], "alternative_actions": [], "capability_match_status": "ambiguous",
             "clarification_question": " ".join(asked)[:300],
             "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen."})
-    if core.kind == "DECLINE" and core.basis in ("hybrid_gate", "contract_veto"):  # a contract rules it out
+    if core.kind == "DECLINE" and core.basis in ("hybrid_gate", "contract_veto"):
         return decision.model_copy(update={
             "core": core, "action": "no_tool", "should_execute": False, "execution_requested": False,
             "intent_type": "answer_question", "matched_actions": [], "recommended_actions": [],
@@ -229,14 +253,20 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     confirmed_gap = check is not None and check.full_gap and not check.unconfirmed()
     # p0: a confirmed gap is still answered. Phase 5a (spec 13.2): so is a confirmed unclear goal -- p2-p4c C10 ran
     # no failed call; the hypothesis reader read unclear_goal and routing was labelled research_choices_unavailable.
-    if _failed_closed(decision, reason_code) and not confirmed_gap and not goal_unclear(check):
+    if _failed_closed(decision, reason_code) and not confirmed_gap and not goal_unclear(check, decision, task):
         return call("UNCHECKED", "routing_failed")
     if verdict is not None and verdict.held and verdict.verdict in _UNCHECKED_HOLDS:
+        if verdict.verdict == "unread":
+            from .decision_guards import unresolved_setting_questions
+
+            if settings := unresolved_setting_questions(check, decision, task):
+                return call("ASK", "setting_unresolved", facts=settings,
+                            workflows=list(dict.fromkeys(name for fact in settings for name in fact.workflows)))
         return call("UNCHECKED", f"run_held_{verdict.verdict}", workflows=_routed(decision))
     if decision.action in _TOOL_ACTIONS:
         return call("DO", "tool", workflows=[workflow_name(decision.action)])
-    if goal_unclear(check):
-        return call("CLARIFY", "goal_unclear", clarify=_clarify_need(decision, check))
+    if goal_unclear(check, decision, task):
+        return call("CLARIFY", "goal_unclear", clarify=_clarify_need(decision, check, task=task))
     agent = getattr(decision, "fact_check", None)
     if agent is not None and agent.status == "checked" and agent.open_results:  # phase 5c R7: before any ASK
         return call("CLARIFY", "result_open", clarify=_clarify_need(decision, check, agent.open_results[0]))
@@ -274,6 +304,14 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     given = [row for row in read if row.status in _GIVEN or shadow and row.status == "needs_fact"]
     if read and not given:
         return call("DECLINE", "all_results_not_available", declined=_declined(results, check))
+    from .decision_guards import unchecked_fact_quotes, unresolved_setting_questions
+
+    if settings := unresolved_setting_questions(check, decision, task):
+        return call("ASK", "setting_unresolved", facts=settings,
+                    workflows=list(dict.fromkeys(name for fact in settings for name in fact.workflows)))
+    if unchecked := unchecked_fact_quotes(check, agent, task):
+        evidence["unchecked_fact_quotes"] = unchecked
+        return call("UNCHECKED", "fact_check_incomplete", workflows=_routed(decision))
     # p4b/p4c C59: a run is the workflow it runs, never routing's other picks beside it
     workflows = ([workflow_name(decision.action)] if running
                  else _names(key for row in given for key in row.delivered_by) or _routed(decision))

@@ -1,0 +1,764 @@
+{
+  "H18": {
+    "task": "With DRAGON, I'd like three separately tuned penalties on our 110 matched colorectal tumours: lambda1 for the methylation block, lambda2 for the expression block, and a lambda_inter of 0.2 controlling only the cross-layer methylation-expression edges. Can you set it up that way?",
+    "proposal": {
+      "conditions": {
+        "count_alternatives": [],
+        "data_unit": "bulk_samples",
+        "data_unit_quote": "",
+        "feature_counts": [],
+        "goal": "method_named",
+        "goal_quote": "With DRAGON, I'd like three separately tuned penalties on our 110 matched colorectal tumours: lambda1 for the methylation block, lambda2 for the expression block, and a lambda_inter of 0.2 controlling only the cross-layer methylation-expression edges.",
+        "group_membership": "not_stated",
+        "group_membership_quote": "",
+        "joint_layers": 2,
+        "joint_layers_quote": "",
+        "mirna_driver": "not_stated",
+        "mirna_driver_quote": "",
+        "mutation_origin": "not_stated",
+        "mutation_origin_quote": "",
+        "named_method": "DRAGON",
+        "named_method_quote": "DRAGON",
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_choices": [],
+        "other_requirements": [],
+        "ruled_out_inputs": [],
+        "sample_count": 110,
+        "sample_count_quote": "110 matched colorectal tumours",
+        "samples_matched": "not_stated",
+        "samples_matched_quote": "",
+        "settings": [
+          {
+            "name": "DRAGON.lambda1",
+            "quote": "lambda1 for the methylation block",
+            "value_quote": "lambda1 for the methylation block"
+          },
+          {
+            "name": "DRAGON.lambda2",
+            "quote": "lambda2 for the expression block",
+            "value_quote": "lambda2 for the expression block"
+          },
+          {
+            "name": "DRAGON.lambda2",
+            "quote": "a lambda_inter of 0.2 controlling only the cross-layer methylation-expression edges",
+            "value_quote": "0.2 controlling only the cross-layer methylation-expression edges"
+          }
+        ],
+        "spatial": "not_spatial",
+        "spatial_quote": "",
+        "time_model": "not_dynamic",
+        "time_model_quote": "",
+        "unknown_facts": [],
+        "value_type": "not_stated",
+        "value_type_quote": ""
+      },
+      "s1": {
+        "about_methods": [],
+        "asks": [
+          {
+            "adds": [],
+            "asked_as": "request",
+            "data_unit": "bulk_samples",
+            "delivered_by": [],
+            "feature_counts": [],
+            "group_membership": "not_about_groups",
+            "input_network": "none",
+            "mirna_driver": "not_stated",
+            "mutation_origin": "not_stated",
+            "named_method": "DRAGON",
+            "named_method_quote": "DRAGON",
+            "needs_sign": false,
+            "not_by": [],
+            "omics_layers": 2,
+            "parent_quote": "With DRAGON, I'd like three separately tuned penalties on our 110 matched colorectal tumours: lambda1 for the methylation block, lambda2 for the expression block, and a lambda_inter of 0.2 controlling only the cross-layer methylation-expression edges.",
+            "quote": "I'd like three separately tuned penalties on our 110 matched colorectal tumours: lambda1 for the methylation block, lambda2 for the expression block, and a lambda_inter of 0.2 controlling only the cross-layer methylation-expression edges.",
+            "regulator_kinds": [],
+            "requirement_role": "analysis_modifier",
+            "sample_count": 110,
+            "sample_count_quote": "110 matched colorectal tumours",
+            "scale": "unstated",
+            "settings": [
+              {
+                "name": "DRAGON.lambda1",
+                "quote": "lambda1 for the methylation block",
+                "value_quote": "lambda1 for the methylation block"
+              },
+              {
+                "name": "DRAGON.lambda2",
+                "quote": "lambda2 for the expression block",
+                "value_quote": "lambda2 for the expression block"
+              },
+              {
+                "name": "DRAGON.lambda2",
+                "quote": "a lambda_inter of 0.2 controlling only the cross-layer methylation-expression edges",
+                "value_quote": "0.2 controlling only the cross-layer methylation-expression edges"
+              }
+            ],
+            "spatial": "not_spatial",
+            "time_model": "not_dynamic",
+            "value_type": "not_stated"
+          }
+        ],
+        "has": [
+          "110 matched colorectal tumours"
+        ],
+        "role": "mixed"
+      },
+      "s2": {
+        "about_methods": [],
+        "asks": [],
+        "has": [],
+        "role": "methods_question"
+      }
+    },
+    "fact_proposals": [
+      {
+        "about": "wanted_result",
+        "alternatives": [
+          "three separately tuned penalties on our 110 matched colorectal tumours"
+        ],
+        "contract_quote": "The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.",
+        "no_outcome": "supported",
+        "no_workflow": "",
+        "question": "Can you accept that lambda_inter cannot be set separately?",
+        "uncertainty": "said_unknown",
+        "user_quote": "a lambda_inter of 0.2 controlling only the cross-layer methylation-expression edges",
+        "workflow": "DRAGON",
+        "yes_outcome": "not_supported",
+        "yes_workflow": ""
+      },
+      {
+        "about": "user_data",
+        "alternatives": [
+          "lambda1",
+          "lambda2"
+        ],
+        "contract_quote": "Manual shrinkage is allowed only when both values are supplied in [0, 1].",
+        "no_outcome": "not_supported",
+        "no_workflow": "",
+        "question": "Do you want to manually set both lambda1 and lambda2?",
+        "uncertainty": "two_versions",
+        "user_quote": "lambda1 for the methylation block, lambda2 for the expression block",
+        "workflow": "DRAGON",
+        "yes_outcome": "supported",
+        "yes_workflow": ""
+      }
+    ],
+    "source": "docs/research-log/judgment-repairs-2026-10-21/live/hb-judgmentrepairs20261021-H18-1/t1",
+    "expected": "DECLINE"
+  },
+  "H21": {
+    "task": "Start PANDA with expr_brain.tsv (it has a header row), motif_hs.tsv and ppi_hs.tsv, but supply cobra_brain/adjusted_coexpression.tsv as the co-expression input instead of plain Pearson. That file is the labeled gene-by-gene matrix COBRA wrote from this same expression table. Save the network to panda_brain_adjusted.txt.",
+    "proposal": {
+      "conditions": {
+        "count_alternatives": [],
+        "data_unit": "not_stated",
+        "data_unit_quote": "",
+        "feature_counts": [],
+        "goal": "method_named",
+        "goal_quote": "Start PANDA with expr_brain.tsv (it has a header row), motif_hs.tsv and ppi_hs.tsv, but supply cobra_brain/adjusted_coexpression.tsv as the co-expression input instead of plain Pearson.",
+        "group_membership": "not_stated",
+        "group_membership_quote": "",
+        "joint_layers": null,
+        "joint_layers_quote": "",
+        "mirna_driver": "not_stated",
+        "mirna_driver_quote": "",
+        "mutation_origin": "not_stated",
+        "mutation_origin_quote": "",
+        "named_method": "PANDA",
+        "named_method_quote": "Start PANDA with expr_brain.tsv (it has a header row), motif_hs.tsv and ppi_hs.tsv, but supply cobra_brain/adjusted_coexpression.tsv as the co-expression input instead of plain Pearson.",
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_choices": [],
+        "other_requirements": [],
+        "ruled_out_inputs": [],
+        "sample_count": null,
+        "sample_count_quote": "",
+        "samples_matched": "not_stated",
+        "samples_matched_quote": "",
+        "settings": [
+          {
+            "name": "PANDA.with_header",
+            "quote": "it has a header row",
+            "value_quote": ""
+          }
+        ],
+        "spatial": "not_spatial",
+        "spatial_quote": "",
+        "time_model": "not_dynamic",
+        "time_model_quote": "",
+        "unknown_facts": [],
+        "value_type": "not_stated",
+        "value_type_quote": ""
+      },
+      "s1": {
+        "about_methods": [],
+        "asks": [],
+        "has": [
+          "expr_brain.tsv (it has a header row)",
+          "motif_hs.tsv",
+          "ppi_hs.tsv",
+          "cobra_brain/adjusted_coexpression.tsv as the co-expression input instead of plain Pearson"
+        ],
+        "role": "mixed"
+      },
+      "s2": {
+        "about_methods": [],
+        "asks": [],
+        "has": [
+          "That file is the labeled gene-by-gene matrix COBRA wrote from this same expression table."
+        ],
+        "role": "background"
+      },
+      "s3": {
+        "about_methods": [],
+        "asks": [
+          {
+            "adds": [],
+            "asked_as": "request",
+            "data_unit": "not_stated",
+            "delivered_by": [],
+            "feature_counts": [],
+            "group_membership": "not_about_groups",
+            "input_network": "regulator_gene",
+            "mirna_driver": "not_stated",
+            "mutation_origin": "not_stated",
+            "named_method": "PANDA",
+            "named_method_quote": "Start PANDA with expr_brain.tsv (it has a header row), motif_hs.tsv and ppi_hs.tsv, but supply cobra_brain/adjusted_coexpression.tsv as the co-expression input instead of plain Pearson.",
+            "needs_sign": false,
+            "not_by": [],
+            "omics_layers": 0,
+            "parent_quote": "Start PANDA with expr_brain.tsv (it has a header row), motif_hs.tsv and ppi_hs.tsv, but supply cobra_brain/adjusted_coexpression.tsv as the co-expression input instead of plain Pearson.",
+            "quote": "Save the network to panda_brain_adjusted.txt.",
+            "regulator_kinds": [],
+            "requirement_role": "analysis_modifier",
+            "sample_count": null,
+            "sample_count_quote": "",
+            "scale": "unstated",
+            "settings": [
+              {
+                "name": "PANDA.with_header",
+                "quote": "it has a header row",
+                "value_quote": ""
+              }
+            ],
+            "spatial": "not_spatial",
+            "time_model": "not_dynamic",
+            "value_type": "not_stated"
+          }
+        ],
+        "has": [],
+        "role": "asks"
+      }
+    },
+    "fact_proposals": [
+      {
+        "about": "user_data",
+        "alternatives": [],
+        "contract_quote": "When coexpression_file is supplied, it must be a labeled symmetric gene-by-gene matrix whose IDs and dimensions match PANDA's filtered gene axis.",
+        "no_outcome": "not_supported",
+        "no_workflow": "",
+        "question": "Is cobra_brain/adjusted_coexpression.tsv a labeled symmetric gene-by-gene matrix whose IDs and dimensions match PANDA's filtered gene axis?",
+        "uncertainty": "said_unknown",
+        "user_quote": "supply cobra_brain/adjusted_coexpression.tsv as the co-expression input instead of plain Pearson",
+        "workflow": "PANDA",
+        "yes_outcome": "supported",
+        "yes_workflow": ""
+      },
+      {
+        "about": "user_data",
+        "alternatives": [],
+        "contract_quote": "setting with_header (boolean): Expression input has a header.",
+        "no_outcome": "not_supported",
+        "no_workflow": "",
+        "question": "Does the expression input have a header?",
+        "uncertainty": "said_unknown",
+        "user_quote": "it has a header row",
+        "workflow": "PANDA",
+        "yes_outcome": "supported",
+        "yes_workflow": ""
+      },
+      {
+        "about": "user_data",
+        "alternatives": [],
+        "contract_quote": "The adjusted co-expression artifact replaces only the Pearson construction; it does not replace the expression_file required for gene/prior compatibility.",
+        "no_outcome": "not_supported",
+        "no_workflow": "",
+        "question": "Is the expression_file required for gene/prior compatibility still provided?",
+        "uncertainty": "said_unknown",
+        "user_quote": "the adjusted co-expression artifact replaces only the Pearson construction; it does not replace the expression_file required for gene/prior compatibility",
+        "workflow": "PANDA",
+        "yes_outcome": "supported",
+        "yes_workflow": ""
+      }
+    ],
+    "source": "docs/research-log/judgment-repairs-2026-10-21/live/hb-judgmentrepairs20261021-H21-1/t1",
+    "expected": "DO"
+  },
+  "J17": {
+    "task": "Please set up SAMBAR for somatic mutation calls from 8 pancreatic tumours, with a gene-length table, a cancer-gene list and a KEGG pathway GMT that is not in MSigDB format, so turn gmt_msigdb off. Try kmin 3 up to kmax 8, and keep the normalization by each patient's mutation burden.",
+    "proposal": {
+      "conditions": {
+        "count_alternatives": [],
+        "data_unit": "not_stated",
+        "data_unit_quote": "",
+        "feature_counts": [],
+        "goal": "method_named",
+        "goal_quote": "Please set up SAMBAR for somatic mutation calls from 8 pancreatic tumours, with a gene-length table, a cancer-gene list and a KEGG pathway GMT that is not in MSigDB format, so turn gmt_msigdb off.",
+        "group_membership": "not_stated",
+        "group_membership_quote": "",
+        "joint_layers": null,
+        "joint_layers_quote": "",
+        "mirna_driver": "not_stated",
+        "mirna_driver_quote": "",
+        "mutation_origin": "somatic",
+        "mutation_origin_quote": "",
+        "named_method": "SAMBAR",
+        "named_method_quote": "SAMBAR",
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_choices": [],
+        "other_requirements": [],
+        "ruled_out_inputs": [
+          {
+            "kind": "covariates",
+            "quote": "a gene-length table"
+          },
+          {
+            "kind": "mutations",
+            "quote": "somatic mutation calls from 8 pancreatic tumours"
+          },
+          {
+            "kind": "second_omics",
+            "quote": "a KEGG pathway GMT that is not in MSigDB format"
+          }
+        ],
+        "sample_count": 8,
+        "sample_count_quote": "8 pancreatic tumours",
+        "samples_matched": "not_stated",
+        "samples_matched_quote": "",
+        "settings": [
+          {
+            "name": "SAMBAR.kmin",
+            "quote": "kmin 3",
+            "value_quote": "3"
+          },
+          {
+            "name": "SAMBAR.kmax",
+            "quote": "kmax 8",
+            "value_quote": "8"
+          },
+          {
+            "name": "SAMBAR.norm_patient",
+            "quote": "keep the normalization by each patient's mutation burden",
+            "value_quote": ""
+          }
+        ],
+        "spatial": "not_spatial",
+        "spatial_quote": "",
+        "time_model": "not_dynamic",
+        "time_model_quote": "",
+        "unknown_facts": [],
+        "value_type": "not_stated",
+        "value_type_quote": ""
+      },
+      "s1": {
+        "about_methods": [],
+        "asks": [
+          {
+            "adds": [],
+            "asked_as": "request",
+            "data_unit": "not_stated",
+            "delivered_by": [],
+            "feature_counts": [],
+            "group_membership": "not_about_groups",
+            "input_network": "none",
+            "mirna_driver": "not_stated",
+            "mutation_origin": "somatic",
+            "named_method": "SAMBAR",
+            "named_method_quote": "SAMBAR",
+            "needs_sign": false,
+            "not_by": [],
+            "omics_layers": 0,
+            "parent_quote": "",
+            "quote": "Please set up SAMBAR for somatic mutation calls from 8 pancreatic tumours, with a gene-length table, a cancer-gene list and a KEGG pathway GMT that is not in MSigDB format, so turn gmt_msigdb off.",
+            "regulator_kinds": [],
+            "requirement_role": "analysis_modifier",
+            "sample_count": 8,
+            "sample_count_quote": "8 pancreatic tumours",
+            "scale": "unstated",
+            "settings": [],
+            "spatial": "not_spatial",
+            "time_model": "not_dynamic",
+            "value_type": "not_stated"
+          },
+          {
+            "adds": [],
+            "asked_as": "request",
+            "data_unit": "not_stated",
+            "delivered_by": [],
+            "feature_counts": [],
+            "group_membership": "not_about_groups",
+            "input_network": "none",
+            "mirna_driver": "not_stated",
+            "mutation_origin": "somatic",
+            "named_method": "SAMBAR",
+            "named_method_quote": "SAMBAR",
+            "needs_sign": false,
+            "not_by": [],
+            "omics_layers": 0,
+            "parent_quote": "Please set up SAMBAR for somatic mutation calls from 8 pancreatic tumours, with a gene-length table, a cancer-gene list and a KEGG pathway GMT that is not in MSigDB format, so turn gmt_msigdb off.",
+            "quote": "Try kmin 3 up to kmax 8, and keep the normalization by each patient's mutation burden.",
+            "regulator_kinds": [],
+            "requirement_role": "analysis_modifier",
+            "sample_count": 8,
+            "sample_count_quote": "8 pancreatic tumours",
+            "scale": "unstated",
+            "settings": [
+              {
+                "name": "SAMBAR.kmin",
+                "quote": "kmin 3",
+                "value_quote": "3"
+              },
+              {
+                "name": "SAMBAR.kmax",
+                "quote": "kmax 8",
+                "value_quote": "8"
+              },
+              {
+                "name": "SAMBAR.norm_patient",
+                "quote": "keep the normalization by each patient's mutation burden",
+                "value_quote": ""
+              }
+            ],
+            "spatial": "not_spatial",
+            "time_model": "not_dynamic",
+            "value_type": "not_stated"
+          }
+        ],
+        "has": [
+          "somatic mutation calls from 8 pancreatic tumours",
+          "a gene-length table",
+          "a cancer-gene list",
+          "a KEGG pathway GMT that is not in MSigDB format"
+        ],
+        "role": "background"
+      },
+      "s2": {
+        "about_methods": [],
+        "asks": [],
+        "has": [],
+        "role": "mixed"
+      }
+    },
+    "fact_proposals": [
+      {
+        "about": "user_data",
+        "alternatives": [],
+        "contract_quote": "The pinned SAMBAR implementation requires one positive numeric exon-length row whose CSV columns are unique gene IDs.",
+        "no_outcome": "not_supported",
+        "no_workflow": "",
+        "question": "Do you have a positive numeric exon-length row with unique gene IDs?",
+        "uncertainty": "said_unknown",
+        "user_quote": "a gene-length table",
+        "workflow": "SAMBAR",
+        "yes_outcome": "supported",
+        "yes_workflow": ""
+      },
+      {
+        "about": "user_data",
+        "alternatives": [],
+        "contract_quote": "The cancer-gene list follows the installed SAMBAR reader: one non-empty tab-delimited line of identifiers.",
+        "no_outcome": "not_supported",
+        "no_workflow": "",
+        "question": "Do you have a non-empty tab-delimited cancer-gene list?",
+        "uncertainty": "said_unknown",
+        "user_quote": "a cancer-gene list",
+        "workflow": "SAMBAR",
+        "yes_outcome": "supported",
+        "yes_workflow": ""
+      },
+      {
+        "about": "user_data",
+        "alternatives": [],
+        "contract_quote": "setting gmt_msigdb (boolean): The pathway GMT file is in MSigDB format.",
+        "no_outcome": "not_supported",
+        "no_workflow": "",
+        "question": "Is the pathway GMT file not in MSigDB format?",
+        "uncertainty": "said_unknown",
+        "user_quote": "a KEGG pathway GMT that is not in MSigDB format, so turn gmt_msigdb off",
+        "workflow": "SAMBAR",
+        "yes_outcome": "supported",
+        "yes_workflow": ""
+      }
+    ],
+    "source": "docs/research-log/judgment-repairs-2026-10-21/live/hb-judgmentrepairs20261021-J17-1/t1",
+    "expected": "DO"
+  },
+  "H37": {
+    "task": "Launch CONDOR on panda_lung_edges.tsv, please. It is our PANDA TF-to-gene network exported as source, target and weight columns and already thresholded, so every weight is positive and TF and gene IDs do not overlap. Output directory condor_lung/, prefix lung.",
+    "proposal": {
+      "conditions": {
+        "count_alternatives": [],
+        "data_unit": "not_stated",
+        "data_unit_quote": "",
+        "feature_counts": [],
+        "goal": "method_named",
+        "goal_quote": "Launch CONDOR on panda_lung_edges.tsv, please.",
+        "group_membership": "not_stated",
+        "group_membership_quote": "",
+        "joint_layers": 0,
+        "joint_layers_quote": "",
+        "mirna_driver": "not_stated",
+        "mirna_driver_quote": "",
+        "mutation_origin": "not_stated",
+        "mutation_origin_quote": "",
+        "named_method": "CONDOR",
+        "named_method_quote": "Launch CONDOR on panda_lung_edges.tsv, please.",
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_choices": [],
+        "other_requirements": [
+          {
+            "about": "file_format",
+            "quote": "Output directory condor_lung/, prefix lung."
+          }
+        ],
+        "ruled_out_inputs": [],
+        "sample_count": null,
+        "sample_count_quote": "",
+        "samples_matched": "not_stated",
+        "samples_matched_quote": "",
+        "settings": [],
+        "spatial": "not_spatial",
+        "spatial_quote": "",
+        "time_model": "not_dynamic",
+        "time_model_quote": "",
+        "unknown_facts": [],
+        "value_type": "not_stated",
+        "value_type_quote": ""
+      },
+      "s1": {
+        "about_methods": [],
+        "asks": [
+          {
+            "adds": [],
+            "asked_as": "request",
+            "data_unit": "not_stated",
+            "delivered_by": [],
+            "feature_counts": [],
+            "group_membership": "not_about_groups",
+            "input_network": "none",
+            "mirna_driver": "not_stated",
+            "mutation_origin": "not_stated",
+            "named_method": "CONDOR",
+            "named_method_quote": "Launch CONDOR on panda_lung_edges.tsv, please.",
+            "needs_sign": false,
+            "not_by": [],
+            "omics_layers": 0,
+            "parent_quote": "",
+            "quote": "Launch CONDOR on panda_lung_edges.tsv, please.",
+            "regulator_kinds": [],
+            "requirement_role": "analysis_modifier",
+            "sample_count": null,
+            "sample_count_quote": "",
+            "scale": "unstated",
+            "settings": [],
+            "spatial": "not_spatial",
+            "time_model": "not_dynamic",
+            "value_type": "not_stated"
+          },
+          {
+            "adds": [],
+            "asked_as": "request",
+            "data_unit": "not_stated",
+            "delivered_by": [],
+            "feature_counts": [],
+            "group_membership": "not_about_groups",
+            "input_network": "none",
+            "mirna_driver": "not_stated",
+            "mutation_origin": "not_stated",
+            "named_method": "CONDOR",
+            "named_method_quote": "Launch CONDOR on panda_lung_edges.tsv, please.",
+            "needs_sign": false,
+            "not_by": [],
+            "omics_layers": 0,
+            "parent_quote": "Launch CONDOR on panda_lung_edges.tsv, please.",
+            "quote": "Output directory condor_lung/, prefix lung.",
+            "regulator_kinds": [],
+            "requirement_role": "analysis_modifier",
+            "sample_count": null,
+            "sample_count_quote": "",
+            "scale": "unstated",
+            "settings": [],
+            "spatial": "not_spatial",
+            "time_model": "not_dynamic",
+            "value_type": "not_stated"
+          }
+        ],
+        "has": [],
+        "role": "asks"
+      },
+      "s2": {
+        "about_methods": [],
+        "asks": [],
+        "has": [
+          "It is our PANDA TF-to-gene network exported as source, target and weight columns and already thresholded, so every weight is positive and TF and gene IDs do not overlap."
+        ],
+        "role": "background"
+      },
+      "s3": {
+        "about_methods": [],
+        "asks": [],
+        "has": [],
+        "role": "background"
+      }
+    },
+    "fact_proposals": [
+      {
+        "about": "user_data",
+        "alternatives": [],
+        "contract_quote": "CONDOR consumes a weighted source-target bipartite edge list made from a validated regulator-gene network and returns community assignments with regulator-side and gene-side partitions.",
+        "no_outcome": "not_supported",
+        "no_workflow": "",
+        "question": "Is the network a validated regulator-gene network?",
+        "uncertainty": "said_unknown",
+        "user_quote": "it is our PANDA TF-to-gene network exported as source, target and weight columns and already thresholded, so every weight is positive and TF and gene IDs do not overlap.",
+        "workflow": "CONDOR",
+        "yes_outcome": "supported",
+        "yes_workflow": ""
+      },
+      {
+        "about": "wanted_result",
+        "alternatives": [
+          "lung"
+        ],
+        "contract_quote": "setting prefix (string): Prefix for derived CONDOR artifacts.",
+        "no_outcome": "not_supported",
+        "no_workflow": "",
+        "question": "Is the prefix for derived CONDOR artifacts set to 'lung'?",
+        "uncertainty": "said_unknown",
+        "user_quote": "Output directory condor_lung/, prefix lung.",
+        "workflow": "CONDOR",
+        "yes_outcome": "supported",
+        "yes_workflow": ""
+      }
+    ],
+    "source": "docs/research-log/judgment-repairs-2026-10-21/live/hb-judgmentrepairs20261021-H37-1/t1",
+    "expected": "DO"
+  },
+  "M01": {
+    "task": "Queue a LIONESS-DRAGON job on rna_85.csv (85 samples x 300 genes) and cpg_85.csv for the same 85 samples, aggregate matrix to ldr/all.tsv and the per-sample table to ldr/edges.tsv. I can't remember whether cpg_85.csv is the filtered 300-probe version or the unfiltered 5,000-probe export.",
+    "proposal": {
+      "conditions": {
+        "count_alternatives": [],
+        "data_unit": "bulk_samples",
+        "data_unit_quote": "",
+        "feature_counts": [
+          {
+            "count": 300,
+            "quote": "300 genes"
+          }
+        ],
+        "goal": "method_named",
+        "goal_quote": "Queue a LIONESS-DRAGON job on rna_85.csv (85 samples x 300 genes) and cpg_85.csv for the same 85 samples, aggregate matrix to ldr/all.tsv and the per-sample table to ldr/edges.tsv.",
+        "group_membership": "not_stated",
+        "group_membership_quote": "",
+        "joint_layers": 2,
+        "joint_layers_quote": "the aggregate matrix to ldr/all.tsv and the per-sample table to ldr/edges.tsv",
+        "mirna_driver": "not_stated",
+        "mirna_driver_quote": "",
+        "mutation_origin": "not_stated",
+        "mutation_origin_quote": "",
+        "named_method": "LIONESS-DRAGON",
+        "named_method_quote": "LIONESS-DRAGON",
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_choices": [],
+        "other_requirements": [],
+        "ruled_out_inputs": [],
+        "sample_count": 85,
+        "sample_count_quote": "85 samples",
+        "samples_matched": "same_samples",
+        "samples_matched_quote": "",
+        "settings": [],
+        "spatial": "not_spatial",
+        "spatial_quote": "",
+        "time_model": "not_dynamic",
+        "time_model_quote": "",
+        "unknown_facts": [],
+        "value_type": "not_stated",
+        "value_type_quote": ""
+      },
+      "s1": {
+        "about_methods": [],
+        "asks": [
+          {
+            "adds": [],
+            "asked_as": "request",
+            "data_unit": "bulk_samples",
+            "delivered_by": [],
+            "feature_counts": [
+              {
+                "count": 300,
+                "quote": "300 genes"
+              }
+            ],
+            "group_membership": "not_about_groups",
+            "input_network": "none",
+            "mirna_driver": "not_stated",
+            "mutation_origin": "not_stated",
+            "named_method": "LIONESS-DRAGON",
+            "named_method_quote": "LIONESS-DRAGON",
+            "needs_sign": false,
+            "not_by": [],
+            "omics_layers": 2,
+            "parent_quote": "",
+            "quote": "Queue a LIONESS-DRAGON job on rna_85.csv (85 samples x 300 genes) and cpg_85.csv for the same 85 samples, aggregate matrix to ldr/all.tsv and the per-sample table to ldr/edges.tsv.",
+            "regulator_kinds": [],
+            "requirement_role": "analysis_modifier",
+            "sample_count": 85,
+            "sample_count_quote": "85 samples",
+            "scale": "whole_cohort",
+            "settings": [],
+            "spatial": "not_spatial",
+            "time_model": "not_dynamic",
+            "value_type": "not_stated"
+          }
+        ],
+        "has": [
+          "rna_85.csv (85 samples x 300 genes)",
+          "cpg_85.csv for the same 85 samples"
+        ],
+        "role": "asks"
+      },
+      "s2": {
+        "about_methods": [],
+        "asks": [],
+        "has": [],
+        "role": "background"
+      }
+    },
+    "fact_proposals": [
+      {
+        "about": "user_data",
+        "alternatives": [
+          "filtered 300-probe version",
+          "unfiltered 5,000-probe export"
+        ],
+        "contract_quote": "LIONESS-DRAGON consumes exactly two paired sample-by-feature continuous omics tables, DRAGON's inputs, and produces the aggregate DRAGON matrix plus one partial-correlation network per sample, written as an edge-by-sample table (source, target, one column per sample) with layer-qualified node IDs.",
+        "no_outcome": "not_supported",
+        "no_workflow": "",
+        "question": "Is cpg_85.csv the filtered 300-probe version?",
+        "uncertainty": "two_versions",
+        "user_quote": "I can't remember whether cpg_85.csv is the filtered 300-probe version or the unfiltered 5,000-probe export.",
+        "workflow": "LIONESS-DRAGON",
+        "yes_outcome": "supported",
+        "yes_workflow": ""
+      }
+    ],
+    "source": "docs/research-log/judgment-repairs-2026-10-21/live/hb-judgmentrepairs20261021-M01-1/t1",
+    "expected": "ASK"
+  }
+}
