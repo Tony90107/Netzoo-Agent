@@ -27,6 +27,7 @@ from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, record_event
 from .fact_check_call import apply_fact_check, fact_model
 from .goal_read_call import apply_goal_read
+from .settings_read_call import apply_settings_reads
 from .required_check_budget import required_fact_check_reserve
 from ..interpretation.ruled_out import without_ruled_out, without_unbuilt_network
 from .continuation_invocation import compare_workflows, continue_workflow
@@ -608,6 +609,10 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         record_event(context, state, "core.unbuilt_network_held", "classify", {
             "limits": [row.limits for row in built.results()]})
         check = built
+    # ROUND-22 (R22-B): numbers a named workflow's result states that nothing read, read once against its settings.
+    check, usage, warnings = apply_settings_reads(context, state, user_task, check, result.usage,
+                                                  result.budget_warnings)
+    result = replace(result, usage=usage, budget_warnings=warnings)
     # ROUND-17 (user decision): a result resting only on a workflow another row shows cannot run as asked is held too.
     from ..interpretation.same_run import same_run_holds
 
