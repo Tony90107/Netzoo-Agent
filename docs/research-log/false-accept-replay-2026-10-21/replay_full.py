@@ -120,7 +120,7 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
     if proposal is None:
         return {"kind": "unparsable"}
     study = _first(found, "routing.study_purpose_detected") or {}
-    claims = frozenset(claim for claim, _quote in study.get("claims") or ())
+    claims = {claim: quote for claim, quote in study.get("claims") or ()}  # ROUND-20: with their words
     try:
         from netzoo_agent_core.interpretation.input_bindings import bound_expression_samples
         counted = bound_expression_samples(task)
