@@ -347,6 +347,24 @@ def test_failed_explicit_comparison_cannot_fall_back_to_one_workflow(monkeypatch
     assert not result.decision.matched_actions and not result.decision.should_execute
 
 
+def test_an_answered_read_with_no_hypotheses_is_not_a_routing_failure(monkeypatch):
+    # ROUND-21 (C31): "not sure" opened the comparison path; the reader answered that no hypotheses are stated. No
+    # single workflow is selected, and the turn is not labelled a failure: the check and the fact agent decide it.
+    from netzoo_agent_core.graph import router_invocation
+    from netzoo_agent_core.interpretation.core_decision import _failed_closed
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("No stated hypotheses must not collapse to one workflow either")
+
+    monkeypatch.setattr(router_invocation, "_invoke_semantic_interpreter", unexpected)
+    unread = StatedHypothesisClaims(question_mode="unclear_goal", claims=[])
+    result = router_invocation.invoke_router(_context(unread.model_dump()), {}, ZH)
+    assert result.reason_code == "research_choices_unread"
+    assert not result.decision.matched_actions and not result.decision.should_execute
+    assert result.decision.clarification_question is None
+    assert not _failed_closed(result.decision, result.reason_code)
+
+
 @pytest.mark.parametrize(
     "basis, artifact, scale, expected",
     [
