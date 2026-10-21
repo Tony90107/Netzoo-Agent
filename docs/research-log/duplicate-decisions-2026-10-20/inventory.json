@@ -1,0 +1,547 @@
+[
+  {
+    "category": "K1",
+    "consumers": [
+      "registry 配對、method_fitting、run verdict"
+    ],
+    "kind": "同一名稱多處讀取／文字解析",
+    "limit": "名稱不同不必然是錯；多要求的不同方法不互相比。",
+    "metric": "單一要求、整段與要求層都明列方法時，排除 LIONESS 家族相容名稱後的不同名稱。",
+    "name": "指定方法",
+    "precedence": "要求層有 named 時保留；單一要求缺 named 才補整段；明確選擇另有優先規則。",
+    "producers": [
+      "語意與原文方法名稱、每個結果 named_method、整段 named_method"
+    ],
+    "references": [
+      {
+        "docstring": "M1 (2026-10-14): the ask's named method, settings and data size, each kept only when its words are in the\nrequest -- a registered method only when the words name it, a count only when the words state that number.\n\nRecordings from before M1 state none of these, so nothing is kept and no rule fires on them.",
+        "end_line": 82,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/method_conditions.py",
+        "function": "verified_method",
+        "line": 39,
+        "source_sha256": "021cbb445701c696ba537514a40938cc59a9c3cce577f0f2e80617c9b8943ff4"
+      },
+      {
+        "docstring": "An ask's method with the request's named method, settings and data size where it states none of its own.\n\nApplied only when the request asks for one result: with two, a setting given for one workflow would hold the other\nto it (\"run PANDA ..., then CONDOR on it\"), and a count could be another dataset's.",
+        "end_line": 174,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/method_conditions.py",
+        "function": "with_request_method",
+        "line": 157,
+        "source_sha256": "021cbb445701c696ba537514a40938cc59a9c3cce577f0f2e80617c9b8943ff4"
+      },
+      {
+        "docstring": "Resolve a currently written registered workflow name, longest first.",
+        "end_line": 57,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/routing/named_labels.py",
+        "function": "named_workflow_action",
+        "line": 46,
+        "source_sha256": "6feb158828dd06c0e152384dac1b659942aeb70a4607fc1ea224a3544e578b94"
+      }
+    ]
+  },
+  {
+    "category": "K2",
+    "consumers": [
+      "assemble_task_decision、_with_requested_run、操作授權閘門"
+    ],
+    "kind": "不同讀取者共同控制授權",
+    "limit": "不把 intent=answer 與 asked_as=request 視為矛盾；成功 semantic 的 request_mode 沒有逐次完整存檔，無法完整量三方差異。",
+    "metric": "intent=execute，但所有結果被 capability 讀成 question；另計明確命令協調事件。",
+    "name": "執行／說明意圖",
+    "precedence": "語意與 intent 都要求執行才設 execution_requested；後段 capability 結果仍須 available 且 asked_as=request；文字規則可協調。",
+    "producers": [
+      "semantic request_mode、intent mode、capability asked_as、明確命令文字規則"
+    ],
+    "references": [
+      {
+        "docstring": null,
+        "end_line": 144,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/graph/intent_invocation.py",
+        "function": "_invoke_intent_router",
+        "line": 28,
+        "source_sha256": "497b7bf81facaab938d521f998e89485f6becc704ce86fd4929f4cb89f42e44b"
+      },
+      {
+        "docstring": "Combine facts in authority order without letting intent choose a workflow.",
+        "end_line": 154,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/assembly.py",
+        "function": "assemble_task_decision",
+        "line": 17,
+        "source_sha256": "4a08c92fe20bed77ce807ceae002657d62599fb3f5d567786691012fbe5c4a37"
+      },
+      {
+        "docstring": "Verdict layer step 1: a run both routing readings asked for, of the one workflow the final verdict credits.\n\nThe run was decided before the capability check, from routing's match and the task text alone. r17 (run17, 32\nsessions of supported run commands): 23 were answered as guidance -- the text gate wanted the workflow's name or\na verb from its list (\"Compute now: ... produce ...\" -> BONOBO, DRAGON, SAMBAR), or routing fell back and the check\ncredited one workflow only afterwards (PI1 PUMA, PL5 LIONESS-DRAGON, PL7 COBRA).\n\nThree readings must agree: the intent router and the semantic interpreter asked for execution\n(`execution_requested`), and the confirmed check read every result as asked to be produced (`asked_as`\nrequest, not a question about which method gives it) and credits this one workflow, which routing matched or\nthe check adopted. Every result must be one the workflow gives directly: a result nothing registered gives, or one\nneeding a step outside NetZoo, keeps the turn a reply that says so (r17 MX1: an upload beside the networks; NM14:\na significance test of differential co-expression after LIONESS-COEXPRESSION). The request's own operation bans still veto it afterwards (`graph.operation_authority`).",
+        "end_line": 347,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/graph/router_invocation.py",
+        "function": "_with_requested_run",
+        "line": 302,
+        "source_sha256": "d08cbbe735adafbb6e639b75bed68c79faa54ea05968b4aba98b42214008b28f"
+      },
+      {
+        "docstring": "Preserve explicit execution and classify workflow questions as guidance.\n\nA command whose whole kind the request also forbids (\"Do not execute\nanything ... Run PANDA\") is not promoted; the operation gate would refuse\nthe execution anyway, and the request should be read as guidance.",
+        "end_line": 357,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/routing/capability.py",
+        "function": "reconcile_request_mode",
+        "line": 337,
+        "source_sha256": "bb645b03c9581ef5b4e292ef2a522120ab464cf7d66015de35c501949d183f01"
+      }
+    ]
+  },
+  {
+    "category": "K3",
+    "consumers": [
+      "goal_unclear、decide_core、CLARIFY renderer"
+    ],
+    "kind": "語意結果與能力目標的再判讀",
+    "limit": "可能是能力核對合理更正語意推測；不從差異直接判定哪份對。",
+    "metric": "單一語意解讀為具體 artifact、capability 卻 purpose_only；或相反：語意 unknown、capability result_named 且有結果。",
+    "name": "結果／目標是否明確",
+    "precedence": "confirmed capability goal_unclear 及 fact open_results 可先導向 CLARIFY；單一具名方法另視為有目標。",
+    "producers": [
+      "outcome_hypotheses、capability goal、研究假設讀取、fact wanted_result/R7"
+    ],
+    "references": [
+      {
+        "docstring": "Spec section 5: the request names no result, by the check's own confirmed reading and its verified words.\n\nThe methods the goal's words name are the registry's to count (`workflows_in`): one named method is the goal --\na question about it (p1 C32, p2-p3 C51, p4b-p4c C39 were read purpose_only); two named as the choice with no\nresult read is no goal (\"Should I use COBRA or CONDOR?\", p4b C10 was read method_named).",
+        "end_line": 141,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/core_decision.py",
+        "function": "goal_unclear",
+        "line": 124,
+        "source_sha256": "cfb2d4605767a728fb649b2e7225521091456bb5b52d7442705d4acd33b8b642"
+      },
+      {
+        "docstring": "The turn's four-way call, read from its final decision.",
+        "end_line": 258,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/core_decision.py",
+        "function": "decide_core",
+        "line": 189,
+        "source_sha256": "cfb2d4605767a728fb649b2e7225521091456bb5b52d7442705d4acd33b8b642"
+      },
+      {
+        "docstring": "R1-R6 over the agent's proposals; what is kept is what the turn may ask (or say, R5).",
+        "end_line": 174,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/fact_check.py",
+        "function": "kept_facts",
+        "line": 110,
+        "source_sha256": "921e0253ba3d80b25066d58a65eaea627b0099ad56acf039b9f3c55ed53016c2"
+      },
+      {
+        "docstring": null,
+        "end_line": 329,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/graph/hypothesis_bases.py",
+        "function": "invoke_hypothesis_matcher",
+        "line": 211,
+        "source_sha256": "6321fce7451d24352fbd05612fc0765e77fc979acc7c20ed85aee9c8773229b6"
+      }
+    ]
+  },
+  {
+    "category": "K4",
+    "consumers": [
+      "registry 配對、能力 fitting、回覆的結果說明"
+    ],
+    "kind": "同一結果的粒度重讀",
+    "limit": "unknown／unstated 不當成錯值；多結果與 per-group 不強行歸併。",
+    "metric": "單一解讀、單一要求且兩邊均為 aggregate/sample_specific 等可直接對照值時不同。",
+    "name": "結果粒度",
+    "precedence": "早期 registry 用語意粒度，後段 check 用自己的 scale；confirmed check 在限定條件下可接管匹配。",
+    "producers": [
+      "semantic granularity、capability ask.scale"
+    ],
+    "references": [
+      {
+        "docstring": "Carry rejected methods alongside the selected semantic or advisory path.",
+        "end_line": 946,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/routing/outcome_matching.py",
+        "function": "match_semantic_request",
+        "line": 928,
+        "source_sha256": "21f2fc034e0ccf2ddb7d6ca121f2f4ffe835416d8b9cabdf081fb8de000e89ad"
+      },
+      {
+        "docstring": "The verified check for one proposal, and what was rejected.\n\nA registry-wide reason (no causal proof, no prediction) is kept only when the\nstudy-purpose reader verified that claim with its cue words: the smoke run cited\nboth for a splicing request.\n\nA passage asked for several times is one requirement; when one reading names an\nentry and another names none (Log 387 dev round: a network and a forecast quoted as\none sentence twice) it is `partial`, never `available`.\n\n`counted_samples` (ROUND-07): (samples, path) counted in the named expression file (`weigh_sample_doubts`).",
+        "end_line": 557,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/capability_check.py",
+        "function": "build_capability_check",
+        "line": 383,
+        "source_sha256": "c58dc246bdd270b016a91236c24251d42d4e03c211f5c61e626c410c2ce48b38"
+      },
+      {
+        "docstring": "The decision with the check's single credited workflow as its match, or the decision unchanged.",
+        "end_line": 116,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/checked_match.py",
+        "function": "checked_match",
+        "line": 92,
+        "source_sha256": "4235b1013da7ff73c38a81e3f1f0bde6392e368d8746ed3cc27674aa3bd34198"
+      }
+    ]
+  },
+  {
+    "category": "K5",
+    "consumers": [
+      "TaskDecision、Planner、fact candidates、回覆"
+    ],
+    "kind": "分階段選擇及有條件覆核",
+    "limit": "可為正確的後段修正，也可能之後被輸入／限制排除；不把兩個階段都當最終決策。",
+    "metric": "registry 與第一份能力核對都只指向一個 workflow，但兩個名稱不同；另記接管事件。",
+    "name": "workflow 選擇",
+    "precedence": "原 match 與 check 不是任意最後寫入者獲勝；checked_match 有既有匹配、使用者明選、unconfirmed 等限制。",
+    "producers": [
+      "registry match、capability delivered_by、checked_match、run verdict"
+    ],
+    "references": [
+      {
+        "docstring": "Logs 405, 409: the confirmed check credited one workflow for every result a workflow gives, and routing\nmade no claim or claimed only other workflows -- that workflow is the match, so the reply, the card and\nthe next step read the same verdict.",
+        "end_line": 286,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/graph/router_invocation.py",
+        "function": "_with_checked_match",
+        "line": 270,
+        "source_sha256": "d08cbbe735adafbb6e639b75bed68c79faa54ea05968b4aba98b42214008b28f"
+      },
+      {
+        "docstring": "The decision with the check's single credited workflow as its match, or the decision unchanged.",
+        "end_line": 116,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/checked_match.py",
+        "function": "checked_match",
+        "line": 92,
+        "source_sha256": "4235b1013da7ff73c38a81e3f1f0bde6392e368d8746ed3cc27674aa3bd34198"
+      },
+      {
+        "docstring": "The record a run is planned or held under; `no_check_model` only when nothing is configured to read it.",
+        "end_line": 78,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/run_check.py",
+        "function": "run_verdict",
+        "line": 71,
+        "resolved_from_reexport": "interpretation/run_verdict.py",
+        "source_sha256": "55c7ea6a66515f06f3a0098e206be1d0d1abd353dbe1b7c5f2f62edd7191b494"
+      },
+      {
+        "docstring": "The run actions that may answer the request: the methods its goal's words name, the check's credited ones,\nthen routing's (at most four).\n\np4c C48 (\"Is DRAGON able to link fecal metabolomics with colon-biopsy transcriptomics ...?\"): the check read only\na methods question and the turn's decision carried no routed action, so the agent had no contract to read and\nthe deciding fact (the same 58 people or not) was never asked; in p3 and p4b it was.",
+        "end_line": 77,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/fact_check.py",
+        "function": "fact_candidates",
+        "line": 56,
+        "source_sha256": "921e0253ba3d80b25066d58a65eaea627b0099ad56acf039b9f3c55ed53016c2"
+      }
+    ]
+  },
+  {
+    "category": "K6",
+    "consumers": [
+      "count_update、resolve_unknowns、weigh_sample_doubts、kept_facts、decide_core"
+    ],
+    "kind": "候選數量、舊維度及 fact agent 多處決策",
+    "limit": "去重與抑制問題可能是正確行為；原文兩種讀取均錯也不會被一致性偵測抓到。",
+    "metric": "同段候選數量被兩個入口指定不同 property，或可見 legacy needs_fact 最後未保留問題／R1 拒收。",
+    "name": "不確定事實與追問",
+    "precedence": "fact checked 時舊非程式追問轉 shadow；程式數量追問仍優先；R1 要求能力讀取也認為同段不確定。unknown sample count 仍有獨立處理。",
+    "producers": [
+      "unknown_facts、count_alternatives、open_choices、fact agent"
+    ],
+    "references": [
+      {
+        "docstring": "Counterfactuals share the same possible workflows, independent of unknown ordering.\n\nEach dimension is a conjunctive workflow constraint. Remove guesses for all unresolved dimensions,\nfit each one's possible values, then intersect the workflows possible under every other dimension.\nA uniformly empty one-dimensional probe is definitive only after the other guesses were removed.",
+        "end_line": 253,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/needed_facts.py",
+        "function": "resolve_unknowns",
+        "line": 215,
+        "source_sha256": "e26882d38225177a9cf2a89ea55298a47f5acfdda6fd5fc6db11d3695516204b"
+      },
+      {
+        "docstring": "Verdict layer step 2: (dimension, the user's words) for each unknown fact whose words are in the request.\n\nWords that also state a result choice are that choice (step 2b), not a second unknown: pre-measure F37 (\"I have\nnot decided whether edges should mean TF regulation or gene-gene coexpression\") was read as a choice and as an\nunknown omics-layer count, which would have asked how many omics data types the user has.",
+        "end_line": 279,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/needed_facts.py",
+        "function": "verified_unknowns",
+        "line": 256,
+        "source_sha256": "e26882d38225177a9cf2a89ea55298a47f5acfdda6fd5fc6db11d3695516204b"
+      },
+      {
+        "docstring": "The result's wait on a candidate count, or its gap when every candidate rules it out; None when no candidate\nchanges what can run.\n\n`keys`: the result's credited entries before the data size is judged. With several credited results\n(`single_result` False), a count applies to one only when its words overlap that result's words (a count could be\nanother dataset's); a result no workflow is credited with does not make several. Returns the fields to set:\nstatus, delivered_by, method (without the unsettled count), limits, and for a wait the outcomes.",
+        "end_line": 110,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/count_alternatives.py",
+        "function": "count_update",
+        "line": 78,
+        "source_sha256": "5dc65c8668d285fde424256bc2de92eac1a964db13e6733d47efa5e63142234f"
+      },
+      {
+        "docstring": "ROUND-07: one result's sample count when the user is unsure of it; returns (methods, applicable unknowns,\ncandidate counts still to judge).\n\nG3: `counted` -- (samples, path) code counted in the expression file the request names, given only for a request\nasking one result -- settles the doubt when it is one of the user's candidates (or the user gave none, only said\nthey do not know): the methods take the file's count, and the doubt is neither asked nor judged again. A count\nthat is none of the candidates settles nothing. G2: otherwise a stated count beside a count the user said they do\nnot know is taken off, as before, and recorded as set aside (`record`, the turn's `FactRecord`).",
+        "end_line": 144,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/count_alternatives.py",
+        "function": "weigh_sample_doubts",
+        "line": 113,
+        "source_sha256": "5dc65c8668d285fde424256bc2de92eac1a964db13e6733d47efa5e63142234f"
+      },
+      {
+        "docstring": "R1-R6 over the agent's proposals; what is kept is what the turn may ask (or say, R5).",
+        "end_line": 174,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/fact_check.py",
+        "function": "kept_facts",
+        "line": 110,
+        "source_sha256": "921e0253ba3d80b25066d58a65eaea627b0099ad56acf039b9f3c55ed53016c2"
+      },
+      {
+        "docstring": "Phase 2: the fact agent at the point the legacy dimensions would wait on a fact (`_with_capability_check`).\n\nWhen it ran, the legacy questions are recorded (shadow) and the check's waits are lifted, so the turn's asks\nare the agent's alone (decided by `decide_core`); when it did not run, the legacy questions stand.\nReturns (result, decision, check).",
+        "end_line": 119,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/graph/fact_check_call.py",
+        "function": "apply_fact_check",
+        "line": 97,
+        "source_sha256": "f0ab85183c076de5b798f6f04144378b2efadf32b30611a5ffec42bc2fd6878e"
+      },
+      {
+        "docstring": "The counts the user gave as candidates, recorded -- with an unknown count stating the same candidates in\nthe same words as one more read of it -- and compiled back as `count_update` takes them.",
+        "end_line": 269,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/request_facts.py",
+        "function": "FactRecord.read_alternatives",
+        "line": 254,
+        "source_sha256": "fd308f5c555e00d9589f9a4223a8256e9725d293e7e31ee5f75ad5453bb2b21e"
+      }
+    ]
+  },
+  {
+    "category": "K7",
+    "consumers": [
+      "without_ruled_out、data plan、核心資料追問、Planner"
+    ],
+    "kind": "資料的多種讀取與驗證來源",
+    "limit": "僅在有 explicit input_artifact 證據與重疊引文時比；不把「方法需要」等同「使用者擁有」。",
+    "metric": "同一原文區段，同時被明確語意證據當作擁有某輸入，及 capability 當作該輸入不存在。",
+    "name": "輸入存在／種類／排除",
+    "precedence": "語意輸入線索、使用者否定與真實檔案驗證意義不同；without_ruled_out 可移除前段 credit；veto 另有資料讀取。",
+    "producers": [
+      "語意 input_artifacts、ruled_out_inputs/only_inputs、data_facts、veto A3、檔案預檢"
+    ],
+    "references": [
+      {
+        "docstring": "The check with every credit the user's ruled-out inputs make impossible taken off, with its reason.\n\nA network is absent when the row reads no existing network, or when the routing reading's stated inputs are known\nand hold none (smoke S1: \"I only have expr_liver.tsv\" typed the CONDOR ask's input_network as regulator_gene, the\nkind CONDOR takes, not one the user has).",
+        "end_line": 115,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/ruled_out.py",
+        "function": "without_ruled_out",
+        "line": 80,
+        "source_sha256": "8cc7ef111ae5ee220ce59a5bd4ec358f5377cededc01ee3952adab5ba60881a9"
+      },
+      {
+        "docstring": "Plan items 4-5 (Logs 380, 383): the turn's data-needs plan, and each listed workflow judged by it.\n\nWhat the question needs is read from the question (`plan_needs`), not\ninferred from the workflows routing listed; the data-facts call reads what\nthe request has whenever the question or a listed workflow needs TF priors\nor miRNA data the request does not bind as files. The plan and the\nper-workflow judgement go on the decision for every renderer; no workflow is\nselected, ranked or removed here.",
+        "end_line": 267,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/graph/router_invocation.py",
+        "function": "_with_applicability",
+        "line": 220,
+        "source_sha256": "d08cbbe735adafbb6e639b75bed68c79faa54ea05968b4aba98b42214008b28f"
+      },
+      {
+        "docstring": "The plan for this turn: each needed kind's state, and the reply's action for it.\n\n*bound*: the input fields the request binds as files; *words*: the input\nartifacts its wording names, used only when no reading exists.",
+        "end_line": 173,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/data_plan.py",
+        "function": "build_data_plan",
+        "line": 140,
+        "source_sha256": "d9f85070e7ec72db3b0899ab123004d5630b5002f6b581031d65fe6f5071bae0"
+      },
+      {
+        "docstring": "The core data a chosen workflow cannot run without (`workflow_data` core), never mentioned -- neither had nor\nlacked, in words or file names (A3): asked once, in the same reply, never a veto (user decision 2026-10-19). Data\nthe user says they lack is C6 (above); \"only these\" leaves nothing unmentioned.",
+        "end_line": 435,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/contract_veto.py",
+        "function": "_core_data_question",
+        "line": 422,
+        "source_sha256": "520138b8c5593bb0d56f4b01a58fdf87ff77121cea557a6ad982b3d86baa9b8e"
+      }
+    ]
+  },
+  {
+    "category": "K8",
+    "consumers": [
+      "FactRecord、with_request_method、method_fitting、count_update、veto gates"
+    ],
+    "kind": "要求／整段重填，另有否決層讀取",
+    "limit": "belongs_to 缺失且一句含多層數量時，只能標候選疑點；不同資料／群組不直接認定衝突。",
+    "metric": "重疊證據的同類數量在要求與整段重填；其中讀出不同值的疑點另計。",
+    "name": "數量與歸屬",
+    "precedence": "一般數量要求層先取值、缺才補整段；ROUND-03 共有紀錄；ROUND-07 加入候選擱置與檔案數量，但未取消所有 raw 重填。",
+    "producers": [
+      "ask sample_count/feature_counts、conditions 同名欄位、veto focus counts"
+    ],
+    "references": [
+      {
+        "docstring": "One reading's method: its counts and settings recorded, and the method compiled back from the record.\n\n`item`: an ask (reader \"result\", `result` its words) or the reading's request-level conditions (reader\n\"request\"). The named method is the reading's own and is not a fact of this round.",
+        "end_line": 115,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/request_facts.py",
+        "function": "FactRecord.read_method",
+        "line": 86,
+        "source_sha256": "fd308f5c555e00d9589f9a4223a8256e9725d293e7e31ee5f75ad5453bb2b21e"
+      },
+      {
+        "docstring": "Where a request-level value applied to a result disagrees with the result's own, the one the merge used.",
+        "end_line": 406,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/request_facts.py",
+        "function": "FactRecord.note_conflicts",
+        "line": 388,
+        "source_sha256": "fd308f5c555e00d9589f9a4223a8256e9725d293e7e31ee5f75ad5453bb2b21e"
+      },
+      {
+        "docstring": "An ask's method with the request's named method, settings and data size where it states none of its own.\n\nApplied only when the request asks for one result: with two, a setting given for one workflow would hold the other\nto it (\"run PANDA ..., then CONDOR on it\"), and a count could be another dataset's.",
+        "end_line": 174,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/method_conditions.py",
+        "function": "with_request_method",
+        "line": 157,
+        "source_sha256": "021cbb445701c696ba537514a40938cc59a9c3cce577f0f2e80617c9b8943ff4"
+      },
+      {
+        "docstring": "The core reading with the B facts the focused read states, every quote and value checked.",
+        "end_line": 913,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/slim_reader.py",
+        "function": "merge_focus",
+        "line": 849,
+        "source_sha256": "d46cc242e7311f6a308efa2329f3c69c0a12c8df4db56132a4b09bfa3cc67381"
+      },
+      {
+        "docstring": "(reason, contract words, user words) for each count limit the stated counts break.",
+        "end_line": 259,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/contract_veto.py",
+        "function": "_count_violations",
+        "line": 242,
+        "source_sha256": "520138b8c5593bb0d56f4b01a58fdf87ff77121cea557a6ad982b3d86baa9b8e"
+      },
+      {
+        "docstring": "An unsure value that makes the same workflow feasible or infeasible: one question (never a veto).",
+        "end_line": 414,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/contract_veto.py",
+        "function": "_flip_questions",
+        "line": 375,
+        "source_sha256": "520138b8c5593bb0d56f4b01a58fdf87ff77121cea557a6ad982b3d86baa9b8e"
+      }
+    ]
+  },
+  {
+    "category": "K9",
+    "consumers": [
+      "setting_issue、typed_setting、verified_controls、run binding、Executor"
+    ],
+    "kind": "重填＋不同消費規則，部分已收斂",
+    "limit": "空字串 vs empty 或不同格式可能語意相同，不自動算錯；重放改善需引用 ROUND-06 的對照，不混成此掃描因果。",
+    "metric": "同 setting 名稱且重疊原文的整段／要求讀取，value_quote 不同；另列原始值為空與去向事件。",
+    "name": "設定解讀與參數綁定",
+    "precedence": "ROUND-06 兩條 run 已共用 _bind_run_settings；明確 name=value 的非預設值可優先，未綁定設定使 run 等待；raw settings 仍重填。",
+    "producers": [
+      "要求 settings、整段 settings、request_parameters、hydration"
+    ],
+    "references": [
+      {
+        "docstring": "ROUND-06: the one binding of the check's settings to a run, for every path that plans one.\n\nReturns the check with each stated setting the run cannot carry left unread (so the verdict holds the run), the\ncontrols the check verified, and which controls the request already set as name=value. Until ROUND-06 only\n`_on_run_verdict` bound them; a run adopted on a guidance turn (`_with_requested_run`) went ahead with defaults.",
+        "end_line": 389,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/graph/router_invocation.py",
+        "function": "_bind_run_settings",
+        "line": 373,
+        "source_sha256": "d08cbbe735adafbb6e639b75bed68c79faa54ea05968b4aba98b42214008b28f"
+      },
+      {
+        "docstring": "Items 1-2 (2026-10-14): a run goes ahead only under a verdict that approves it.\n\nSince 3578b00 every verdict but a full gap left the run as routing chose it, so a run of a workflow the check\ncredited nothing to (`other_workflow`), or of one giving only part of what was asked (`partial_gap`), was planned\nas if it gave everything (engineering review of 923e493). Now:\n- an approving verdict keeps the run and travels with it (`RunVerdict`, required by the Plan Evaluator);\n- when the check credits another workflow than one the user did not name, routing's claim is dropped and the\n  guidance turn's own rules adopt the credited workflow and plan it as asked (`checked_match`,\n  `_with_requested_run`), the same as for the same words asked on a guidance turn;\n- any other verdict, or a re-plan those rules do not make, holds the run: nothing is planned, the reply says why,\n  and the run is offered for the user to confirm (`interpretation.run_hold`).",
+        "end_line": 449,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/graph/router_invocation.py",
+        "function": "_on_run_verdict",
+        "line": 404,
+        "source_sha256": "d08cbbe735adafbb6e639b75bed68c79faa54ea05968b4aba98b42214008b28f"
+      },
+      {
+        "docstring": "Verdict layer step 1: a run both routing readings asked for, of the one workflow the final verdict credits.\n\nThe run was decided before the capability check, from routing's match and the task text alone. r17 (run17, 32\nsessions of supported run commands): 23 were answered as guidance -- the text gate wanted the workflow's name or\na verb from its list (\"Compute now: ... produce ...\" -> BONOBO, DRAGON, SAMBAR), or routing fell back and the check\ncredited one workflow only afterwards (PI1 PUMA, PL5 LIONESS-DRAGON, PL7 COBRA).\n\nThree readings must agree: the intent router and the semantic interpreter asked for execution\n(`execution_requested`), and the confirmed check read every result as asked to be produced (`asked_as`\nrequest, not a question about which method gives it) and credits this one workflow, which routing matched or\nthe check adopted. Every result must be one the workflow gives directly: a result nothing registered gives, or one\nneeding a step outside NetZoo, keeps the turn a reply that says so (r17 MX1: an upload beside the networks; NM14:\na significance test of differential co-expression after LIONESS-COEXPRESSION). The request's own operation bans still veto it afterwards (`graph.operation_authority`).",
+        "end_line": 347,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/graph/router_invocation.py",
+        "function": "_with_requested_run",
+        "line": 302,
+        "source_sha256": "d08cbbe735adafbb6e639b75bed68c79faa54ea05968b4aba98b42214008b28f"
+      },
+      {
+        "docstring": "A stated setting's value as the run takes it: from its value words, or -- when the reading left those empty --\nfrom the setting's own words, if they name it unambiguously and the check's own limits accept it.\n\nROUND-06 (p3/p5r C40): `{\"name\": \"BONOBO.bonobo_output_format\", \"quote\": \"saved as .csv files\", \"value\": \"\"}` --\nthe value was in the words naming the setting, the run read only the value words, and BONOBO was planned with .h5.\nTaken from the words only: an allowed choice they alone name (`enum_value`), or the single number they state; the\nvalue is then checked as a stated value is (`setting_issue`), so the range and choices are never bypassed.",
+        "end_line": 450,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/method_conditions.py",
+        "function": "run_setting_value",
+        "line": 433,
+        "source_sha256": "021cbb445701c696ba537514a40938cc59a9c3cce577f0f2e80617c9b8943ff4"
+      },
+      {
+        "docstring": "The settings the check verified for a run's workflow, as its control values (M2).\n\na24b K06 \"Please give it to me as an edge list, with fixed lambdas of 0.2 and 0.6\" and K09 \"just use single\nprecision\" were checked but never reached the run: controls were bound only from name=value text, so DRAGON\nwould have estimated its own lambdas. Numbers, allowed choices and explicit booleans are taken; every value passed the\ncontrol's range and the runtime's limits, or the check would not have approved the run.",
+        "end_line": 471,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/method_conditions.py",
+        "function": "verified_controls",
+        "line": 453,
+        "source_sha256": "021cbb445701c696ba537514a40938cc59a9c3cce577f0f2e80617c9b8943ff4"
+      },
+      {
+        "docstring": "The words of each stated setting of a run's workflow whose value cannot be passed to the run (M3 review).\n\nThe user's review of M2 (OTTER \"precision=half\"): a stated setting the check accepted never reached the run when\nits value was not one the run binding reads -- a value without a number, a name or list control, a boolean\nstated in other words -- so the run was approved and ran on the package default. A run carries every stated\nsetting or waits: these words are not verified, as a sentence the check did not read. A setting the request gave\nas name=value (`set_by_request`) is already the run's; one stated with no value and no on/off meaning (\"with\nfixed lambdas\") gives nothing to pass.",
+        "end_line": 507,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/method_conditions.py",
+        "function": "unbound_settings",
+        "line": 481,
+        "source_sha256": "021cbb445701c696ba537514a40938cc59a9c3cce577f0f2e80617c9b8943ff4"
+      },
+      {
+        "docstring": "Hydrate the small Router interface with deterministic task details.",
+        "end_line": 119,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/hydration.py",
+        "function": "hydrate_router_decision",
+        "line": 27,
+        "source_sha256": "099935693f048a2c873ed11fb46ff2680cf53f7948eb0100a2c928b190b701b1"
+      }
+    ]
+  },
+  {
+    "category": "K10",
+    "consumers": [
+      "core_view、respond、DO 專用 renderers、CLI cards"
+    ],
+    "kind": "核心決策＋有行為判斷的多 renderer",
+    "limit": "較舊紀錄缺 core.view，且歷史 mismatch 不等於目前程式仍會重現。",
+    "metric": "只採 trace 明確標記 core.view.mismatch=true，不從 DO/needs_input 這類合法狀態差異推造錯誤。",
+    "name": "最終判定與回覆",
+    "precedence": "非 DO 先走 core_view；DO 有多個 renderer 與後附說明；core.view 記錄 mismatch。不是所有 renderer 都有最後判定權。",
+    "producers": [
+      "full_gap、routing unsupported、run verdict、veto、decide_core、部分 renderer"
+    ],
+    "references": [
+      {
+        "docstring": "The turn's four-way call, read from its final decision.",
+        "end_line": 258,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/core_decision.py",
+        "function": "decide_core",
+        "line": 189,
+        "source_sha256": "cfb2d4605767a728fb649b2e7225521091456bb5b52d7442705d4acd33b8b642"
+      },
+      {
+        "docstring": "The whole reply for a CLARIFY, ASK, DECLINE or UNCHECKED call; None for DO (its renderers answer it).",
+        "end_line": 105,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/core_views.py",
+        "function": "core_view",
+        "line": 60,
+        "source_sha256": "02ea2941625b091fd943a9b326e69ae13d4466ae8992adf21aa166632d9fade1"
+      },
+      {
+        "docstring": null,
+        "end_line": 92,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/graph/response.py",
+        "function": "respond",
+        "line": 82,
+        "source_sha256": "0c8a6458e156680031c40f10b4af08a0f2b2cfa41f5644ac4bd6a8b32478efe1"
+      },
+      {
+        "docstring": null,
+        "end_line": 336,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/graph/response.py",
+        "function": "_respond",
+        "line": 95,
+        "source_sha256": "0c8a6458e156680031c40f10b4af08a0f2b2cfa41f5644ac4bd6a8b32478efe1"
+      },
+      {
+        "docstring": "The per-reading reply, or None when the existing reply already covers every reading.",
+        "end_line": 564,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/hypothesis_routes.py",
+        "function": "render_hypothesis_routes",
+        "line": 451,
+        "source_sha256": "7bd6b9c72e467fc0aea0590b49d8f2c732249f07148c1dd6b7737227cd21fc96"
+      },
+      {
+        "docstring": "The live DO after the veto; anything else is returned as it came (only a DO is ever changed).",
+        "end_line": 552,
+        "file": "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-closed-menu/scripts/netzoo_agent_core/interpretation/contract_veto.py",
+        "function": "vetoed_core",
+        "line": 530,
+        "source_sha256": "520138b8c5593bb0d56f4b01a58fdf87ff77121cea557a6ad982b3d86baa9b8e"
+      }
+    ]
+  }
+]
