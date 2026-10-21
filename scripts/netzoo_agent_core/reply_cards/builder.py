@@ -543,7 +543,7 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
         return ReplyCard(kind="unresolved", headline="I could not judge this request this turn, so nothing was selected.",
                          points=["Asking again re-runs the check; restating the result you want usually helps."])
     if kind == "ask_facts" and decision.core is not None:  # core decision phase 2
-        asked = [fact.question for fact in decision.core.facts if not fact.settled_by_input_check]
+        asked = [fact.question for fact in decision.core.facts]
         return ReplyCard(kind="clarification", headline="One fact decides your request; please tell me first.",
                          points=[clip(question, 300) for question in asked][:6])
     if kind == "clarify_goal" and decision.clarification_question:  # core decision phase 1

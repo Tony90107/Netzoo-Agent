@@ -208,7 +208,7 @@ def with_core(decision, core: CoreDecision):
             "reason": "A necessary fact check could not finish; no workflow is approved."})
     if core.kind == "ASK" and core.basis in ("fact_agent", "count_fact", "hybrid_requirement", "contract_veto_fact",
                                             "setting_unresolved"):
-        asked = [fact.question for fact in core.facts if not fact.settled_by_input_check]
+        asked = [fact.question for fact in core.facts]
         return decision.model_copy(update={
             "core": core, "action": "no_tool", "should_execute": False, "execution_requested": False,
             "intent_type": "answer_question", "matched_actions": [], "recommended_actions": [],
@@ -275,17 +275,17 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         # Phase 5b (spec 13.3): a count code judged is asked first, beside the agent's (the code's on the same words).
         counted = _facts(check, by_code=True, task=task)
         # ROUND-09 (R8): a question on candidates code weighed must be able to tell them apart, or it is not asked.
-        owned = [fact for fact in agent.accepted if not fact.settled_by_input_check and any(
+        # ROUND-21 (user decision): a fact the run's file check could settle is asked too (recorded R5 flags ignored).
+        owned = [fact for fact in agent.accepted if any(
             _same_words(task, fact.user_quote, words) and not splits_candidates(fact.question, values)
             for words, values in judged_count_words(check))]
         if owned:
             evidence["count_owned"] = [fact.question for fact in owned]
-        asked = [*counted, *(fact for fact in agent.accepted if not fact.settled_by_input_check and fact not in owned
+        asked = [*counted, *(fact for fact in agent.accepted if fact not in owned
                              and not any(_same_words(task, fact.user_quote, count.user_quote)
                                          for count in counted))][:MAX_ASKED]
         if asked:
-            settled = [fact for fact in agent.accepted if fact.settled_by_input_check]
-            return call("ASK", "count_fact" if counted else "fact_agent", facts=[*asked, *settled],
+            return call("ASK", "count_fact" if counted else "fact_agent", facts=asked,
                         workflows=list(dict.fromkeys(name for fact in asked for name in fact.workflows)))
     elif (facts := _facts(check, task=task)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":
         return call("ASK", "needs_fact", facts=facts, workflows=_names(k for f in facts for k in f.workflows))
@@ -328,6 +328,5 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     approved = (running and verdict is not None and not verdict.held and verdict.verdict in APPROVING_RUN_VERDICTS)
     held = verdict is not None and verdict.held
     basis = "run_held" if held else "run" if running else "results_given" if given else "routed"
-    settled = [fact for fact in agent.accepted if fact.settled_by_input_check] if agent is not None else []
     return call("DO", basis, workflows=workflows, partial=bool(declined and given), declined=declined,
-                run_allowed=approved, facts=settled)
+                run_allowed=approved)

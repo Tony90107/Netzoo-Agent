@@ -739,9 +739,6 @@ def whole_check_result(state, reply) -> dict | None:
 def with_capability_check_reply(result: dict, state, reply) -> dict:
     """Open any other reply with what was understood (the full gap has its own reply)."""
     from ..contracts import TaskDecision
-    from .ask_facts import with_settled_notes
-
-    result = with_settled_notes(result, state, reply)  # core decision phase 2 (R5): said, never asked
 
     decision = TaskDecision.model_validate(state["decision"])
     check = decision.capability_check
