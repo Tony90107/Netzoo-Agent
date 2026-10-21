@@ -27,7 +27,7 @@ __all__ = [
     "boolean_value", "combination_issues", "contract_forbids", "control_boolean_value", "conditions_for", "data_issue",
     "enum_value", "method_names",
     "named_workflows", "setting_issue", "setting_unresolved",
-    "setting_names", "stated_numbers",
+    "setting_names", "stated_numbers", "unpassed_setting",
 ]
 
 # The executor's or preflight's own constants, read when asked so a change to one is followed here.
@@ -274,6 +274,18 @@ def setting_issue(conditions: WorkflowConditions, setting: StatedSetting) -> str
 UNCLEAR_CHOICE = "does not identify one allowed choice"
 """How `setting_issue` ends when the words name no allowed choice: unsettled words, never a run the method cannot do
 (ROUND-17: they hold no other row of the run)."""
+
+_UNPASSED = (
+    re.compile(r'^NetZoo runs (?P<workflow>\S+) with its package defaults and passes no settings to it, so '
+               r'"(?P<words>.*)" cannot be applied$', re.S),
+    re.compile(r'^NetZoo\'s (?P<workflow>\S+) has no setting for "(?P<words>.*)"; the settings it passes are ', re.S),
+)
+
+
+def unpassed_setting(reason: str) -> tuple[str, str] | None:
+    """(workflow, the user's words) when the reason is `setting_issue`'s "no setting for" or "passes no settings"."""
+    found = next((match for pattern in _UNPASSED if (match := pattern.match(reason))), None)
+    return (found["workflow"], found["words"]) if found else None
 
 
 def contract_forbids(conditions: WorkflowConditions, setting: StatedSetting) -> bool:

@@ -24,7 +24,8 @@ from .strict_schema import strict_json_schema
 
 __all__ = ["APPROVING_RUN_VERDICTS", "CONDITIONS", "CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES",
            "RequirementKind", "RunVerdict", "RunVerdictName",
-           "SecondOpinionAnswer", "condition_check_model", "conditions_model", "proposal_model", "proposal_sentences",
+           "SecondOpinionAnswer", "condition_check_model", "conditions_model", "full_gap", "proposal_model",
+           "proposal_sentences",
            "reading_version", "reread_as_proposal", "reread_model", "schema_version", "second_opinion_model",
            "unstated_conditions"]
 
@@ -647,6 +648,13 @@ class CheckedRequirement(BaseModel):
     requirement they violate); every other row resting on them alone is held with it (`same_run.same_run_holds`)."""
 
 
+def full_gap(results: list[CheckedRequirement], unchecked: list[str]) -> bool:
+    """Every result is not available, every sentence was read, and no workflow could give a result with its own
+    settings in place of the stated ones (M1: that workflow is offered, and a run of it is held for the user)."""
+    return bool(results) and not unchecked and all(item.status == "not_available" and not item.defaults
+                                                   for item in results)
+
+
 class CapabilityCheck(BaseModel):
     """The turn's capability check, as the reply and the card read it."""
 
@@ -686,6 +694,9 @@ class CapabilityCheck(BaseModel):
     only_inputs: list[str] = Field(default_factory=list)
     only_inputs_quote: str = ""
     """Phase 4b: the input kinds the user says are all they have, with their verified words (the rest are absent)."""
+    claim_sentences: dict[str, list[str]] = Field(default_factory=dict)
+    """ROUND-20: for each registry-wide claim (causal, prediction, delivery), the request sentences holding its verified
+    words; a registry-wide reason is said only for a result in one of them (`stated_reasons.stated`)."""
     count_alternatives: list[dict[str, Any]] = Field(default_factory=list)
     """Phase 5b: each count the user gave as candidates ({of, quote, values}), its words and numbers verified."""
     uncertain_quotes: list[str] = Field(default_factory=list)

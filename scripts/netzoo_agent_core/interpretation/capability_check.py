@@ -26,7 +26,7 @@ from .needed_facts import (
     verified_unknown_domains, verified_unknown_scopes, verified_unknowns,
 )
 from ..contracts.capability_check import (
-    CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences, reading_version,
+    CONDITIONS, CapabilityCheck, CheckedRequirement, full_gap as _full_gap, proposal_sentences, reading_version,
 )
 from .count_alternatives import (count_update, file_count_note, verified_count_alternatives, weigh_credited_counts,
                                  weigh_sample_doubts)
@@ -40,8 +40,9 @@ from .request_facts import FactRecord
 from .required_conditions import quantity_note
 from .sentence_ownership import owned_sentences, request_sentences
 from .requirement_split import (
-    ask_conditions, condition_requirements, delivery_requirements, form_condition_spans, split_additions,
+    ask_conditions, condition_requirements, delivery_requirements, form_condition_spans, split_additions, unmet,
 )
+from .stated_reasons import _form_reasons, claim_sentences, stated  # noqa: F401 -- research tools import _form_reasons
 from .unconfirmed_routes import checked_body_result
 
 __all__ = [
@@ -275,7 +276,7 @@ def apply_condition_answers(check: CapabilityCheck, pairs: list[tuple[int, str, 
         item = requirements[index]
         delivered = [key for key in item.delivered_by if entry(key).action not in actions]
         names = {action: entry(keys[0]).workflow for _index, action, keys, _quote in pairs}
-        reasons = [f'{names[action]} does not meet "{quote}"' for action, quotes in actions.items() for quote in quotes]
+        reasons = [unmet(names[action], quote) for action, quotes in actions.items() for quote in quotes]
         status = ("partial" if delivered else "not_available") if item.status == "partial" else _status(delivered)
         requirements[index] = item.model_copy(update={
             "delivered_by": delivered, "status": status, "violations": list(dict.fromkeys(reasons))})
@@ -363,22 +364,16 @@ def _fitting(keys: list[str], item) -> list[str]:
     return [k for k in keys if want is None or want in known[k].granularity]
 
 
-def _full_gap(results: list[CheckedRequirement], unchecked: list[str]) -> bool:
-    """Every result is not available, every sentence was read, and no workflow could give a result with its own
-    settings in place of the stated ones (M1: that workflow is offered, and a run of it is held for the user)."""
-    return bool(results) and not unchecked and all(item.status == "not_available" and not item.defaults
-                                                   for item in results)
-
-
 def build_capability_check(
-    task: str, proposal, verified_claims: frozenset[str] = frozenset(),
+    task: str, proposal, verified_claims: dict[str, str] | frozenset[str] = frozenset(),
     counted_samples: tuple[int, str] | None = None,
 ) -> tuple[CapabilityCheck, list[dict]]:
     """The verified check for one proposal, and what was rejected.
 
     A registry-wide reason (no causal proof, no prediction) is kept only when the
     study-purpose reader verified that claim with its cue words: the smoke run cited
-    both for a splicing request.
+    both for a splicing request. Given with the claims' words, the reply says one only for a
+    result in a sentence holding them (ROUND-20, `stated_reasons.claim_sentences`).
 
     A passage asked for several times is one requirement; when one reading names an
     entry and another names none (Log 387 dev round: a network and a forecast quoted as
@@ -548,6 +543,7 @@ def build_capability_check(
                            stated_quotes=stated_quotes(task, proposal),
                            uncertain_quotes=uncertain_quotes(task, proposal),
                            ruled_out=ruled_out_inputs(task, proposal),
+                           claim_sentences=claim_sentences(task, verified_claims, deliveries),
                            count_alternatives=[{k: v for k, v in item.items() if k not in ("span", "read_by")}
                                                for item in alternatives],
                            facts=record.facts_list(), fact_conflicts=list(record.conflicts),
@@ -568,47 +564,9 @@ def _lower_first(text: str) -> str:
     return text[:1].lower() + text[1:] if text[1:2].islower() else text
 
 
-# G6 (feasibility eval F23, F25): a typed attribute the registry rules out was the whole reason a result is not
-# available, but only cited near misses were said, so "spatial ... borrowing signal from neighboring spots" and
-# "overlapping communities" read "not matched to any registered workflow". The reasons are the capability sheet's
-# own result_forms and data_units notes; each is said only when that attribute alone leaves no produces entry.
-_FORM_REASONS = {
-    ("spatial", "uses_neighbors"): (
-        "No registered workflow uses where samples sit in space or which samples are neighbours; each sample is "
-        "modelled on its own."),
-    ("group_membership", "several_groups"): (
-        "Registered grouping puts each item in exactly one group (CONDOR: one community per regulator or gene; "
-        "SAMBAR: one subtype per sample); none returns overlapping memberships."),
-    ("time_model", "dynamic"): (
-        "No registered workflow models how the system changes from one time point to the next; time points can "
-        "only be compared as separate results."),
-    ("data_unit", "single_cells"): (
-        "Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none "
-        "models single cells."),
-}
-_REGULATOR_LABELS = {"tf": "TF", "mirna": "miRNA", "lncrna": "lncRNA", "other": "other"}
-
-
-def _form_reasons(item: CheckedRequirement) -> list[str]:
-    """Why the result's own typed attributes leave no registered result, from the capability sheet."""
-    attrs, reasons = item.attrs, []
-    for (name, value), text in _FORM_REASONS.items():
-        allowed = data_units() if name == "data_unit" else result_forms().get(name, frozenset())
-        if attrs.get(name) == value and value not in allowed:
-            reasons.append(text)
-    # No layer-count reason: replayed over the recorded full gaps, 11 of 12 came from motif, PPI and expression
-    # read as three omics layers (binding affinity, edge conservation), so it named a reason the request never raised.
-    produces = [found for found in sheet_entries().values() if found.kind == "produces"]
-    offered = set().union(*(found.regulators for found in produces if found.regulators))
-    if extra := sorted(set(attrs.get("regulator_kinds") or ()) - offered):
-        reasons.append("Registered regulatory workflows contain "
-                       + " and ".join(_REGULATOR_LABELS.get(kind, kind) for kind in sorted(offered))
-                       + " regulators; none models " + ", ".join(_REGULATOR_LABELS.get(kind, kind) for kind in extra)
-                       + " regulators.")
-    return reasons
-
-
-def _why_not(item: CheckedRequirement) -> list[str]:
+def _why_not(item: CheckedRequirement, check: CapabilityCheck | None = None) -> list[str]:
+    if (item := stated(item, check)) is None:  # ROUND-20: only the reasons code can verify
+        return []
     cited = []
     for key in item.not_by:
         found = entry(key)
@@ -627,14 +585,15 @@ def _why_not(item: CheckedRequirement) -> list[str]:
     return list(dict.fromkeys(reasons))[:2]
 
 
-def _line(item: CheckedRequirement, provisional: bool = False, gap_unconfirmed: bool = False) -> str:
-    line = _status_line(item, provisional, gap_unconfirmed)
+def _line(item: CheckedRequirement, provisional: bool = False, gap_unconfirmed: bool = False, check=None) -> str:
+    line = _status_line(item, provisional, gap_unconfirmed, check)
     if item.file_checked and item.status in ("available", "with_step", "partial"):
         line = f"{line} {file_checked_note(item)}"
     return f"{line} {note}" if (note := file_count_note(item)) else line
 
 
-def _status_line(item: CheckedRequirement, provisional: bool = False, gap_unconfirmed: bool = False) -> str:
+def _status_line(item: CheckedRequirement, provisional: bool = False, gap_unconfirmed: bool = False,
+                 check: CapabilityCheck | None = None) -> str:
     quote = f'"{item.quote}"'
     if item.status == "needs_fact":
         return fact_line(item)
@@ -654,7 +613,7 @@ def _status_line(item: CheckedRequirement, provisional: bool = False, gap_unconf
         return f"{quote} -- {PROVISIONAL_NOT_MATCHED[0].lower()}{PROVISIONAL_NOT_MATCHED[1:]}"
     if gap_unconfirmed and item.status == "not_available":
         return f"{quote} -- {GAP_UNCONFIRMED_NOT_MATCHED[0].lower()}{GAP_UNCONFIRMED_NOT_MATCHED[1:]}"
-    reasons = _why_not(item)
+    reasons = _why_not(item, check)
     if not reasons:
         return f"{quote} -- not matched to any registered workflow."
     if item.limits:
@@ -672,7 +631,7 @@ def understanding_paragraph(check: CapabilityCheck, offers_methods: bool = True)
     if not results and not check.unchecked and not check.provisional:
         return None
     lines = ["What I understood you are asking for:"] if results else []
-    lines += [f"{index}. {_line(item, check.provisional, check.gap_unconfirmed)}{quantity_note(check, item)}"
+    lines += [f"{index}. {_line(item, check.provisional, check.gap_unconfirmed, check)}{quantity_note(check, item)}"
               for index, item in enumerate(results, 1)]  # ROUND-10: an unstated quantity condition is said
     lines += [f'Not checked against the registered workflows: "{sentence}"' for sentence in check.unchecked]
     if check.provisional:
@@ -804,7 +763,7 @@ def unavailable_rows(check: CapabilityCheck) -> list[tuple[str, str]]:
     for item in check.results():
         if item.status == "not_available":
             reasons = ([PROVISIONAL_NOT_MATCHED] if check.provisional else
-                       [GAP_UNCONFIRMED_NOT_MATCHED] if check.gap_unconfirmed else _why_not(item))
+                       [GAP_UNCONFIRMED_NOT_MATCHED] if check.gap_unconfirmed else _why_not(item, check))
             rows.append((item.quote, reasons[0] if reasons else "Not matched to any registered workflow."))
     rows += [(sentence, "Not checked against the registered workflows.") for sentence in check.unchecked]
     return rows
