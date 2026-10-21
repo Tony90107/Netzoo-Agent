@@ -26,7 +26,7 @@ default kmax 4 is checked against a stated sample count below 4 (`default_confli
 Gold: the blind gold class of the session (strictness audit h1-h4, core-judgment items) and, for gold ASK items, the
 kind of the deciding fact (`GOLD_FACT`, my reading of each item's gold_fact / deciding_fact).
 
-Usage: python3 measure.py CHECKS.json CORES.json OUT.json
+Usage: python3 measure.py CHECKS.json CORES.json OUT.json [--scripts DIR]  (DIR: the code whose checks are measured)
 """
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 WT = HERE.parents[2]
 MAIN = WT.parents[1] / "netzoo_agent"
-sys.path.insert(0, str(WT / "scripts"))
+sys.path.insert(0, sys.argv[sys.argv.index("--scripts") + 1] if "--scripts" in sys.argv else str(WT / "scripts"))
 
 from netzoo_agent_core.capability_sheet import entry  # noqa: E402
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
@@ -49,7 +49,7 @@ from netzoo_agent_core.interpretation.input_bindings import request_input_bindin
 from netzoo_agent_core.interpretation.request_spans import _locate  # noqa: E402
 from netzoo_agent_core.settings import OUTPUT_ROLE_FIELDS  # noqa: E402
 from netzoo_agent_core.workflow_conditions import (  # noqa: E402
-    StatedSetting, conditions_for, setting_issue, setting_unresolved)
+    StatedSetting, boolean_value, conditions_for, enum_value, setting_issue)
 from workflow_registry import ACTION_DEFINITIONS  # noqa: E402
 
 GOLD_FACT = {
@@ -115,6 +115,19 @@ def _properties(action, result):
     if action == "run_condor":
         found.append(("input_network", False))
     return found
+
+
+def setting_unresolved(limits, setting) -> bool:
+    """The measurement's own rule (not the agent's): a boolean whose words read as neither true nor false, or an enum
+    value naming no allowed choice. Kept here so the measurement does not depend on the code it measures."""
+    control = setting.name.split(".", 1)[-1]
+    limit = limits.settings.get(control)
+    value = (setting.value or "").strip()
+    if limit is None or not value:
+        return False
+    if limit.control_type == "boolean":
+        return boolean_value(value, setting.quote) is None
+    return limit.control_type == "enum" and enum_value(limit, value) is None
 
 
 def _doubts(check, quote: str) -> set[str]:
