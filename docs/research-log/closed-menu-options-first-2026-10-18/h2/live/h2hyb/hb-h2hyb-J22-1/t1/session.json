@@ -1,0 +1,571 @@
+{
+  "version": 1,
+  "session_id": "hb-h2hyb-J22-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792320014.3809438,
+  "updated_at": 1792320014.381006,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We want to group tumours into 2 to 6 subtypes based on pathway-level somatic mutation scores, with gene lengths, a cancer-gene list and a KEGG GMT in hand. Pathology review is still deciding how many tumours qualify: it will end up as 5 or 9."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Will the final number of tumours be 5?\n  You wrote: \"it will end up as 5 or 9\". SAMBAR's contract: \"cluster=true requires 2 <= kmin <= kmax <= number of mutation samples\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.0,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_sambar",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "mutation_matrix"
+            ],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": [
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "sample_cluster_assignment",
+              "source": "explicit",
+              "text_span": "We want to group tumours into 2 to 6 subtypes.",
+              "rationale": "The user is looking for a classification of tumors into subtypes."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The grouping is intended to classify all tumors into subtypes collectively."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The analysis involves tumors as samples."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "mutation_matrix",
+              "source": "explicit",
+              "text_span": "somatic mutation",
+              "rationale": "The user explicitly mentioned somatic mutation as a current input."
+            },
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The selected artifact ontology uniquely defines the canonical scientific operation."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Will the final number of tumours be 5?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "We want to group tumours into 2 to 6 subtypes based on pathway-level somatic mutation scores",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 1,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "one_group",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "gene lengths",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "a cancer-gene list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "a KEGG GMT",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {
+          "Pathology review is still deciding how many tumours qualify: it will end up as 5 or 9.": {
+            "kind": "choices",
+            "values": [
+              5,
+              9
+            ]
+          }
+        },
+        "unknown_scopes": {},
+        "unknowns": [
+          [
+            "sample_count",
+            "Pathology review is still deciding how many tumours qualify: it will end up as 5 or 9."
+          ]
+        ],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "group tumours into 2 to 6 subtypes",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [
+          {
+            "of": "samples",
+            "quote": "5 or 9",
+            "values": [
+              5,
+              9
+            ]
+          }
+        ],
+        "uncertain_quotes": [
+          "Pathology review is still deciding how many tumours qualify: it will end up as 5 or 9."
+        ],
+        "stated_quotes": [
+          "somatic mutation scores"
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Will the final number of tumours be 5?",
+            "user_quote": "it will end up as 5 or 9",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": null,
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "group tumours into 2 to 6 subtypes"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [
+          {
+            "question": "Will the final number of tumours be 5?",
+            "user_quote": "it will end up as 5 or 9",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 39703,
+    "output_tokens": 12535,
+    "total_tokens": 52238,
+    "calls": [
+      {
+        "call_id": "c43fd29f-d04d-4576-84b5-38ff7ebefeec",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792319795-9veFBwNPpNMncfra6DJs",
+        "input_tokens": 5341,
+        "output_tokens": 237,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5578,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 550,
+        "price_snapshot": null,
+        "duration_ms": 3166,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "d4578b42-f250-4106-acc8-690abff1532f",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792319798-5atxWSsKSml1uQTM9R1N",
+        "input_tokens": 5616,
+        "output_tokens": 161,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5777,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 574,
+        "price_snapshot": null,
+        "duration_ms": 2121,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4f4fa265-76d5-489a-9a28-d1f4efccca59",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 637,
+        "output_tokens": 50,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 687,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 952,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "fa84bf8a-bbd7-4547-bf9e-90cba0aff07c",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792319801-j6ncEsKM3N3VHHQkbOFQ",
+        "input_tokens": 1638,
+        "output_tokens": 47,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1685,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 159,
+        "price_snapshot": null,
+        "duration_ms": 1048,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7b8c1419-0487-4f30-80c6-a885f84e8268",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792319802-qjOebEpUyzBc73hpZr2l",
+        "input_tokens": 18489,
+        "output_tokens": 8286,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 26775,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 139303,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e89a556f-3b0b-4ce7-ada4-51e058faabe4",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792319942-9saPisrGJhAxhjmu5IDR",
+        "input_tokens": 564,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 608,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 111,
+        "price_snapshot": null,
+        "duration_ms": 1158,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "633124ab-7900-4ed1-a9e2-ed5da7541fd1",
+        "role": "capability_reread",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792319943-cFSnAZKN2s8nKEkIieNx",
+        "input_tokens": 6214,
+        "output_tokens": 3607,
+        "cache_read_tokens": 4576,
+        "cache_write_tokens": 0,
+        "total_tokens": 9821,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 69765,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "945cecab-3de4-4cad-b4b3-c9fdf3cc7b5f",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320012-sGkKyhbnP3OUgmLnacxA",
+        "input_tokens": 1204,
+        "output_tokens": 103,
+        "cache_read_tokens": 1152,
+        "cache_write_tokens": 0,
+        "total_tokens": 1307,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 156,
+        "price_snapshot": null,
+        "duration_ms": 1440,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "7e22a76d-ebd4-481f-86c9-2d0846ff9fe4"
+}

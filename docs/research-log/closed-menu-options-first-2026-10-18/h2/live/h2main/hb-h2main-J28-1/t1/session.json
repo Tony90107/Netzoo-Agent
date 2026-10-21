@@ -1,0 +1,612 @@
+{
+  "version": 1,
+  "session_id": "hb-h2main-J28-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792320111.7296572,
+  "updated_at": 1792320111.729713,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We have 18,000 genes measured in 96 colon samples from three hospitals and two sequencing batches, with a numeric design matrix (one-hot hospital, batch, age) keyed by the same sample IDs. I want to see how much of the gene co-expression is associated with hospital and batch, and get an adjusted co-expression matrix out of it."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"see how much of the gene co-expression is associated with hospital and batch\" -- available from COBRA.\n2. \"get an adjusted co-expression matrix out of it\" -- available from COBRA.\n\nSelected path: **COBRA**.\n\nYour question asks for a cohort-level co-expression network. **COBRA** fits that result and scale.\n\n**COBRA** — Model covariate-associated gene co-expression with COBRA. COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `design_file`: sample covariate design matrix\n\nOutputs:\n\n- `coexpression_network`: Inferred gene-to-gene associations.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_cobra",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_cobra"
+      ],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "batch_correction",
+          "covariate_association"
+        ],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "batch_correction",
+              "covariate_association"
+            ],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "I want to see how much of the gene co-expression is associated with hospital and batch.",
+              "rationale": "The user wants to see how much of the gene co-expression is associated with hospital and batch effects."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "get an adjusted co-expression matrix out of it.",
+              "rationale": "The user is seeking an adjusted co-expression matrix as the final output."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The request involves analyzing co-expression across multiple samples, suggesting an aggregate result."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The analysis involves gene co-expression, indicating genes as the primary entities."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The analysis is based on samples from different hospitals and batches."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user provided a current dataset of gene expression measurements for analysis."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "batch_correction",
+              "source": "explicit",
+              "text_span": "how much of the gene co-expression is associated with hospital and batch.",
+              "rationale": "The user wants to see how much of the gene co-expression is associated with hospital and batch."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "covariate_association",
+              "source": "explicit",
+              "text_span": "how much of the gene co-expression is associated with hospital and batch.",
+              "rationale": "The user wants to see how much of the gene co-expression is associated with hospital and batch."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "registry_features",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_cobra"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "see how much of the gene co-expression is associated with hospital and batch",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 96,
+              "samples_quote": "96 colon samples",
+              "features": 18000,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  8,
+                  20,
+                  18000
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "get an adjusted co-expression matrix out of it",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 96,
+              "samples_quote": "96 colon samples",
+              "features": 18000,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  8,
+                  20,
+                  18000
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "We have 18,000 genes measured in 96 colon samples from three hospitals and two sequencing batches, with a numeric design matrix (one-hot hospital, batch, age) keyed by the same sample IDs.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want to see how much of the gene co-expression is associated with hospital and batch, and get an adjusted co-expression matrix out of it.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "96 colon samples"
+        ]
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want to see how much of the gene co-expression is associated with hospital and batch, and get an adjusted co-expression matrix out of it."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want to see how much of the gene co-expression is associated with hospital and batch",
+              "uncertainty": "said_unknown",
+              "workflow": "COBRA",
+              "contract_quote": "COBRA consumes a gene-by-sample expression matrix and numeric sample covariates, then produces a covariate-associated covariance decomposition and a labeled adjusted gene-by-gene co-expression artifact.",
+              "question": "Do you have a labeled gene-by-sample matrix with more genes than samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "see how much of the gene co-expression is associated with hospital and batch",
+                "get an adjusted co-expression matrix"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 39397,
+    "output_tokens": 10695,
+    "total_tokens": 50092,
+    "calls": [
+      {
+        "call_id": "d9f3351b-2f29-4207-a282-5d8d5c9fdbe0",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792319915-g4XHGnMOsBuYvZyijqlj",
+        "input_tokens": 5349,
+        "output_tokens": 281,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5630,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 606,
+        "price_snapshot": null,
+        "duration_ms": 3140,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "8674ce18-6d05-4655-8e56-84c20cce252e",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792319918-L8agxfeuQeGZYQ43IcJv",
+        "input_tokens": 5671,
+        "output_tokens": 163,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5834,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 651,
+        "price_snapshot": null,
+        "duration_ms": 2061,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "455d0581-91f3-49fa-9dcc-84d6212f7f22",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792319920-8hiKA4LrmLxCT29dWGsy",
+        "input_tokens": 1179,
+        "output_tokens": 132,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1311,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 256,
+        "price_snapshot": null,
+        "duration_ms": 1744,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "165bc7fc-33be-43b0-b75d-5b162fb9799c",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 663,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 707,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 806,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "bf9175dc-0f8c-4188-be8a-73cd5353f4d6",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792319922-bPQnskAAG4YroNyFNrSM",
+        "input_tokens": 292,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 296,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 46,
+        "price_snapshot": null,
+        "duration_ms": 814,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e1bdb45f-9700-4629-9306-34e852659309",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792319923-W9oS4t9yCmESoDUYjfkA",
+        "input_tokens": 18523,
+        "output_tokens": 4248,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 22771,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 87874,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6151fae5-d740-4c88-82f3-686d73219d2f",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320011-wSeoBTmny3GhFTXeXi1P",
+        "input_tokens": 572,
+        "output_tokens": 35,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 607,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 107,
+        "price_snapshot": null,
+        "duration_ms": 990,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9466c71b-7a52-46f1-a2a4-7c86c83c4e75",
+        "role": "capability_reread",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792320012-3xu7c2V1Uqb08sDsdKMX",
+        "input_tokens": 6217,
+        "output_tokens": 5638,
+        "cache_read_tokens": 4576,
+        "cache_write_tokens": 0,
+        "total_tokens": 11855,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 97388,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7c137445-4d96-43fd-bb3b-49397a7dbc1b",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320109-PpgzWwdVvqPXiIMw8TyB",
+        "input_tokens": 931,
+        "output_tokens": 150,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1081,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 230,
+        "price_snapshot": null,
+        "duration_ms": 1808,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "0e6faaa5-6f9e-4706-9970-066e16bc716f"
+}

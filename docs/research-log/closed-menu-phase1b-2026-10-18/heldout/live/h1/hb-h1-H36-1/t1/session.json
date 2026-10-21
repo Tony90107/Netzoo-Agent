@@ -1,0 +1,644 @@
+{
+  "version": 1,
+  "session_id": "hb-h1-H36-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792314339.248033,
+  "updated_at": 1792314339.248126,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We want a separate network per patient in which both transcription factors and miRNAs regulate target genes, using matched mRNA and small-RNA sequencing from a pilot study. Motif, PPI and miRNA-target priors plus a one-per-line miRNA list are ready. I'm unsure whether the pilot has three patients or only two, since one library may have failed."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 2 or 3?\n  You wrote: \"three patients or only two\".\n  - 2: no registered workflow can do this as asked -- LIONESS-PUMA needs at least 3 samples; the request has 2\n  - 3: LIONESS-PUMA can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_lioness_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "mirna",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf",
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "mirna",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf",
+              "mirna"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "We want a separate network per patient in which both transcription factors and miRNAs regulate target genes.",
+              "rationale": "The user requests to construct networks based on available data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "separate network per patient in which both transcription factors and miRNAs regulate target genes.",
+              "rationale": "The user specifies the desired output as a regulatory network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "separate network per patient.",
+              "rationale": "The user explicitly states the need for separate networks for each patient."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "both transcription factors and miRNAs regulate target genes.",
+              "rationale": "The user mentions transcription factors as regulators."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "mirna",
+              "source": "explicit",
+              "text_span": "both transcription factors and miRNAs regulate target genes.",
+              "rationale": "The user mentions miRNAs as regulators."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "regulate target genes.",
+              "rationale": "The user specifies target genes in the context of regulatory networks."
+            }
+          ],
+          "assumptions": [
+            "The pilot study has either two or three patients, affecting the number of networks to be inferred."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these is right: 2 or 3?",
+      "addressed_concerns": [
+        {
+          "action": "run_puma",
+          "concern": "downstream_use",
+          "text_span": "I'm unsure whether the pilot has three patients or only two, since one library may have failed."
+        },
+        {
+          "action": "run_lioness_puma",
+          "concern": "downstream_use",
+          "text_span": "I'm unsure whether the pilot has three patients or only two, since one library may have failed."
+        }
+      ],
+      "stated_hypotheses": [
+        {
+          "axis": "unclear_goal",
+          "basis": "unsupported",
+          "text_span": "separate network per patient",
+          "target_artifact": "regulatory_network_and_tf_activity",
+          "target_granularity": "aggregate"
+        }
+      ],
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "Motif, PPI and miRNA-target priors plus a one-per-line miRNA list are ready.",
+        "mirna": "stated",
+        "mirna_quote": "a one-per-line miRNA list are ready."
+      },
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "Motif, PPI and miRNA-target priors plus a one-per-line miRNA list are ready.",
+            "action": "none"
+          },
+          {
+            "kind": "mirna",
+            "state": "stated",
+            "source": "model",
+            "quote": "a one-per-line miRNA list are ready.",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "We want a separate network per patient in which both transcription factors and miRNAs regulate target genes",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "lioness_puma.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "3": [
+                "lioness_puma.per_sample_networks"
+              ]
+            },
+            "unknown_quote": "three patients or only two",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": true,
+            "outcome_notes": {
+              "2": "LIONESS-PUMA needs at least 3 samples; the request has 2"
+            }
+          },
+          {
+            "quote": "matched mRNA and small-RNA sequencing from a pilot study",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "Motif, PPI and miRNA-target priors plus a one-per-line miRNA list are ready.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {
+          "I'm unsure whether the pilot has three patients or only two, since one library may have failed.": {
+            "kind": "choices",
+            "values": [
+              2,
+              3
+            ]
+          }
+        },
+        "unknown_scopes": {
+          "I'm unsure whether the pilot has three patients or only two, since one library may have failed.": [
+            "We want a separate network per patient in which both transcription factors and miRNAs regulate target genes"
+          ]
+        },
+        "unknowns": [
+          [
+            "sample_count",
+            "I'm unsure whether the pilot has three patients or only two, since one library may have failed."
+          ]
+        ],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "We want a separate network per patient in which both transcription factors and miRNAs regulate target genes",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [
+          {
+            "of": "samples",
+            "quote": "three patients or only two",
+            "values": [
+              2,
+              3
+            ]
+          }
+        ],
+        "uncertain_quotes": [
+          "I'm unsure whether the pilot has three patients or only two, since one library may have failed."
+        ],
+        "stated_quotes": [
+          "matched mRNA and small-RNA sequencing"
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-PUMA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which of these is right: 2 or 3?",
+            "user_quote": "three patients or only two",
+            "workflows": [
+              "LIONESS-PUMA"
+            ],
+            "contract_quote": "",
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "3": [
+                "LIONESS-PUMA"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": true,
+            "notes": {
+              "2": "LIONESS-PUMA needs at least 3 samples; the request has 2"
+            }
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "count_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "We want a separate network per patient in which both transcription factors and miRNAs regulate target genes"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PUMA"
+        ],
+        "accepted": [
+          {
+            "question": "Do you have at least three patients in the pilot study?",
+            "user_quote": "I'm unsure whether the pilot has three patients or only two, since one library may have failed.",
+            "workflows": [
+              "LIONESS-PUMA"
+            ],
+            "contract_quote": "Require at least three expression samples and a validated one-ID-per-line miRNA list.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 37764,
+    "output_tokens": 7829,
+    "total_tokens": 45593,
+    "calls": [
+      {
+        "call_id": "3ffe99b9-1c0e-4c95-aebf-350166a82bbe",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314188-ukXdhaYCtQ94QParvIzN",
+        "input_tokens": 5352,
+        "output_tokens": 632,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5984,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 788,
+        "price_snapshot": null,
+        "duration_ms": 7662,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ec6a68c2-61ff-474b-8646-0261cdb98f73",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314196-fUw40ij4zU9ibuyjTFad",
+        "input_tokens": 5569,
+        "output_tokens": 481,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6050,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 826,
+        "price_snapshot": null,
+        "duration_ms": 4853,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "caa6be3b-2eb2-49b4-b75c-2d34a9d164db",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 667,
+        "output_tokens": 48,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 715,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1028,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "5b447fc5-c8e1-4ae9-83f5-2dbcd69693fb",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314202-L1uRJ3FFeOWKsawFA8FU",
+        "input_tokens": 1672,
+        "output_tokens": 107,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1779,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 315,
+        "price_snapshot": null,
+        "duration_ms": 1625,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a7e11de4-9d1c-4e97-ba8e-292e1de77830",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792314204-xbAOWFfRpkxqpMpK4dm2",
+        "input_tokens": 22355,
+        "output_tokens": 6327,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 28682,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 131236,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "eaeb1809-99d4-434c-b63d-429ebe101acb",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314335-lgc073s9FC1FDAUyrsBy",
+        "input_tokens": 575,
+        "output_tokens": 54,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 629,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 119,
+        "price_snapshot": null,
+        "duration_ms": 1100,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5a306e85-a87a-42e4-9931-16a943cd85c1",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314336-l13btGawPE38ohjOlYMp",
+        "input_tokens": 564,
+        "output_tokens": 67,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 631,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 125,
+        "price_snapshot": null,
+        "duration_ms": 1382,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2f8d72e6-8712-455c-b555-b7ebbbcb9e25",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314337-joQ6LHl99b9lISVuPAmq",
+        "input_tokens": 1010,
+        "output_tokens": 113,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1123,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 219,
+        "price_snapshot": null,
+        "duration_ms": 1627,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "21df7961-9ae2-47fb-b371-a3423de6be77"
+}

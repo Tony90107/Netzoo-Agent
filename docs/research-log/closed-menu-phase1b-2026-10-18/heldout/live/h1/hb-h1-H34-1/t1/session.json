@@ -1,0 +1,616 @@
+{
+  "version": 1,
+  "session_id": "hb-h1-H34-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792314224.47168,
+  "updated_at": 1792314224.471749,
+  "messages": [
+    {
+      "role": "user",
+      "content": "My 12 liver samples are log-transformed and centred, with a labelled header. For BONOBO, please sparsify at confidence 0.05 and fix delta at 0.4 so each sample carries a little more weight in its own covariance estimate. HDF5 output is fine."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"For BONOBO, please sparsify at confidence 0.05 and fix delta at 0.4 so each sample carries a little more weight in its own covariance estimate.\" -- available from BONOBO.\n\nThe capability check identified workflows for every result you asked for:\n- **BONOBO** — for \"For BONOBO, please sparsify at confidence 0.05 and fix delta at 0.4 so each sample carries a little more weight in its own covariance estimate.\"; produces: One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample.\n\nChoose a result to discuss with its workflow.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is to execute a specific action using BONOBO with defined parameters, which aligns with the user's intent.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.5,
+      "reason": "The request is to execute a specific action using BONOBO with defined parameters, which aligns with the user's intent.",
+      "candidate_actions": [
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_lioness_coexpression",
+        "run_lioness_dragon",
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "unknown",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "unknown",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "please sparsify at confidence 0.05 and fix delta at 0.4",
+              "rationale": "The user requests to sparsify covariance estimates, indicating a computational construction of a model from observations."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "My 12 liver samples are log-transformed and centred, with a labelled header.",
+              "rationale": "The user specifies that the samples are log-transformed and centred, indicating that each sample carries its own covariance estimate."
+            }
+          ],
+          "assumptions": [
+            "The user has provided the necessary input data in the specified format."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "What artifact should NetZoo produce?",
+      "data_facts": {
+        "source": "model",
+        "priors": "unstated",
+        "priors_quote": "",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_lioness_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_puma",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_coexpression",
+          "status": "insufficient_information",
+          "basis": []
+        },
+        {
+          "action": "run_lioness_dragon",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_bonobo",
+          "status": "insufficient_information",
+          "basis": []
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "For BONOBO, please sparsify at confidence 0.05 and fix delta at 0.4 so each sample carries a little more weight in its own covariance estimate.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "bonobo.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "BONOBO",
+              "named_quote": "BONOBO",
+              "settings": [
+                {
+                  "name": "BONOBO.log_transformed",
+                  "quote": "log-transformed",
+                  "value": "",
+                  "span": [
+                    24,
+                    39
+                  ],
+                  "at": 24
+                },
+                {
+                  "name": "BONOBO.centered",
+                  "quote": "centred",
+                  "value": "",
+                  "span": [
+                    44,
+                    51
+                  ],
+                  "at": 44
+                },
+                {
+                  "name": "BONOBO.sparsify",
+                  "quote": "sparsify at confidence 0.05",
+                  "value": "0.05",
+                  "span": [
+                    96,
+                    123
+                  ],
+                  "at": 119
+                },
+                {
+                  "name": "BONOBO.delta",
+                  "quote": "fix delta at 0.4",
+                  "value": "0.4",
+                  "span": [
+                    128,
+                    144
+                  ],
+                  "at": 141
+                },
+                {
+                  "name": "BONOBO.bonobo_output_format",
+                  "quote": "HDF5 output is fine.",
+                  "value": "HDF5",
+                  "span": [
+                    221,
+                    241
+                  ],
+                  "at": 221
+                }
+              ],
+              "samples": 12,
+              "samples_quote": "My 12 liver samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "My 12 liver samples are log-transformed and centred, with a labelled header.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "method_named",
+        "goal_quote": "BONOBO",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "log-transformed",
+          "liver samples",
+          "BONOBO",
+          "centred",
+          "sparsify at confidence 0.05",
+          "0.05",
+          "fix delta at 0.4",
+          "0.4",
+          "HDF5 output is fine.",
+          "HDF5"
+        ]
+      },
+      "execution_requested": true,
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "BONOBO"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "unknown",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "method_named",
+            "BONOBO"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "BONOBO",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "sparsify at confidence 0.05",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "setting bonobo_confidence (number; minimum 0; maximum 1): Significance level at which sparsify thresholds the edges.",
+              "question": "Do you want to sparsify the co-expression matrix?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "sparsify",
+                "not sparsify"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "fix delta at 0.4",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "setting delta (number; minimum 0; maximum 1): Weight of the sample in its covariance; empty estimates it per sample. With sparsify it must be above 0 and below 1/3 (Log 224).",
+              "question": "Is the delta value you want to use above 0 and below 1/3?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "0.4",
+                "not 0.4"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": "fine",
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 37714,
+    "output_tokens": 5689,
+    "total_tokens": 43403,
+    "calls": [
+      {
+        "call_id": "a5c046f3-d000-423f-8ee3-ac311470a79b",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314117-CFi1M8oGJY3kuDHu9l9C",
+        "input_tokens": 5338,
+        "output_tokens": 138,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5476,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 490,
+        "price_snapshot": null,
+        "duration_ms": 2029,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "9547ddaa-4cef-4a62-9421-7e744ac91f5a",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314118-6dQZTT1ZLkuMBzYTJtGc",
+        "input_tokens": 4172,
+        "output_tokens": 57,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 4229,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 449,
+        "price_snapshot": null,
+        "duration_ms": 1333,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2dbcb89f-80eb-4703-b682-e742c6874664",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 671,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 713,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 873,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "6d367258-240b-4874-b1ec-777343b6d66c",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314121-Eh2tYBDg6KzZXfMPaMFr",
+        "input_tokens": 1721,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1737,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 268,
+        "price_snapshot": null,
+        "duration_ms": 910,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c2413e9f-9f43-49ce-a345-f19e384b646e",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792314122-7hmhe56TUjhv0qeKmoLh",
+        "input_tokens": 22333,
+        "output_tokens": 5139,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 27472,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 97954,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "871059fa-8500-4e36-8dcf-dc5ab92b6898",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314220-jhO70GZCycCn1AvDcn8n",
+        "input_tokens": 561,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 572,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 91,
+        "price_snapshot": null,
+        "duration_ms": 742,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "48ce8708-6920-475c-bfc8-17ec788baf5a",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314220-1go0laoTzNAzxFKk4aDJ",
+        "input_tokens": 550,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 583,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 102,
+        "price_snapshot": null,
+        "duration_ms": 889,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7a48158f-51b4-43ad-acf1-2a49416f2a28",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792314221-B6AdhRGqtPCSSxhAIIOZ",
+        "input_tokens": 2368,
+        "output_tokens": 253,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2621,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 507,
+        "price_snapshot": null,
+        "duration_ms": 2726,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "e2583212-985b-483c-9b09-4f26700ffd0d"
+}

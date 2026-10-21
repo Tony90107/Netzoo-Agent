@@ -1,0 +1,49 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (11.13s)
+● Matching registered workflows…
+✓ Workflow — SAMBAR
+✓ Guidance prepared
+What I understood you are asking for:
+1. "SAMBAR subtypes" -- available from SAMBAR.
+
+Assumptions behind this recommendation (not confirmed facts):
+
+- The somatic mutation matrix is suitable for subtype analysis.
+- Exon lengths, cancer-gene list, and MSigDB-format GMT are provided as additional inputs.
+- The analysis will utilize average linkage for clustering.
+- The user has specified the number of subtypes to try between 3 and 8.
+- The user has indicated to switch off per-patient mutation-burden normalization.
+
+Selected path: **SAMBAR**.
+
+Why this recommendation:
+
+Patient mutation burden normalization rescales each patient's mutation scores relative to their overall mutation burden, so total burden does not dominate the comparison. This is a relative score normalization, not a clinical TMB estimate or a correction for every sequencing bias.
+
+Pathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.
+
+**SAMBAR**: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.
+
+Routing-level input modality: somatic mutation.
+
+Method premise: derive patient or tumor subtypes; produce pathway-level mutation scores; analyze somatic mutation measurements.
+
+SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.
+
+Required workflow inputs:
+
+- `mutation_file`: somatic mutation matrix
+- `exon_size_file`: gene/exon-size CSV
+- `cancer_gene_file`: cancer-gene list
+- `pathway_file`: GMT pathway file
+
+Other declared controls (not matched to this request; defaults apply unless you set them): `norm_patient`=True, `kmin`=2, `kmax`=4, `gmt_msigdb`=True, `subset_cancer_genes`=True, `distance`=binomial, `linkage`=complete, `cluster`=True.
+
+Distinct declared output artifacts (availability depends on workflow options):
+
+- `gene_mutation_scores`: Sample-by-gene mutation scores, not pathway scores.
+- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.
+- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.
+- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

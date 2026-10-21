@@ -1,0 +1,631 @@
+{
+  "version": 1,
+  "session_id": "hb-h1-H03-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792313400.14208,
+  "updated_at": 1792313400.142166,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Our nutrition study has plasma metabolomics (412 features) and VST-transformed RNA-seq (2,000 genes) from the same 96 participants, with no missing values. I'd like DRAGON to fit the two-layer partial-correlation network with lambda1 fixed at 0 and lambda2 fixed at 1 - we are deliberately testing the extremes - and return the result as an edge list."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like DRAGON to fit the two-layer partial-correlation network with lambda1 fixed at 0 and lambda2 fixed at 1 - we are deliberately testing the extremes - and return the result as an edge list.\" -- available from DRAGON.\n\nSelected path: **DRAGON**.\n\nYour question asks for a cohort-level multi-omic network. **DRAGON** fits that result and scale.\n\n**DRAGON** — Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.\n\nRequired workflow inputs:\n\n- `omics_layer_1`: DRAGON omics layer 1\n- `omics_layer_2`: DRAGON omics layer 2\n\nOutputs:\n\n- `multi_omic_network`: Inferred associations between omics features.\n\nWorkflow-specific scientific notes:\n\n- DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.\n- DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.\n- The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited DRAGON for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The capability check credited DRAGON for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "run_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_dragon"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "multi_omic_network",
+        "entity_types": [
+          "omics_layer_1_feature",
+          "omics_layer_2_feature"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "multi_omic_network",
+            "entity_types": [
+              "omics_layer_1_feature",
+              "omics_layer_2_feature"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.45,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like DRAGON to fit the two-layer partial-correlation network",
+              "rationale": "The user is asking to fit a two-layer partial-correlation network, which involves inferring relationships between the features."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user explicitly mentioned RNA-seq data, which corresponds to the expression matrix input artifact."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "multi_omic_network",
+              "source": "explicit",
+              "text_span": "Fit a two-layer partial-correlation network",
+              "rationale": "The user is requesting a two-layer partial-correlation network, which is a type of multi-omic network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "the same 96 participants",
+              "rationale": "The request implies that the analysis is to be performed on the entire dataset rather than on a per-sample basis."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "omics_layer_1_feature",
+              "source": "explicit",
+              "text_span": "plasma metabolomics (412 features)",
+              "rationale": "The request involves metabolomics data, which corresponds to the first layer of features in a multi-omic network."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "omics_layer_2_feature",
+              "source": "explicit",
+              "text_span": "VST-transformed RNA-seq (2,000 genes)",
+              "rationale": "The request involves RNA-seq data, which corresponds to the second layer of features in a multi-omic network."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_dragon"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like DRAGON to fit the two-layer partial-correlation network with lambda1 fixed at 0 and lambda2 fixed at 1 - we are deliberately testing the extremes - and return the result as an edge list.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "dragon.two_layer_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "DRAGON",
+              "named_quote": "DRAGON",
+              "settings": [
+                {
+                  "name": "DRAGON.lambda1",
+                  "quote": "lambda1 fixed at 0",
+                  "value": "0",
+                  "span": [
+                    226,
+                    244
+                  ],
+                  "at": 90
+                },
+                {
+                  "name": "DRAGON.lambda2",
+                  "quote": "lambda2 fixed at 1",
+                  "value": "1",
+                  "span": [
+                    249,
+                    267
+                  ],
+                  "at": 46
+                },
+                {
+                  "name": "DRAGON.output_format",
+                  "quote": "return the result as an edge list",
+                  "value": "edge list",
+                  "span": [
+                    317,
+                    350
+                  ],
+                  "at": 341
+                }
+              ],
+              "samples": 96,
+              "samples_quote": "96",
+              "features": 2412,
+              "feature_counts": 2,
+              "feature_items": [
+                [
+                  45,
+                  57,
+                  412
+                ],
+                [
+                  88,
+                  99,
+                  2000
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "plasma metabolomics (412 features)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "VST-transformed RNA-seq (2,000 genes)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "same 96 participants",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "no missing values",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {
+          "joint_layers": "2"
+        },
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "two-layer partial-correlation network",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "VST-transformed",
+          "same 96 participants",
+          "DRAGON",
+          "lambda1 fixed at 0",
+          "0",
+          "lambda2 fixed at 1",
+          "1",
+          "return the result as an edge list",
+          "edge list"
+        ]
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "DRAGON"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "multi_omic_network",
+          "reason_code": "registry_guidance_fallback",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "two-layer partial-correlation network"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "DRAGON"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "lambda1 fixed at 0 and lambda2 fixed at 1 - we are deliberately testing the extremes",
+              "uncertainty": "two_versions",
+              "workflow": "DRAGON",
+              "contract_quote": "Manual shrinkage is allowed only when both values are supplied in [0, 1].",
+              "question": "Are you sure you want to set lambda1 to 0 and lambda2 to 1?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "lambda1 = 0, lambda2 = 1",
+                "lambda1 and lambda2 not fixed"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 33702,
+    "output_tokens": 7221,
+    "total_tokens": 40923,
+    "calls": [
+      {
+        "call_id": "c0930768-2fc7-4a55-997d-cb0d03a77829",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792313282-SDSkiayZTIZHLHSgYwzt",
+        "input_tokens": 5359,
+        "output_tokens": 155,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 5514,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 897,
+        "price_snapshot": null,
+        "duration_ms": 2860,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "e832d4e1-f209-48d6-9247-7fe60c061b52",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792313285-rD6w6YHWHvBkG1whfCB1",
+        "input_tokens": 6729,
+        "output_tokens": 491,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 7220,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1304,
+        "price_snapshot": null,
+        "duration_ms": 5327,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "c2699d04-3aae-4ac6-82f4-bdfe96d89f48",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 679,
+        "output_tokens": 52,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 731,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1006,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "4e63060b-f789-4402-98ee-a3c78508ef66",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792313291-wgJZ1J8iDKdltkMEWDmm",
+        "input_tokens": 327,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 331,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 51,
+        "price_snapshot": null,
+        "duration_ms": 635,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "349ee5cf-4c2e-43e3-b4d0-c2f4ae6b03cc",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792313292-gpebn0UrjaAusDysoeSU",
+        "input_tokens": 18543,
+        "output_tokens": 6349,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 24892,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 104531,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f1ebb516-132e-4d69-a5c8-5e36cfb5ccc3",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792313396-HKB6v4lBg8kOFnqnynID",
+        "input_tokens": 582,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 615,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 107,
+        "price_snapshot": null,
+        "duration_ms": 1055,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "984a6576-9795-4284-b308-bbf831addc45",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792313398-TZQDwzVPi7Y3B2aSZ2sF",
+        "input_tokens": 1483,
+        "output_tokens": 137,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1620,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 305,
+        "price_snapshot": null,
+        "duration_ms": 2157,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "b3b85bf0-4f4d-43a2-aecf-ec86b0e3b16d"
+}

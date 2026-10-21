@@ -1,0 +1,715 @@
+{
+  "version": 1,
+  "session_id": "hb-h4smoke-M40-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792420012.477379,
+  "updated_at": 1792420012.47749,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv (54 matched samples, identical IDs in both). Set lambda1 to 0.3 by hand but let lambda2 be estimated from the data. Matrix output to dragon/rna_mirna.tsv, please."
+    },
+    {
+      "role": "assistant",
+      "content": "NetZoo cannot run DRAGON for this: DRAGON: lambda1 and lambda2 must be supplied together. You wrote: \"Set lambda1 to 0.3 by hand but let lambda2 be estimated from the data.\". The contract says: \"setting lambda1 (number; minimum 0; maximum 1): Shrinkage of omics layer 1 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it; a manual value needs lambda1 and lambda2 together, both in [0, 1].\"\n\nThe nearest options NetZoo can run: LIONESS-DRAGON.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A contract condition rules out every workflow offered; the reply says why.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "A contract condition rules out every workflow offered; the reply says why.",
+      "candidate_actions": [
+        "run_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "multi_omic_network",
+        "entity_types": [
+          "omics_layer_1_feature",
+          "omics_layer_2_feature"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "multi_omic_network",
+            "entity_types": [
+              "omics_layer_1_feature",
+              "omics_layer_2_feature"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv",
+              "rationale": "The user requests to run DRAGON, which involves inferring a multi-omic network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "multi_omic_network",
+              "source": "explicit",
+              "text_span": "Matrix output to dragon/rna_mirna.tsv",
+              "rationale": "The output of the DRAGON analysis is a multi-omic network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The request implies a single output matrix for the combined data from matched samples."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "omics_layer_1_feature",
+              "source": "explicit",
+              "text_span": "rna_layer.tsv and mirna_layer.tsv",
+              "rationale": "The user specifies the input files for RNA and miRNA layers, indicating they are omics features."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "omics_layer_2_feature",
+              "source": "explicit",
+              "text_span": "rna_layer.tsv and mirna_layer.tsv",
+              "rationale": "The user specifies the input files for RNA and miRNA layers, indicating they are omics features."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "unsupported",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "dragon.two_layer_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 2,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "DRAGON",
+              "named_quote": "DRAGON",
+              "settings": [
+                {
+                  "name": "DRAGON.lambda1",
+                  "quote": "lambda1 to 0.3",
+                  "value": "0.3",
+                  "span": [
+                    102,
+                    116
+                  ],
+                  "at": 113
+                },
+                {
+                  "name": "DRAGON.lambda2",
+                  "quote": "let lambda2 be estimated from the data",
+                  "value": "",
+                  "span": [
+                    129,
+                    167
+                  ],
+                  "at": 129
+                },
+                {
+                  "name": "DRAGON.output_format",
+                  "quote": "Matrix output",
+                  "value": "Matrix",
+                  "span": [
+                    169,
+                    182
+                  ],
+                  "at": 169
+                }
+              ],
+              "samples": 54,
+              "samples_quote": "(54 matched samples, identical IDs in both)"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "rna_layer.tsv and mirna_layer.tsv",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "(54 matched samples, identical IDs in both)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "Set lambda1 to 0.3 by hand but let lambda2 be estimated from the data.",
+            "kind": "about_methods",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "Matrix output to dragon/rna_mirna.tsv, please.",
+            "kind": "about_methods",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "(54 matched samples, identical IDs in both)",
+          "DRAGON",
+          "lambda1 to 0.3",
+          "0.3",
+          "let lambda2 be estimated from the data",
+          "Matrix output",
+          "Matrix"
+        ]
+      },
+      "run_verdict": {
+        "action": "run_dragon",
+        "verdict": "agrees",
+        "request_sha256": "8b516626d4cc68694b083e94da68228a9a53a9ab05b4df2dfdab0a6a1e83d865",
+        "held": false,
+        "named": true,
+        "credited": [
+          "run_dragon"
+        ],
+        "results": [
+          {
+            "quote": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv",
+            "status": "available",
+            "credited": [
+              "run_dragon"
+            ]
+          }
+        ],
+        "unchecked": []
+      },
+      "core": {
+        "kind": "DECLINE",
+        "partial": false,
+        "workflows": [
+          "DRAGON"
+        ],
+        "declined": [
+          {
+            "quote": "Set lambda1 to 0.3 by hand but let lambda2 be estimated from the data.",
+            "reasons": [
+              "DRAGON: lambda1 and lambda2 must be supplied together"
+            ],
+            "alternatives": [
+              "LIONESS-DRAGON"
+            ],
+            "line": "NetZoo cannot run DRAGON for this: DRAGON: lambda1 and lambda2 must be supplied together. You wrote: \"Set lambda1 to 0.3 by hand but let lambda2 be estimated from the data.\". The contract says: \"setting lambda1 (number; minimum 0; maximum 1): Shrinkage of omics layer 1 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it; a manual value needs lambda1 and lambda2 together, both in [0, 1].\""
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "contract_veto",
+        "evidence": {
+          "action": "run_dragon",
+          "match_status": "exact",
+          "artifact_type": "multi_omic_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "about_methods",
+              "not_checked"
+            ],
+            [
+              "about_methods",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv"
+          ],
+          "run_verdict": {
+            "verdict": "agrees",
+            "held": false
+          },
+          "legacy_facts": [],
+          "contract_veto": {
+            "judged": [
+              "DRAGON"
+            ],
+            "vetoed": {
+              "DRAGON": [
+                {
+                  "workflow": "DRAGON",
+                  "kind": "B5",
+                  "reason": "DRAGON: lambda1 and lambda2 must be supplied together",
+                  "user_quote": "Set lambda1 to 0.3 by hand but let lambda2 be estimated from the data.",
+                  "contract_quote": "setting lambda1 (number; minimum 0; maximum 1): Shrinkage of omics layer 1 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it; a manual value needs lambda1 and lambda2 together, both in [0, 1].",
+                  "source": "contract"
+                }
+              ]
+            },
+            "questions": [],
+            "unverified": [],
+            "unconfirmed": [],
+            "disclosures": [],
+            "to_confirm": [],
+            "nearest": [
+              "LIONESS-DRAGON"
+            ]
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "DRAGON"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Set lambda1 to 0.3 by hand but let lambda2 be estimated from the data.",
+              "uncertainty": "two_versions",
+              "workflow": "DRAGON",
+              "contract_quote": "manual value needs lambda1 and lambda2 together, both in [0, 1]",
+              "question": "Are you sure you want to set lambda2 to be estimated from the data?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "lambda1 = 0.3, lambda2 estimated",
+                "lambda1 = 0.3, lambda2 = 0"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Set lambda1 to 0.3 by hand but let lambda2 be estimated from the data.",
+              "uncertainty": "said_unknown",
+              "workflow": "DRAGON",
+              "contract_quote": "manual value needs lambda1 and lambda2 together, both in [0, 1]",
+              "question": "Are you sure you want to set lambda2 to be estimated from the data?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "lambda1 = 0.3, lambda2 estimated",
+                "lambda1 = 0.3, lambda2 = 0"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [
+        "omics_layer_1",
+        "omics_layer_2"
+      ],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": "mirna_layer.tsv",
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": "dragon/rna_mirna.tsv",
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 38779,
+    "output_tokens": 5688,
+    "total_tokens": 44467,
+    "calls": [
+      {
+        "call_id": "d2c1d361-c7e0-43f4-8ec1-a17d63e6768b",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792419864-cQjRyh7xYn6uCzgH6D6F",
+        "input_tokens": 5335,
+        "output_tokens": 224,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5559,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 570,
+        "price_snapshot": null,
+        "duration_ms": 3495,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "9c22c1fb-da6c-41a0-a471-1294b24bc393",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792419867-QZ37KpiPUsXDoBSs0WZ0",
+        "input_tokens": 4791,
+        "output_tokens": 90,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 4881,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 561,
+        "price_snapshot": null,
+        "duration_ms": 1668,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8b48a904-6d85-445a-b253-5a297e30464d",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 634,
+        "output_tokens": 38,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 672,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1221,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "938da249-bac1-4782-9f95-71ac699b7cd6",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792419870-blPIvF7sCScKkM4Ihz6V",
+        "input_tokens": 303,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 307,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 48,
+        "price_snapshot": null,
+        "duration_ms": 949,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f1e64a39-1257-478a-aff3-5007d9dc75f5",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792419871-tXywieN4fxG4h2XJ1cPS",
+        "input_tokens": 22332,
+        "output_tokens": 4572,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 26904,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 129901,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "79c0ea45-b13e-4ac8-91ea-5a3090d47488",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792420001-hGCK49jvaYfCeK92NsO3",
+        "input_tokens": 558,
+        "output_tokens": 38,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 596,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 107,
+        "price_snapshot": null,
+        "duration_ms": 1220,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "66976ae1-d01c-46b2-b3c3-90bc4b24ad90",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792420002-xjTXJEcJCjY7ardjh1LK",
+        "input_tokens": 1459,
+        "output_tokens": 271,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1730,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 381,
+        "price_snapshot": null,
+        "duration_ms": 3121,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d6aca8f8-a574-4be5-84ab-c48219def6b3",
+        "role": "contract_veto_core",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792420006-KgGTihlbCno6tnN0MUeO",
+        "input_tokens": 2262,
+        "output_tokens": 253,
+        "cache_read_tokens": 2176,
+        "cache_write_tokens": 0,
+        "total_tokens": 2515,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 328,
+        "price_snapshot": null,
+        "duration_ms": 3114,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3050f811-91df-4c1c-bef8-81505af4b121",
+        "role": "contract_veto_limits",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792420009-mgEJzZtFN31H1SBwJSCU",
+        "input_tokens": 1105,
+        "output_tokens": 198,
+        "cache_read_tokens": 1024,
+        "cache_write_tokens": 0,
+        "total_tokens": 1303,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 208,
+        "price_snapshot": null,
+        "duration_ms": 3332,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "7d2bed42-ee34-4550-b905-4b96f3f6f3cc"
+}

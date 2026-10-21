@@ -1,0 +1,565 @@
+{
+  "version": 1,
+  "session_id": "hb-h3main-L07-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792395836.798605,
+  "updated_at": 1792395836.798675,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Is BONOBO OK for my 14 Drosophila wing-disc samples? I need one co-expression network per sample. The matrix came from a collaborator as 'normalized values', and I can't tell whether it was log-transformed or centered; the README doesn't say either way."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Is the expression data numeric, finite, complete, and gene-by-sample with at least three samples?\n  You wrote: \"The matrix came from a collaborator as 'normalized values', and I can't tell whether it was log-transformed or centered; the README doesn't say either way\". BONOBO's contract: \"Expression data must be numeric, finite, complete, gene-by-sample, and have at least three total samples so each leave-one-out background has at least two samples\".\n- Is the expression log-transformed and centered?\n  You wrote: \"I can't tell whether it was log-transformed or centered; the README doesn't say either way\". BONOBO's contract: \"the agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.8,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "I need one co-expression network per sample.",
+              "rationale": "The user explicitly requests a co-expression network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "one co-expression network per sample.",
+              "rationale": "The user specifies needing a separate network for each sample."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "The matrix came from a collaborator as 'normalized values'.",
+              "rationale": "The user mentions having a matrix of normalized values as input."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "co-expression network",
+              "rationale": "Co-expression networks involve gene entities."
+            }
+          ],
+          "assumptions": [
+            "The input matrix is suitable for co-expression analysis despite uncertainty about log-transformation or centering.",
+            "The user is aware of the implications of using normalized values for co-expression analysis."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "workflow_name",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Is the expression data numeric, finite, complete, and gene-by-sample with at least three samples? Is the expression log-transformed and centered?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I need one co-expression network per sample.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "bonobo.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 14,
+              "samples_quote": "14",
+              "named": "BONOBO",
+              "named_quote": "BONOBO"
+            },
+            "limits": [],
+            "instead": [
+              "lioness_coexpression.per_sample_networks"
+            ],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "my 14 Drosophila wing-disc samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "Is BONOBO OK",
+            "kind": "about_methods",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "The matrix came from a collaborator as 'normalized values'",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "one co-expression network per sample",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I can't tell whether it was log-transformed or centered; the README doesn't say either way."
+        ],
+        "stated_quotes": [
+          "BONOBO"
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "BONOBO"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Is the expression data numeric, finite, complete, and gene-by-sample with at least three samples?",
+            "user_quote": "The matrix came from a collaborator as 'normalized values', and I can't tell whether it was log-transformed or centered; the README doesn't say either way.",
+            "workflows": [
+              "BONOBO"
+            ],
+            "contract_quote": "Expression data must be numeric, finite, complete, gene-by-sample, and have at least three total samples so each leave-one-out background has at least two samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          },
+          {
+            "question": "Is the expression log-transformed and centered?",
+            "user_quote": "I can't tell whether it was log-transformed or centered; the README doesn't say either way.",
+            "workflows": [
+              "BONOBO"
+            ],
+            "contract_quote": "the agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_readings",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "about_methods",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "one co-expression network per sample"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "BONOBO"
+        ],
+        "accepted": [
+          {
+            "question": "Is the expression data numeric, finite, complete, and gene-by-sample with at least three samples?",
+            "user_quote": "The matrix came from a collaborator as 'normalized values', and I can't tell whether it was log-transformed or centered; the README doesn't say either way.",
+            "workflows": [
+              "BONOBO"
+            ],
+            "contract_quote": "Expression data must be numeric, finite, complete, gene-by-sample, and have at least three total samples so each leave-one-out background has at least two samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          },
+          {
+            "question": "Is the expression log-transformed and centered?",
+            "user_quote": "I can't tell whether it was log-transformed or centered; the README doesn't say either way.",
+            "workflows": [
+              "BONOBO"
+            ],
+            "contract_quote": "the agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_readings",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 32314,
+    "output_tokens": 5305,
+    "total_tokens": 37619,
+    "calls": [
+      {
+        "call_id": "4dbe6f29-f3cf-44a1-8f77-b904454ae3d2",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792395738-wArPto3gDrggMomPatiz",
+        "input_tokens": 5335,
+        "output_tokens": 286,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5621,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 578,
+        "price_snapshot": null,
+        "duration_ms": 4015,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "445ee841-21a0-4121-acb3-bf84679ab5bf",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 648,
+        "output_tokens": 50,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 698,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1069,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "780f3338-e138-4169-b55b-a9fe2dc1c9b0",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792395743-IWuC28nTZvtu6RCYIDw2",
+        "input_tokens": 1674,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1718,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 278,
+        "price_snapshot": null,
+        "duration_ms": 991,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b3ff0b3f-2979-4e1a-a993-79bec3915b1a",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792395744-ryf6MRiMR8k6KrLMpuGK",
+        "input_tokens": 22327,
+        "output_tokens": 4643,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 26970,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 87757,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d9a44fa7-7a1a-4079-9952-d1489a41de1e",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792395832-2ErUMirDUsCXeJP62xWi",
+        "input_tokens": 558,
+        "output_tokens": 29,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 587,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 101,
+        "price_snapshot": null,
+        "duration_ms": 1090,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5dbe4af7-1055-4ea4-a08c-a264fa8a71f3",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792395833-MUgDLBV8C0TellER8DeJ",
+        "input_tokens": 1772,
+        "output_tokens": 253,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2025,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 418,
+        "price_snapshot": null,
+        "duration_ms": 3121,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "78f56353-9bcf-46fb-8634-629f6d4ce66a"
+}

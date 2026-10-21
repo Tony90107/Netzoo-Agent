@@ -1,0 +1,690 @@
+{
+  "version": 1,
+  "session_id": "hb-h2hyb-J43-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792320779.35825,
+  "updated_at": 1792320779.3583019,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Across 120 breast tumours I need, for each transcription factor, its activity level in every tumour separately from its own mRNA level, and also whether it activates or represses each target gene. I have RNA-seq expression, a TF-gene motif prior and a TF-TF PPI matrix with matching identifiers."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"its activity level in every tumour separately from its own mRNA level\" -- available from GIRAFFE.\n2. \"whether it activates or represses each target gene\" -- available from GIRAFFE.\n\nSelected path: **GIRAFFE**.\n\nYour question asks for a cohort-level regulatory network with TF activities. **GIRAFFE** fits that result and scale.\n\n**GIRAFFE** — Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `motif_file`: motif/prior\n- `ppi_file`: PPI network\n\nOutputs:\n\n- `regulatory_network`: Inferred regulator-to-target associations.\n- `tf_activity_matrix`: Inferred transcription-factor-by-sample activity values.\n\nTF activity is how active a TF is in each sample, apart from its own mRNA level. If you mean how strongly each TF is wired to its targets in each sample, the out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the same inputs.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_giraffe"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network_and_tf_activity",
+        "entity_types": [
+          "tf",
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network_and_tf_activity",
+            "entity_types": [
+              "tf",
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network_and_tf_activity",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user specifies the need for both TF activity and regulatory interactions."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user specifies RNA-seq expression data as a current input."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_giraffe"
+      ],
+      "hypothesis_actions": [
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a TF-gene motif prior and a TF-TF PPI matrix with matching identifiers",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF-gene motif prior and a TF-TF PPI matrix with matching identifiers",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "its activity level in every tumour separately from its own mRNA level",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "giraffe.tf_activity"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 1,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 120,
+              "samples_quote": "Across 120 breast tumours"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "whether it activates or represses each target gene",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "giraffe.signed_regulation"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 1,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 120,
+              "samples_quote": "Across 120 breast tumours"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "RNA-seq expression",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "a TF-gene motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "a TF-TF PPI matrix with matching identifiers",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Across 120 breast tumours I need, for each transcription factor, its activity level in every tumour separately from its own mRNA level, and also whether it activates or represses each target gene.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "breast tumours"
+        ]
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "GIRAFFE"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "regulatory_network_and_tf_activity",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Across 120 breast tumours I need, for each transcription factor, its activity level in every tumour separately from its own mRNA level, and also whether it activates or represses each target gene."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "hybrid_gate": {
+            "judged": [
+              "GIRAFFE"
+            ],
+            "blocked": {},
+            "must_ask": {},
+            "unconfirmed": {}
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "whether it activates or represses each target gene",
+              "uncertainty": "said_unknown",
+              "workflow": "GIRAFFE",
+              "contract_quote": "entries of R are signed partial regulatory effects interpretable as linear-model coefficients: positive for activation and negative for repression.",
+              "question": "Do you want to know if the transcription factors activate or repress the target genes?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "activates",
+                "represses"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "its activity level in every tumour separately from its own mRNA level",
+              "uncertainty": "said_unknown",
+              "workflow": "GIRAFFE",
+              "contract_quote": "TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.",
+              "question": "Do you want the transcription factor activity levels separate from their mRNA levels?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "activity levels separate from mRNA levels",
+                "activity levels combined with mRNA levels"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 43284,
+    "output_tokens": 7019,
+    "total_tokens": 50303,
+    "calls": [
+      {
+        "call_id": "e290d3fc-a48d-43d5-8aa9-661c2476fc58",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320648-c0Kx7cEQF3GknVxK2t0C",
+        "input_tokens": 5343,
+        "output_tokens": 259,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5602,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 563,
+        "price_snapshot": null,
+        "duration_ms": 3557,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "d9f6530e-a941-4069-993d-bb96b89b0bc9",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320651-ctesvECvSWeNF0xeTs1S",
+        "input_tokens": 5740,
+        "output_tokens": 217,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5957,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 626,
+        "price_snapshot": null,
+        "duration_ms": 2669,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d8f3b943-edd9-4dd4-924e-fef8ff8c2efa",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 662,
+        "output_tokens": 65,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 727,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 960,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "42de5a5f-cc82-4625-86d5-e23351d2c4e2",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320655-JNMgm5diyv6p1AwTMHn5",
+        "input_tokens": 1698,
+        "output_tokens": 170,
+        "cache_read_tokens": 1664,
+        "cache_write_tokens": 0,
+        "total_tokens": 1868,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 232,
+        "price_snapshot": null,
+        "duration_ms": 2378,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f60aceb7-f6b7-43e2-b140-566cb8f421c9",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792320658-dKwR1jDzj1TGlP12Y6Sa",
+        "input_tokens": 18498,
+        "output_tokens": 5059,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 23557,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 98106,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e1832496-e809-4871-8bcf-7ecac74ebef8",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320756-iBS9KpejnVnZ1Ueyby9N",
+        "input_tokens": 566,
+        "output_tokens": 58,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 624,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 120,
+        "price_snapshot": null,
+        "duration_ms": 1069,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4d940df9-1653-4a4d-a0c2-98ab6a74ab4f",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320758-yjANvYgcENPXBnquxYpJ",
+        "input_tokens": 555,
+        "output_tokens": 53,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 608,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 115,
+        "price_snapshot": null,
+        "duration_ms": 2368,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a9bf13db-0c39-46c5-b57d-47651826a6d2",
+        "role": "capability_reread",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792320759-XtpiBdvDSt7BVHOpwqE8",
+        "input_tokens": 6216,
+        "output_tokens": 577,
+        "cache_read_tokens": 4576,
+        "cache_write_tokens": 0,
+        "total_tokens": 6793,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 12255,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5fdc781a-6cf5-497e-94d6-920fdc7fa1a2",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320771-Uwd0xoCJHAUrEfMxaZQS",
+        "input_tokens": 1314,
+        "output_tokens": 241,
+        "cache_read_tokens": 1280,
+        "cache_write_tokens": 0,
+        "total_tokens": 1555,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 246,
+        "price_snapshot": null,
+        "duration_ms": 2960,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2857ad5d-d6ff-4ba4-9bc1-9e981a6a3706",
+        "role": "hybrid_gate",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320774-5p76AerwKo5ZxUvJeWYS",
+        "input_tokens": 1606,
+        "output_tokens": 237,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1843,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 383,
+        "price_snapshot": null,
+        "duration_ms": 3065,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5f878683-da52-4c94-a891-649d70bd71d7",
+        "role": "hybrid_requirement_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320778-8dqqCcGuqJaWyiAwgp74",
+        "input_tokens": 1086,
+        "output_tokens": 83,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1169,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 213,
+        "price_snapshot": null,
+        "duration_ms": 1338,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "c2af7ab8-fef8-4ad6-ba6c-a6c241e5f27c"
+}

@@ -1,0 +1,808 @@
+{
+  "version": 1,
+  "session_id": "hb-h2hyb-J47-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792321064.642802,
+  "updated_at": 1792321064.642851,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Could you set up OTTER for an aggregate TF-gene network of human cardiomyocytes, using my precomputed gene-by-gene co-expression matrix instead of an expression table, plus the motif seed and the TF-TF PPI? Settings: lam = 1, gamma = 0, 150 iterations, single precision on CPU, matrix output."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"set up OTTER for an aggregate TF-gene network\" -- available from OTTER.\n\nSelected path: **OTTER**.\n\nYour question asks for a cohort-level regulatory network. **OTTER** fits that result and scale. OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression.\n\n**OTTER**: Infer an aggregate TF-to-gene regulatory network with OTTER by solving a continuous-relaxation graph-matching optimization with an explicit objective and gamma regularization that balances motif/PPI priors with co-expression constraints.\n\nRouting-level input modality: expression matrix, coexpression network.\n\nMethod premise: continuous relaxed graph-matching; explicit objective/loss, gradient descent, convergence; not heuristic message passing.\n\nOTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.\n\nRequired workflow inputs:\n\n- `motif_file`: motif/prior\n- `ppi_file`: PPI network\n\nRequired alternative (provide one):\n\n- `expression_file`: expression matrix\n- `coexpression_file`: adjusted co-expression matrix\n\nOther declared controls (not matched to this request; defaults apply unless you set them): `output_format`=matrix, `computing`=cpu, `precision`=double, `lam`=0.035, `gamma`=0.335, `iterations`=60, `eta`=1e-05, `bexp`=1.0.\n\nRuntime limits:\n\n- `computing`: current runtime unavailable: gpu; use `computing=cpu`.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `regulatory_network`: Inferred regulator-to-target associations.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_otter",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_otter"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "set up OTTER for an aggregate TF-gene network",
+              "rationale": "The user requests to set up OTTER for constructing a TF-gene network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "aggregate TF-gene network",
+              "rationale": "The user specifies the desired output as a TF-gene network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "aggregate TF-gene network",
+              "rationale": "The user specifies that the network should be aggregate."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user explicitly states they will use a precomputed gene-by-gene co-expression matrix, which is classified as an expression matrix."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "workflow_name",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_otter"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "the motif seed and the TF-TF PPI",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_otter",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "the motif seed and the TF-TF PPI",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "the motif seed and the TF-TF PPI",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "set up OTTER for an aggregate TF-gene network",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "otter.tf_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 1,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "OTTER",
+              "named_quote": "OTTER",
+              "settings": [
+                {
+                  "name": "OTTER.lam",
+                  "quote": "lam = 1",
+                  "value": "1",
+                  "span": [
+                    217,
+                    224
+                  ],
+                  "at": 223
+                },
+                {
+                  "name": "OTTER.gamma",
+                  "quote": "gamma = 0",
+                  "value": "0",
+                  "span": [
+                    226,
+                    235
+                  ],
+                  "at": 234
+                },
+                {
+                  "name": "OTTER.iterations",
+                  "quote": "150 iterations",
+                  "value": "150",
+                  "span": [
+                    237,
+                    251
+                  ],
+                  "at": 237
+                },
+                {
+                  "name": "OTTER.precision",
+                  "quote": "single precision",
+                  "value": "single",
+                  "span": [
+                    253,
+                    269
+                  ],
+                  "at": 253
+                },
+                {
+                  "name": "OTTER.computing",
+                  "quote": "on CPU",
+                  "value": "CPU",
+                  "span": [
+                    270,
+                    276
+                  ],
+                  "at": 273
+                },
+                {
+                  "name": "OTTER.output_format",
+                  "quote": "matrix output",
+                  "value": "matrix",
+                  "span": [
+                    278,
+                    291
+                  ],
+                  "at": 129
+                }
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "my precomputed gene-by-gene co-expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "motif seed",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "TF-TF PPI",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "human cardiomyocytes",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "Settings: lam = 1, gamma = 0, 150 iterations, single precision on CPU, matrix output.",
+            "kind": "about_methods",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "aggregate TF-gene network",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "OTTER",
+          "lam = 1",
+          "1",
+          "gamma = 0",
+          "0",
+          "150 iterations",
+          "150",
+          "single precision",
+          "single",
+          "on CPU",
+          "CPU",
+          "matrix output",
+          "matrix"
+        ]
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "OTTER"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "about_methods",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "aggregate TF-gene network"
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "hybrid_gate": {
+            "judged": [
+              "OTTER"
+            ],
+            "blocked": {},
+            "must_ask": {},
+            "unconfirmed": {}
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "OTTER"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "using my precomputed gene-by-gene co-expression matrix instead of an expression table",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI projection P, and either a gene-by-sample expression matrix (from which C is computed) or a validated labeled gene-by-gene co-expression matrix.",
+              "question": "Is your co-expression matrix a validated labeled symmetric square gene-by-gene matrix?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Settings: lam = 1, gamma = 0",
+              "uncertainty": "two_versions",
+              "workflow": "OTTER",
+              "contract_quote": "setting lam (number; minimum 0; maximum 1): Weight of gene co-expression versus the TF-TF PPI network in OTTER's fit, as (lam, 1 - lam); not a sparsity penalty.",
+              "question": "Do you want to set lam to a value less than 1?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "lam = 1",
+                "lam < 1"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Settings: lam = 1, gamma = 0",
+              "uncertainty": "two_versions",
+              "workflow": "OTTER",
+              "contract_quote": "setting gamma (number; minimum 0): L2-style regularization of the TF-gene matrix W; not a sparsity penalty or threshold.",
+              "question": "Do you want to set gamma to a value greater than 0?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "gamma = 0",
+                "gamma > 0"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 42910,
+    "output_tokens": 12298,
+    "total_tokens": 55208,
+    "calls": [
+      {
+        "call_id": "96cfe3d1-5963-4814-bbab-1301594adae9",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320834-FH2dlLTZ5CZSf9GbICYs",
+        "input_tokens": 5350,
+        "output_tokens": 268,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5618,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 570,
+        "price_snapshot": null,
+        "duration_ms": 3195,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "4f5b5244-0198-4c45-bfaa-13df51f88050",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320837-ZSkqXlylt4ysuu0gqmMG",
+        "input_tokens": 5904,
+        "output_tokens": 200,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6104,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 708,
+        "price_snapshot": null,
+        "duration_ms": 2675,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9836b862-88fa-464e-8492-679e5f9ac458",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 670,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 715,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 921,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "732d14f2-09bf-4ed1-a6e7-2f94444833f9",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320841-EdDIlXQXw7S4HMdxBlb5",
+        "input_tokens": 370,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 374,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 58,
+        "price_snapshot": null,
+        "duration_ms": 1200,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e32779b7-4de3-4ab1-8ae1-d856eaf67c7f",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792320842-cE6oEboY1PjSM3y7EkFx",
+        "input_tokens": 18515,
+        "output_tokens": 7635,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 26150,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 139111,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e3c5308a-2921-4a2d-a515-86eb119b5fda",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320981-Btqn8Dk3sDdEQgGhFtRm",
+        "input_tokens": 573,
+        "output_tokens": 82,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 655,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 135,
+        "price_snapshot": null,
+        "duration_ms": 1181,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7da2c28d-875f-4b57-932f-3c6cc3172d4c",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792320982-uryvKjDae67KikTfKK8h",
+        "input_tokens": 562,
+        "output_tokens": 46,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 608,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 112,
+        "price_snapshot": null,
+        "duration_ms": 1002,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "cf5d8607-8080-4f53-a192-f7d728e2aa11",
+        "role": "capability_reread",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792320984-Fx2K8pnv3cYOt8aWulbl",
+        "input_tokens": 6239,
+        "output_tokens": 3238,
+        "cache_read_tokens": 4576,
+        "cache_write_tokens": 0,
+        "total_tokens": 9477,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 71171,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6b73a3fa-06a2-4da9-b719-0e697a33810b",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792321055-cDJ2BIDyN69b6Z9FPpXr",
+        "input_tokens": 1894,
+        "output_tokens": 396,
+        "cache_read_tokens": 1792,
+        "cache_write_tokens": 0,
+        "total_tokens": 2290,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 387,
+        "price_snapshot": null,
+        "duration_ms": 4136,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "87b60aa0-8f66-4fb8-8223-3e33a9f038f1",
+        "role": "hybrid_gate",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792321059-L53aIIaLg4nyabV6xPcx",
+        "input_tokens": 2833,
+        "output_tokens": 384,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 3217,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 655,
+        "price_snapshot": null,
+        "duration_ms": 5323,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "857ad5d4-d3ed-4f04-a461-0c50dad869c5"
+}

@@ -1,0 +1,642 @@
+{
+  "version": 1,
+  "session_id": "hb-h4smoke-M03-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792419970.755462,
+  "updated_at": 1792419970.75556,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Could I get LIONESS co-expression networks, one per sample, for our zebrafish fin-regeneration RNA-seq? The matrix has four libraries right now, but the sequencing core flagged one, possibly two, as failed, and I don't yet know how many will have to be dropped."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Will you have at least three samples after dropping the failed ones?\n  You wrote: \"I don't yet know how many will have to be dropped\". LIONESS-COEXPRESSION's contract: \"Require at least three samples and validate expression inside the execution wrapper\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_lioness_coexpression",
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Could I get LIONESS co-expression networks, one per sample, for our zebrafish fin-regeneration RNA-seq?",
+              "rationale": "The user is requesting to obtain co-expression networks using LIONESS methodology."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "LIONESS co-expression networks",
+              "rationale": "The user specifically mentions co-expression networks in their request."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "one per sample",
+              "rationale": "The user requests one co-expression network per sample, indicating sample-specific granularity."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "Co-expression networks typically involve genes as nodes."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user explicitly mentions RNA-seq data, which corresponds to an expression matrix."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Will you have at least three samples after dropping the failed ones?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Could I get LIONESS co-expression networks, one per sample, for our zebrafish fin-regeneration RNA-seq?",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_coexpression.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": "sample_count",
+            "outcomes": {
+              "1": [],
+              "2": [],
+              "3": [
+                "lioness_coexpression.per_sample_networks"
+              ]
+            },
+            "unknown_quote": "I don't yet know how many will have to be dropped.",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS",
+              "named_quote": "LIONESS"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "zebrafish fin-regeneration RNA-seq",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "The matrix has four libraries right now",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "the sequencing core flagged one, possibly two, as failed",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [
+          [
+            "sample_count",
+            "I don't yet know how many will have to be dropped."
+          ]
+        ],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "LIONESS co-expression networks",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I don't yet know how many will have to be dropped."
+        ],
+        "stated_quotes": [
+          "LIONESS"
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-COEXPRESSION"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Will you have at least three samples after dropping the failed ones?",
+            "user_quote": "I don't yet know how many will have to be dropped.",
+            "workflows": [
+              "LIONESS-COEXPRESSION"
+            ],
+            "contract_quote": "Require at least three samples and validate expression inside the execution wrapper.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "LIONESS co-expression networks"
+          ],
+          "run_verdict": null,
+          "legacy_facts": [
+            "How many independent biological samples are available for this result?"
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-COEXPRESSION",
+          "BONOBO"
+        ],
+        "accepted": [
+          {
+            "question": "Will you have at least three samples after dropping the failed ones?",
+            "user_quote": "I don't yet know how many will have to be dropped.",
+            "workflows": [
+              "LIONESS-COEXPRESSION"
+            ],
+            "contract_quote": "Require at least three samples and validate expression inside the execution wrapper.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "the sequencing core flagged one, possibly two, as failed",
+              "uncertainty": "two_versions",
+              "workflow": "BONOBO",
+              "contract_quote": "Expression data must be numeric, finite, complete, gene-by-sample, and have at least three total samples so each leave-one-out background has at least two samples.",
+              "question": "Will you have at least three samples after accounting for the flagged failures?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [
+          {
+            "question": "How many independent biological samples are available for this result?",
+            "user_quote": "I don't yet know how many will have to be dropped.",
+            "workflows": [
+              "LIONESS-COEXPRESSION"
+            ],
+            "contract_quote": "",
+            "depends_on": "sample_count",
+            "outcomes": {
+              "1": [],
+              "2": [],
+              "3": [
+                "LIONESS-COEXPRESSION"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 37244,
+    "output_tokens": 4774,
+    "total_tokens": 42018,
+    "calls": [
+      {
+        "call_id": "f5ae181b-1dc7-4d94-a6fc-762163900562",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792419864-MHOhCkv9O1DAZGEIGMpf",
+        "input_tokens": 5338,
+        "output_tokens": 297,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5635,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 614,
+        "price_snapshot": null,
+        "duration_ms": 4487,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "ec39a976-5da6-4e46-a67e-34b1649f1c29",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792419868-SaISzFyaZKYlZotO4xgq",
+        "input_tokens": 5670,
+        "output_tokens": 179,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5849,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 660,
+        "price_snapshot": null,
+        "duration_ms": 2676,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "df92965d-8da8-41a5-8b09-eaeb9532b0d4",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792419871-8gbrC4TU7BCHV06BJxUl",
+        "input_tokens": 1120,
+        "output_tokens": 201,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1321,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 289,
+        "price_snapshot": null,
+        "duration_ms": 3100,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "06a608b9-996d-4ee1-a371-498b3aea746a",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 691,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 735,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1144,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "f3cf1b76-d70c-4d5d-bcab-332732bd56a5",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792419875-8Mlcapb8ICcNRTQwaCmG",
+        "input_tokens": 1677,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1721,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 278,
+        "price_snapshot": null,
+        "duration_ms": 1562,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b58f20da-6d97-4694-a9d0-b1952537e285",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792419877-yBuD4NknkePa3W0UkLDz",
+        "input_tokens": 1777,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1818,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 291,
+        "price_snapshot": null,
+        "duration_ms": 1515,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6e8bf96f-acc8-4c59-a78c-1acc4de05538",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792419879-Zs8ZC3cWxpfKyKijR2ZF",
+        "input_tokens": 18487,
+        "output_tokens": 3742,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 22229,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 87229,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bebf251c-c05d-4551-8446-ba495657e544",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792419966-zbw1I0P8NQ0V51RrK6xJ",
+        "input_tokens": 561,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 572,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 91,
+        "price_snapshot": null,
+        "duration_ms": 1066,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "528c1fa3-5767-4533-9394-f1829175e24a",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792419967-MWmP7ApqVAS1DDX2Ytrp",
+        "input_tokens": 1923,
+        "output_tokens": 215,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2138,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 417,
+        "price_snapshot": null,
+        "duration_ms": 3575,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "2bb97f5a-9fa7-4ba8-936d-638259b02f67"
+}

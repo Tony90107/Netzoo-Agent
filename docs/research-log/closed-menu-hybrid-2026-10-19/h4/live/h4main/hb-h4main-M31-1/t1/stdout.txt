@@ -1,0 +1,40 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.88s)
+● Matching registered workflows…
+✓ Workflow — OTTER
+✓ Guidance prepared
+What I understood you are asking for:
+1. "We need an OTTER network for our 64 mouse liver RNA-seq samples, pooled into one cohort-wide TF-to-gene network." -- available from OTTER.
+2. "Set lam to 1 so the fit relies entirely on co-expression rather than the PPI, with gamma 0.6 and 150 iterations, and write the edge_list format so I can pass it to community detection later." -- available from OTTER.
+
+Assumptions behind this recommendation (not confirmed facts):
+
+- The user has the necessary input data and parameters for the OTTER network construction.
+
+Selected path: **OTTER**.
+
+Your question asks for a cohort-level regulatory network. **OTTER** fits that result and scale.
+
+**OTTER** — Infer an aggregate TF-to-gene regulatory network with OTTER by solving a continuous-relaxation graph-matching optimization with an explicit objective and gamma regularization that balances motif/PPI priors with co-expression constraints. OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+
+Required workflow inputs:
+
+- `motif_file`: motif/prior
+- `ppi_file`: PPI network
+
+Required alternative (provide one):
+
+- `expression_file`: expression matrix
+- `coexpression_file`: adjusted co-expression matrix
+
+Outputs:
+
+- `regulatory_network`: Inferred regulator-to-target associations.
+
+Runtime limits:
+
+- `computing`: current runtime unavailable: gpu; use `computing=cpu`.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

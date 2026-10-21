@@ -1,0 +1,583 @@
+{
+  "version": 1,
+  "session_id": "hb-h3main-L11-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792395947.0788312,
+  "updated_at": 1792395947.079127,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I'd like a separate gene co-expression network for each pig in our liver transplant study. Either two or three pigs made it into the dataset (the third library may have failed and nobody has checked yet). Expression is a gene-by-sample matrix with sample IDs in the header."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 2 or 3?\n  You wrote: \"Either two or three pigs made it into the dataset\".\n  - 2: no registered workflow can do this as asked -- LIONESS-COEXPRESSION needs at least 3 samples; the request has 2\n  - 3: LIONESS-COEXPRESSION or BONOBO can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_lioness_coexpression",
+        "run_cobra",
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [
+          "gene",
+          "sample"
+        ],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [
+              "gene",
+              "sample"
+            ],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like a separate gene co-expression network for each pig in our liver transplant study.",
+              "rationale": "The user wants to create separate networks for each pig based on gene expression data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "gene co-expression network",
+              "rationale": "The user specifically requests a gene co-expression network."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these is right: 2 or 3?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like a separate gene co-expression network for each pig in our liver transplant study.",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "lioness_coexpression.per_sample_networks",
+              "bonobo.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "3": [
+                "lioness_coexpression.per_sample_networks",
+                "bonobo.per_sample_networks"
+              ]
+            },
+            "unknown_quote": "Either two or three pigs made it into the dataset",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": true,
+            "outcome_notes": {
+              "2": "LIONESS-COEXPRESSION needs at least 3 samples; the request has 2"
+            }
+          },
+          {
+            "quote": "Either two or three pigs made it into the dataset (the third library may have failed and nobody has checked yet).",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "Expression is a gene-by-sample matrix with sample IDs in the header.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {
+          "Either two or three pigs made it into the dataset (the third library may have failed and nobody has checked yet).": {
+            "kind": "choices",
+            "values": [
+              2,
+              3
+            ]
+          }
+        },
+        "unknown_scopes": {},
+        "unknowns": [
+          [
+            "sample_count",
+            "Either two or three pigs made it into the dataset (the third library may have failed and nobody has checked yet)."
+          ]
+        ],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "separate gene co-expression network for each pig",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [
+          {
+            "of": "samples",
+            "quote": "Either two or three pigs made it into the dataset",
+            "values": [
+              2,
+              3
+            ]
+          }
+        ],
+        "uncertain_quotes": [
+          "Either two or three pigs made it into the dataset (the third library may have failed and nobody has checked yet)."
+        ],
+        "stated_quotes": [
+          "Expression is a gene-by-sample matrix with sample IDs in the header."
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-COEXPRESSION",
+          "BONOBO"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which of these is right: 2 or 3?",
+            "user_quote": "Either two or three pigs made it into the dataset",
+            "workflows": [
+              "LIONESS-COEXPRESSION",
+              "BONOBO"
+            ],
+            "contract_quote": "",
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "3": [
+                "LIONESS-COEXPRESSION",
+                "BONOBO"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": true,
+            "notes": {
+              "2": "LIONESS-COEXPRESSION needs at least 3 samples; the request has 2"
+            }
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "count_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "separate gene co-expression network for each pig"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-COEXPRESSION",
+          "BONOBO",
+          "COBRA"
+        ],
+        "accepted": [
+          {
+            "question": "Do you have at least three samples?",
+            "user_quote": "Either two or three pigs made it into the dataset (the third library may have failed and nobody has checked yet).",
+            "workflows": [
+              "LIONESS-COEXPRESSION"
+            ],
+            "contract_quote": "Require at least three samples and validate expression inside the execution wrapper.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "not_supported",
+            "if_no": "supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [
+          {
+            "rule": "R6 the same words already ask a fact",
+            "proposal": {
+              "user_quote": "Either two or three pigs made it into the dataset (the third library may have failed and nobody has checked yet).",
+              "uncertainty": "two_versions",
+              "workflow": "BONOBO",
+              "contract_quote": "Expression data must be numeric, finite, complete, gene-by-sample, and have at least three total samples so each leave-one-out background has at least two samples.",
+              "question": "Do you have at least three samples?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "BONOBO",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": "a",
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 39184,
+    "output_tokens": 5179,
+    "total_tokens": 44363,
+    "calls": [
+      {
+        "call_id": "3abfe6f3-b8a7-4136-9553-6514df707c59",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792395852-sYaP1Hf4X97ZzK0DqEn9",
+        "input_tokens": 5333,
+        "output_tokens": 216,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5549,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 536,
+        "price_snapshot": null,
+        "duration_ms": 3633,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "798d4e55-2a92-455f-87ea-87947abbf335",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792395855-5WInWITRFp8fFnfUNFCz",
+        "input_tokens": 5541,
+        "output_tokens": 246,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5787,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 681,
+        "price_snapshot": null,
+        "duration_ms": 2644,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "01509839-c210-4c80-8a17-d4599038e5bb",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792395858-QhUS1xS4iOr5O24ulk2y",
+        "input_tokens": 1024,
+        "output_tokens": 105,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1129,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 217,
+        "price_snapshot": null,
+        "duration_ms": 1416,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8ad027f5-9e05-43fa-b17e-465d9c2bef80",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 669,
+        "output_tokens": 46,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 715,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1221,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "3b5fcd95-fe92-4224-b6ef-b2ebe38ab43b",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792395861-fJDZUvzdhy502PC6nym8",
+        "input_tokens": 1672,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1688,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 260,
+        "price_snapshot": null,
+        "duration_ms": 904,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "69d2ed61-b11f-4b84-9d04-a262a38e2b48",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792395862-uNLJwmp24zQg6umW6Mzd",
+        "input_tokens": 22317,
+        "output_tokens": 4303,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 26620,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 80878,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1ce51d76-1f1c-4a45-ba5a-e708aaac484e",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792395943-8UU5HIDUGtV7O9ZkhnoT",
+        "input_tokens": 556,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 567,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 90,
+        "price_snapshot": null,
+        "duration_ms": 1208,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a522c516-b271-489f-95b0-d088308c3c50",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792395944-XMKFoSVzccftdGmWL7uz",
+        "input_tokens": 2072,
+        "output_tokens": 236,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2308,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 452,
+        "price_snapshot": null,
+        "duration_ms": 2818,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "cdcef01f-e320-4e5c-b818-e1e82e65ac94"
+}

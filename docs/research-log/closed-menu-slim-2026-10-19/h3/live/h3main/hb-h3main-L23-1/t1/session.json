@@ -1,0 +1,678 @@
+{
+  "version": 1,
+  "session_id": "hb-h3main-L23-1",
+  "profile_id": "default",
+  "auto_generated": false,
+  "created_at": 1792396470.03356,
+  "updated_at": 1792396470.03363,
+  "messages": [
+    {
+      "role": "user",
+      "content": "For each of 120 COPD patients I need one number per transcription factor describing its 'regulatory strength' in that patient, to test against lung function. I'm unsure whether I mean how strongly the TF is wired to its targets in that patient's network or how active the TF is regardless of its own expression."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Are you interested in how active the TF is regardless of its own expression?\n  You wrote: \"how strongly the TF is wired to its targets in that patient's network or how active the TF is regardless of its own expression\". GIRAFFE's contract: \"R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_giraffe",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "unknown"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "tf_activity_matrix",
+            "entity_types": [
+              "sample",
+              "tf"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I need one number per transcription factor describing its 'regulatory strength' in that patient.",
+              "rationale": "The user is seeking to compute a measure of regulatory strength for each transcription factor in individual patients."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "tf_activity_matrix",
+              "source": "inferred",
+              "text_span": "how active the TF is regardless of its own expression.",
+              "rationale": "The request implies a focus on the activity of transcription factors, which aligns with the concept of a tf_activity_matrix."
+            }
+          ],
+          "assumptions": []
+        },
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "unknown"
+            ],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.8,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "how strongly the TF is wired to its targets in that patient's network.",
+              "rationale": "The user is considering how transcription factors are wired to their targets, which suggests a regulatory network analysis."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "inferred",
+              "text_span": "how strongly the TF is wired to its targets.",
+              "rationale": "The request implies a focus on the connections between transcription factors and their targets, which aligns with the concept of a regulatory network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "inferred",
+              "text_span": "For each of 120 COPD patients...",
+              "rationale": "The user specifies needing a separate measure for each patient, indicating sample-specific granularity."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The role is inferred from the structured TF-gene outcome; it is not a quoted user claim."
+            },
+            {
+              "dimension": "target_type",
+              "value": "unknown",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The role is inferred from the structured TF-gene outcome; it is not a quoted user claim."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Are you interested in how active the TF is regardless of its own expression?",
+      "addressed_concerns": [
+        {
+          "action": "run_giraffe",
+          "concern": "downstream_use",
+          "text_span": "test against lung function"
+        },
+        {
+          "action": "run_lioness_panda",
+          "concern": "downstream_use",
+          "text_span": "test against lung function"
+        },
+        {
+          "action": "run_lioness_puma",
+          "concern": "downstream_use",
+          "text_span": "test against lung function"
+        }
+      ],
+      "stated_hypotheses": [
+        {
+          "axis": "unclear_goal",
+          "basis": "run_lioness_panda",
+          "text_span": "how strongly the TF is wired to its targets in that patient's network",
+          "target_artifact": "regulatory_network",
+          "target_granularity": "sample_specific"
+        },
+        {
+          "axis": "unclear_goal",
+          "basis": "run_giraffe",
+          "text_span": "how active the TF is regardless of its own expression",
+          "target_artifact": "tf_activity_matrix",
+          "target_granularity": "aggregate"
+        }
+      ],
+      "data_facts": {
+        "source": "model",
+        "priors": "unstated",
+        "priors_quote": "",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_lioness_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "unstated",
+            "source": "model",
+            "quote": "",
+            "action": "ask"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "For each of 120 COPD patients I need one number per transcription factor describing its 'regulatory strength' in that patient, to test against lung function.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_panda.per_sample_targeting",
+              "giraffe.tf_activity",
+              "lioness_puma.per_sample_targeting"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 120,
+              "samples_quote": "120"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "For each of 120 COPD patients",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          },
+          {
+            "quote": "I'm unsure whether I mean how strongly the TF is wired to its targets in that patient's network or how active the TF is regardless of its own expression.",
+            "kind": "about_methods",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {}
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "one number per transcription factor describing its 'regulatory strength' in that patient",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I'm unsure whether I mean how strongly the TF is wired to its targets in that patient's network or how active the TF is regardless of its own expression.",
+          "how strongly the TF is wired to its targets in that patient's network",
+          "how active the TF is regardless of its own expression"
+        ],
+        "stated_quotes": [
+          "For each of 120 COPD patients"
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "GIRAFFE"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Are you interested in how active the TF is regardless of its own expression?",
+            "user_quote": "how strongly the TF is wired to its targets in that patient's network or how active the TF is regardless of its own expression",
+            "workflows": [
+              "GIRAFFE"
+            ],
+            "contract_quote": "R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "about_methods",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "one number per transcription factor describing its 'regulatory strength' in that patient"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PANDA",
+          "GIRAFFE",
+          "LIONESS-PUMA"
+        ],
+        "accepted": [
+          {
+            "question": "Are you interested in how active the TF is regardless of its own expression?",
+            "user_quote": "how strongly the TF is wired to its targets in that patient's network or how active the TF is regardless of its own expression",
+            "workflows": [
+              "GIRAFFE"
+            ],
+            "contract_quote": "R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "ef7105d467eefb5010d7c28730fc17953c780d420322f214cf229eba91082b39",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 36483,
+    "output_tokens": 7496,
+    "total_tokens": 43979,
+    "calls": [
+      {
+        "call_id": "4632dc8d-029c-4b75-993e-ea51e76c17a2",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792396299-TRoo2P5tNkRNiN5EkCTJ",
+        "input_tokens": 5339,
+        "output_tokens": 451,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5790,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 678,
+        "price_snapshot": null,
+        "duration_ms": 4876,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "6d79a94c-aa5e-476f-87be-1451943e2685",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792396304-i0UaLXiuccjsdlwGXjqJ",
+        "input_tokens": 5819,
+        "output_tokens": 190,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6009,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 689,
+        "price_snapshot": null,
+        "duration_ms": 2293,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0c014bf6-2569-40f9-8b48-59e856573f05",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792396306-BE1IZbw08fFEUYnmdhp8",
+        "input_tokens": 1544,
+        "output_tokens": 289,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1833,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 405,
+        "price_snapshot": null,
+        "duration_ms": 3451,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "7f047245-bf7f-449f-9dea-9e84ebfdb256",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 720,
+        "output_tokens": 53,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 773,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1108,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "d482d647-ad20-4f70-b194-01100b981c41",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792396311-MohwnYmQnC0dguCBEL3w",
+        "input_tokens": 1694,
+        "output_tokens": 158,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1852,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 349,
+        "price_snapshot": null,
+        "duration_ms": 1999,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "84f70239-1295-4845-b19d-d450eb93b7b2",
+        "role": "capability_check",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider_request_id": "gen-1792396313-RVFzEheyKU0mAK2ZRwPc",
+        "input_tokens": 18499,
+        "output_tokens": 6153,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 24652,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 0,
+        "price_snapshot": null,
+        "duration_ms": 152882,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6d51983e-f913-4513-aaab-f2b4a3f5e79e",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792396466-28ACEOoSLbaykZgMcCDo",
+        "input_tokens": 562,
+        "output_tokens": 26,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 588,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 100,
+        "price_snapshot": null,
+        "duration_ms": 1017,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "92fbde2e-c1bc-4890-b0b4-dc479211153f",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792396467-jxBn2HUEkzsdjq1KDrfn",
+        "input_tokens": 551,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 584,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 102,
+        "price_snapshot": null,
+        "duration_ms": 1032,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "27b549a6-5311-4275-8513-4b8c2d41b019",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792396468-OO7MAcPduXTddUbJDH8N",
+        "input_tokens": 1755,
+        "output_tokens": 143,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1898,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 349,
+        "price_snapshot": null,
+        "duration_ms": 1678,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "f085768f-98db-42a5-899f-14de46ee7470"
+}
