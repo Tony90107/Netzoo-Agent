@@ -26,6 +26,9 @@
 #   from -- CONDOR partitions a bipartite regulator-gene network, never a gene-gene one.
 #   `groups: one_group` (Log 413): the result puts each node or sample in exactly one group
 #   (CONDOR communities, SAMBAR subtypes), so a request that items may sit in several rules it out.
+# - `expects` (ROUND-14): what a workflow takes its input to be already, one line each, from its own contract.
+#   One tied to a boolean control is judged by code when the request's words state the opposite value
+#   (`interpretation.expects`). Not shown to the model checks: measured, the lines made gpt-4o-mini refuse more.
 
 data_units: [bulk_samples]
 
@@ -69,6 +72,8 @@ workflows:
 
   PANDA:
     action: run_panda
+    expects:
+      - {id: panda.no_correction, state: "Normalization and batch correction are done before PANDA; it does neither.", source: "[REG] panda.yaml conventions"}
     files: ["-o: TF-gene regulatory network (one file)"]
     produces:
       - id: panda.tf_gene_network
@@ -207,6 +212,8 @@ workflows:
 
   OTTER:
     action: run_otter
+    expects:
+      - {id: otter.no_correction, state: "OTTER does no batch correction; COBRA's adjusted co-expression is the registered way to remove batch.", source: "[REG] otter.yaml conventions"}
     files: ["one file: TF-by-gene matrix, or source/target/weight edge list"]
     produces:
       - id: otter.tf_gene_network
@@ -228,6 +235,8 @@ workflows:
 
   GIRAFFE:
     action: run_giraffe
+    expects:
+      - {id: giraffe.defaults_only, state: "Runs with the package defaults; no optimizer or model setting can be passed.", source: "[REG] giraffe.yaml conventions; controls: []"}
     files: ["<out>: TF-by-gene regulatory matrix", "<stem>.tfa<ext>: TF-by-sample activity matrix"]
     produces:
       - id: giraffe.signed_regulation
@@ -264,6 +273,8 @@ workflows:
 
   DRAGON:
     action: run_dragon
+    expects:
+      - {id: dragon.continuous, state: "Both layers hold finite continuous measurements on the same samples; nothing is imputed or normalized.", source: "[REG] dragon.yaml conventions"}
     files: ["node-by-node partial-correlation matrix plus <stem>.pvalues and <stem>.adj_pvalues, or one edge list with partial_correlation, precision, p_value, adj_p_value"]
     produces:
       - id: dragon.two_layer_network
@@ -297,6 +308,8 @@ workflows:
 
   LIONESS-DRAGON:
     action: run_lioness_dragon
+    expects:
+      - {id: lioness_dragon.continuous, state: "Both layers hold finite continuous measurements on the same samples; nothing is imputed or normalized.", source: "[REG] lioness-dragon.yaml conventions"}
     files: ["output_file: aggregate partial-correlation matrix", "lioness_output: edge-by-sample table"]
     produces:
       - id: lioness_dragon.per_sample_networks
@@ -344,6 +357,9 @@ workflows:
 
   BONOBO:
     action: run_bonobo
+    expects:
+      - {id: bonobo.log_transformed, state: "Expression is already log-transformed.", control: log_transformed, value: true, source: "[REG] bonobo.yaml conventions: BONOBO assumes log-transformed centered expression"}
+      - {id: bonobo.centered, state: "Each gene is already centered.", control: centered, value: true, source: "[REG] bonobo.yaml conventions: BONOBO assumes log-transformed centered expression"}
     files: ["bonobo_<sample>: gene-by-gene co-expression per sample", "pvals_<sample> (only with sparsify + save_pvals)", "manifest.json"]
     produces:
       - id: bonobo.per_sample_networks
@@ -359,6 +375,8 @@ workflows:
 
   COBRA:
     action: run_cobra
+    expects:
+      - {id: cobra.numeric_design, state: "Covariates are numeric columns of a design matrix whose rows are the expression samples.", source: "[REG] cobra.yaml conventions"}
     files: ["components.npz", "summary.tsv", "adjusted_coexpression.tsv/.npz", "manifest.json"]
     produces:
       - id: cobra.covariate_components
@@ -382,6 +400,8 @@ workflows:
 
   CONDOR:
     action: run_condor
+    expects:
+      - {id: condor.edge_list, state: "Takes an existing regulator-gene network as source, target and optional numeric weight columns, never expression.", source: "[REG] condor.yaml conventions and input_artifacts"}
     files: ["<prefix>-edges.tsv", "<prefix>-reg_memb.tsv and -tar_memb.tsv: community memberships", "<prefix>-reg_qscores.tsv and -tar_qscores.tsv: core scores", "<prefix>-summary.txt (modularity)"]
     produces:
       - id: condor.communities
@@ -409,6 +429,8 @@ workflows:
 
   SAMBAR:
     action: run_sambar
+    expects:
+      - {id: sambar.mutation_counts, state: "Takes non-negative somatic mutation counts (samples by genes) with exon lengths, never expression.", source: "[REG] sambar.yaml conventions and accepted_input_modalities"}
     files: ["mt_out.csv: gene mutation scores", "pt_out.csv: pathway mutation scores", "clustergroups.csv and dist_matrix.csv (clustering on)", "manifest.json"]
     produces:
       - id: sambar.subtypes

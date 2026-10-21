@@ -176,9 +176,25 @@ def request_condition_check(context, state, pairs: list[tuple[str, str, str, str
     None when nothing answered (no model, budget, failure); the caller then changes nothing, so a failed call
     never makes a supported result unconfirmed.
     """
+    from ..interpretation.expects import code_answer
+
+    # ROUND-14: words stating the opposite of what a workflow's contract expects are judged by code, never asked.
+    by_code = [code_answer(workflow, stated) for _asked, stated, workflow, _produced in pairs]
+    if pairs and all(by_code):
+        return by_code, usage, budget_warnings
     model, llm = _check_model(context)
     if llm is None or not pairs:
         return None, usage, budget_warnings
+    asked = [pair for pair, answer in zip(pairs, by_code) if answer is None]
+    answers, usage, budget_warnings = _condition_call(context, state, model, llm, asked, usage, budget_warnings,
+                                                      redirect)
+    if answers is None:
+        return None, usage, budget_warnings
+    model_answers = iter(answers)
+    return [answer or next(model_answers) for answer in by_code], usage, budget_warnings
+
+
+def _condition_call(context, state, model, llm, pairs, usage, budget_warnings, redirect: bool):
     schema = condition_check_model(len(pairs))
     listed = "\n".join(f'{index}. Asked result: "{asked}" | Stated requirement: "{stated}" | {workflow} produces: '
                         f"{produced}" for index, (asked, stated, workflow, produced) in enumerate(pairs, 1))

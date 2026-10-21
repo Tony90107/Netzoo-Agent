@@ -80,11 +80,19 @@ def _recorded_answers(payload: dict | None, quotes: list[str]) -> dict:
 
 def _answer(check, pairs, recorded: dict):
     """(answered pairs, their answers, unanswered pairs) for this checkout's pairs."""
+    try:  # ROUND-14: answers code gives before asking (absent from older checkouts)
+        from netzoo_agent_core.capability_sheet import entry
+        from netzoo_agent_core.interpretation.expects import code_answer
+    except ImportError:
+        code_answer = None
     done, answers, missing = [], [], []
     for pair in pairs:
-        index, action, _keys, stated = pair
+        index, action, keys, stated = pair
         key = (check.requirements[index].quote, action, stated)
-        if key in recorded:
+        if code_answer is not None and (by_code := code_answer(entry(keys[0]).workflow, stated)):
+            done.append(pair)
+            answers.append(by_code)
+        elif key in recorded:
             done.append(pair)
             answers.append(recorded[key])
         else:
