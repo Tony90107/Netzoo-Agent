@@ -642,6 +642,9 @@ class CheckedRequirement(BaseModel):
     fact_ids: list[str] = Field(default_factory=list)
     """ROUND-03: the facts of `CapabilityCheck.facts` its method was compiled from and judged on (a derived total
     with its parts), and the candidate count it waits on; empty in recordings from before ROUND-03."""
+    blocks: list[str] = Field(default_factory=list)
+    """ROUND-17: the workflows this not-available row shows cannot run as asked (a setting set apart, a stated
+    requirement they violate); every other row resting on them alone is held with it (`same_run.same_run_holds`)."""
 
 
 class CapabilityCheck(BaseModel):

@@ -602,6 +602,14 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         record_event(context, state, "core.ruled_out_applied", "classify", {
             "ruled_out": check.ruled_out, "limits": [row.limits for row in lifted.results()]})
         check = lifted
+    # ROUND-17 (user decision): a result resting only on a workflow another row shows cannot run as asked is held too.
+    from ..interpretation.same_run import same_run_holds
+
+    if (held := same_run_holds(check)) is not check:
+        record_event(context, state, "core.same_run_held", "classify", {
+            "held": [row.quote for row, before in zip(held.requirements, check.requirements)
+                     if row.status != before.status]})
+        check = held
     # Core decision phase 2: the fact agent asks; the fixed dimensions below stand only when it did not run.
     result, decision, check = apply_fact_check(context, state, user_task, result, decision, check)
     if check.needed_facts():
