@@ -265,10 +265,15 @@ def setting_issue(conditions: WorkflowConditions, setting: StatedSetting) -> str
         chosen = enum_value(limit, value)
         if value.strip() and chosen is None and setting_unresolved(conditions, setting) is None:
             return (f'{conditions.workflow}\'s {limit.name} requires one of {_names(map(str, limit.allowed_values))}; '
-                    f'"{value}" does not identify one allowed choice')
+                    f'"{value}" {UNCLEAR_CHOICE}')
         if chosen is not None and str(chosen).casefold() in limit.unavailable_values:
             return limit.unavailable_message.rstrip(".")
     return None
+
+
+UNCLEAR_CHOICE = "does not identify one allowed choice"
+"""How `setting_issue` ends when the words name no allowed choice: unsettled words, never a run the method cannot do
+(ROUND-17: they hold no other row of the run)."""
 
 
 def contract_forbids(conditions: WorkflowConditions, setting: StatedSetting) -> bool:

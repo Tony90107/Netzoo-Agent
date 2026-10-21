@@ -273,7 +273,8 @@ def test_mx12_an_unusable_setting_in_its_own_clause_is_a_requirement_of_its_own(
         ("exposed custom optimizer learning rate of 0.009", "not_available")]
     assert "passes no settings to it" in check.results()[2].limits[0]
     assert all("settings" not in item.method for item in check.results()[:2])
-    # The run is still held: the user asked for the learning rate too.
+    # The run is still held: the user asked for the learning rate too. ROUND-17 (user decision): after the check, the
+    # router holds both results with it (`same_run.same_run_holds`, tests/test_same_run.py), so the turn is declined.
     assert run_check_verdict(check, "run_giraffe")["verdict"] == "partial_gap"
     assert ('"exposed custom optimizer learning rate of 0.009" -- not available here as asked.'
             in understanding_paragraph(check))

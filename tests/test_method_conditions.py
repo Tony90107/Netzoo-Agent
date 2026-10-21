@@ -375,7 +375,8 @@ def test_an_unmapped_request_offers_the_workflow_that_runs_with_its_own_settings
     assert "no workflow is offered" not in reply
     # Round m3: a24b's own wording sets the GPU apart by a clause boundary, and its gold judged it apart ("run OTTER on
     # the 110 lung samples" supported, "on the GPU so it finishes faster" not); OTTER is offered for the network, and
-    # the GPU line says why it is not available.
+    # the GPU line says why it is not available. ROUND-17 (user decision) supersedes that gold after the check: the
+    # router holds the run with its GPU line, so the turn is declined with this reason (h2 J44's gold).
     task = ("Go ahead and run OTTER on the 110 lung samples (motif, PPI and expression attached) on the GPU so it "
             "finishes faster.")
     check = _check(task, _ask("run OTTER", ["otter.tf_gene_network"], named="OTTER", named_quote="OTTER",

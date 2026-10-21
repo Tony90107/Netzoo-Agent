@@ -392,7 +392,8 @@ def settings_apart(task: str, method: dict, keys: list[str], asked: list[tuple[i
         if all(issues) and not forbidden and all(_own_clause(task, where, ask) for ask in asked):
             words = task[where[0]:where[1]].strip().rstrip(" .;,!?")
             apart.append(CheckedRequirement(quote=words, kind="result", status="not_available",
-                                            method={"settings": [item]}, limits=list(dict.fromkeys(issues))))
+                                            method={"settings": [item]}, limits=list(dict.fromkeys(issues)),
+                                            blocks=[conditions.workflow for conditions in found]))
         else:
             kept.append(item)
     if not apart:

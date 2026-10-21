@@ -474,6 +474,8 @@ def build_capability_check(
         limits = list(dict.fromkeys(reason for _keys, reasons, *_rest in fitted for reason in reasons))
         instead = list(dict.fromkeys(key for _keys, _limits, others, _defaults in fitted for key in others))
         defaults = list(dict.fromkeys(key for *_rest, own in fitted for key in own))
+        blocks = list(dict.fromkeys(known[k].workflow for keys, (kept, _r, others, _d) in zip(pre, fitted)
+                                    for k in keys if k not in kept and k not in others))  # ROUND-17: run limits
         method = next((found for found in methods if found), {})
         delivered = list(dict.fromkeys(k for keys in readings for k in keys))
         not_by = list(dict.fromkeys(
@@ -508,7 +510,7 @@ def build_capability_check(
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
                                                delivered_by=delivered, not_by=not_by, attrs=attrs, blank=blank,
                                                asked_as=asked_as, method=method, limits=limits, instead=instead,
-                                               defaults=defaults, fact_ids=fact_ids, **waiting))
+                                               defaults=defaults, fact_ids=fact_ids, blocks=blocks, **waiting))
     requirements += [item.model_copy(update={"fact_ids": record.ids_for(item.method)}) for item in apart.values()]
     spans += [found for item in apart.values() if (found := _span(task, item.quote)) is not None]
     choices, option_spans = _open_choices(task, proposal, conditions, place)

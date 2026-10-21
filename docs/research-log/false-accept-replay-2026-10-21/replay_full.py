@@ -214,6 +214,13 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
     if (lifted := without_ruled_out(check, stated_inputs)) is not check:
         check = lifted
         steps.append("ruled out")
+    try:  # ROUND-17: rows resting only on a workflow another row blocks are held (absent from older checkouts)
+        from netzoo_agent_core.interpretation.same_run import same_run_holds
+    except ImportError:
+        same_run_holds = None
+    if same_run_holds is not None and (held := same_run_holds(check)) is not check:
+        check = held
+        steps.append("same run held")
 
     # 8-9: the recorded fact check, waits, the full-gap update, the call
     if decision.fact_check is not None and decision.fact_check.status == "checked":
