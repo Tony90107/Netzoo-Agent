@@ -51,12 +51,13 @@ def test_a_read_naming_no_result_with_its_words_in_the_request_opens_the_goal():
     assert with_goal_read(blank, C24, None) == blank
 
 
-def test_words_naming_one_registered_workflow_keep_their_goal():
-    # As in goal_unclear: a question about one named method has a goal (unlabelled ve-m3 N21).
-    task = ("Can PUMA convert its signed edge weights into experimentally proven activation and repression labels as a "
-            "guaranteed native output?")
-    gap = _gap(task)
-    assert with_goal_read(gap, task, GoalRead(asked_words=task, result="names_no_result")) == gap
+def test_words_naming_a_workflow_but_no_result_open_the_goal():
+    # Live M33 (gold CLARIFY): one workflow named, no result -- the goal is still open.
+    task = ("What could GIRAFFE tell me about our T-cell exhaustion time course? We have RNA-seq at six time points "
+            "from four donors, plus human motif and PPI priors, but I'm not sure what question to put to it.")
+    words = "What could GIRAFFE tell me about our T-cell exhaustion time course?"
+    opened = with_goal_read(_gap(words), task, GoalRead(asked_words=words, result="names_no_result"))
+    assert opened.open_goal_quote == words
 
 
 def test_an_open_goal_is_clarify_and_a_named_result_stays_declined():
