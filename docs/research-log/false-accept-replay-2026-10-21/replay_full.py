@@ -261,6 +261,12 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
     decision = decision.model_copy(update=update)
     recorded_core = next((e["payload"] for e in reversed(found) if e["event_type"] == "core.decision"), {})
     reason = recorded_core.get("evidence", {}).get("reason_code", "") or ""
+    kinds = {e["event_type"] for e in found}
+    if (reason == "research_choices_unavailable" and "routing.hypothesis_bases_matched" in kinds
+            and "routing.hypothesis_bases_failed" not in kinds):
+        # ROUND-21 (C31), as routing now does: the reader answered "no stated hypotheses" -- not a failure.
+        reason = "research_choices_unread"
+        decision = decision.model_copy(update={"match_basis": "unverified_evidence", "clarification_question": None})
     core = decide_core(decision, task, reason_code=reason)
     held = _first(found, "routing.run_held")
     verdict = None
