@@ -65,10 +65,6 @@ def _status(delivered: list[str]) -> str:
 
 _TYPED = ("scale", "omics_layers", "data_unit", "regulator_kinds", "needs_sign", "input_network",
           "group_membership", "time_model", "spatial", "samples_matched", "mutation_origin", "value_type", "mirna_driver")
-_UNSTATED_FORM = {"group_membership": "not_stated", "time_model": "not_dynamic", "spatial": "not_spatial"}
-"""Each result form's value when the request's words do not state the form no registered workflow gives."""
-RESULT_FORM_OFF = {name: CONDITIONS[name][1] for name in _UNSTATED_FORM}
-"""The form value that rules results out (`CONDITIONS`): several_groups, dynamic, uses_neighbors."""
 
 
 def verified_conditions(task: str, proposal) -> dict[str, str]:
@@ -310,12 +306,6 @@ def _with_conditions(item, conditions: dict[str, str]):
     for name in ("spatial", "time_model"):
         if conditions.get(name):
             update[name] = conditions[name]
-    # 2026-10-22 (user decision): an ask's form rules a workflow out only with the request's own words for it. The
-    # ask's typed form has no quote; gpt-4o-mini typed "split the tumors into 2-5 subtypes" several_groups with an
-    # empty request-level quote (h5 Q26, J22, M45) and SAMBAR or CONDOR was refused (subtypes-regression-2026-10-22).
-    for name, neutral in _UNSTATED_FORM.items():
-        if getattr(item, name, None) == RESULT_FORM_OFF[name] and conditions.get(name) != RESULT_FORM_OFF[name]:
-            update.setdefault(name, neutral)
     for name in ("mutation_origin", "value_type", "mirna_driver"):
         if conditions.get(name) and getattr(item, name, "not_stated") == "not_stated":
             update[name] = conditions[name]

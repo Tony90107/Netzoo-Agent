@@ -335,22 +335,13 @@ def test_a_result_asked_as_a_question_is_checked_whatever_the_sentences_role():
 def test_result_forms_no_workflow_gives_rule_every_entry_out():
     from netzoo_agent_core.interpretation.capability_check import build_capability_check
 
-    from netzoo_agent_core.contracts.capability_check import unstated_conditions
-
     task = "We want a fuzzy community structure in which every gene has a degree of membership in each community."
     quote = "a fuzzy community structure in which every gene has a degree of membership in each community"
     for form, value in (("group_membership", "several_groups"), ("time_model", "dynamic"),
                         ("spatial", "uses_neighbors")):
-        reading = _one_sentence(task, "asks", quote, ("condor.communities",), input_network="regulator_gene",
-                                **{form: value})
-        stated = reading.model_copy(update={"conditions": reading.conditions.model_validate(
-            {**unstated_conditions(), form: value, f"{form}_quote": "every gene has a degree of membership"})})
-        check, _ = build_capability_check(task, stated)
+        check, _ = build_capability_check(task, _one_sentence(task, "asks", quote, ("condor.communities",),
+                                                                input_network="regulator_gene", **{form: value}))
         assert check.results()[0].status == "not_available", form
-        # 2026-10-22 (user decision): the ask's form alone has no words for it, and rules nothing out
-        # (gpt-4o-mini typed "2-5 subtypes" several_groups with an empty request-level quote).
-        unquoted, _ = build_capability_check(task, reading)
-        assert unquoted.results()[0].status == "available", form
     plain, _ = build_capability_check(task, _one_sentence(task, "asks", quote, ("condor.communities",),
                                                           input_network="regulator_gene",
                                                           group_membership="one_group"))
