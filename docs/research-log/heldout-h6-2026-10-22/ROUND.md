@@ -59,3 +59,29 @@ whole set and on the hard subset.
 - **Declared now, before any ROUND-26 development:** the final validation's primary measure is field-level linking
   on `fields.json`. The four-way score is reported only as a secondary measure, beside the 3-item hard subset,
   because the wording alone predicts the class of 45 of the 48 items.
+
+## Final run -- amended before running (2026-10-22, user decision)
+
+- **Code:** ROUND-26 phase 2a was not adopted, and the system was frozen. The final run uses the frozen code
+  `91a8c2d9`, not `77c339a3`. It is checked out clean and detached in `.worktrees/netzoo-h6-final`.
+  - Compared with `77c339a3`, the scripts add only two commits: 557bd5b1 (group_membership / input_network "not
+    stated") and 91a8c2d9 (a fact agent that asks nothing keeps the legacy waits).
+  - `workflows/*.yaml` are identical (`git diff 77c339a3 91a8c2d9 -- workflows` is empty).
+  - Nothing after 91a8c2d9 on main changes code: 4c18bdef reverts 81912052.
+- **Run:** `run_h6.py main`, h5's runner unchanged except the worktree, the frozen commit and the tag `h6main`.
+  - Every item is run twice (96 sessions), as in h5.
+  - Models are gpt-4o-mini only, with capability check `openai/gpt-4o-mini-2024-07-18`.
+  - The actual-cost guard stops new sessions at US$0.60. The estimate is about US$0.45.
+  - No smoke round: the same runner ran 116 sessions today without a setup failure.
+- **Measures**, as declared above, with the 2026-10-22 scoring rule added:
+  - Primary: field-level linking on `fields.json` (`field-gold-2026-10-22/linking.py`, extended to h6 only by
+    adding the set).
+  - Secondary: the four-way call. False accepts, false refusals and missed asks come first; a needless question is
+    reported as a cost, not an error. The strict score is reported beside it, on the whole set and on the hard subset
+    R07, R20, R31.
+  - The deciding fact of ask items is judged by one blind labeller subagent on a shuffled fact sheet, as in h5.
+- **Known limitation, declared before running:** with gpt-4o-mini as the capability reader, a "subtypes" or
+  "communities" request can be typed several_groups and refused (`subtypes-regression-2026-10-22`). The
+  verified-quote fix was reverted (`verified-forms-2026-10-22`). h6 errors of this kind are reported as this
+  limitation, not fixed.
+- No code changes after this run; h6 is then seen.
