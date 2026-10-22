@@ -1,0 +1,836 @@
+{
+  "version": 1,
+  "session_id": "hb-nsbase-L30-1",
+  "profile_id": "hb-nsbase-L30-1",
+  "auto_generated": false,
+  "created_at": 1792658508.021054,
+  "updated_at": 1792658508.021127,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Our pilot has nine patient-derived colorectal cancer organoids with somatic mutation counts (samples by genes), plus an exon-length CSV, a tab-delimited cancer-gene list and the MSigDB KEGG GMT. Can SAMBAR try every subtype number from 3 up to 9 clusters? Use average linkage and keep the default normalization by each patient's mutation burden."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Can SAMBAR try every subtype number from 3 up to 9 clusters?\" -- available from SAMBAR.\n\nSelected path: **SAMBAR**.\n\nYour question asks for a cohort-level sample cluster assignment. **SAMBAR** fits that result and scale. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization.\n\nWhy this recommendation:\n\nPatient mutation burden normalization rescales each patient's mutation scores relative to their overall mutation burden, so total burden does not dominate the comparison. This is a relative score normalization, not a clinical TMB estimate or a correction for every sequencing bias.\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR**: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\n\nRouting-level input modality: somatic mutation.\n\nMethod premise: derive patient or tumor subtypes; produce pathway-level mutation scores; analyze somatic mutation measurements.\n\nSAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.\n\nRequired workflow inputs:\n\n- `mutation_file`: somatic mutation matrix\n- `exon_size_file`: gene/exon-size CSV\n- `cancer_gene_file`: cancer-gene list\n- `pathway_file`: GMT pathway file\n\nOther declared controls (not matched to this request; defaults apply unless you set them): `norm_patient`=True, `kmin`=2, `kmax`=4, `gmt_msigdb`=True, `subset_cancer_genes`=True, `distance`=binomial, `linkage`=complete, `cluster`=True.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `gene_mutation_scores`: Sample-by-gene mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_sambar",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_sambar"
+      ],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [
+          "mutation_matrix"
+        ],
+        "artifact_type": "sample_cluster_assignment",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "mutation_matrix"
+            ],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "Can SAMBAR try every subtype number from 3 up to 9 clusters?",
+              "rationale": "The user wants to evaluate clustering of samples."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "sample_cluster_assignment",
+              "source": "explicit",
+              "text_span": "Can SAMBAR try every subtype number from 3 up to 9 clusters?",
+              "rationale": "The user is asking for clustering results for the samples."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "mutation_matrix",
+              "source": "explicit",
+              "text_span": "somatic mutation",
+              "rationale": "The user explicitly mentioned somatic mutation counts as current input."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The artifact type 'sample_cluster_assignment' implies a cohort-wide result rather than a sample-specific one."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Can SAMBAR try every subtype number from 3 up to 9 clusters?",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "SAMBAR",
+              "named_quote": "SAMBAR",
+              "samples": 9,
+              "samples_quote": "nine patient-derived colorectal cancer organoids",
+              "settings": [
+                {
+                  "name": "SAMBAR.linkage",
+                  "quote": "average linkage",
+                  "value": "average linkage",
+                  "span": [
+                    260,
+                    275
+                  ],
+                  "at": 260
+                }
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "setting:SAMBAR.linkage@260-275",
+              "sample_count@14-62"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "nine patient-derived colorectal cancer organoids with somatic mutation counts (samples by genes)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "an exon-length CSV",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a tab-delimited cancer-gene list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "the MSigDB KEGG GMT",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "Use average linkage and keep the default normalization by each patient's mutation burden.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Can SAMBAR try every subtype number from 3 up to 9 clusters?",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "SAMBAR",
+          "average linkage"
+        ],
+        "facts": [
+          {
+            "id": "setting:SAMBAR.linkage@260-275",
+            "property": "setting",
+            "name": "SAMBAR.linkage",
+            "value": "average linkage",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "average linkage",
+            "span": [
+              260,
+              275
+            ],
+            "value_quote": "average linkage",
+            "value_span": [
+              260,
+              275
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "average linkage",
+                "span": [
+                  260,
+                  275
+                ],
+                "result": "",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@14-62",
+            "property": "sample_count",
+            "name": "",
+            "value": "9",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "nine patient-derived colorectal cancer organoids",
+            "span": [
+              14,
+              62
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "nine patient-derived colorectal cancer organoids",
+                "span": [
+                  14,
+                  62
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "nine patient-derived colorectal cancer organoids",
+                "span": [
+                  14,
+                  62
+                ],
+                "result": "Can SAMBAR try every subtype number from 3 up to 9 clusters?",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "nine patient-derived colorectal cancer organoids",
+                "span": [
+                  14,
+                  62
+                ],
+                "result": "Can SAMBAR try every subtype number from 3 up to 9 clusters?",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:SAMBAR.kmin@236-237",
+            "property": "setting",
+            "name": "SAMBAR.kmin",
+            "value": "3",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "3",
+            "span": [
+              236,
+              237
+            ],
+            "value_quote": "3",
+            "value_span": [
+              236,
+              237
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "result",
+                "quote": "3",
+                "span": [
+                  236,
+                  237
+                ],
+                "result": "Can SAMBAR try every subtype number from 3 up to 9 clusters?",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:SAMBAR.kmax@244-245",
+            "property": "setting",
+            "name": "SAMBAR.kmax",
+            "value": "9",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "9",
+            "span": [
+              244,
+              245
+            ],
+            "value_quote": "9",
+            "value_span": [
+              244,
+              245
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "result",
+                "quote": "9",
+                "span": [
+                  244,
+                  245
+                ],
+                "result": "Can SAMBAR try every subtype number from 3 up to 9 clusters?",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "sample_cluster_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Can SAMBAR try every subtype number from 3 up to 9 clusters?"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "try every subtype number from 3 up to 9 clusters",
+              "uncertainty": "two_versions",
+              "workflow": "SAMBAR",
+              "contract_quote": "cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.",
+              "question": "Do you want to try 3 to 9 clusters?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "3 clusters",
+                "4 clusters",
+                "5 clusters",
+                "6 clusters",
+                "7 clusters",
+                "8 clusters",
+                "9 clusters"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "keep the default normalization by each patient's mutation burden",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "setting norm_patient (boolean): Normalize gene mutation scores by each patient's mutation burden.",
+              "question": "Do you want to normalize by each patient's mutation burden?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "average linkage",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "setting linkage (string): Hierarchical-clustering linkage method (a scipy name).",
+              "question": "Do you want to use average linkage for clustering?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 32413,
+    "output_tokens": 1626,
+    "total_tokens": 34039,
+    "calls": [
+      {
+        "call_id": "b20f2454-fbea-4b81-b6e3-130b1ba64ca9",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792658478-ff99fQD83u5JgsGfgVsE",
+        "input_tokens": 5351,
+        "output_tokens": 206,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5557,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 561,
+        "price_snapshot": null,
+        "duration_ms": 3199,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "066364b7-71fb-451b-b737-6b352773ff6e",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792658481-iQOUzkrmGYtRafyQgDDB",
+        "input_tokens": 5788,
+        "output_tokens": 213,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6001,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 698,
+        "price_snapshot": null,
+        "duration_ms": 6121,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "033520cd-6ee8-4dc6-953c-747d823ad03c",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 665,
+        "output_tokens": 37,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 702,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 122,
+        "price_snapshot": {
+          "snapshot_id": "c468772e-c803-58d6-b125-a6a1864bac5b",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-22T08:37:11.221964Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1139,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "ac59b1ed-755f-441d-90d7-6b7e555211ab",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792658489-Ozl1WreQogMtGRc34gNr",
+        "input_tokens": 294,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 298,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 47,
+        "price_snapshot": null,
+        "duration_ms": 832,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "83ce51b4-99d0-4874-9734-c133f2e78a36",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792658490-eLgLpTHtxpLwAWBaOIaf",
+        "input_tokens": 18197,
+        "output_tokens": 837,
+        "cache_read_tokens": 17152,
+        "cache_write_tokens": 0,
+        "total_tokens": 19034,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1945,
+        "price_snapshot": null,
+        "duration_ms": 11676,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "dabfb5fd-dd72-4426-9231-7e54365ef237",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792658501-ppohL6DqQu6gcx7fz6hE",
+        "input_tokens": 574,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 607,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 106,
+        "price_snapshot": null,
+        "duration_ms": 1103,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b20ee7eb-d724-4638-8ab9-3c4f06e2fcb5",
+        "role": "capability_condition_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792658502-qjsyjltAZq2LAWcMlxYc",
+        "input_tokens": 330,
+        "output_tokens": 8,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 338,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 54,
+        "price_snapshot": null,
+        "duration_ms": 918,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f45048f9-4ac7-4c0c-9880-8bbfb46a1455",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792658503-BiodzXjUSUrXQRppfNjd",
+        "input_tokens": 1214,
+        "output_tokens": 288,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1502,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 355,
+        "price_snapshot": null,
+        "duration_ms": 4149,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "8a62534d-cd1d-40a3-ba8a-2454e17be2c9"
+}
