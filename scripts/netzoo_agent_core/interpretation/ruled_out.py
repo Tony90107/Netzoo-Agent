@@ -136,6 +136,12 @@ def without_unbuilt_network(check, task: str):
     not available as asked when no existing network is given -- the reading reads none, or the user's own words rule
     one out -- and the request names no workflow that builds one.
 
+    ROUND-24 (held-out h5 Q13-2, "Run CONDOR on panda_psoriasis_edges.csv ... and write the communities to
+    condor_psoriasis/"): the reading typed "no network" on the output-folder clause, and a doable run was refused. The
+    reading's type is trusted only on the result that holds the user's own naming of the workflow (by position); the
+    user's words ruling a network out -- said, or left out of an "only these" statement (C18 "just this expression
+    table") -- count for any of its results.
+
     H27 "I need CONDOR run directly on rnaseq_tpm.tsv ... without building any network first" and L48 "Run CONDOR right
     away on counts/brain_rnaseq_counts.tsv ... We haven't built any network yet" were run or answered: a route through
     PANDA, PUMA or OTTER counted as available though the user named neither it nor a motif prior or PPI. As for a named
@@ -145,9 +151,12 @@ def without_unbuilt_network(check, task: str):
     if check is None:
         return check
     named_here, rows, changed = set(workflows_in(task)), [], False
+    only = set(getattr(check, "only_inputs", []) or [])
+    said = check.ruled_out.get("network") or (check.only_inputs_quote if only and "network" not in only else "")
     for row in check.requirements:
         named = row.method.get("named")
-        absent = row.attrs.get("input_network") in ("none", None) or "network" in check.ruled_out
+        absent = bool(said) or (row.attrs.get("input_network") in ("none", None)
+                                and _names_in_row(task, row.quote, row.method.get("named_quote", "")))
         if row.kind != "result" or row.status not in ("available", "with_step", "partial") or not named or not absent:
             rows.append(row)
             continue
@@ -162,8 +171,8 @@ def without_unbuilt_network(check, task: str):
             if set(builders) & named_here:
                 continue
             held.append(key)
-            said = f'You said "{check.ruled_out["network"]}"; ' if "network" in check.ruled_out else ""
-            reasons.append(f"{said}{named} runs only on {found.inputs[0] if found.inputs else _LABEL['network']}; "
+            prefix = f'You said "{said}"; ' if said else ""
+            reasons.append(f"{prefix}{named} runs only on {found.inputs[0] if found.inputs else _LABEL['network']}; "
                            f"building one first ({', '.join(builders)}) is a separate run the request does not name")
         if not held:
             rows.append(row)
@@ -177,3 +186,19 @@ def without_unbuilt_network(check, task: str):
         return check
     results = [row for row in rows if row.kind == "result"]
     return check.model_copy(update={"requirements": rows, "full_gap": full_gap(results, check.unchecked)})
+
+
+def _names_in_row(task: str, quote: str, named_quote: str) -> bool:
+    """Whether the user's own naming of the workflow (exact, case-sensitive) lies inside the result's words -- not an
+    output folder that happens to hold its name (condor_psoriasis/)."""
+    from .request_spans import _span
+
+    span = _span(task, quote)
+    if span is None or not named_quote.strip():
+        return False
+    start = task.find(named_quote)
+    while start != -1:
+        if span[0] <= start and start + len(named_quote) <= span[1]:
+            return True
+        start = task.find(named_quote, start + 1)
+    return False

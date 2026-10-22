@@ -15,11 +15,11 @@ L48 = ("Run CONDOR right away on counts/brain_rnaseq_counts.tsv to get gene comm
        "yet.")
 
 
-def _check(network="none", named="CONDOR", ruled_out=None):
-    row = CheckedRequirement(quote="gene communities", kind="result", status="available",
+def _check(network="none", named="CONDOR", ruled_out=None, quote="CONDOR run directly on rnaseq_tpm.tsv", **check):
+    row = CheckedRequirement(quote=quote, kind="result", status="available",
                              delivered_by=["condor.communities"], attrs={"input_network": network},
                              method={"named": named, "named_quote": named} if named else {})
-    return CapabilityCheck(requirements=[row], ruled_out=ruled_out or {})
+    return CapabilityCheck(requirements=[row], ruled_out=ruled_out or {}, **check)
 
 
 def test_a_named_condor_with_no_network_is_not_available_as_asked():
@@ -45,3 +45,21 @@ def test_a_route_the_user_names_a_given_network_or_no_named_condor_stands():
     assert without_unbuilt_network(given, "Run CONDOR on panda_net.tsv to get communities.") is given
     unnamed = _check(named=None)
     assert without_unbuilt_network(unnamed, "I want gene communities from my expression data.") is unnamed
+
+
+def test_the_readings_no_network_counts_only_on_the_result_naming_the_workflow():
+    # Held-out h5 Q13-2: "no network" typed on the output-folder clause, though the user named an edge list.
+    q13 = ("Run CONDOR on panda_psoriasis_edges.csv (columns source, target, weight) and write the communities to "
+           "condor_psoriasis/.")
+    folder = _check(quote="write the communities to condor_psoriasis/")
+    assert without_unbuilt_network(folder, q13) is folder  # the folder holds "condor", not the user's "CONDOR"
+
+
+def test_an_only_statement_leaving_out_a_network_counts_for_any_result():
+    # C18: "I don't have any motif or PPI files, just this expression table."
+    c18 = ("Run CONDOR directly on expr_kidney_fibrosis.tsv to get gene communities. I don't have any motif or PPI "
+           "files, just this expression table.")
+    held = without_unbuilt_network(_check(quote="to get gene communities", only_inputs=["expression"],
+                                          only_inputs_quote="just this expression table"), c18)
+    assert held.results()[0].limits[0].startswith('You said "just this expression table"; CONDOR runs only on')
+
