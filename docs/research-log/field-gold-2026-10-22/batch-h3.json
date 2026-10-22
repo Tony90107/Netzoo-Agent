@@ -1,0 +1,197 @@
+{
+ "set": "h3",
+ "items": [
+  {
+   "id": "L01",
+   "prompt": "Run something useful on counts_pancreas.tsv and covariates.tsv tonight, please: 140 pancreatic tumor samples, results into pancreas_run/. I'll look at whatever comes out tomorrow morning and decide then what matters."
+  },
+  {
+   "id": "L02",
+   "prompt": "We have plasma proteomics (1,100 proteins) and untargeted metabolomics (640 metabolites) from the same 85 participants, both as sample-by-feature CSV files with identical sample IDs. Please set up DRAGON with lambda1 = 0 and lambda2 = 1, so the protein layer gets no shrinkage and the metabolite layer gets full shrinkage, and write the network as an edge list instead of a matrix."
+  },
+  {
+   "id": "L03",
+   "prompt": "Fire off an OTTER run with expr_yeast.tsv, seed_w.tsv and ppi_tf.tsv, output to otter/yeast_W.txt. For lam, my lab notebook says 0.35 but the methods draft says 3.5, and I can't tell which one we actually used before. Everything else can stay at the defaults."
+  },
+  {
+   "id": "L04",
+   "prompt": "Please launch LIONESS-PANDA now with expr_twins.tsv, which holds two samples, one from each twin of a discordant pair, plus motif_hs.tsv and ppi_hs.tsv. Write the aggregate to out/twins_panda.txt and the per-sample networks to out/twins_lioness/."
+  },
+  {
+   "id": "L05",
+   "prompt": "We have exome variant calls for 85 pediatric sarcomas as a samples-by-genes count table, and I'd like to group the patients into subtypes from pathway-level mutation scores. One problem: I don't know if these are tumor somatic calls or germline variants, because the pipeline output just says 'variants'."
+  },
+  {
+   "id": "L06",
+   "prompt": "Here are my files: expr_brca.tsv, motif_hs.tsv and ppi_hs.tsv for 1,100 tumors. Run whatever makes sense for a paper on breast cancer regulation and put the outputs in runs/brca/."
+  },
+  {
+   "id": "L07",
+   "prompt": "Is BONOBO OK for my 14 Drosophila wing-disc samples? I need one co-expression network per sample. The matrix came from a collaborator as 'normalized values', and I can't tell whether it was log-transformed or centered; the README doesn't say either way."
+  },
+  {
+   "id": "L08",
+   "prompt": "From 210 tumors we have RNA-seq, DNA methylation and reverse-phase protein array data on exactly the same samples. I'd like one partial-correlation network containing all three layers at once, so that gene, methylation and protein conditional associations are estimated jointly in a single model rather than pairwise."
+  },
+  {
+   "id": "L09",
+   "prompt": "Start the per-sample run now with rna_top400.tsv (48 samples by the 400 most variable transcripts) and meth_top150.tsv (the same 48 sample IDs by 150 CpG probes), both with a header and sample IDs in the first column. I want one partial-correlation network per patient spanning both layers; cohort matrix to out/all.tsv and the per-sample table to out/per_sample.tsv."
+  },
+  {
+   "id": "L10",
+   "prompt": "We're running DRAGON on matched RNA-seq (2,000 genes) and RPPA protein data (220 antibodies) from 160 breast tumors. Please fix lambda1 at 0.3 for the RNA layer, since that's what our earlier paper used, but let DRAGON estimate lambda2 for the protein layer on its own."
+  },
+  {
+   "id": "L11",
+   "prompt": "I'd like a separate gene co-expression network for each pig in our liver transplant study. Either two or three pigs made it into the dataset (the third library may have failed and nobody has checked yet). Expression is a gene-by-sample matrix with sample IDs in the header."
+  },
+  {
+   "id": "L12",
+   "prompt": "We measured transcriptomics and lipidomics on the same 52 mouse livers (chow versus high-fat diet). I want partial-correlation networks connecting transcripts and lipids, but I'm unsure whether my PI expects a single network for the whole cohort or one network per mouse."
+  },
+  {
+   "id": "L13",
+   "prompt": "Kick off LIONESS-DRAGON now on rna_2000.csv and prot_500.csv: 120 matched samples, 2,000 transcripts and 500 proteins, sample ID in the first column of both. Per-sample edges to lioness_dragon/edges.tsv and the cohort matrix to lioness_dragon/all.tsv. We have a big server, so memory isn't a concern."
+  },
+  {
+   "id": "L14",
+   "prompt": "I want DRAGON on serum proteomics and stool metabolomics from our IBD study, 60 profiles in each table. I'm not sure the two tables cover the same people, though: the proteomics came from the 2023 visit and the metabolomics may be a different subset of patients."
+  },
+  {
+   "id": "L15",
+   "prompt": "I'd like BONOBO on 12 bulk RNA-seq samples of human iPSC-derived cardiomyocytes. The matrix is log2(CPM+1), genes on rows with a header of sample IDs, and every gene has been mean-centered. Turn sparsify on with bonobo_confidence 0.01, also save the p-value matrices, set delta to 0.3, and write the per-sample matrices as .csv files."
+  },
+  {
+   "id": "L16",
+   "prompt": "I've uploaded ov_mutations.csv, exon_sizes.csv, cancer_genes.txt, kegg.gmt and ov_expr.tsv for 300 ovarian tumors. Start the analysis now and save results to ov_results/; we can figure out the story afterwards."
+  },
+  {
+   "id": "L17",
+   "prompt": "All we have for 300 lung adenocarcinomas is somatic mutation calls, a samples-by-genes 0/1 matrix, with no expression data. Can we get an aggregate TF-to-gene regulatory network from that matrix together with a human motif prior and a TF protein-interaction network?"
+  },
+  {
+   "id": "L18",
+   "prompt": "I need the per-sample DRAGON networks run today on 60 matched samples: transcripts.tsv and metabolites.tsv (100 metabolites), outputs to ld_out/. For the transcript layer my co-author kept either the top 300 variable genes or all 1,500 that passed filtering, and I have no idea which version she uploaded."
+  },
+  {
+   "id": "L19",
+   "prompt": "We just received matched RNA-seq and methylation array data for 110 AML patients. How could network methods help us make sense of the two data types together?"
+  },
+  {
+   "id": "L20",
+   "prompt": "Go ahead and run it now: TF-plus-miRNA networks for each of our 25 endometrial tumors, from expr_ucec.tsv (genes by samples), motif_prior.tsv (TF and miRNA target edges, regulator in column one), ppi_prior.tsv, and mirna_ids.txt with one miRNA ID per line. Aggregate network to out/puma_all.txt, per-sample networks to out/lioness/."
+  },
+  {
+   "id": "L21",
+   "prompt": "Please run GIRAFFE on our 44 psoriasis skin biopsies (expression, motif prior and PPI are ready), but change the optimizer: learning rate 0.0005, 5,000 iterations, and a heavier weight on the PPI term of the loss. The defaults gave us nearly flat TF activities last time."
+  },
+  {
+   "id": "L22",
+   "prompt": "Could CONDOR find communities in net_ko.tsv? It's a three-column source/target/weight file my student made from our knockout mice, but I'm not sure whether it's the TF-to-gene network or the gene-gene correlation edges. She made both, and the file names got mixed up."
+  },
+  {
+   "id": "L23",
+   "prompt": "For each of 120 COPD patients I need one number per transcription factor describing its 'regulatory strength' in that patient, to test against lung function. I'm unsure whether I mean how strongly the TF is wired to its targets in that patient's network or how active the TF is regardless of its own expression."
+  },
+  {
+   "id": "L24",
+   "prompt": "I have RNA-seq from 90 colorectal tumors and their matched normal mucosa, and I'd like to do some kind of network analysis to find something interesting for a grant application. What would you suggest?"
+  },
+  {
+   "id": "L25",
+   "prompt": "Would PUMA make sense for our project? We profiled mRNA and small RNA in 52 cervical cancer biopsies and have the usual motif, PPI and miRNA priors. I'm still figuring out what question we actually want to answer."
+  },
+  {
+   "id": "L26",
+   "prompt": "We want a TF-to-gene regulatory network for each one of our 74 high-grade serous ovarian tumors, so that later we can relate each TF's targeting in a tumor to platinum response. Inputs are a gene-by-sample RNA-seq matrix, a human TF motif prior and a STRING-derived TF PPI file; we have no miRNA data at all."
+  },
+  {
+   "id": "L27",
+   "prompt": "Run PANDA now on data/gtex_liver_expr.txt (genes by 226 samples; the first row is a header with sample IDs), data/motif_hs_tf.txt and data/ppi_hs_string.txt. Save the network to results/liver/panda_liver.txt; that folder already exists, so there's no need to make a new one."
+  },
+  {
+   "id": "L28",
+   "prompt": "Set up BONOBO for 16 log-transformed, gene-centered expression profiles from sorted human microglia: sparsify at bonobo_confidence 0.05, delta fixed at 0.5 so each sample weighs as much as its background, and .h5 output. Genes are on rows and sample IDs form the header."
+  },
+  {
+   "id": "L29",
+   "prompt": "For each of 64 AML patients I want a network linking promoter methylation and gene expression that tells me which methylation changes causally drive the expression changes in that patient, so we can report causal regulators per individual in the paper."
+  },
+  {
+   "id": "L30",
+   "prompt": "Our pilot has nine patient-derived colorectal cancer organoids with somatic mutation counts (samples by genes), plus an exon-length CSV, a tab-delimited cancer-gene list and the MSigDB KEGG GMT. Can SAMBAR try every subtype number from 3 up to 9 clusters? Use average linkage and keep the default normalization by each patient's mutation burden."
+  },
+  {
+   "id": "L31",
+   "prompt": "Our bulk RNA-seq covers 18,500 genes in 240 lung biopsies sequenced in two batches. I'd like to see how gene-gene co-expression is associated with sequencing batch and with smoking pack-years, and to keep a labeled adjusted co-expression matrix for later network work. The design table has one row per sample ID, batch coded 0/1 and pack-years as a number."
+  },
+  {
+   "id": "L32",
+   "prompt": "Can OTTER give me one TF-to-gene network per patient? I have 95 glioblastoma RNA-seq samples with a motif seed and a PPI file, and I specifically want OTTER's graph-matching objective rather than PANDA's message passing, applied patient by patient the way LIONESS does it."
+  },
+  {
+   "id": "L33",
+   "prompt": "Please get started on lung_expr.tsv (240 samples, genes as rows) and write the outputs to results/lung/. I haven't decided what I want to look at yet, so just begin with the data."
+  },
+  {
+   "id": "L34",
+   "prompt": "Across 58 human tonsil B-cell samples, I want an activity value for every transcription factor in every sample that isn't simply the TF's own mRNA level, and I also want to know whether each TF activates or represses each of its targets. The expression matrix, a motif prior and a TF-TF PPI matrix with matching IDs are ready."
+  },
+  {
+   "id": "L35",
+   "prompt": "Please run CONDOR now on results/lung_panda_edges_thresholded.tsv. The file has source, target and weight columns, sources are TFs and targets are genes, and the weights were already thresholded so none are negative. Write everything to results/condor_lung/ and use lung_q90 as the file prefix."
+  },
+  {
+   "id": "L36",
+   "prompt": "Is BONOBO really better than COBRA for our 64 colon samples sequenced in two batches? I've read both papers and still can't decide between the two methods."
+  },
+  {
+   "id": "L37",
+   "prompt": "PANDA or OTTER: which one should I use for my 50 GTEx liver samples? I have the expression matrix, a motif prior and a PPI network ready to go."
+  },
+  {
+   "id": "L38",
+   "prompt": "I need a separate gene-gene co-expression network for each of 30 mouse retina samples (15 wild-type, 15 rd10). Expression is already log2-transformed and centered per gene, with genes on rows and sample IDs in the header. No transcription factors or priors are involved, just per-sample co-expression."
+  },
+  {
+   "id": "L39",
+   "prompt": "Could you run SAMBAR straight away on mut_hnscc.csv, exon_len.csv, cancer_genes.txt and c2.cp.kegg.gmt with kmin 2 and kmax 8, output to sambar_hnscc/? The mutation file holds either 6 or 10 tumors; I can't remember whether the pilot or the full batch got exported."
+  },
+  {
+   "id": "L40",
+   "prompt": "Please start COBRA on targeted_expr.tsv and design.tsv (sample IDs plus numeric batch and age) for our 380 patients, results to cobra_out/. It's a targeted panel: I think around 400 genes, but after the low-count filter it might be fewer than 350, and I haven't looked."
+  },
+  {
+   "id": "L41",
+   "prompt": "Can GIRAFFE help with my project? We have bulk RNA-seq from 30 sorghum leaves under heat stress, plus a motif prior and a TF PPI matrix, but I'm not sure yet what I want to get out of it."
+  },
+  {
+   "id": "L42",
+   "prompt": "I'd like to split 180 breast tumors into molecular subtypes using pathway-level scores. The scores have to come from RNA-seq expression (TPM), because we have no mutation calls for these samples. Ideally I'd end up with a cluster label per tumor plus the pathway score matrix."
+  },
+  {
+   "id": "L43",
+   "prompt": "Can we run LIONESS-PANDA on our rhesus macaque lymph node RNA-seq? The motif prior and PPI are already prepared. The catch is that I honestly don't know whether two or four of the libraries passed QC; the sequencing core hasn't sent the final report yet."
+  },
+  {
+   "id": "L44",
+   "prompt": "Execute COBRA now: expr_panel.tsv is a NanoString panel of 150 genes measured in 400 patients, and design_panel.tsv has the matching patient IDs with numeric columns for site (0/1/2) and age. Save the results under cobra_panel/."
+  },
+  {
+   "id": "L45",
+   "prompt": "Our zebrafish heart regeneration time course has five time points with four fish each. People in the lab keep telling me to 'use networks'. What's possible with this kind of data, and where should I begin?"
+  },
+  {
+   "id": "L46",
+   "prompt": "For maize root expression from 32 samples, with a TF-by-gene seed prior and a TF-TF interaction edge list covering the same TFs, please configure OTTER with lam = 0.9, gamma = 0, 150 iterations and single precision on the CPU. Export the network as an edge list, since we plan to pass it to CONDOR afterwards."
+  },
+  {
+   "id": "L47",
+   "prompt": "We have whole-exome somatic mutation calls for 200 melanomas and feel we aren't getting enough out of them. Is there anything network- or pathway-oriented we could try?"
+  },
+  {
+   "id": "L48",
+   "prompt": "Run CONDOR right away on counts/brain_rnaseq_counts.tsv (genes as rows, 96 samples as columns) to get gene communities, with output in modules/brain/. We haven't built any network yet; I was hoping CONDOR could work straight from the counts."
+  }
+ ]
+}

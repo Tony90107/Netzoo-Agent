@@ -1,0 +1,2586 @@
+{
+ "set": "core",
+ "labeller_note": "Read only batch-core.json, vocabulary.md, the 13 workflow YAMLs and workflow_registry.py (claim-support section). For each prompt I quoted the shortest words naming each wanted result and listed every PRODUCES id that gives it as worded, respecting granularity (per-sample vs one cohort network), regulator kind (TF-only requests exclude PUMA/LIONESS-PUMA) and sign. Results described by type list all entries of that type; results referred to only through a named method ('Run OTTER', 'the network it returns') list that method's entry, with a 'why'. Vague network wording ('a network analysis', 'how genes are connected') lists every network entry; wording with no result type ('tell me what you find', 'which should I run') gets no result and a note. When a prompt states two readings, each reading is a separate result. Purposes the user says they will do later ('so I can later compare') are not results but are noted. Settings map to the workflow the phrase concerns; GIRAFFE's optimizer words are unregistered because GIRAFFE has no controls. Omics-layer slot numbers are positional (first-named layer = omics_layer_1; a non-expression layer next to expression = omics_layer_2); miRNA-target priors map to motif_file and miRNA ID lists to mirna_file. Source links are given where the prompt ties a result to named data ('run X on file', 'built from', 'from').",
+ "items": [
+  {
+   "id": "C01",
+   "results": [
+    {
+     "quote": "the gene regulation",
+     "produces": [
+      "panda.tf_gene_network",
+      "puma.regulator_gene_network",
+      "otter.tf_gene_network",
+      "giraffe.signed_regulation",
+      "lioness_panda.per_sample_networks",
+      "lioness_puma.per_sample_networks",
+      "cobra.adjusted_input_to_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "vague: any regulator-to-gene network entry fits 'gene regulation'; granularity unstated"
+    }
+   ],
+   "settings": [],
+   "has": [],
+   "lacks": [],
+   "source": [],
+   "notes": "Samples mentioned without a data type, so no has link; goal is vague."
+  },
+  {
+   "id": "C02",
+   "results": [
+    {
+     "quote": "their own gene co-expression network",
+     "produces": [
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expr_twins.tsv",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "their own gene co-expression network",
+     "quote": "expr_twins.tsv",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "notes": "Only two sample columns are stated; feasibility not judged."
+  },
+  {
+   "id": "C03",
+   "results": [
+    {
+     "quote": "one partial-correlation network across three omics layers",
+     "produces": [],
+     "near_miss": [
+      "dragon.no_more_layers"
+     ],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "RNA-seq",
+     "slot": "omics_layer_1",
+     "why": "implied by the question; a DRAGON layer here"
+    },
+    {
+     "quote": "DNA methylation M-values",
+     "slot": "omics_layer_2",
+     "why": "implied by the question"
+    },
+    {
+     "quote": "RPPA proteomics",
+     "slot": "omics_layer_2",
+     "why": "implied; a third layer has no slot of its own, any layer slot could take a proteomics table"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "C04",
+   "results": [
+    {
+     "quote": "that patient's own TF-to-gene regulatory network",
+     "produces": [
+      "lioness_panda.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "TF-only regulators asked, so LIONESS-PUMA (TF+miRNA) not listed"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "the cohort's expression matrix",
+     "slot": "expression_file",
+     "why": "implied by 'built from'"
+    },
+    {
+     "quote": "a human motif prior",
+     "slot": "motif_file",
+     "why": "implied by 'built from'"
+    },
+    {
+     "quote": "a TF PPI",
+     "slot": "ppi_file",
+     "why": "implied by 'built from'"
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "that patient's own TF-to-gene regulatory network",
+     "quote": "the cohort's expression matrix",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "that patient's own TF-to-gene regulatory network",
+     "quote": "a human motif prior",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "result_quote": "that patient's own TF-to-gene regulatory network",
+     "quote": "a TF PPI",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "notes": "The responder vs non-responder targeting comparison is stated as the user's own later step ('so I can later compare'), not a requested result; it would be lioness_panda.association_tests."
+  },
+  {
+   "id": "C05",
+   "results": [
+    {
+     "quote": "the aggregate network",
+     "produces": [
+      "lioness_coexpression.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "the aggregate co-expression network is part of the LIONESS co-expression entry ('plus the aggregate')"
+    },
+    {
+     "quote": "one co-expression network per donor",
+     "produces": [
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expr_pbmc_vaccine.tsv",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [
+    {
+     "quote": "motif",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "PPI files",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "source": [
+    {
+     "result_quote": "the aggregate network",
+     "quote": "expr_pbmc_vaccine.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "one co-expression network per donor",
+     "quote": "expr_pbmc_vaccine.tsv",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "notes": "Layout words (genes in rows, header) concern LIONESS co-expression, which has no layout setting; not labelled as settings."
+  },
+  {
+   "id": "C06",
+   "results": [
+    {
+     "quote": "a network of how about 150 regulators control their target genes",
+     "produces": [
+      "panda.tf_gene_network",
+      "otter.tf_gene_network",
+      "giraffe.signed_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "applies only if the regulators are TFs; no entry has RNA-binding-protein regulators"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "the expression matrix",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "a PPI among those regulators",
+     "slot": "ppi_file",
+     "why": ""
+    },
+    {
+     "quote": "a regulator-to-target prior",
+     "slot": "motif_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "Regulator kind unknown (RNA-binding proteins vs TFs); the prior may be an RBP list."
+  },
+  {
+   "id": "C07",
+   "results": [
+    {
+     "quote": "a separate network for every patient that links miRNAs and cytokines through partial correlations",
+     "produces": [
+      "lioness_dragon.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "180 circulating miRNAs",
+     "slot": "omics_layer_1",
+     "why": "continuous miRNA measurements as a layer, not the mirna_file ID list"
+    },
+    {
+     "quote": "45 plasma cytokines",
+     "slot": "omics_layer_2",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "Survivor vs non-survivor comparison is the user's own later step ('afterwards'); it would be lioness_dragon.association_tests."
+  },
+  {
+   "id": "C08",
+   "results": [
+    {
+     "quote": "TF activity matrix",
+     "produces": [
+      "giraffe.tf_activity"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "the user wants a new activity matrix under changed settings to compare with the pilot"
+    }
+   ],
+   "settings": [
+    {
+     "quote": "a learning rate of 1e-4",
+     "setting": "unregistered",
+     "value": "1e-4",
+     "why": "GIRAFFE has no registered controls (OTTER.eta is OTTER's)"
+    },
+    {
+     "quote": "2,000 iterations",
+     "setting": "unregistered",
+     "value": "2,000",
+     "why": "GIRAFFE has no registered controls (OTTER.iterations is OTTER's)"
+    },
+    {
+     "quote": "a heavier weight on the PPI term in the loss",
+     "setting": "unregistered",
+     "value": "heavier",
+     "why": "GIRAFFE has no registered controls (OTTER.lam is OTTER's)"
+    }
+   ],
+   "has": [],
+   "lacks": [],
+   "source": [],
+   "notes": "Samples mentioned without a data type, so no has link."
+  },
+  {
+   "id": "C09",
+   "results": [],
+   "settings": [],
+   "has": [],
+   "lacks": [],
+   "source": [],
+   "notes": "Asks BONOBO vs LIONESS; no result named ('learn something about the knockout' is unspecified). Samples given without a data type."
+  },
+  {
+   "id": "C10",
+   "results": [],
+   "settings": [],
+   "has": [],
+   "lacks": [],
+   "source": [],
+   "notes": "Asks COBRA vs CONDOR and what either gives; no result named and no data stated."
+  },
+  {
+   "id": "C11",
+   "results": [
+    {
+     "quote": "one network per diagnostic group",
+     "produces": [
+      "panda.tf_gene_network",
+      "otter.tf_gene_network",
+      "giraffe.signed_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "one of two readings the user states; an aggregate TF network built per group"
+    },
+    {
+     "quote": "one network per donor",
+     "produces": [
+      "lioness_panda.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "the other stated reading; TF network per sample"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expr_alzheimer.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "motifs_hg38.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "ppi_tf.txt",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "one network per diagnostic group",
+     "quote": "expr_alzheimer.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "one network per diagnostic group",
+     "quote": "motifs_hg38.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "result_quote": "one network per diagnostic group",
+     "quote": "ppi_tf.txt",
+     "slot": "ppi_file",
+     "why": ""
+    },
+    {
+     "result_quote": "one network per donor",
+     "quote": "expr_alzheimer.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "one network per donor",
+     "quote": "motifs_hg38.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "result_quote": "one network per donor",
+     "quote": "ppi_tf.txt",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "notes": "'the TF network inference' / 'a network for each AD and control' is ambiguous between the two readings recorded as results; the user cannot resolve it."
+  },
+  {
+   "id": "C12",
+   "results": [
+    {
+     "quote": "the network analysis",
+     "produces": [
+      "panda.tf_gene_network",
+      "puma.regulator_gene_network",
+      "otter.tf_gene_network",
+      "giraffe.signed_regulation",
+      "lioness_panda.per_sample_networks",
+      "lioness_puma.per_sample_networks",
+      "dragon.two_layer_network",
+      "lioness_dragon.per_sample_networks",
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks",
+      "cobra.adjusted_input_to_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "unspecified network analysis; any network entry fits the words"
+    },
+    {
+     "quote": "send me the results",
+     "produces": [],
+     "near_miss": [],
+     "registry_wide": [
+      "delivery"
+     ],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expr_sle_monocytes.tsv",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "the network analysis",
+     "quote": "expr_sle_monocytes.tsv",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "notes": "Network type unspecified."
+  },
+  {
+   "id": "C13",
+   "results": [
+    {
+     "quote": "Run OTTER",
+     "produces": [
+      "otter.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "result implied by the named workflow"
+    }
+   ],
+   "settings": [
+    {
+     "quote": "lam set to 1.5",
+     "setting": "OTTER.lam",
+     "value": "1.5",
+     "why": "'so co-expression gets even more weight than PPI' restates lam's meaning"
+    }
+   ],
+   "has": [
+    {
+     "quote": "expr_t2d_islets.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "seed_W.tsv",
+     "slot": "motif_file",
+     "why": "OTTER's seed W is its motif_file"
+    },
+    {
+     "quote": "ppi_tf.tsv",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "Run OTTER",
+     "quote": "expr_t2d_islets.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run OTTER",
+     "quote": "seed_W.tsv",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run OTTER",
+     "quote": "ppi_tf.tsv",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "C14",
+   "results": [
+    {
+     "quote": "the TF-gene network it returns",
+     "produces": [
+      "otter.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "'it' is OTTER; the sparsity is requested through an unregistered setting"
+    }
+   ],
+   "settings": [
+    {
+     "quote": "an L1 (lasso) sparsity penalty",
+     "setting": "unregistered",
+     "value": "true",
+     "why": "OTTER contract: no independent sparsity penalty; gamma is L2-style"
+    }
+   ],
+   "has": [],
+   "lacks": [],
+   "source": [],
+   "notes": "Samples given without a data type."
+  },
+  {
+   "id": "C15",
+   "results": [],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expression.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "methylation.tsv",
+     "slot": "omics_layer_2",
+     "why": "only a DRAGON layer takes methylation; positional layer slot; either omics_layer slot could take it"
+    },
+    {
+     "quote": "mutations.csv",
+     "slot": "mutation_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "No result named ('tell me what you find')."
+  },
+  {
+   "id": "C16",
+   "results": [
+    {
+     "quote": "order the cells along a pseudotime trajectory",
+     "produces": [],
+     "near_miss": [
+      "panda.no_dynamics"
+     ],
+     "registry_wide": [],
+     "why": "closest text: a model of how expression evolves over time"
+    },
+    {
+     "quote": "the branch point where atrial and ventricular fates split",
+     "produces": [],
+     "near_miss": [
+      "panda.no_dynamics"
+     ],
+     "registry_wide": [],
+     "why": "part of the same trajectory model"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "our 10x single-cell RNA-seq",
+     "slot": "expression_file",
+     "why": "single-cell expression; only an expression slot takes it"
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "order the cells along a pseudotime trajectory",
+     "quote": "our 10x single-cell RNA-seq",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "the branch point where atrial and ventricular fates split",
+     "quote": "our 10x single-cell RNA-seq",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "notes": "Single-cell trajectory request; lioness.no_single_cell concerns per-cell networks, not trajectories, so not listed."
+  },
+  {
+   "id": "C17",
+   "results": [
+    {
+     "quote": "a transcript-metabolite partial-correlation network",
+     "produces": [
+      "dragon.two_layer_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "the transcript layer's shrinkage is fixed at 0.3",
+     "setting": "DRAGON.lambda1",
+     "value": "0.3",
+     "why": "transcripts taken as layer 1 (named first)"
+    },
+    {
+     "quote": "the metabolite layer's shrinkage is estimated from the data",
+     "setting": "DRAGON.lambda2",
+     "value": "estimated from the data",
+     "why": "empty value = estimated; metabolites taken as layer 2"
+    }
+   ],
+   "has": [],
+   "lacks": [],
+   "source": [],
+   "notes": "No data explicitly stated as held (transcript and metabolite tables only implied)."
+  },
+  {
+   "id": "C18",
+   "results": [
+    {
+     "quote": "gene communities",
+     "produces": [
+      "condor.communities"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "CONDOR's communities include gene-side memberships"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expr_kidney_fibrosis.tsv",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [
+    {
+     "quote": "motif",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "PPI files",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "source": [
+    {
+     "result_quote": "gene communities",
+     "quote": "expr_kidney_fibrosis.tsv",
+     "slot": "expression_file",
+     "why": "user asks CONDOR to take the expression table directly; CONDOR's only data slot is network_file"
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "C19",
+   "results": [],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expr_mrna.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "expr_mirna.tsv",
+     "slot": "omics_layer_2",
+     "why": "miRNA expression table; PUMA's mirna_file is an ID list and PUMA does not use miRNA expression; positional layer slot; either omics_layer slot could take it"
+    },
+    {
+     "quote": "motif_hs.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "targetscan_pairs.txt",
+     "slot": "motif_file",
+     "why": "miRNA-target prior is read through PUMA's prior (motif_file); mirna_file only lists IDs"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "No result named ('whichever NetZoo analysis is appropriate')."
+  },
+  {
+   "id": "C20",
+   "results": [
+    {
+     "quote": "Run PANDA",
+     "produces": [
+      "panda.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "result implied by the named workflow"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "tumour_profiles_v2.tsv",
+     "slot": "expression_file",
+     "why": "given as PANDA's expression input; may instead be a binary mutation matrix (mutation_file)"
+    },
+    {
+     "quote": "motif_hs.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "ppi_hs.txt",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "Run PANDA",
+     "quote": "tumour_profiles_v2.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run PANDA",
+     "quote": "motif_hs.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run PANDA",
+     "quote": "ppi_hs.txt",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "notes": "Identity of tumour_profiles_v2.tsv unknown: log2 expression or binary somatic-mutation calls."
+  },
+  {
+   "id": "C21",
+   "results": [
+    {
+     "quote": "communities",
+     "produces": [
+      "condor.communities"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "network_final.tsv",
+     "slot": "network_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "communities",
+     "quote": "network_final.tsv",
+     "slot": "network_file",
+     "why": ""
+    }
+   ],
+   "notes": "Network type unknown: bipartite TF-to-gene (PANDA) or gene-gene co-expression."
+  },
+  {
+   "id": "C22",
+   "results": [
+    {
+     "quote": "Call somatic SNVs and indels",
+     "produces": [],
+     "near_miss": [
+      "sambar.no_driver_calls"
+     ],
+     "registry_wide": [],
+     "why": "sambar.no_driver_calls covers mutation calling"
+    }
+   ],
+   "settings": [
+    {
+     "quote": "a filtered VCF",
+     "setting": "unregistered",
+     "value": "filtered VCF",
+     "why": "output format of an unregistered result"
+    }
+   ],
+   "has": [
+    {
+     "quote": "tumour_07.bam",
+     "slot": "none",
+     "why": "aligned reads; no slot takes BAM files"
+    },
+    {
+     "quote": "normal_07.bam",
+     "slot": "none",
+     "why": "aligned reads; no slot takes BAM files"
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "Call somatic SNVs and indels",
+     "quote": "tumour_07.bam",
+     "slot": "none",
+     "why": ""
+    },
+    {
+     "result_quote": "Call somatic SNVs and indels",
+     "quote": "normal_07.bam",
+     "slot": "none",
+     "why": ""
+    }
+   ],
+   "notes": "'a filtered VCF' is the file of the same calling result, recorded as an output-format setting."
+  },
+  {
+   "id": "C23",
+   "results": [],
+   "settings": [],
+   "has": [
+    {
+     "quote": "whole-blood transcriptome",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "plasma proteome",
+     "slot": "omics_layer_2",
+     "why": "positional layer slot; either omics_layer slot could take it"
+    },
+    {
+     "quote": "a few hundred metabolites",
+     "slot": "omics_layer_2",
+     "why": "positional layer slot; either omics_layer slot could take it"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "No result named ('a systems-level view'); two time points stated."
+  },
+  {
+   "id": "C24",
+   "results": [
+    {
+     "quote": "a network analysis",
+     "produces": [
+      "panda.tf_gene_network",
+      "puma.regulator_gene_network",
+      "otter.tf_gene_network",
+      "giraffe.signed_regulation",
+      "lioness_panda.per_sample_networks",
+      "lioness_puma.per_sample_networks",
+      "dragon.two_layer_network",
+      "lioness_dragon.per_sample_networks",
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks",
+      "cobra.adjusted_input_to_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "reviewers' unspecified 'network analysis'; any network entry fits the words"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "mRNA-seq",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "small-RNA-seq",
+     "slot": "omics_layer_2",
+     "why": "small-RNA expression table; PUMA's mirna_file is an ID list and PUMA does not use miRNA expression; positional layer slot; either omics_layer slot could take it"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "User does not know what network is expected."
+  },
+  {
+   "id": "C25",
+   "results": [
+    {
+     "quote": "one regulatory network",
+     "produces": [
+      "puma.regulator_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "TF and miRNA regulators, single cohort-level network; per-patient explicitly not needed"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "the gene-by-sample expression matrix",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "a TF motif prior",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "a TF-TF PPI",
+     "slot": "ppi_file",
+     "why": ""
+    },
+    {
+     "quote": "a miRNA-target prior",
+     "slot": "motif_file",
+     "why": "PUMA reads miRNA targets through its prior (motif_file)"
+    },
+    {
+     "quote": "a file listing the miRNAs",
+     "slot": "mirna_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "C26",
+   "results": [],
+   "settings": [],
+   "has": [
+    {
+     "quote": "somatic mutation calls",
+     "slot": "mutation_file",
+     "why": ""
+    },
+    {
+     "quote": "RNA-seq",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "Asks SAMBAR vs PANDA; no result named ('the most interesting result')."
+  },
+  {
+   "id": "C27",
+   "results": [
+    {
+     "quote": "subtype our 210 hepatocellular carcinomas",
+     "produces": [],
+     "near_miss": [
+      "sambar.no_expression_subtypes"
+     ],
+     "registry_wide": [],
+     "why": "subtypes asked from expression, not mutations"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "the RNA-seq expression matrix",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [
+    {
+     "quote": "mutation calls",
+     "slot": "mutation_file",
+     "why": ""
+    }
+   ],
+   "source": [
+    {
+     "result_quote": "subtype our 210 hepatocellular carcinomas",
+     "quote": "the RNA-seq expression matrix",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "C28",
+   "results": [
+    {
+     "quote": "how much of each gene pair's co-expression is associated with sequencing run versus sex",
+     "produces": [
+      "cobra.covariate_components"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    },
+    {
+     "quote": "an adjusted gene-by-gene co-expression matrix",
+     "produces": [
+      "cobra.covariate_components"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "140 skeletal-muscle RNA-seq samples",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "a design table",
+     "slot": "design_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "'for later network work' is the user's later step, not a requested result."
+  },
+  {
+   "id": "C29",
+   "results": [
+    {
+     "quote": "communities of TFs and their target genes",
+     "produces": [
+      "condor.communities"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "an aggregate TF-to-gene regulatory network for glioblastoma",
+     "slot": "network_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "communities of TFs and their target genes",
+     "quote": "an aggregate TF-to-gene regulatory network for glioblastoma",
+     "slot": "network_file",
+     "why": "'split it into communities'"
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "C30",
+   "results": [
+    {
+     "quote": "Run SAMBAR",
+     "produces": [
+      "sambar.subtypes"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "result implied by the named workflow and the subtype numbers"
+    }
+   ],
+   "settings": [
+    {
+     "quote": "every subtype number from 2 through 8",
+     "setting": "SAMBAR.kmin",
+     "value": "2",
+     "why": ""
+    },
+    {
+     "quote": "every subtype number from 2 through 8",
+     "setting": "SAMBAR.kmax",
+     "value": "8",
+     "why": ""
+    },
+    {
+     "quote": "every subtype number from 2 through 8",
+     "setting": "SAMBAR.cluster",
+     "value": "true",
+     "why": "implied: testing subtype numbers means clustering on"
+    }
+   ],
+   "has": [
+    {
+     "quote": "mut_pilot.csv",
+     "slot": "mutation_file",
+     "why": ""
+    },
+    {
+     "quote": "exon_len.csv",
+     "slot": "exon_size_file",
+     "why": ""
+    },
+    {
+     "quote": "cancer_genes.txt",
+     "slot": "cancer_gene_file",
+     "why": ""
+    },
+    {
+     "quote": "hallmark.gmt",
+     "slot": "pathway_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "Run SAMBAR",
+     "quote": "mut_pilot.csv",
+     "slot": "mutation_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run SAMBAR",
+     "quote": "exon_len.csv",
+     "slot": "exon_size_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run SAMBAR",
+     "quote": "cancer_genes.txt",
+     "slot": "cancer_gene_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run SAMBAR",
+     "quote": "hallmark.gmt",
+     "slot": "pathway_file",
+     "why": ""
+    }
+   ],
+   "notes": "Only 5 samples stated; kmax 8 exceeds that (feasibility not judged)."
+  },
+  {
+   "id": "C31",
+   "results": [
+    {
+     "quote": "those signed effects for each biopsy separately",
+     "produces": [],
+     "near_miss": [
+      "giraffe.no_per_sample_wiring",
+      "lioness_panda.no_sign"
+     ],
+     "registry_wide": [],
+     "why": "one of two stated readings: per-sample signed effects; GIRAFFE's matrix is cohort-level and per-sample PANDA edges are unsigned"
+    },
+    {
+     "quote": "one set of signed effects for the whole cohort",
+     "produces": [
+      "giraffe.signed_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "the other stated reading"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "We have expression",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "a motif prior",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "a TF PPI",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "Opening question 'signed TF-to-gene effects' is ambiguous between the two readings recorded as results."
+  },
+  {
+   "id": "C32",
+   "results": [
+    {
+     "quote": "the partial-correlation network",
+     "produces": [
+      "dragon.two_layer_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "as an edge list rather than a matrix",
+     "setting": "DRAGON.output_format",
+     "value": "edge_list",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "plasma proteomics",
+     "slot": "omics_layer_1",
+     "why": ""
+    },
+    {
+     "quote": "metabolomics tables",
+     "slot": "omics_layer_2",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "the partial-correlation network",
+     "quote": "plasma proteomics",
+     "slot": "omics_layer_1",
+     "why": ""
+    },
+    {
+     "result_quote": "the partial-correlation network",
+     "quote": "metabolomics tables",
+     "slot": "omics_layer_2",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "C33",
+   "results": [
+    {
+     "quote": "Can BONOBO run",
+     "produces": [
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "result implied by the named workflow"
+    }
+   ],
+   "settings": [
+    {
+     "quote": "sparsify on",
+     "setting": "BONOBO.sparsify",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "a 0.01 confidence level",
+     "setting": "BONOBO.bonobo_confidence",
+     "value": "0.01",
+     "why": ""
+    },
+    {
+     "quote": "delta fixed at 0.5",
+     "setting": "BONOBO.delta",
+     "value": "0.5",
+     "why": ""
+    },
+    {
+     "quote": "log-transformed",
+     "setting": "BONOBO.log_transformed",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "centered",
+     "setting": "BONOBO.centered",
+     "value": "true",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "my 18 log-transformed, centered endometriosis samples",
+     "slot": "expression_file",
+     "why": "implied expression data for BONOBO"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "C34",
+   "results": [
+    {
+     "quote": "a batch-corrected expression matrix",
+     "produces": [],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "one of two stated readings; no entry gives corrected expression (COBRA adjusts co-expression only)"
+    },
+    {
+     "quote": "batch-adjusted gene co-expression",
+     "produces": [
+      "cobra.covariate_components"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "the other stated reading; COBRA's covariate-adjusted co-expression matrix"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "96 brain RNA-seq samples",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "numeric indicator columns",
+     "slot": "design_file",
+     "why": "batch covariates per sample"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "'I want the batch effect removed' is ambiguous between the two readings recorded as results. 'to hand to other people' is the user's own hand-off, not delivery by the analysis; 'to build the regulatory network on' is a later use (would be cobra.adjusted_input_to_regulation)."
+  },
+  {
+   "id": "C35",
+   "results": [
+    {
+     "quote": "cluster the tumours",
+     "produces": [
+      "sambar.subtypes"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "MSigDB format",
+     "setting": "SAMBAR.gmt_msigdb",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "cluster the tumours",
+     "setting": "SAMBAR.cluster",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "between 2 and 6 subtypes",
+     "setting": "SAMBAR.kmin",
+     "value": "2",
+     "why": ""
+    },
+    {
+     "quote": "between 2 and 6 subtypes",
+     "setting": "SAMBAR.kmax",
+     "value": "6",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "mutations_ucec.csv",
+     "slot": "mutation_file",
+     "why": ""
+    },
+    {
+     "quote": "exon_lengths.csv",
+     "slot": "exon_size_file",
+     "why": ""
+    },
+    {
+     "quote": "cancer_genes.txt",
+     "slot": "cancer_gene_file",
+     "why": ""
+    },
+    {
+     "quote": "c2.cp.kegg.gmt",
+     "slot": "pathway_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "cluster the tumours",
+     "quote": "mutations_ucec.csv",
+     "slot": "mutation_file",
+     "why": ""
+    },
+    {
+     "result_quote": "cluster the tumours",
+     "quote": "exon_lengths.csv",
+     "slot": "exon_size_file",
+     "why": ""
+    },
+    {
+     "result_quote": "cluster the tumours",
+     "quote": "cancer_genes.txt",
+     "slot": "cancer_gene_file",
+     "why": ""
+    },
+    {
+     "result_quote": "cluster the tumours",
+     "quote": "c2.cp.kegg.gmt",
+     "slot": "pathway_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "C36",
+   "results": [
+    {
+     "quote": "how strongly the TF is wired to its targets",
+     "produces": [
+      "lioness_panda.per_sample_targeting"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "one stated reading of a per-patient per-TF number: targeting score from per-sample TF networks"
+    },
+    {
+     "quote": "how active the TF is",
+     "produces": [
+      "giraffe.tf_activity"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "the other stated reading: per-sample TF activity"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "We have expression",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "a motif prior",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "a TF-TF PPI",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "'one number per transcription factor ... regulatory strength' is ambiguous between the two readings recorded as results. 'so we can relate it to survival' is the user's later step (would be lioness_panda.association_tests / giraffe.activity_tests)."
+  },
+  {
+   "id": "C37",
+   "results": [],
+   "settings": [],
+   "has": [
+    {
+     "quote": "bulk transcriptomics",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "proteomics",
+     "slot": "omics_layer_2",
+     "why": "positional layer slot; either omics_layer slot could take it"
+    },
+    {
+     "quote": "some ATAC-seq peaks",
+     "slot": "none",
+     "why": "peak calls; no slot takes accessibility peaks unless quantified into a continuous layer"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "Asks which of DRAGON/OTTER/GIRAFFE and what each gives; no result named, no hypothesis."
+  },
+  {
+   "id": "C38",
+   "results": [
+    {
+     "quote": "an activity score for every transcription factor",
+     "produces": [
+      "giraffe.tf_activity"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "the gene-by-sample expression table",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "a TF-by-gene motif prior",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "a TF-TF PPI matrix",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "C39",
+   "results": [
+    {
+     "quote": "model the small RNAs from our mouse testis small-RNA-seq as regulators alongside the TFs",
+     "produces": [
+      "puma.regulator_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "applies only if the small RNAs are miRNAs; no entry has piRNA regulators"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expression for 24 testes",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "a motif prior",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "a PPI",
+     "slot": "ppi_file",
+     "why": ""
+    },
+    {
+     "quote": "a small-RNA-to-target prior",
+     "slot": "motif_file",
+     "why": "PUMA reads small-RNA targets through its prior (motif_file)"
+    },
+    {
+     "quote": "our mouse testis small-RNA-seq",
+     "slot": "omics_layer_2",
+     "why": "small-RNA expression table; PUMA does not use regulator expression; positional layer slot; either omics_layer slot could take it"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "Small-RNA class unknown (miRNA vs piRNA)."
+  },
+  {
+   "id": "C40",
+   "results": [
+    {
+     "quote": "networks for samples MS_03, MS_11 and MS_19",
+     "produces": [
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "networks of the named BONOBO run"
+    }
+   ],
+   "settings": [
+    {
+     "quote": "log2-transformed",
+     "setting": "BONOBO.log_transformed",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "centered per gene",
+     "setting": "BONOBO.centered",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "gene IDs in the first column",
+     "setting": "BONOBO.genes_axis",
+     "value": "rows",
+     "why": "gene IDs in the first column = genes on rows"
+    },
+    {
+     "quote": "samples MS_03, MS_11 and MS_19",
+     "setting": "BONOBO.sample_names",
+     "value": "MS_03, MS_11, MS_19",
+     "why": ""
+    },
+    {
+     "quote": "saved as .csv files",
+     "setting": "BONOBO.bonobo_output_format",
+     "value": ".csv",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "expr_ms_lesions.tsv",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "networks for samples MS_03, MS_11 and MS_19",
+     "quote": "expr_ms_lesions.tsv",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "C41",
+   "results": [],
+   "settings": [],
+   "has": [
+    {
+     "quote": "our zebrafish fin-regeneration RNA-seq",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "Asks PANDA vs LIONESS; no result named."
+  },
+  {
+   "id": "C42",
+   "results": [
+    {
+     "quote": "Run DRAGON",
+     "produces": [
+      "dragon.two_layer_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "result implied by the named workflow"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expr_cll_layer.csv",
+     "slot": "omics_layer_1",
+     "why": ""
+    },
+    {
+     "quote": "methyl_cll_layer.csv",
+     "slot": "omics_layer_2",
+     "why": "may be continuous beta values or binary 0/1 calls"
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "Run DRAGON",
+     "quote": "expr_cll_layer.csv",
+     "slot": "omics_layer_1",
+     "why": ""
+    },
+    {
+     "result_quote": "Run DRAGON",
+     "quote": "methyl_cll_layer.csv",
+     "slot": "omics_layer_2",
+     "why": ""
+    }
+   ],
+   "notes": "Methylation file may be binarized calls rather than continuous values."
+  },
+  {
+   "id": "C43",
+   "results": [
+    {
+     "quote": "a TF-to-gene network per column",
+     "produces": [
+      "lioness_panda.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expr_ra_synovium.tsv",
+     "slot": "expression_file",
+     "why": "columns may be 24 patients or 2 group averages"
+    },
+    {
+     "quote": "motif_hs.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "ppi_hs.txt",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "a TF-to-gene network per column",
+     "quote": "expr_ra_synovium.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "a TF-to-gene network per column",
+     "quote": "motif_hs.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "result_quote": "a TF-to-gene network per column",
+     "quote": "ppi_hs.txt",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "notes": "Unknown whether the expression columns are per-patient samples or two averaged group columns."
+  },
+  {
+   "id": "C44",
+   "results": [
+    {
+     "quote": "Run OTTER",
+     "produces": [
+      "otter.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "result implied by the named workflow"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "seed_W_mm.tsv",
+     "slot": "motif_file",
+     "why": "OTTER's seed W is its motif_file"
+    },
+    {
+     "quote": "ppi_tf_mm.tsv",
+     "slot": "ppi_file",
+     "why": ""
+    },
+    {
+     "quote": "coexp_liver.tsv",
+     "slot": "coexpression_file",
+     "why": "given as co-expression; may instead be a LIONESS edge-by-sample table"
+    }
+   ],
+   "lacks": [
+    {
+     "quote": "no expression file",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "source": [
+    {
+     "result_quote": "Run OTTER",
+     "quote": "seed_W_mm.tsv",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run OTTER",
+     "quote": "ppi_tf_mm.tsv",
+     "slot": "ppi_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run OTTER",
+     "quote": "coexp_liver.tsv",
+     "slot": "coexpression_file",
+     "why": ""
+    }
+   ],
+   "notes": "coexp_liver.tsv may be a gene-by-gene matrix or an edge-by-sample LIONESS table."
+  },
+  {
+   "id": "C45",
+   "results": [
+    {
+     "quote": "a separate miRNA-protein partial-correlation network",
+     "produces": [
+      "lioness_dragon.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "300 serum miRNAs",
+     "slot": "omics_layer_1",
+     "why": "continuous miRNA measurements as a layer, not the mirna_file ID list"
+    },
+    {
+     "quote": "a plasma proteomics panel",
+     "slot": "omics_layer_2",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "a separate miRNA-protein partial-correlation network",
+     "quote": "300 serum miRNAs",
+     "slot": "omics_layer_1",
+     "why": ""
+    },
+    {
+     "result_quote": "a separate miRNA-protein partial-correlation network",
+     "quote": "a plasma proteomics panel",
+     "slot": "omics_layer_2",
+     "why": ""
+    }
+   ],
+   "notes": "Proteomics panel size unknown (200 vs 2,000 proteins); files not yet retrieved."
+  },
+  {
+   "id": "C46",
+   "results": [
+    {
+     "quote": "the list of genes differentially expressed",
+     "produces": [],
+     "near_miss": [
+      "cobra.no_differential_expression"
+     ],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [],
+   "lacks": [],
+   "source": [],
+   "notes": "No data stated as held."
+  },
+  {
+   "id": "C47",
+   "results": [
+    {
+     "quote": "a model that predicts each new patient's overall-survival risk",
+     "produces": [],
+     "near_miss": [],
+     "registry_wide": [
+      "outcome_prediction"
+     ],
+     "why": ""
+    },
+    {
+     "quote": "which genes drive the risk",
+     "produces": [],
+     "near_miss": [],
+     "registry_wide": [
+      "outcome_prediction"
+     ],
+     "why": "gene contributions to the predictive model; 'drive' read as model weights, not a causal claim"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "bulk expression",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "clinical follow-up",
+     "slot": "none",
+     "why": "survival outcome data; no slot takes clinical outcomes"
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "a model that predicts each new patient's overall-survival risk",
+     "quote": "bulk expression",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "a model that predicts each new patient's overall-survival risk",
+     "quote": "clinical follow-up",
+     "slot": "none",
+     "why": ""
+    }
+   ],
+   "notes": "External validation cohort mentioned as a later application target; not labelled as held data."
+  },
+  {
+   "id": "C48",
+   "results": [
+    {
+     "quote": "link fecal metabolomics with colon-biopsy transcriptomics",
+     "produces": [
+      "dragon.two_layer_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "fecal metabolomics",
+     "slot": "omics_layer_1",
+     "why": ""
+    },
+    {
+     "quote": "colon-biopsy transcriptomics",
+     "slot": "omics_layer_2",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "Unknown whether both layers come from the same 58 people."
+  },
+  {
+   "id": "C49",
+   "results": [
+    {
+     "quote": "figures for the paper",
+     "produces": [],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "no entry produces figures; analysis otherwise unspecified"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "tumor_expr.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "motifs.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "ppi.txt",
+     "slot": "ppi_file",
+     "why": ""
+    },
+    {
+     "quote": "clinical.tsv",
+     "slot": "design_file",
+     "why": "clinical covariates; design_file is the only slot taking per-sample covariates (numeric only)"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "'Do whatever makes sense' names no analysis."
+  },
+  {
+   "id": "C50",
+   "results": [
+    {
+     "quote": "a gene co-expression network for each",
+     "produces": [
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    },
+    {
+     "quote": "a p-value for every edge",
+     "produces": [
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "BONOBO's optional per-edge p-values per sample"
+    }
+   ],
+   "settings": [
+    {
+     "quote": "a p-value for every edge so I can filter them per sample",
+     "setting": "BONOBO.sparsify",
+     "value": "true",
+     "why": "bonobo.yaml conditional_outputs {sparsify: true, save_pvals: true}: writes a matching p-value matrix to threshold from"
+    },
+    {
+     "quote": "a p-value for every edge so I can filter them per sample",
+     "setting": "BONOBO.save_pvals",
+     "value": "true",
+     "why": "bonobo.yaml conditional_outputs {sparsify: true, save_pvals: true}: 'threshold it from the saved p-value matrix'"
+    },
+    {
+     "quote": "mean-centered per gene",
+     "setting": "BONOBO.centered",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "genes in rows",
+     "setting": "BONOBO.genes_axis",
+     "value": "rows",
+     "why": "BONOBO is the only workflow giving per-sample edge p-values"
+    }
+   ],
+   "has": [
+    {
+     "quote": "The matrix",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "Log-transformation unknown, so BONOBO.log_transformed is not set."
+  },
+  {
+   "id": "C51",
+   "results": [
+    {
+     "quote": "the result",
+     "produces": [
+      "otter.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "the OTTER run's output"
+    }
+   ],
+   "settings": [
+    {
+     "quote": "on CPU",
+     "setting": "OTTER.computing",
+     "value": "cpu",
+     "why": ""
+    },
+    {
+     "quote": "in single precision",
+     "setting": "OTTER.precision",
+     "value": "single",
+     "why": ""
+    },
+    {
+     "quote": "150 iterations",
+     "setting": "OTTER.iterations",
+     "value": "150",
+     "why": ""
+    },
+    {
+     "quote": "a step size (eta) of 1e-4",
+     "setting": "OTTER.eta",
+     "value": "1e-4",
+     "why": ""
+    },
+    {
+     "quote": "as an edge list",
+     "setting": "OTTER.output_format",
+     "value": "edge_list",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "expression for 60 breast tumours",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "a TF-by-gene seed edge list",
+     "slot": "motif_file",
+     "why": "OTTER's seed W is its motif_file"
+    },
+    {
+     "quote": "a TF-TF PPI edge list",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "the result",
+     "quote": "expression for 60 breast tumours",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "the result",
+     "quote": "a TF-by-gene seed edge list",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "result_quote": "the result",
+     "quote": "a TF-TF PPI edge list",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "C52",
+   "results": [
+    {
+     "quote": "a co-expression network for each",
+     "produces": [
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "log2-transformed",
+     "setting": "BONOBO.log_transformed",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "centered per gene",
+     "setting": "BONOBO.centered",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "genes in rows",
+     "setting": "BONOBO.genes_axis",
+     "value": "rows",
+     "why": ""
+    },
+    {
+     "quote": "saved as HDF5",
+     "setting": "BONOBO.bonobo_output_format",
+     "value": ".h5",
+     "why": "stated HDF5 (.h5 or .hdf)"
+    },
+    {
+     "quote": "double precision",
+     "setting": "BONOBO.precision",
+     "value": "double",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "The data",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "C53",
+   "results": [
+    {
+     "quote": "how genes are connected",
+     "produces": [
+      "panda.tf_gene_network",
+      "puma.regulator_gene_network",
+      "otter.tf_gene_network",
+      "giraffe.signed_regulation",
+      "lioness_panda.per_sample_networks",
+      "lioness_puma.per_sample_networks",
+      "dragon.two_layer_network",
+      "lioness_dragon.per_sample_networks",
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks",
+      "cobra.adjusted_input_to_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "vague; any gene network entry fits the words"
+    }
+   ],
+   "settings": [],
+   "has": [],
+   "lacks": [],
+   "source": [],
+   "notes": "No data type stated; goal vague."
+  },
+  {
+   "id": "C54",
+   "results": [
+    {
+     "quote": "network-based insights",
+     "produces": [
+      "panda.tf_gene_network",
+      "puma.regulator_gene_network",
+      "otter.tf_gene_network",
+      "giraffe.signed_regulation",
+      "lioness_panda.per_sample_networks",
+      "lioness_puma.per_sample_networks",
+      "dragon.two_layer_network",
+      "lioness_dragon.per_sample_networks",
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks",
+      "cobra.adjusted_input_to_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "grant's unspecified network part; any network entry fits the words"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "bulk RNA-seq from 150 ileal biopsies",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "clinical data",
+     "slot": "design_file",
+     "why": "clinical covariates; design_file is the only slot taking per-sample covariates (numeric only)"
+    },
+    {
+     "quote": "matched serology",
+     "slot": "omics_layer_2",
+     "why": "continuous per-sample measurements; only a DRAGON layer takes such a table; positional layer slot; either omics_layer slot could take it"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "User asks what to propose; no concrete question."
+  },
+  {
+   "id": "C55",
+   "results": [
+    {
+     "quote": "a single TF-to-gene regulatory network",
+     "produces": [
+      "panda.tf_gene_network",
+      "otter.tf_gene_network",
+      "giraffe.signed_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "the gene-by-sample expression matrix",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "a JASPAR-based motif prior",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "a mouse TF-TF PPI from STRING",
+     "slot": "ppi_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "C56",
+   "results": [
+    {
+     "quote": "subtype our 160 pediatric medulloblastomas",
+     "produces": [
+      "sambar.subtypes"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "as SAMBAR subtypes if the counts are somatic mutations"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "a samples-by-genes variant-count matrix",
+     "slot": "mutation_file",
+     "why": "may be germline variant calls rather than somatic mutations"
+    },
+    {
+     "quote": "gene lengths",
+     "slot": "exon_size_file",
+     "why": ""
+    },
+    {
+     "quote": "a cancer-gene list",
+     "slot": "cancer_gene_file",
+     "why": ""
+    },
+    {
+     "quote": "a KEGG GMT",
+     "slot": "pathway_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "Unknown whether the variant counts are somatic or germline."
+  },
+  {
+   "id": "C57",
+   "results": [
+    {
+     "quote": "how much of the co-expression between those 48 genes is associated with the hospital",
+     "produces": [
+      "cobra.covariate_components"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "a 48-gene NanoString inflammation panel",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "a design table",
+     "slot": "design_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "C58",
+   "results": [
+    {
+     "quote": "Run PANDA",
+     "produces": [
+      "panda.tf_gene_network",
+      "cobra.adjusted_input_to_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "PANDA network built on COBRA's adjusted co-expression"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expr_ipf.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "motif_hg38.tsv",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "ppi_hs.tsv",
+     "slot": "ppi_file",
+     "why": ""
+    },
+    {
+     "quote": "cobra_out/adjusted_coexpression.tsv",
+     "slot": "coexpression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "Run PANDA",
+     "quote": "expr_ipf.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run PANDA",
+     "quote": "motif_hg38.tsv",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run PANDA",
+     "quote": "ppi_hs.tsv",
+     "slot": "ppi_file",
+     "why": ""
+    },
+    {
+     "result_quote": "Run PANDA",
+     "quote": "cobra_out/adjusted_coexpression.tsv",
+     "slot": "coexpression_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "C59",
+   "results": [
+    {
+     "quote": "a TF/miRNA-to-gene network for every patient",
+     "produces": [
+      "lioness_puma.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expr_cll.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "motif_cll.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "quote": "ppi_cll.txt",
+     "slot": "ppi_file",
+     "why": ""
+    },
+    {
+     "quote": "mir_targets.txt",
+     "slot": "motif_file",
+     "why": "miRNA-target prior is read through PUMA's prior (motif_file)"
+    },
+    {
+     "quote": "mir_list.txt",
+     "slot": "mirna_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "a TF/miRNA-to-gene network for every patient",
+     "quote": "expr_cll.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "a TF/miRNA-to-gene network for every patient",
+     "quote": "motif_cll.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "result_quote": "a TF/miRNA-to-gene network for every patient",
+     "quote": "ppi_cll.txt",
+     "slot": "ppi_file",
+     "why": ""
+    },
+    {
+     "result_quote": "a TF/miRNA-to-gene network for every patient",
+     "quote": "mir_targets.txt",
+     "slot": "motif_file",
+     "why": ""
+    },
+    {
+     "result_quote": "a TF/miRNA-to-gene network for every patient",
+     "quote": "mir_list.txt",
+     "slot": "mirna_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "C60",
+   "results": [],
+   "settings": [],
+   "has": [
+    {
+     "quote": "counts_week0.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "counts_week4.tsv",
+     "slot": "expression_file",
+     "why": ""
+    },
+    {
+     "quote": "counts_week12.tsv",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "No result named ('the right workflow'); three time-point count files."
+  }
+ ]
+}

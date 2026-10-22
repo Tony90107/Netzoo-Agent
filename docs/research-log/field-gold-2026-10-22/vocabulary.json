@@ -1,0 +1,510 @@
+{
+ "settings": [
+  "BONOBO.bonobo_output_format: File type of the per-sample matrices: .h5 or .hdf (HDF5), .txt or .csv.",
+  "BONOBO.sample_names: Explicit sample IDs; never positional sample indices.",
+  "BONOBO.sparsify: Compute approximate edge p-values and threshold each sample's co-expression matrix at bonobo_confidence (with save_pvals, the full matrix is kept and the p-values are written).",
+  "BONOBO.bonobo_confidence: Significance level at which sparsify thresholds the edges.",
+  "BONOBO.save_pvals: Write each sample's edge p-value matrix; requires sparsify.",
+  "BONOBO.precision: Floating-point precision: single or double.",
+  "BONOBO.keep_in_memory: Keep the per-sample matrices in memory during the run (upstream run_bonobo option).",
+  "BONOBO.delta: Weight of the sample in its covariance; empty estimates it per sample. With sparsify it must be above 0 and below 1/3 (Log 224).",
+  "BONOBO.genes_axis: Where the gene IDs are in the expression table: auto, rows or columns (BONOBO needs them on rows).",
+  "BONOBO.log_transformed: The expression is declared log-transformed; BONOBO requires it.",
+  "BONOBO.centered: The expression is declared centered; BONOBO requires it.",
+  "CONDOR.prefix: Prefix for derived CONDOR artifacts.",
+  "DRAGON.output_format: matrix: a labeled symmetric partial-correlation matrix; edge_list: one row per feature pair (source, target, partial_correlation, precision).",
+  "DRAGON.lambda1: Shrinkage of omics layer 1 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it; a manual value needs lambda1 and lambda2 together, both in [0, 1].",
+  "DRAGON.lambda2: Shrinkage of omics layer 2 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it; a manual value needs lambda1 and lambda2 together, both in [0, 1].",
+  "LIONESS-DRAGON.lambda1: Shrinkage of omics layer 1 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it once on all samples; a manual value needs lambda1 and lambda2 together, both in [0, 1].",
+  "LIONESS-DRAGON.lambda2: Shrinkage of omics layer 2 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it once on all samples; a manual value needs lambda1 and lambda2 together, both in [0, 1].",
+  "OTTER.output_format: matrix: a labeled TF-by-gene matrix; edge_list: a complete source,target,weight TF-to-gene grid.",
+  "OTTER.computing: Hardware the optimization runs on: cpu or gpu.",
+  "OTTER.precision: Floating-point precision of the optimization: single or double.",
+  "OTTER.lam: Weight of gene co-expression versus the TF-TF PPI network in OTTER's fit, as (lam, 1 - lam); not a sparsity penalty.",
+  "OTTER.gamma: L2-style regularization of the TF-gene matrix W; not a sparsity penalty or threshold.",
+  "OTTER.iterations: Number of optimization iterations.",
+  "OTTER.eta: Step size (learning rate) of OTTER's gradient optimization.",
+  "OTTER.bexp: Exponent used in OTTER's optimization updates; it controls the optimization, not regularization.",
+  "PANDA.with_header: Expression input has a header.",
+  "SAMBAR.norm_patient: Normalize gene mutation scores by each patient's mutation burden.",
+  "SAMBAR.kmin: Smallest number of sample subtypes (clusters) tried; at least 2.",
+  "SAMBAR.kmax: Largest number of sample subtypes (clusters) tried; at least kmin and at most the number of samples.",
+  "SAMBAR.gmt_msigdb: The pathway GMT file is in MSigDB format.",
+  "SAMBAR.subset_cancer_genes: Score only the listed cancer-associated genes.",
+  "SAMBAR.distance: Distance (a scipy metric name) between samples' pathway scores used for clustering.",
+  "SAMBAR.linkage: Hierarchical-clustering linkage method (a scipy name).",
+  "SAMBAR.cluster: Cluster samples into subtypes; false returns the mutation scores only."
+ ],
+ "produces": [
+  {
+   "id": "panda.tf_gene_network",
+   "workflow": "PANDA",
+   "text": "One weighted TF-to-gene regulatory network across all the samples given."
+  },
+  {
+   "id": "panda.targeting_scores",
+   "workflow": "PANDA",
+   "text": "Each TF's out-degree and each gene's in-degree (targeting scores) in that network."
+  },
+  {
+   "id": "panda.condition_comparison",
+   "workflow": "PANDA",
+   "text": "Which edges or TF targeting scores differ between conditions."
+  },
+  {
+   "id": "puma.regulator_gene_network",
+   "workflow": "PUMA",
+   "text": "One weighted network of how TFs and miRNAs regulate genes, across all samples."
+  },
+  {
+   "id": "puma.targeting_scores",
+   "workflow": "PUMA",
+   "text": "Each regulator's out-degree and each gene's in-degree."
+  },
+  {
+   "id": "lioness_panda.per_sample_networks",
+   "workflow": "LIONESS-PANDA",
+   "text": "One TF-gene network per sample, plus the aggregate network."
+  },
+  {
+   "id": "lioness_panda.per_sample_targeting",
+   "workflow": "LIONESS-PANDA",
+   "text": "A TF-by-sample (or gene-by-sample) targeting-score matrix."
+  },
+  {
+   "id": "lioness_panda.association_tests",
+   "workflow": "LIONESS-PANDA",
+   "text": "Edges or targeting scores tested between groups, paired time points, or against clinical variables (e.g. survival)."
+  },
+  {
+   "id": "lioness_puma.per_sample_networks",
+   "workflow": "LIONESS-PUMA",
+   "text": "One TF/miRNA-gene network per sample, plus the aggregate network."
+  },
+  {
+   "id": "lioness_puma.per_sample_targeting",
+   "workflow": "LIONESS-PUMA",
+   "text": "A TF-by-sample (or gene-by-sample) targeting-score matrix."
+  },
+  {
+   "id": "lioness_puma.association_tests",
+   "workflow": "LIONESS-PUMA",
+   "text": "Edges or targeting scores tested between groups, paired time points, or against clinical variables (e.g. survival)."
+  },
+  {
+   "id": "otter.tf_gene_network",
+   "workflow": "OTTER",
+   "text": "One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression."
+  },
+  {
+   "id": "otter.targeting_scores",
+   "workflow": "OTTER",
+   "text": "Each TF's out-degree and each gene's in-degree (targeting scores) in that network."
+  },
+  {
+   "id": "giraffe.signed_regulation",
+   "workflow": "GIRAFFE",
+   "text": "A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples."
+  },
+  {
+   "id": "giraffe.tf_activity",
+   "workflow": "GIRAFFE",
+   "text": "Each TF's activity in each sample, estimated apart from its own mRNA level."
+  },
+  {
+   "id": "giraffe.activity_tests",
+   "workflow": "GIRAFFE",
+   "text": "TF activity tested between conditions or against clinical variables."
+  },
+  {
+   "id": "dragon.two_layer_network",
+   "workflow": "DRAGON",
+   "text": "One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples."
+  },
+  {
+   "id": "dragon.edge_pvalues",
+   "workflow": "DRAGON",
+   "text": "A p-value and a Benjamini-Hochberg adjusted p-value for every edge (adjusted within each layer and across the layers), to filter edges by significance."
+  },
+  {
+   "id": "dragon.group_comparison",
+   "workflow": "DRAGON",
+   "text": "Cross-layer edges compared between groups."
+  },
+  {
+   "id": "lioness_dragon.per_sample_networks",
+   "workflow": "LIONESS-DRAGON",
+   "text": "One two-layer partial-correlation network per sample, plus the aggregate."
+  },
+  {
+   "id": "lioness_dragon.association_tests",
+   "workflow": "LIONESS-DRAGON",
+   "text": "Per-sample edges compared between groups or individuals."
+  },
+  {
+   "id": "lioness_coexpression.per_sample_networks",
+   "workflow": "LIONESS-COEXPRESSION",
+   "text": "One gene-gene co-expression network per sample, plus the aggregate."
+  },
+  {
+   "id": "lioness_coexpression.comparisons",
+   "workflow": "LIONESS-COEXPRESSION",
+   "text": "Per-sample gene degree or edge weights compared across samples or groups."
+  },
+  {
+   "id": "bonobo.per_sample_networks",
+   "workflow": "BONOBO",
+   "text": "One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample."
+  },
+  {
+   "id": "cobra.covariate_components",
+   "workflow": "COBRA",
+   "text": "The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix."
+  },
+  {
+   "id": "cobra.adjusted_input_to_regulation",
+   "workflow": "COBRA",
+   "text": "A regulatory network built from batch-adjusted co-expression."
+  },
+  {
+   "id": "condor.communities",
+   "workflow": "CONDOR",
+   "text": "Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity."
+  },
+  {
+   "id": "condor.core_scores",
+   "workflow": "CONDOR",
+   "text": "Each regulator's and gene's core score -- its share of its community's modularity -- to pick out each community's core nodes."
+  },
+  {
+   "id": "condor.enrichment",
+   "workflow": "CONDOR",
+   "text": "Pathway enrichment of each community's genes."
+  },
+  {
+   "id": "sambar.subtypes",
+   "workflow": "SAMBAR",
+   "text": "Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them -- with the scores, the cluster labels and the sample distance matrix."
+  },
+  {
+   "id": "sambar.clinical_comparison",
+   "workflow": "SAMBAR",
+   "text": "Subtypes compared with clinical variables such as survival."
+  }
+ ],
+ "near_miss": [
+  {
+   "id": "panda.no_complexes",
+   "workflow": "PANDA",
+   "text": "Which TFs physically form complexes, or complex stoichiometry.",
+   "why_not": "The PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or stoichiometry."
+  },
+  {
+   "id": "panda.no_sign",
+   "workflow": "PANDA",
+   "text": "Whether a TF activates or represses a gene.",
+   "why_not": "Edge weights are unsigned support scores."
+  },
+  {
+   "id": "panda.no_motif_discovery",
+   "workflow": "PANDA",
+   "text": "Discover a TF's binding motif or binding sites.",
+   "why_not": "The motif prior is an input; PANDA never searches sequence."
+  },
+  {
+   "id": "panda.no_dynamics",
+   "workflow": "PANDA",
+   "text": "A model of how expression or regulation evolves over time.",
+   "why_not": "One static network per set of samples; time points can only be compared as separate networks."
+  },
+  {
+   "id": "puma.no_lncrna_cerna",
+   "workflow": "PUMA",
+   "text": "lncRNA regulators, ceRNA or miRNA-sponge networks.",
+   "why_not": "PUMA's non-TF regulators are miRNAs given by a target prior; it has no lncRNA layer and models no sponging."
+  },
+  {
+   "id": "puma.no_mirna_expression_use",
+   "workflow": "PUMA",
+   "text": "miRNA-gene edges estimated from miRNA expression (e.g. anti-correlation).",
+   "why_not": "The miRNA's own expression is not an input."
+  },
+  {
+   "id": "lioness.no_single_cell",
+   "workflow": "LIONESS-PANDA",
+   "text": "Networks for individual cells.",
+   "why_not": "Built for bulk samples; per-cell co-expression is dominated by dropout."
+  },
+  {
+   "id": "lioness_panda.no_sign",
+   "workflow": "LIONESS-PANDA",
+   "text": "Whether a TF activates or represses a gene.",
+   "why_not": "Edge weights are unsigned support scores."
+  },
+  {
+   "id": "lioness_panda.no_complexes",
+   "workflow": "LIONESS-PANDA",
+   "text": "Which TFs physically form complexes, or complex stoichiometry.",
+   "why_not": "The PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or stoichiometry."
+  },
+  {
+   "id": "lioness_puma.no_single_cell",
+   "workflow": "LIONESS-PUMA",
+   "text": "Networks for individual cells.",
+   "why_not": "Built for bulk samples; per-cell co-expression is dominated by dropout."
+  },
+  {
+   "id": "lioness_puma.no_lncrna_cerna",
+   "workflow": "LIONESS-PUMA",
+   "text": "lncRNA regulators, ceRNA or miRNA-sponge networks.",
+   "why_not": "PUMA's non-TF regulators are miRNAs given by a target prior; it has no lncRNA layer and models no sponging."
+  },
+  {
+   "id": "otter.no_per_sample",
+   "workflow": "OTTER",
+   "text": "One network per sample.",
+   "why_not": "No per-sample OTTER is registered."
+  },
+  {
+   "id": "otter.no_global_optimum",
+   "workflow": "OTTER",
+   "text": "A convex or globally optimal solution.",
+   "why_not": "Non-convex objective; netZooPy takes fixed gradient steps."
+  },
+  {
+   "id": "otter.no_complexes",
+   "workflow": "OTTER",
+   "text": "Which TFs physically form complexes, or complex stoichiometry.",
+   "why_not": "The PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or stoichiometry."
+  },
+  {
+   "id": "otter.no_sign",
+   "workflow": "OTTER",
+   "text": "Whether a TF activates or represses a gene.",
+   "why_not": "Edge weights are unsigned support scores."
+  },
+  {
+   "id": "giraffe.no_protein_level",
+   "workflow": "GIRAFFE",
+   "text": "Measured TF protein abundance or binding occupancy.",
+   "why_not": "Activity is inferred from expression and priors, not measured."
+  },
+  {
+   "id": "giraffe.no_per_sample_wiring",
+   "workflow": "GIRAFFE",
+   "text": "A separate regulatory network for each sample.",
+   "why_not": "The regulatory matrix is one for all samples; only activity is per sample."
+  },
+  {
+   "id": "dragon.no_flux_or_pathway_activity",
+   "workflow": "DRAGON",
+   "text": "Metabolic flux, pathway activity or quantities derived from a biochemical model.",
+   "why_not": "DRAGON returns associations between measured features; it has no stoichiometric or kinetic model."
+  },
+  {
+   "id": "dragon.no_more_layers",
+   "workflow": "DRAGON",
+   "text": "Three or more omics layers in one model.",
+   "why_not": "Two layers only."
+  },
+  {
+   "id": "lioness_dragon.no_pvalues",
+   "workflow": "LIONESS-DRAGON",
+   "text": "Per-sample edge p-values.",
+   "why_not": "LIONESS-DRAGON writes per-sample edge weights only; DRAGON's p-values are for the aggregate network."
+  },
+  {
+   "id": "lioness_dragon.no_flux_or_pathway_activity",
+   "workflow": "LIONESS-DRAGON",
+   "text": "Metabolic flux, pathway activity or quantities derived from a biochemical model.",
+   "why_not": "DRAGON returns associations between measured features; it has no stoichiometric or kinetic model."
+  },
+  {
+   "id": "lioness_dragon.no_single_cell",
+   "workflow": "LIONESS-DRAGON",
+   "text": "Networks for individual cells.",
+   "why_not": "Built for bulk samples; per-cell co-expression is dominated by dropout."
+  },
+  {
+   "id": "coexpression.no_regulation",
+   "workflow": "LIONESS-COEXPRESSION",
+   "text": "Which regulator controls which gene, or edge direction.",
+   "why_not": "Co-expression is undirected gene-gene similarity, with no regulator layer."
+  },
+  {
+   "id": "lioness_coexpression.no_single_cell",
+   "workflow": "LIONESS-COEXPRESSION",
+   "text": "Networks for individual cells.",
+   "why_not": "Built for bulk samples; per-cell co-expression is dominated by dropout."
+  },
+  {
+   "id": "bonobo.no_regulation",
+   "workflow": "BONOBO",
+   "text": "Which regulator controls which gene, or edge direction.",
+   "why_not": "Co-expression is undirected gene-gene similarity, with no regulator layer."
+  },
+  {
+   "id": "bonobo.no_single_cell",
+   "workflow": "BONOBO",
+   "text": "Networks for individual cells.",
+   "why_not": "Built for bulk samples; per-cell co-expression is dominated by dropout."
+  },
+  {
+   "id": "cobra.no_differential_expression",
+   "workflow": "COBRA",
+   "text": "Differentially expressed genes, fold changes or p-values per gene.",
+   "why_not": "COBRA decomposes gene-pair co-expression; it does not test single genes' expression."
+  },
+  {
+   "id": "cobra.no_pair_significance",
+   "workflow": "COBRA",
+   "text": "Which gene pairs differ significantly between groups.",
+   "why_not": "Components are effect contributions; deciding significance is a separate analysis."
+  },
+  {
+   "id": "condor.no_two_network_comparison",
+   "workflow": "CONDOR",
+   "text": "Differential module structure between two networks.",
+   "why_not": "One network at a time."
+  },
+  {
+   "id": "condor.no_variant_mapping",
+   "workflow": "CONDOR",
+   "text": "Fine-mapping causal variants, or variant effects on binding.",
+   "why_not": "CONDOR partitions a given network; it does not test or fine-map variants (its original eQTL use takes eQTL associations as input)."
+  },
+  {
+   "id": "sambar.no_expression_subtypes",
+   "workflow": "SAMBAR",
+   "text": "Subtypes from expression, methylation or other non-mutation data.",
+   "why_not": "SAMBAR's input is somatic mutations."
+  },
+  {
+   "id": "sambar.no_driver_calls",
+   "workflow": "SAMBAR",
+   "text": "Which mutations are drivers, or mutation calling.",
+   "why_not": "SAMBAR summarizes given mutation calls; it does not call or rank driver mutations."
+  }
+ ],
+ "registry_wide": [
+  {
+   "id": "causal_proof",
+   "text": "Proof that one thing causes another (causal drivers, causal direction of an edge, ruling out confounding).",
+   "why_not": "Every registered workflow estimates associations or model coefficients from observational data."
+  },
+  {
+   "id": "outcome_prediction",
+   "text": "A trained model that predicts an outcome, a future state or a perturbation effect, with its accuracy.",
+   "why_not": "No registered workflow fits a predictive or generative model; per-sample results can only be features for one built elsewhere."
+  },
+  {
+   "id": "delivery",
+   "text": "Results sent, uploaded, published or shown to anyone outside the analysis (e-mail, a public or shared database or repository, a website, a dashboard or app).",
+   "why_not": "Every registered workflow writes result files to the output folder you give; sending, uploading, publishing or showing them is done outside NetZoo."
+  }
+ ],
+ "input_slots": {
+  "expression_file": {
+   "required_by": [
+    "BONOBO",
+    "COBRA",
+    "GIRAFFE",
+    "LIONESS-COEXPRESSION",
+    "LIONESS-PANDA",
+    "LIONESS-PUMA",
+    "PANDA",
+    "PUMA"
+   ],
+   "optional_for": [
+    "OTTER"
+   ]
+  },
+  "design_file": {
+   "required_by": [
+    "COBRA"
+   ],
+   "optional_for": []
+  },
+  "network_file": {
+   "required_by": [
+    "CONDOR"
+   ],
+   "optional_for": []
+  },
+  "omics_layer_1": {
+   "required_by": [
+    "DRAGON",
+    "LIONESS-DRAGON"
+   ],
+   "optional_for": []
+  },
+  "omics_layer_2": {
+   "required_by": [
+    "DRAGON",
+    "LIONESS-DRAGON"
+   ],
+   "optional_for": []
+  },
+  "motif_file": {
+   "required_by": [
+    "GIRAFFE",
+    "LIONESS-PANDA",
+    "LIONESS-PUMA",
+    "OTTER",
+    "PANDA",
+    "PUMA"
+   ],
+   "optional_for": []
+  },
+  "ppi_file": {
+   "required_by": [
+    "GIRAFFE",
+    "LIONESS-PANDA",
+    "LIONESS-PUMA",
+    "OTTER",
+    "PANDA",
+    "PUMA"
+   ],
+   "optional_for": []
+  },
+  "mirna_file": {
+   "required_by": [
+    "LIONESS-PUMA",
+    "PUMA"
+   ],
+   "optional_for": []
+  },
+  "coexpression_file": {
+   "required_by": [],
+   "optional_for": [
+    "OTTER",
+    "PANDA",
+    "PUMA"
+   ]
+  },
+  "mutation_file": {
+   "required_by": [
+    "SAMBAR"
+   ],
+   "optional_for": []
+  },
+  "exon_size_file": {
+   "required_by": [
+    "SAMBAR"
+   ],
+   "optional_for": []
+  },
+  "cancer_gene_file": {
+   "required_by": [
+    "SAMBAR"
+   ],
+   "optional_for": []
+  },
+  "pathway_file": {
+   "required_by": [
+    "SAMBAR"
+   ],
+   "optional_for": []
+  }
+ }
+}
