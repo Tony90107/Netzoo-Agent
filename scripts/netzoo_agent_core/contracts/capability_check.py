@@ -207,15 +207,21 @@ def _ask_model(compact: bool = False, version: int = 1) -> type[BaseModel]:
         needs_sign=(bool, Field(description=(
             "Whether the asked-for result must say if a regulator activates or represses its targets."))),
         # Log 394 (Log 390 LN8: communities of a gene-gene co-expression network went to CONDOR).
-        input_network=(Literal["regulator_gene", "gene_gene", "other", "none"], Field(description=(
+        # 2026-10-22 (user decision): "none" was also the only answer when the request said nothing about a network,
+        # and code reads it as "the user has none" (R22-A); not_stated keeps the two apart.
+        input_network=(Literal["regulator_gene", "gene_gene", "other", "none", "not_stated"], Field(description=(
             "The kind of existing network the asked-for result is computed from: regulator_gene (regulators "
-            "linked to target genes), gene_gene (e.g. co-expression), other (e.g. protein interactions), "
-            "or none when it is not computed from an existing network."))),
+            "linked to target genes), gene_gene (e.g. co-expression), other (e.g. protein interactions); none when "
+            "the request says the user has no such network or the result is not computed from one; not_stated "
+            "when the request does not say."))),
         # Log 402, re-applied in Log 403: result forms no registered workflow gives (heldout7 ON5,
         # heldout8 QN5/QN8/QN10, heldout10 SN1/SN5).
-        group_membership=(Literal["one_group", "several_groups", "not_about_groups"], Field(description=(
-            "When the asked-for result groups genes, regulators or samples: whether each may belong to only one "
-            "group or to several groups at once; not_about_groups otherwise."))),
+        # 2026-10-22 (user decision; h5 Q26 "split the tumors into 2-5 subtypes" typed several_groups and refused):
+        # a grouping result whose request says nothing about overlap had no value but a guess.
+        group_membership=(Literal["one_group", "several_groups", "not_stated", "not_about_groups"], Field(description=(
+            "When the asked-for result groups genes, regulators or samples: one_group when the request says each "
+            "belongs to only one group, several_groups when it says each may belong to several groups at once, "
+            "not_stated when it does not say; not_about_groups when the result does not group them."))),
         time_model=(Literal["dynamic", "not_dynamic"], Field(description=(
             "dynamic: the asked-for result must model how the system changes from one time point to the next "
             "(time lags, transitions, trajectories). not_dynamic otherwise, including results compared between or "
