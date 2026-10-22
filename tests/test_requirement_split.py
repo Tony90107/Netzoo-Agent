@@ -97,6 +97,14 @@ def test_s138_an_output_folder_is_not_a_delivery():
     assert [item.status for item in check.results()] == ["available", "not_available"]
 
 
+def test_a_one_level_output_folder_is_not_a_delivery_either():
+    # Held-out h5 Q37: "Outputs can go to glioma_out/" refused a doable LIONESS-PUMA run as a delivery.
+    task = "We would like pathway mutation scores for every tumour. Outputs can go to glioma_out/."
+    check = _check(task, _ask("pathway mutation scores for every tumour", ["sambar.subtypes"]),
+                   other_requirements=[{"about": "delivery", "quote": "Outputs can go to glioma_out/"}])
+    assert [item.status for item in check.results()] == ["available"]
+
+
 def test_settings_for_one_of_several_results_go_to_that_result():
     task = "Run DRAGON with lambda1 0.3 on our two layers, and run OTTER on our expression with motif and PPI."
     whole = {"named_method": "none", "named_method_quote": "",

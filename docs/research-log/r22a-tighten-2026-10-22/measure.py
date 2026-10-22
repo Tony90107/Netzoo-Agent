@@ -1,7 +1,7 @@
 """R22-A tightened (2026-10-22): every reading replayed by the harness with the offline read caches; the labelled
 corpus compared with ROUND-22's run, and h5's sessions scored by the h5 scorer before and after.
 
-Usage: python3 measure.py OUT.json
+Usage: python3 measure.py OUT.json [BEFORE.json]
 """
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def h5(path):
 
 if __name__ == "__main__":
     harness.run(sys.argv[1])
-    before, after = h5(LOGS / "heldout-h5-2026-10-21/harness-now.json"), h5(sys.argv[1])
+    before, after = h5(sys.argv[2] if len(sys.argv) > 2 else LOGS / "heldout-h5-2026-10-21/harness-now.json"), h5(sys.argv[1])
     print(f"h5 replay: correct {sum(v == 'correct' for v in before.values())} -> "
           f"{sum(v == 'correct' for v in after.values())} of {len(after)}")
     for key in sorted(after):
