@@ -52,3 +52,27 @@ def test_a_verified_overlap_condition_applies_to_an_ask_that_does_not_say():
         "asked_as": "request", "adds": [], "named_method": "none", "named_method_quote": "", "settings": [],
         "sample_count": None, "sample_count_quote": "", "feature_counts": []})
     assert _with_conditions(ask, {"group_membership": "several_groups"}).group_membership == "several_groups"
+
+
+def test_an_unquoted_overlap_never_refuses_subtypes():
+    # h5 Q26 as gpt-4o-mini read it (subtypes-regression-2026-10-22): several_groups in the ask and in the request's
+    # conditions, the latter with no words; SAMBAR stays available.
+    from netzoo_agent_core.contracts.capability_check import unstated_conditions
+    from netzoo_agent_core.interpretation.capability_check import build_capability_check
+
+    task = ("I have somatic mutation counts for 210 bladder tumors (samples by genes), a gene exon-length table, our "
+            "list of cancer genes and an MSigDB pathway GMT. I'd like to split the tumors into somewhere between 2 and "
+            "5 subtypes based on how their pathways are mutated.")
+    quote = "I'd like to split the tumors into somewhere between 2 and 5 subtypes based on how their pathways are mutated."
+    ask = {**{name: value for name, value in _ASK.items() if not name.startswith("_") and name != "samples_matched"},
+           "group_membership": "several_groups", "quote": quote, "delivered_by": ["sambar.subtypes"], "not_by": [],
+           "asked_as": "request", "adds": [], "named_method": "none", "named_method_quote": "", "settings": [],
+           "sample_count": None, "sample_count_quote": "", "feature_counts": []}
+    reading = proposal_model(2).model_validate({
+        "s1": {"role": "background", "has": [], "about_methods": [], "asks": []},
+        "s2": {"role": "asks", "has": [], "about_methods": [], "asks": [ask]},
+        "conditions": {**unstated_conditions(), "group_membership": "several_groups", "group_membership_quote": ""}})
+    check, _ = build_capability_check(task, reading)
+    row = check.results()[0]
+    assert (row.status, row.delivered_by, row.attrs["group_membership"]) == ("available", ["sambar.subtypes"],
+                                                                             "not_stated")
