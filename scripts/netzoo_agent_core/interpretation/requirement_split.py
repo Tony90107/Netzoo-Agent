@@ -89,11 +89,19 @@ def condition_requirements(task: str, conditions: dict[str, str], form_spans: di
             for name, span in form_spans.items() if not any(_within(span, ask) for ask in asked)]
 
 
+_FOLDER_TOKEN = re.compile(r"(?<![\w.~/:-])[\w.~-]+/(?![\w.~/-])")
+"""A one-level folder written with its trailing slash ("glioma_out/"); `_DIRECTORY_TOKEN` needs two levels."""
+
+
 def _names_a_folder(words: str) -> bool:
-    """A file path or folder, and no web address or e-mail: where result files are written (a24b S138)."""
+    """A file path or folder, and no web address or e-mail: where result files are written (a24b S138).
+
+    Held-out h5 (ROUND-24): "Outputs can go to glioma_out/" and "write the communities to condor_psoriasis/" were read as
+    deliveries and refused a doable run (Q37 x2, Q13-1) -- a one-level folder was not recognized.
+    """
     if "://" in words or "@" in words or "www." in words.casefold():
         return False
-    return bool(_UNLABELED_PATH_RE.search(words) or _DIRECTORY_TOKEN.search(words))
+    return bool(_UNLABELED_PATH_RE.search(words) or _DIRECTORY_TOKEN.search(words) or _FOLDER_TOKEN.search(words))
 
 
 def delivery_requirements(task: str, proposal, results: list[CheckedRequirement]) -> list[CheckedRequirement]:
