@@ -11,7 +11,7 @@ The order is `_with_capability_check`'s (graph/router_invocation.py:467-640):
   5 the condition check after the second opinion, as step 3
   6 a provisional reading is never a full gap
   7 without_ruled_out (code only)
-  8 the recorded fact check: its waits lifted when it ran
+  8 the recorded fact check: its waits lifted when it ran (2026-10-22: and asks something, in code that has it)
   9 waiting_decision when a fact is needed; the full-gap update of the decision; decide_core
 A pair this checkout asks that the recording never answered is "unrecorded" and handled as live handles an
 unanswered call: the condition check's quote is unchecked (`_not_checked`), a redirect changes nothing. Routing before
@@ -306,7 +306,6 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
 
     # 8-9: the recorded fact check, waits, the full-gap update, the call
     if decision.fact_check is not None and decision.fact_check.status == "checked":
-        check = without_legacy_waits(check)
         try:  # ROUND-22: R4 also rejects words that hold a stated setting (absent from older checkouts)
             from netzoo_agent_core.interpretation.fact_check import holds_stated_setting
         except ImportError:
@@ -319,6 +318,16 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
                 decision = decision.model_copy(update={"fact_check": agent.model_copy(
                     update={"accepted": kept, "open_results": opened})})
                 steps.append("R4 stated setting")
+        try:  # 2026-10-22: an agent that asks nothing leaves the legacy waits (older checkouts lift them always)
+            from netzoo_agent_core.graph.fact_check_call import waits_after_agent
+        except ImportError:
+            waits_after_agent = None
+        if waits_after_agent is None:
+            check = without_legacy_waits(check)
+        elif (after := waits_after_agent(check, decision.fact_check, task)) is not check:
+            check = after
+        elif any(not row.by_code for row in check.needed_facts()):
+            steps.append("legacy waits kept")
     if check.needed_facts():
         decision = waiting_decision(decision, check)
     else:
