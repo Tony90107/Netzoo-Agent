@@ -110,3 +110,26 @@ def test_the_unstated_network_wait_survives_the_fact_agent_and_is_asked():
         assert (core.kind, core.basis, core.workflows) == ("ASK", "needs_fact", ["CONDOR"])
         assert [fact.question for fact in core.facts] == [
             "Do you already have a regulator-gene (source-target-weight) network for CONDOR to run on?"]
+
+
+def test_the_unstated_network_is_asked_beside_a_fact_agent_question():
+    # With keep-legacy-waits (a72f748f): an agent that asks something lifts legacy waits, never this one.
+    from netzoo_agent_core.contracts import TaskDecision
+    from netzoo_agent_core.contracts.core_decision import FactQuestion
+    from netzoo_agent_core.contracts.fact_check import FactCheck
+    from netzoo_agent_core.graph.fact_check_call import waits_after_agent
+    from netzoo_agent_core.interpretation.core_decision import decide_core
+
+    task = "Please run CONDOR on our lung cohort; I am not sure whether the weights are signed."
+    asked = FactQuestion(question="Are the edge weights signed?", user_quote="I am not sure whether the weights are "
+                         "signed", workflows=["CONDOR"])
+    agent = FactCheck(status="checked", accepted=[asked])
+    waiting = waits_after_agent(without_unbuilt_network(_check("not_stated", quote="Please run CONDOR on our lung "
+                                                                                    "cohort"), task), agent, task)
+    assert waiting.results()[0].status == "needs_fact"
+    core = decide_core(TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
+                                    capability_check=waiting, fact_check=agent), task)
+    assert (core.kind, core.basis) == ("ASK", "fact_agent")
+    assert [fact.question for fact in core.facts] == [
+        "Do you already have a regulator-gene (source-target-weight) network for CONDOR to run on?",
+        "Are the edge weights signed?"]

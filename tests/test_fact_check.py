@@ -15,6 +15,7 @@ import pytest  # noqa: E402
 
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
 from netzoo_agent_core.contracts.capability_check import CapabilityCheck, CheckedRequirement  # noqa: E402
+from netzoo_agent_core.contracts.core_decision import FactQuestion  # noqa: E402
 from netzoo_agent_core.contracts.fact_check import FactCheck, FactProposal, FactProposals  # noqa: E402
 from netzoo_agent_core.interpretation.core_decision import decide_core, with_core  # noqa: E402
 from netzoo_agent_core.interpretation.fact_check import fact_candidates, kept_facts  # noqa: E402
@@ -121,20 +122,49 @@ def test_an_agent_question_is_ask_and_holds_the_turn(policy):
         "no_tool", [], "Were the values log-transformed before they were centered?")
 
 
-def test_when_the_agent_ran_the_fixed_dimensions_are_shadow(policy):
-    from netzoo_agent_core.graph.fact_check_call import without_legacy_waits
+def _condor_waiting():
+    return CapabilityCheck(requirements=[CheckedRequirement(
+        quote="Run CONDOR on net.tsv", kind="result", status="needs_fact", depends_on="input_network",
+        unknown_quote="I can't recall", outcomes={"regulator_gene": ["condor.communities"], "gene_gene": []},
+        delivered_by=["condor.communities"])])
 
-    waiting = CheckedRequirement(quote="Run CONDOR on net.tsv", kind="result", status="needs_fact",
-                                 depends_on="input_network", unknown_quote="I can't recall",
-                                 outcomes={"regulator_gene": ["condor.communities"], "gene_gene": []},
-                                 delivered_by=["condor.communities"])
-    check = CapabilityCheck(requirements=[waiting])
+
+def test_when_the_agent_asks_the_fixed_dimensions_are_shadow(policy):
+    from netzoo_agent_core.graph.fact_check_call import waits_after_agent
+
+    agent = _kept(policy, _proposal())
+    lifted = waits_after_agent(_condor_waiting(), agent, TASK)
+    (row,) = lifted.results()
+    assert (row.status, row.delivered_by) == ("available", ["condor.communities"])
     decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
-                            capability_check=check, fact_check=FactCheck(status="checked"))
-    assert (decide_core(decision).kind, decide_core(decision).workflows) == ("DO", ["CONDOR"])  # shadow
-    lifted = decision.model_copy(update={"capability_check": without_legacy_waits(check)})
-    core = decide_core(lifted)
-    assert (core.kind, core.workflows) == ("DO", ["CONDOR"])
+                            capability_check=lifted, fact_check=agent.model_copy(update={"legacy": [FactQuestion(
+                                question="Which network?", user_quote="I can't recall")]}))
+    core = decide_core(decision, TASK)
+    assert (core.kind, core.basis, core.evidence["legacy_facts"]) == ("ASK", "fact_agent", ["Which network?"])
+    opened = FactCheck(status="checked", open_results=["I can't recall"])  # R7 asks the goal first
+    assert waits_after_agent(_condor_waiting(), opened, TASK).needed_facts() == []
+
+
+def test_when_the_agent_asks_nothing_the_fixed_dimensions_stand():
+    """2026-10-22: replayed, the silent agent's lifted waits made C11, C31 and h2 J19 (all gold ASK) DO."""
+    from netzoo_agent_core.graph.fact_check_call import waits_after_agent
+
+    check = _condor_waiting()
+    silent = FactCheck(status="checked")
+    assert waits_after_agent(check, silent, "") is check
+    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
+                            capability_check=check, fact_check=silent)
+    core = decide_core(decision)
+    assert (core.kind, core.basis, core.workflows, core.evidence["legacy_kept"]) == (
+        "ASK", "needs_fact", ["CONDOR"], True)
+    from netzoo_agent_core.interpretation.capability_check import whole_check_result
+    from netzoo_agent_core.interpretation.needed_facts import waiting_decision
+
+    waiting = with_core(waiting_decision(decision, check), core)
+    assert (waiting.action, waiting.should_execute) == ("no_tool", False)
+    result = whole_check_result({"decision": waiting.model_dump(), "messages": []},
+                                lambda text, kind: {"text": text, "reply_kind": kind})
+    assert result["reply_kind"] == "needs_fact" and "I can't recall" in result["text"]
     failed = decision.model_copy(update={"fact_check": FactCheck(status="failed")})
     assert (decide_core(failed).kind, decide_core(failed).basis) == ("ASK", "needs_fact")
 

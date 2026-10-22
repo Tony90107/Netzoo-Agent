@@ -17,7 +17,8 @@ Rules, in the spec's order of precedence:
    Phase 5c: also when the fact agent read a wanted result the user is unsure of with fewer than two options named
    (R7, `result_open`) -- before any ASK, so the turn's data facts wait for the goal.
 3. ASK -- phase 2: the fact agent's kept questions (R1-R6, `interpretation.fact_check`); the fixed dimensions
-   (`needs_fact`, or a run held for it) only when the agent did not run, and recorded as shadow when it did.
+   (`needs_fact`, or a run held for it) only when the agent did not run or asked nothing, and recorded as shadow
+   when it asked (2026-10-22: lifting them on an agent's empty answer made gold-ASK items DO, `waits_after_agent`).
    Phase 5b: a count the user gave as candidates, each judged in code, is asked whether or not the agent ran
    (`count_fact`), before the agent's questions.
 4. DECLINE -- every result read is not available (a full gap), a run was held on a gap, routing found the request
@@ -126,6 +127,21 @@ def _facts(check, by_code: bool | None = None, task: str = "") -> list[FactQuest
                          for value, names in known.outcomes.items()},
             "notes": {**fact.notes, **known.notes}})
     return found
+
+
+def agent_questions(check, agent, task: str = "") -> tuple[list[FactQuestion], list[FactQuestion]]:
+    """What a checked fact agent's turn asks, and the agent's facts a count code judged owns (not asked)."""
+    # Phase 5b (spec 13.3): a count code judged is asked first, beside the agent's (the code's on the same words).
+    counted = _facts(check, by_code=True, task=task)
+    # ROUND-09 (R8): a question on candidates code weighed must be able to tell them apart, or it is not asked.
+    # ROUND-21 (user decision): a fact the run's file check could settle is asked too (recorded R5 flags ignored).
+    owned = [fact for fact in agent.accepted if any(
+        _same_words(task, fact.user_quote, words) and not splits_candidates(fact.question, values)
+        for words, values in judged_count_words(check))]
+    asked = [*counted, *(fact for fact in agent.accepted if fact not in owned
+                         and not any(_same_words(task, fact.user_quote, count.user_quote)
+                                     for count in counted))][:MAX_ASKED]
+    return asked, owned
 
 
 def _overlaps(a: str, b: str) -> bool:
@@ -272,28 +288,23 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         return call("CLARIFY", "result_open", clarify=_clarify_need(decision, check, agent.open_results[0]))
     if agent is not None and agent.status == "checked":
         evidence["legacy_facts"] = [fact.question for fact in agent.legacy]  # phase 2: shadow
-        # Phase 5b (spec 13.3): a count code judged is asked first, beside the agent's (the code's on the same words).
-        counted = _facts(check, by_code=True, task=task)
-        # ROUND-09 (R8): a question on candidates code weighed must be able to tell them apart, or it is not asked.
-        # ROUND-21 (user decision): a fact the run's file check could settle is asked too (recorded R5 flags ignored).
-        owned = [fact for fact in agent.accepted if any(
-            _same_words(task, fact.user_quote, words) and not splits_candidates(fact.question, values)
-            for words, values in judged_count_words(check))]
+        asked, owned = agent_questions(check, agent, task)
         if owned:
             evidence["count_owned"] = [fact.question for fact in owned]
-        # 2026-10-22 (user decision): a named CONDOR whose request does not say whether its network exists is code's
-        # wait too, asked beside the agent's.
-        from .ruled_out import NETWORK_GIVEN
-
-        unstated = [fact for fact in _facts(check, by_code=False, task=task) if fact.depends_on == NETWORK_GIVEN]
-        agents = [fact for fact in agent.accepted if fact not in owned
-                  and not any(_same_words(task, fact.user_quote, count.user_quote) for count in counted)]
-        asked = [*counted, *unstated, *agents][:MAX_ASKED]
         if asked:
-            basis = "count_fact" if counted else "fact_agent" if agents else "needs_fact"
+            # 2026-10-22 (user decision): a named CONDOR whose request does not say whether its network exists is
+            # code's wait too, asked beside the agent's (asking nothing, the legacy path below asks it).
+            from .ruled_out import NETWORK_GIVEN
+
+            unstated = [fact for fact in _facts(check, by_code=False, task=task) if fact.depends_on == NETWORK_GIVEN]
+            basis = "count_fact" if asked[0].by_code else "fact_agent"
+            asked = [*(fact for fact in asked if fact.by_code), *unstated,
+                     *(fact for fact in asked if not fact.by_code)][:MAX_ASKED]
             return call("ASK", basis, facts=asked,
                         workflows=list(dict.fromkeys(name for fact in asked for name in fact.workflows)))
-    elif (facts := _facts(check, task=task)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":
+        if check is not None and check.needed_facts():  # 2026-10-22: an agent asking nothing left them standing
+            evidence["legacy_kept"] = True
+    if (facts := _facts(check, task=task)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":
         return call("ASK", "needs_fact", facts=facts, workflows=_names(k for f in facts for k in f.workflows))
     running = decision.action.startswith("run_")
     if check is not None and check.unconfirmed() and (read or not running):  # p3: an unconfirmed guidance turn too
@@ -308,8 +319,7 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         return call("DECLINE", "routing_unsupported")
     if not read and not running and not _routed(decision):
         return call("CLARIFY", "no_result_read", clarify=_clarify_need(decision, check))  # p1 C41, C48: one view
-    shadow = agent is not None and agent.status == "checked"  # phase 2: a legacy wait gives what it could give
-    given = [row for row in read if row.status in _GIVEN or shadow and row.status == "needs_fact"]
+    given = [row for row in read if row.status in _GIVEN]
     if read and not given:
         return call("DECLINE", "all_results_not_available", declined=_declined(results, check))
     from .decision_guards import unchecked_fact_quotes, unresolved_setting_questions
