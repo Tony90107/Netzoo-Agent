@@ -1,0 +1,874 @@
+{
+  "version": 1,
+  "session_id": "hb-h6main-R43-1",
+  "profile_id": "hb-h6main-R43-1",
+  "auto_generated": false,
+  "created_at": 1792683226.0655758,
+  "updated_at": 1792683226.065648,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We want BONOBO networks for our 9 patient-derived colon organoids. The matrix is log2-transformed and every gene is mean-centred. Please sparsify at a 0.01 confidence level, keep the p-value matrices, use delta 0.25, and write the outputs as CSV."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"We want BONOBO networks for our 9 patient-derived colon organoids.\" -- available from BONOBO.\n2. \"Please sparsify at a 0.01 confidence level, keep the p-value matrices, use delta 0.25, and write the outputs as CSV.\" -- not matched to any registered workflow.\n\nAssumptions behind this recommendation (not confirmed facts):\n\n- The input data is correctly formatted as a log2-transformed and mean-centered matrix.\n- The user has the necessary permissions to generate and export the networks.\n\nSelected path: **BONOBO**.\n\nYour question asks for a co-expression network. **BONOBO** fits that result. BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression.\n\n**BONOBO**: Infer sample-specific gene-gene co-expression networks with netZooPy BONOBO.\n\nRouting-level input modality: expression matrix.\n\nMethod premise: Bayesian shrinkage estimation of sample-specific co-expression; sparsify sample-specific co-expression and return matching p-value matrices.\n\nBONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n\nControls matching this request:\n\n- `sparsify` (type=boolean; default=False) — Compute approximate edge p-values and threshold each sample's co-expression matrix at bonobo_confidence (with save_pvals, the full matrix is kept and the p-values are written).\n- `bonobo_confidence` (type=number; default=0.05; range=0.0..1.0) — Significance level at which sparsify thresholds the edges.\n- `save_pvals` (type=boolean; default=False) — Write each sample's edge p-value matrix; requires sparsify.\n\nOther declared controls (not matched to this request; defaults apply unless you set them): `bonobo_output_format`=.h5, `sample_names`=[], `precision`=single, `keep_in_memory`=False, `delta`, `genes_axis`=auto, `log_transformed`, `centered`.\n\nWhen `sparsify=False` and `save_pvals=False`: full sample-specific gene-gene co-expression matrices; no p-value artifact is written.\n\nWhen `sparsify=True` and `save_pvals=False`: upstream thresholds each sample-specific co-expression matrix; no p-value artifact is written.\n\nWhen `sparsify=True` and `save_pvals=True`: upstream retains the full co-expression matrix for each selected sample and writes a matching p-value matrix; threshold it from the saved p-value matrix; it does not also emit an already-thresholded network in this mode.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `coexpression_network`: Inferred gene-to-gene associations.\n- `pvalue_matrix`: P-value matrix paired with a sample-specific gene-gene co-expression result.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The user must explicitly request BONOBO execution or sample-specific co-expression analysis.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "The user must explicitly request BONOBO execution or sample-specific co-expression analysis.",
+      "candidate_actions": [
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_bonobo"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "sparse_pvalue_coexpression"
+        ],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "sparse_pvalue_coexpression"
+            ],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "We want BONOBO networks for our 9 patient-derived colon organoids.",
+              "rationale": "The user explicitly requests to generate BONOBO networks."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "We want BONOBO networks for our 9 patient-derived colon organoids.",
+              "rationale": "The user specifies the type of network they want to generate."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "The matrix is log2-transformed and every gene is mean-centred.",
+              "rationale": "The user is working with gene expression data."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "sparse_pvalue_coexpression",
+              "source": "explicit",
+              "text_span": "Please sparsify at a 0.01 confidence level, keep the p-value matrices.",
+              "rationale": "The user specifies to sparsify at a 0.01 confidence level and keep the p-value matrices."
+            }
+          ],
+          "assumptions": [
+            "The input data is correctly formatted as a log2-transformed and mean-centered matrix.",
+            "The user has the necessary permissions to generate and export the networks."
+          ]
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "registry_features",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_bonobo"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "We want BONOBO networks for our 9 patient-derived colon organoids.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "bonobo.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "BONOBO",
+              "named_quote": "BONOBO",
+              "samples": 9,
+              "samples_quote": "9",
+              "settings": [
+                {
+                  "name": "BONOBO.bonobo_output_format",
+                  "quote": "CSV",
+                  "value": "CSV",
+                  "span": [
+                    242,
+                    245
+                  ],
+                  "at": 242
+                },
+                {
+                  "name": "BONOBO.bonobo_confidence",
+                  "quote": "0.01",
+                  "value": "0.01",
+                  "span": [
+                    151,
+                    155
+                  ],
+                  "at": 151
+                },
+                {
+                  "name": "BONOBO.delta",
+                  "quote": "0.25",
+                  "value": "0.25",
+                  "span": [
+                    211,
+                    215
+                  ],
+                  "at": 211
+                }
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "setting:BONOBO.bonobo_output_format@242-245",
+              "setting:BONOBO.bonobo_confidence@151-155",
+              "setting:BONOBO.delta@211-215",
+              "sample_count@32-33"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "Please sparsify at a 0.01 confidence level, keep the p-value matrices, use delta 0.25, and write the outputs as CSV.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "BONOBO",
+              "named_quote": "BONOBO",
+              "settings": [
+                {
+                  "name": "BONOBO.bonobo_confidence",
+                  "quote": "0.01",
+                  "value": "0.01",
+                  "span": [
+                    151,
+                    155
+                  ],
+                  "at": 151
+                },
+                {
+                  "name": "BONOBO.delta",
+                  "quote": "0.25",
+                  "value": "0.25",
+                  "span": [
+                    211,
+                    215
+                  ],
+                  "at": 211
+                },
+                {
+                  "name": "BONOBO.bonobo_output_format",
+                  "quote": "CSV",
+                  "value": "CSV",
+                  "span": [
+                    242,
+                    245
+                  ],
+                  "at": 242
+                }
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "setting:BONOBO.bonobo_confidence@151-155",
+              "setting:BONOBO.delta@211-215",
+              "setting:BONOBO.bonobo_output_format@242-245"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "The matrix is log2-transformed",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "every gene is mean-centred",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "We want BONOBO networks for our 9 patient-derived colon organoids.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "BONOBO",
+          "CSV",
+          "0.01",
+          "0.25"
+        ],
+        "facts": [
+          {
+            "id": "setting:BONOBO.bonobo_output_format@242-245",
+            "property": "setting",
+            "name": "BONOBO.bonobo_output_format",
+            "value": "CSV",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "CSV",
+            "span": [
+              242,
+              245
+            ],
+            "value_quote": "CSV",
+            "value_span": [
+              242,
+              245
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "CSV",
+                "span": [
+                  242,
+                  245
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "CSV",
+                "span": [
+                  242,
+                  245
+                ],
+                "result": "Please sparsify at a 0.01 confidence level, keep the p-value matrices, use delta 0.25, and write the outputs as CSV.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:BONOBO.bonobo_confidence@151-155",
+            "property": "setting",
+            "name": "BONOBO.bonobo_confidence",
+            "value": "0.01",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "0.01",
+            "span": [
+              151,
+              155
+            ],
+            "value_quote": "0.01",
+            "value_span": [
+              151,
+              155
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "0.01",
+                "span": [
+                  151,
+                  155
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "0.01",
+                "span": [
+                  151,
+                  155
+                ],
+                "result": "Please sparsify at a 0.01 confidence level, keep the p-value matrices, use delta 0.25, and write the outputs as CSV.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:BONOBO.delta@211-215",
+            "property": "setting",
+            "name": "BONOBO.delta",
+            "value": "0.25",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "0.25",
+            "span": [
+              211,
+              215
+            ],
+            "value_quote": "0.25",
+            "value_span": [
+              211,
+              215
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "0.25",
+                "span": [
+                  211,
+                  215
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "0.25",
+                "span": [
+                  211,
+                  215
+                ],
+                "result": "Please sparsify at a 0.01 confidence level, keep the p-value matrices, use delta 0.25, and write the outputs as CSV.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@32-33",
+            "property": "sample_count",
+            "name": "",
+            "value": "9",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "9",
+            "span": [
+              32,
+              33
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "9",
+                "span": [
+                  32,
+                  33
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "9",
+                "span": [
+                  32,
+                  33
+                ],
+                "result": "We want BONOBO networks for our 9 patient-derived colon organoids.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "execution_requested": true,
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "BONOBO"
+        ],
+        "declined": [
+          {
+            "quote": "Please sparsify at a 0.01 confidence level, keep the p-value matrices, use delta 0.25, and write the outputs as CSV.",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"Please sparsify at a 0.01 confidence level, keep the p-value matrices, use delta 0.25, and write the outputs as CSV.\" -- not matched to any registered workflow."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "We want BONOBO networks for our 9 patient-derived colon organoids."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "BONOBO"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "sparsify at a 0.01 confidence level",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "sparsify (boolean): Compute approximate edge p-values and threshold each sample's co-expression matrix at bonobo_confidence (with save_pvals, the full matrix is kept and the p-values are written).",
+              "question": "Do you want to sparsify the network?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "sparsify",
+                "not sparsify"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "keep the p-value matrices",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "With both sparsify=true and save_pvals=true, upstream retains the full co-expression matrix and writes p-values for downstream thresholding; it does not also emit an already-thresholded network.",
+              "question": "Do you want to save the p-value matrices?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "save p-values",
+                "not save p-values"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "write the outputs as CSV",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "setting bonobo_output_format (enum; allowed: .h5, .hdf, .txt, .csv): File type of the per-sample matrices: .h5 or .hdf (HDF5), .txt or .csv.",
+              "question": "Do you want the output format to be CSV?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "CSV",
+                "not CSV"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 28110,
+    "output_tokens": 1615,
+    "total_tokens": 29725,
+    "calls": [
+      {
+        "call_id": "2573bd97-a0c3-43ad-a58a-15b2e1e5d6f1",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683190-kw9m5nkYjwpMQfrU7fVe",
+        "input_tokens": 5341,
+        "output_tokens": 351,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5692,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 647,
+        "price_snapshot": null,
+        "duration_ms": 9088,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8369aadc-08b4-4220-8206-abb16f2bf80b",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683199-IZdbZlJCpGGT4mVicDir",
+        "input_tokens": 1044,
+        "output_tokens": 81,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1125,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 205,
+        "price_snapshot": null,
+        "duration_ms": 2543,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d6668c6c-ddb2-46aa-89a8-871c277cd3b4",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 643,
+        "output_tokens": 52,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 695,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 128,
+        "price_snapshot": {
+          "snapshot_id": "6a36a341-a8f9-54f2-b63e-15da7de2269a",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-22T15:19:41.400601Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1353,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "0513c2dc-f94c-4ac5-8f97-4244a59b0fbd",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683203-ikqZRbmE8Q2nt7xyqRGf",
+        "input_tokens": 335,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 339,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 53,
+        "price_snapshot": null,
+        "duration_ms": 1025,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5b0e0ba9-ad6f-453b-b338-2315296ce490",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792683205-WjpmeGeDLNce6TQ9F6zR",
+        "input_tokens": 18405,
+        "output_tokens": 741,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 19146,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1842,
+        "price_snapshot": null,
+        "duration_ms": 13083,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "82602eab-204f-48d5-8de9-0f226e78dc77",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683218-YZJP533y2E6eMaRb0m8w",
+        "input_tokens": 564,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 575,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 91,
+        "price_snapshot": null,
+        "duration_ms": 1146,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a9a60844-d7d3-4ab2-98d1-be5dd7378b7c",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683219-1GwV4e1HbinfLRtLNhSO",
+        "input_tokens": 1778,
+        "output_tokens": 375,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2153,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 492,
+        "price_snapshot": null,
+        "duration_ms": 6729,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "a59b4742-79d8-4e72-a773-f39b74e610b5"
+}

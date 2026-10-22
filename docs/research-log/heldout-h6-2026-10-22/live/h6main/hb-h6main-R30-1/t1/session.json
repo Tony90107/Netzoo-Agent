@@ -1,0 +1,667 @@
+{
+  "version": 1,
+  "session_id": "hb-h6main-R30-1",
+  "profile_id": "hb-h6main-R30-1",
+  "auto_generated": false,
+  "created_at": 1792682952.9296472,
+  "updated_at": 1792682952.929724,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I need TF activity per sample for 26 rice leaf samples under salt stress, from expression plus motif and PPI priors. The motif prior uses RAP-DB locus IDs, and I'm not sure whether our expression table uses RAP-DB or MSU identifiers."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Does your expression table use RAP-DB identifiers?\n  You wrote: \"I'm not sure whether our expression table uses RAP-DB or MSU identifiers\". GIRAFFE's contract: \"Missing files, delimiter/shape errors, empty or non-finite values, duplicate IDs/pairs, non-square or non-symmetric PPI data, and identifier mismatches are rejected before the API call\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "tf_activity_matrix",
+        "entity_types": [
+          "sample",
+          "tf"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "tf_activity_matrix",
+            "entity_types": [
+              "sample",
+              "tf"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I need TF activity per sample for 26 rice leaf samples under salt stress.",
+              "rationale": "The user is seeking to compute TF activity per sample."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "tf_activity_matrix",
+              "source": "explicit",
+              "text_span": "TF activity per sample for 26 rice leaf samples.",
+              "rationale": "The user specifies the need for TF activity data."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "explicit",
+              "text_span": "26 rice leaf samples under salt stress.",
+              "rationale": "The request involves rice leaf samples."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF activity.",
+              "rationale": "The request is focused on transcription factors."
+            }
+          ],
+          "assumptions": [
+            "The expression data is available and can be matched with the motif prior.",
+            "The user will clarify the identifier system used in the expression table."
+          ]
+        },
+        {
+          "outcome": {
+            "operation": "explain",
+            "input_artifacts": [],
+            "artifact_type": "unknown",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.7,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "explain",
+              "source": "explicit",
+              "text_span": "I'm not sure whether our expression table uses RAP-DB or MSU identifiers.",
+              "rationale": "The user is unsure about the identifier system used in the expression table."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "partial_evidence",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Does your expression table use RAP-DB identifiers?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "expression plus motif and PPI priors",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "expression plus motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "expression plus motif and PPI priors",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "TF activity per sample for 26 rice leaf samples under salt stress, from expression plus motif and PPI priors.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "other",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 26,
+              "samples_quote": "26 rice leaf samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@34-54"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "The motif prior uses RAP-DB locus IDs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "I'm not sure whether our expression table uses RAP-DB or MSU identifiers",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_giraffe"
+        ],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {
+          "I'm not sure whether our expression table uses RAP-DB or MSU identifiers.": []
+        },
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "TF activity per sample for 26 rice leaf samples under salt stress, from expression plus motif and PPI priors.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I'm not sure whether our expression table uses RAP-DB or MSU identifiers."
+        ],
+        "stated_quotes": [
+          "TF activity per sample for 26 rice leaf samples under salt stress, from expression plus motif and PPI priors."
+        ],
+        "facts": [
+          {
+            "id": "sample_count@34-54",
+            "property": "sample_count",
+            "name": "",
+            "value": "26",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "26 rice leaf samples",
+            "span": [
+              34,
+              54
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "26 rice leaf samples",
+                "span": [
+                  34,
+                  54
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "26 rice leaf samples",
+                "span": [
+                  34,
+                  54
+                ],
+                "result": "TF activity per sample for 26 rice leaf samples under salt stress, from expression plus motif and PPI priors.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "26 rice leaf samples",
+                "span": [
+                  34,
+                  54
+                ],
+                "result": "TF activity per sample for 26 rice leaf samples under salt stress, from expression plus motif and PPI priors.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "GIRAFFE"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Does your expression table use RAP-DB identifiers?",
+            "user_quote": "I'm not sure whether our expression table uses RAP-DB or MSU identifiers.",
+            "workflows": [
+              "GIRAFFE"
+            ],
+            "contract_quote": "Missing files, delimiter/shape errors, empty or non-finite values, duplicate IDs/pairs, non-square or non-symmetric PPI data, and identifier mismatches are rejected before the API call.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "tf_activity_matrix",
+          "reason_code": "registry_guidance_fallback",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "TF activity per sample for 26 rice leaf samples under salt stress, from expression plus motif and PPI priors."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "GIRAFFE"
+        ],
+        "accepted": [
+          {
+            "question": "Does your expression table use RAP-DB identifiers?",
+            "user_quote": "I'm not sure whether our expression table uses RAP-DB or MSU identifiers.",
+            "workflows": [
+              "GIRAFFE"
+            ],
+            "contract_quote": "Missing files, delimiter/shape errors, empty or non-finite values, duplicate IDs/pairs, non-square or non-symmetric PPI data, and identifier mismatches are rejected before the API call.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 30877,
+    "output_tokens": 1686,
+    "total_tokens": 32563,
+    "calls": [
+      {
+        "call_id": "59626b67-99bf-405c-89da-7333cdb41de1",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682915-DxotIKSm0MLbgJgb8czY",
+        "input_tokens": 1604,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1646,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 266,
+        "price_snapshot": null,
+        "duration_ms": 2147,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6220461d-1a4a-4149-8cbd-d9e142b3e3a7",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682917-G7f1PJgk2gV8pwv6r7KT",
+        "input_tokens": 5331,
+        "output_tokens": 395,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5726,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 672,
+        "price_snapshot": null,
+        "duration_ms": 9196,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "6d4128e8-87f4-4ff7-b814-2d7146251dbb",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682926-PqxO1Cn74uAChLGua8ox",
+        "input_tokens": 5672,
+        "output_tokens": 289,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5961,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 727,
+        "price_snapshot": null,
+        "duration_ms": 6921,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f5ccf1b2-a3c2-458b-9d1c-b9ac5936ad61",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 648,
+        "output_tokens": 50,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 698,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 127,
+        "price_snapshot": {
+          "snapshot_id": "6a36a341-a8f9-54f2-b63e-15da7de2269a",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-22T15:19:41.400601Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1559,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "799e9194-5222-42b5-9da7-67f68bd75c4f",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792682935-oGE9u9tWDthtWxTdotW9",
+        "input_tokens": 15213,
+        "output_tokens": 698,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15911,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1645,
+        "price_snapshot": null,
+        "duration_ms": 11986,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "dcf1dcc8-ac3c-454b-ab8f-f8081437d7e4",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682947-JuNlGcfb9oD5pI1Tlah0",
+        "input_tokens": 554,
+        "output_tokens": 34,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 588,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 104,
+        "price_snapshot": null,
+        "duration_ms": 1594,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "27756c5a-7a9b-4563-97d9-a18085f19cea",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682949-QuvVaSsAJ4obE9ftguO5",
+        "input_tokens": 543,
+        "output_tokens": 43,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 586,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 107,
+        "price_snapshot": null,
+        "duration_ms": 1177,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2c2fee17-6cfc-413d-a07b-6d5a20d2428f",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682950-mVbAJjDqccG48viuZBQj",
+        "input_tokens": 1312,
+        "output_tokens": 135,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1447,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 278,
+        "price_snapshot": null,
+        "duration_ms": 2765,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "df15aea4-ffff-47e4-ac35-d19778058447"
+}

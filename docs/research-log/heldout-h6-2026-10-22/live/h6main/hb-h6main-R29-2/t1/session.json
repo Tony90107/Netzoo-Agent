@@ -1,0 +1,904 @@
+{
+  "version": 1,
+  "session_id": "hb-h6main-R29-2",
+  "profile_id": "hb-h6main-R29-2",
+  "auto_generated": false,
+  "created_at": 1792683882.6568801,
+  "updated_at": 1792683882.657442,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I'd like LIONESS-PUMA networks for our neuroblastoma cell lines (one RNA-seq sample per line), using the combined TF/miRNA prior, the PPI and the miRNA list. Honestly, I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 2 or 5?\n  You wrote: \"I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines\".\n  - 2: no registered workflow can do this as asked\n  - 5: LIONESS-PUMA can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "mirna",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf",
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "mirna",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf",
+              "mirna"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like LIONESS-PUMA networks for our neuroblastoma cell lines.",
+              "rationale": "The user is requesting to infer LIONESS-PUMA networks."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "LIONESS-PUMA networks",
+              "rationale": "The user specifies the type of network they want to infer."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user explicitly mentions using an expression matrix for their analysis."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user is interested in LIONESS-PUMA networks, which involve transcription factors as regulators."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "mirna",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user is interested in LIONESS-PUMA networks, which involve miRNAs as regulators."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user is interested in regulatory networks that target genes."
+            }
+          ],
+          "assumptions": [
+            "The expression matrix may cover all five neuroblastoma cell lines, but this is uncertain.",
+            "No scale was stated; PUMA gives one result for the whole cohort; LIONESS-PUMA gives one result for the whole cohort or one result per sample."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "assumed_outcome",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these is right: 2 or 5?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "the combined TF/miRNA prior, the PPI",
+        "mirna": "stated",
+        "mirna_quote": "the miRNA list"
+      },
+      "applicability": [
+        {
+          "action": "run_puma",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "the combined TF/miRNA prior, the PPI",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "stated",
+              "quote": "the miRNA list",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "the combined TF/miRNA prior, the PPI",
+            "action": "none"
+          },
+          {
+            "kind": "mirna",
+            "state": "stated",
+            "source": "model",
+            "quote": "the miRNA list",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like LIONESS-PUMA networks for our neuroblastoma cell lines (one RNA-seq sample per line), using the combined TF/miRNA prior, the PPI and the miRNA list.",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "lioness_puma.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "5": [
+                "lioness_puma.per_sample_networks"
+              ]
+            },
+            "unknown_quote": "I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines.",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PUMA",
+              "named_quote": "LIONESS-PUMA",
+              "samples_quote": "five lines"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": true,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@168-284:candidates"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "LIONESS-PUMA networks",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "neuroblastoma cell lines",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "combined TF/miRNA prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "PPI",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "miRNA list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "Honestly, I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {
+          "I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines.": {
+            "kind": "choices",
+            "values": [
+              2,
+              5
+            ],
+            "kept_without_scope": true
+          }
+        },
+        "unknown_scopes": {},
+        "unknowns": [
+          [
+            "sample_count",
+            "I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines."
+          ]
+        ],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "LIONESS-PUMA networks for our neuroblastoma cell lines (one RNA-seq sample per line), using the combined TF/miRNA prior, the PPI and the miRNA list.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines."
+        ],
+        "stated_quotes": [
+          "LIONESS-PUMA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@273-283",
+            "property": "sample_count",
+            "name": "",
+            "value": "5",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "five lines",
+            "span": [
+              273,
+              283
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "five lines",
+                "span": [
+                  273,
+                  283
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "five lines",
+                "span": [
+                  273,
+                  283
+                ],
+                "result": "I'd like LIONESS-PUMA networks for our neuroblastoma cell lines (one RNA-seq sample per line), using the combined TF/miRNA prior, the PPI and the miRNA list.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@168-284:candidates",
+            "property": "sample_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "2",
+              "5"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines.",
+            "span": [
+              168,
+              284
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "unknown_facts",
+                "quote": "I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines.",
+                "span": [
+                  168,
+                  284
+                ],
+                "result": "",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": [
+          {
+            "property": "sample_count",
+            "name": "",
+            "result": "",
+            "used": [
+              "sample_count@168-284:candidates"
+            ],
+            "set_aside": [],
+            "reason": "empty_scope_kept"
+          },
+          {
+            "property": "sample_count",
+            "name": "",
+            "result": "I'd like LIONESS-PUMA networks for our neuroblastoma cell lines (one RNA-seq sample per line), using the combined TF/miRNA prior, the PPI and the miRNA list.",
+            "used": [],
+            "set_aside": [
+              "sample_count@273-283"
+            ],
+            "reason": "unsure_candidates"
+          }
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-PUMA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which of these is right: 2 or 5?",
+            "user_quote": "I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines.",
+            "workflows": [
+              "LIONESS-PUMA"
+            ],
+            "contract_quote": "",
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "5": [
+                "LIONESS-PUMA"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": true,
+            "notes": {}
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "count_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "registry_guidance_fallback",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "LIONESS-PUMA networks for our neuroblastoma cell lines (one RNA-seq sample per line), using the combined TF/miRNA prior, the PPI and the miRNA list."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PUMA",
+          "PUMA"
+        ],
+        "accepted": [
+          {
+            "question": "Do you have at least three expression samples?",
+            "user_quote": "I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines.",
+            "workflows": [
+              "LIONESS-PUMA"
+            ],
+            "contract_quote": "Require at least three expression samples and a validated one-ID-per-line miRNA list.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [
+          {
+            "rule": "R6 the same words already ask a fact",
+            "proposal": {
+              "user_quote": "I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines.",
+              "uncertainty": "said_unknown",
+              "workflow": "PUMA",
+              "contract_quote": "Require one miRNA identifier per line and require every miRNA in prior column one.",
+              "question": "Do you have a validated one-ID-per-line miRNA list?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 38599,
+    "output_tokens": 2173,
+    "total_tokens": 40772,
+    "calls": [
+      {
+        "call_id": "12c56b1a-b20d-4ca7-8783-7f82e1b41cdb",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683838-UpJ6jAXp0dN4qaMomOob",
+        "input_tokens": 1620,
+        "output_tokens": 54,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1674,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 275,
+        "price_snapshot": null,
+        "duration_ms": 1985,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8e78d5bb-c645-4bd1-9b22-a66a2bc8d136",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683840-gm2asnvuAmurAUO0omSd",
+        "input_tokens": 5347,
+        "output_tokens": 364,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5711,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 656,
+        "price_snapshot": null,
+        "duration_ms": 8370,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "30b7ddda-7447-4bf4-afcd-25fb19d38fff",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683855-EW2gHO3nomPHpciEEDRo",
+        "input_tokens": 5748,
+        "output_tokens": 193,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5941,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 680,
+        "price_snapshot": null,
+        "duration_ms": 5219,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b60b75b0-18ec-449f-b505-6a5af25c6c1b",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683849-ZNQf6EQZOZ4lIl2tUV5y",
+        "input_tokens": 7655,
+        "output_tokens": 344,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 7999,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1057,
+        "price_snapshot": null,
+        "duration_ms": 11559,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a9f5b4e1-918d-4f5b-9695-cb1b9e7d34ca",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 658,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 700,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 124,
+        "price_snapshot": {
+          "snapshot_id": "6a36a341-a8f9-54f2-b63e-15da7de2269a",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-22T15:19:41.400601Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1512,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "009360cb-28d5-4590-900d-5939bad86cbe",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792683862-RWKT5qWLQWw5rFUkL3gU",
+        "input_tokens": 15245,
+        "output_tokens": 838,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 16083,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1734,
+        "price_snapshot": null,
+        "duration_ms": 12198,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0f0052f3-fe86-48e2-acf7-f34a0e18dc1e",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683875-tzz9HdwO8nYYmev1V8KF",
+        "input_tokens": 570,
+        "output_tokens": 62,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 632,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 123,
+        "price_snapshot": null,
+        "duration_ms": 2548,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a6254b73-2bcf-444a-a952-a5749bfd9434",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683877-gEwco7wLwx5Z29xPCG52",
+        "input_tokens": 559,
+        "output_tokens": 52,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 611,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 115,
+        "price_snapshot": null,
+        "duration_ms": 1749,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b5805e7a-42fe-4592-8663-11645c823b2a",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792683878-2E1CGSrn5WfEieMMilUt",
+        "input_tokens": 1197,
+        "output_tokens": 224,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1421,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 314,
+        "price_snapshot": null,
+        "duration_ms": 3696,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "3156eada-bda8-4112-a43f-c0509da1f966"
+}

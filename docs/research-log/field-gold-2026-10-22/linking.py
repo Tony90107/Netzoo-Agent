@@ -31,7 +31,8 @@ import harness  # noqa: E402  (sets the import paths to this checkout's scripts)
 DECLARED = {"BONOBO.log_transformed", "BONOBO.centered", "SAMBAR.gmt_msigdb", "PANDA.with_header"}
 WORKFLOWS = ("LIONESS-COEXPRESSION", "LIONESS-DRAGON", "LIONESS-PANDA", "LIONESS-PUMA", "PANDA", "PUMA", "DRAGON",
              "BONOBO", "CONDOR", "COBRA", "OTTER", "GIRAFFE", "SAMBAR")
-SETS = {"h1": "h1", "h2main": "h2", "h3main": "h3", "h4main": "h4", "h5main": "h5"}
+SETS = {"h1": "h1", "h2main": "h2", "h3main": "h3", "h4main": "h4", "h5main": "h5", "h6main": "h6"}
+H6 = LOGS / "heldout-h6-2026-10-22" / "fields.json"  # h6 final run (its ROUND.md): the sealed field gold
 
 
 def span(task: str, quote: str):
@@ -119,6 +120,8 @@ def score(task: str, gold: dict, settings, results) -> list[dict]:
 def main(out: str):
     labels = {path.stem.split("-", 1)[1]: {item["id"]: item for item in json.loads(path.read_text())["items"]}
               for path in HERE.glob("labels-*.json")}
+    if H6.exists():
+        labels["h6"] = {item["id"]: item for item in json.loads(H6.read_text())["items"]}
     rows, table = [], defaultdict(Counter)
     for key, folder, sid, task, payload, reread, found, _n in harness.readings():
         match = harness.SESSION.match(sid)

@@ -1,0 +1,16 @@
+- F01: true. Asks directly which identifier system the expression table uses.
+- F02: true. Asks whether the status is coded numerically; a yes or no settles the coding.
+- F03: true. Asks whether the larger gene count was kept; settles the gene count.
+- F04: true. Asks whether the regulator list includes miRNAs.
+- F05: true. Asks whether proteomics came from the same participants; odd "at least 3" wording, but a yes or no separates same-cohort from the other wave.
+- F06: true. Asks the user to choose between the two candidate sample counts. The wording is terse but it settles the count.
+- F07: true. Asks the user to choose between the two candidate sample counts.
+- F08: true. Same question as F07, and it settles the sample count.
+- F09: true. Asks whether the gene count exceeds the smaller option, which separates the two alternatives.
+- F10: true. Asks whether the smaller metabolite table was received, which settles the feature count.
+- F11: true. Same as F01, and it asks for the identifier system directly.
+- F12: true. Same as F04, and it asks whether the list includes miRNAs.
+- F13: true. Asks directly whether each gene was mean-centred.
+- F14: true. Same as F10, and it settles the feature count.
+- F15: true. Same as F02, and it settles the coding.
+- F16: true. Same as F06, and it settles the sample count.

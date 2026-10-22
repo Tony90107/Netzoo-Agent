@@ -6,7 +6,7 @@ Usage: python3 run_h6.py smoke    one item per class, rep 1 (tag h6smoke; not sc
 Adapted from input-constraints-2026-10-21/live-check/run_live.py (the same h4 `run_job`, model and price checks).
 Changes: the frozen worktree `.worktrees/netzoo-h6-final` (91a8c2d9; ROUND.md, final run) instead of this checkout; two reps; and the user-approved
 actual-cost guard -- provider-reported cost summed over every session of this round (smoke and main) after each one,
-and no session starts once it reaches US$1.00 -- in place of the conservative token envelope.
+and no session starts once it reaches US$0.60 -- in place of the conservative token envelope.
 """
 
 from __future__ import annotations

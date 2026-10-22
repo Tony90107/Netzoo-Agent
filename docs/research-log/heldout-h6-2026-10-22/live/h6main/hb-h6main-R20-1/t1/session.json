@@ -1,0 +1,646 @@
+{
+  "version": 1,
+  "session_id": "hb-h6main-R20-1",
+  "profile_id": "hb-h6main-R20-1",
+  "auto_generated": false,
+  "created_at": 1792682784.449367,
+  "updated_at": 1792682784.44944,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Could COBRA give us the co-expression linked to HBV status in our liver cancer cohort? The expression matrix has about 20,000 genes for 150 tumours with matching sample IDs in the clinical sheet, but I don't remember whether HBV status there is coded as 0/1 or typed out as 'positive' and 'negative'."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Is the HBV status coded as 0/1?\n  You wrote: \"I don't remember whether HBV status there is coded as 0/1 or typed out as 'positive' and 'negative'\". COBRA's contract: \"Expression must be a labeled gene-by-sample matrix with more genes than samples\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.8,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_lioness_coexpression",
+        "run_cobra",
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "COBRA give us the co-expression linked to HBV status",
+              "rationale": "The user is asking for co-expression linked to HBV status, which requires inference of relationships between genes based on expression data."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user explicitly mentioned an expression matrix with gene expression data for analysis."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user is asking for co-expression linked to HBV status, which requires inference of relationships between genes based on expression data."
+            }
+          ],
+          "assumptions": [
+            "The expression matrix is suitable for co-expression analysis.",
+            "HBV status can be determined from the clinical sheet."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Is the HBV status coded as 0/1?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Could COBRA give us the co-expression linked to HBV status in our liver cancer cohort?",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "COBRA",
+              "named_quote": "COBRA",
+              "samples": 150,
+              "samples_quote": "150 tumours",
+              "features": 20000,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  113,
+                  131,
+                  20000
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@136-147",
+              "feature_count@113-131"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "The expression matrix has about 20,000 genes for 150 tumours with matching sample IDs in the clinical sheet",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {
+          "I don't remember whether HBV status there is coded as 0/1 or typed out as 'positive' and 'negative'.": []
+        },
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Could COBRA give us the co-expression linked to HBV status in our liver cancer cohort?",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I don't remember whether HBV status there is coded as 0/1 or typed out as 'positive' and 'negative'."
+        ],
+        "stated_quotes": [
+          "COBRA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@136-147",
+            "property": "sample_count",
+            "name": "",
+            "value": "150",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "150 tumours",
+            "span": [
+              136,
+              147
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "150 tumours",
+                "span": [
+                  136,
+                  147
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "150 tumours",
+                "span": [
+                  136,
+                  147
+                ],
+                "result": "Could COBRA give us the co-expression linked to HBV status in our liver cancer cohort?",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@113-131",
+            "property": "feature_count",
+            "name": "",
+            "value": "20000",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "about 20,000 genes",
+            "span": [
+              113,
+              131
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "about 20,000 genes",
+                "span": [
+                  113,
+                  131
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "about 20,000 genes",
+                "span": [
+                  113,
+                  131
+                ],
+                "result": "Could COBRA give us the co-expression linked to HBV status in our liver cancer cohort?",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Is the HBV status coded as 0/1?",
+            "user_quote": "I don't remember whether HBV status there is coded as 0/1 or typed out as 'positive' and 'negative'.",
+            "workflows": [
+              "COBRA"
+            ],
+            "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Could COBRA give us the co-expression linked to HBV status in our liver cancer cohort?"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA",
+          "LIONESS-COEXPRESSION",
+          "BONOBO"
+        ],
+        "accepted": [
+          {
+            "question": "Is the HBV status coded as 0/1?",
+            "user_quote": "I don't remember whether HBV status there is coded as 0/1 or typed out as 'positive' and 'negative'.",
+            "workflows": [
+              "COBRA"
+            ],
+            "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 39386,
+    "output_tokens": 1587,
+    "total_tokens": 40973,
+    "calls": [
+      {
+        "call_id": "a7d9238e-b550-4c88-bd09-6410aadc764f",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682746-KrUGu2aIN2TBAHPitqB2",
+        "input_tokens": 5348,
+        "output_tokens": 283,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5631,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 607,
+        "price_snapshot": null,
+        "duration_ms": 8131,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "7a980d99-485e-4913-aa59-b45f5e11bae0",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682760-39ZLDlSq66q30eJOMYuB",
+        "input_tokens": 5539,
+        "output_tokens": 169,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5708,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 635,
+        "price_snapshot": null,
+        "duration_ms": 4885,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "73079af9-5f04-4832-855d-afe86ae7dbad",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682754-QKLddjv48TGw2TugREgr",
+        "input_tokens": 7099,
+        "output_tokens": 272,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 7371,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 930,
+        "price_snapshot": null,
+        "duration_ms": 10956,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d78baf03-aa2a-4405-a126-cf0e06cabbae",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682765-n7w8iRQB2kPfEQFETqFE",
+        "input_tokens": 1125,
+        "output_tokens": 107,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1232,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 233,
+        "price_snapshot": null,
+        "duration_ms": 2335,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "216a8ed1-42a1-4a2c-8200-cb639cd1af08",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 673,
+        "output_tokens": 50,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 723,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 131,
+        "price_snapshot": {
+          "snapshot_id": "6a36a341-a8f9-54f2-b63e-15da7de2269a",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-22T15:19:41.400601Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1322,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "ce53ba6f-fd07-42e2-bd5b-7c750453e335",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682769-vLerKB4NnTjJkn3m4VlW",
+        "input_tokens": 1687,
+        "output_tokens": 46,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1733,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 165,
+        "price_snapshot": null,
+        "duration_ms": 1754,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e26f077d-2ac3-43ab-8511-79b320a34cfa",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792682770-3CHUxVWOtjoCRxCzWI3K",
+        "input_tokens": 15247,
+        "output_tokens": 506,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15753,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1535,
+        "price_snapshot": null,
+        "duration_ms": 9370,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5f0fed0d-191e-43cb-8177-70c7aa6b779c",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682780-pAPpopYKoZZAU4PsFd4k",
+        "input_tokens": 571,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 604,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 105,
+        "price_snapshot": null,
+        "duration_ms": 1326,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "515e7c38-5180-48ea-a515-dfc09b6abf70",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792682781-q30fATfiIkuE2coP36jB",
+        "input_tokens": 2097,
+        "output_tokens": 121,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2218,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 387,
+        "price_snapshot": null,
+        "duration_ms": 2895,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "2e35fbdb-49e3-4dd5-8370-04bc4c76de3b"
+}

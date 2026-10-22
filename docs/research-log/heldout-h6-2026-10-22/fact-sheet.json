@@ -1,0 +1,130 @@
+[
+ {
+  "id": "F01",
+  "request": "I need TF activity per sample for 26 rice leaf samples under salt stress, from expression plus motif and PPI priors. The motif prior uses RAP-DB locus IDs, and I'm not sure whether our expression table uses RAP-DB or MSU identifiers.",
+  "deciding_fact": "Expression identifier system: RAP-DB (matches the prior) -> do, GIRAFFE; MSU -> dont as given, the IDs do not match.",
+  "questions_asked": [
+   "Does your expression table use RAP-DB identifiers?"
+  ]
+ },
+ {
+  "id": "F02",
+  "request": "Could COBRA give us the co-expression linked to HBV status in our liver cancer cohort? The expression matrix has about 20,000 genes for 150 tumours with matching sample IDs in the clinical sheet, but I don't remember whether HBV status there is coded as 0/1 or typed out as 'positive' and 'negative'.",
+  "deciding_fact": "How HBV status is coded in the design sheet: numeric 0/1 -> do, COBRA; text 'positive'/'negative' -> dont, the design needs numeric covariates.",
+  "questions_asked": [
+   "Is the HBV status coded as 0/1?"
+  ]
+ },
+ {
+  "id": "F03",
+  "request": "Launch COBRA on filtered_expr.tsv with design.tsv (numeric age and batch) for our 400 blood donors. I can't recall whether the filtered matrix kept the top 150 most variable genes or the top 1,500.",
+  "deciding_fact": "Number of genes in filtered_expr.tsv: 1,500 -> do, COBRA; 150 -> dont, fewer genes than samples.",
+  "questions_asked": [
+   "Did the filtered matrix keep the top 1,500 most variable genes?"
+  ]
+ },
+ {
+  "id": "F04",
+  "request": "I want one regulatory network for our 60 endometriosis samples, using the regulator-target prior my collaborator compiled plus a PPI file. I don't actually know whether her regulator list is only transcription factors or also includes microRNAs.",
+  "deciding_fact": "Whether the regulators include miRNAs: TFs only -> do, one TF-to-gene network with PANDA (OTTER or GIRAFFE also fit the same three inputs); includes miRNAs -> PUMA (with a miRNA list).",
+  "questions_asked": [
+   "Does your regulator list include microRNAs?"
+  ]
+ },
+ {
+  "id": "F05",
+  "request": "Can DRAGON link our plasma proteomics to the muscle RNA-seq from the 40 participants in our exercise study? I'm not sure whether the proteomics was run on those same 40 people or on the separate recruitment wave.",
+  "deciding_fact": "Whether the proteomics samples are the same 40 participants: yes -> do, DRAGON; a different recruitment wave -> dont, the layers are not paired.",
+  "questions_asked": [
+   "Were the proteomics run on at least 3 of the same 40 participants?"
+  ]
+ },
+ {
+  "id": "F06",
+  "request": "Run SAMBAR now on mut_matrix.csv, exon_lengths.csv, cancer_genes.txt and kegg.gmt with kmin 2 and kmax 8. I'm not sure whether mut_matrix.csv holds just the 6 melanomas that passed QC or all 12 we sequenced.",
+  "deciding_fact": "Number of samples in mut_matrix.csv: 12 -> do, SAMBAR; 6 -> dont, kmax 8 exceeds the sample count.",
+  "questions_asked": [
+   "Which of these is right: 6 or 12?"
+  ]
+ },
+ {
+  "id": "F07",
+  "request": "I'd like LIONESS-PUMA networks for our neuroblastoma cell lines (one RNA-seq sample per line), using the combined TF/miRNA prior, the PPI and the miRNA list. Honestly, I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines.",
+  "deciding_fact": "Number of samples in the expression matrix: 2 (MYCN-amplified lines only) -> dont, below the three-sample minimum; 5 (all lines) -> do, LIONESS-PUMA.",
+  "questions_asked": [
+   "Which of these is right: 2 or 5?"
+  ]
+ },
+ {
+  "id": "F08",
+  "request": "I'd like LIONESS-PUMA networks for our neuroblastoma cell lines (one RNA-seq sample per line), using the combined TF/miRNA prior, the PPI and the miRNA list. Honestly, I'm not sure whether the expression matrix the core sent covers only the two MYCN-amplified lines or all five lines.",
+  "deciding_fact": "Number of samples in the expression matrix: 2 (MYCN-amplified lines only) -> dont, below the three-sample minimum; 5 (all lines) -> do, LIONESS-PUMA.",
+  "questions_asked": [
+   "Which of these is right: 2 or 5?"
+  ]
+ },
+ {
+  "id": "F09",
+  "request": "Launch COBRA on filtered_expr.tsv with design.tsv (numeric age and batch) for our 400 blood donors. I can't recall whether the filtered matrix kept the top 150 most variable genes or the top 1,500.",
+  "deciding_fact": "Number of genes in filtered_expr.tsv: 1,500 -> do, COBRA; 150 -> dont, fewer genes than samples.",
+  "questions_asked": [
+   "Does the filtered matrix have more than 150 genes?"
+  ]
+ },
+ {
+  "id": "F10",
+  "request": "For each of our 40 patients I want their own network linking 500 blood transcripts to plasma metabolites. The metabolomics core sent a table that is either the 300 annotated metabolites or the full 3,000-feature untargeted set, and I haven't checked which.",
+  "deciding_fact": "Number of metabolite features: 300 -> do, about 12.8 million values; 3,000 -> dont, about 245 million values, above the 20,000,000 limit.",
+  "questions_asked": [
+   "Did you receive the 300 annotated metabolites?"
+  ]
+ },
+ {
+  "id": "F11",
+  "request": "I need TF activity per sample for 26 rice leaf samples under salt stress, from expression plus motif and PPI priors. The motif prior uses RAP-DB locus IDs, and I'm not sure whether our expression table uses RAP-DB or MSU identifiers.",
+  "deciding_fact": "Expression identifier system: RAP-DB (matches the prior) -> do, GIRAFFE; MSU -> dont as given, the IDs do not match.",
+  "questions_asked": [
+   "Does your expression table use RAP-DB identifiers?"
+  ]
+ },
+ {
+  "id": "F12",
+  "request": "I want one regulatory network for our 60 endometriosis samples, using the regulator-target prior my collaborator compiled plus a PPI file. I don't actually know whether her regulator list is only transcription factors or also includes microRNAs.",
+  "deciding_fact": "Whether the regulators include miRNAs: TFs only -> do, one TF-to-gene network with PANDA (OTTER or GIRAFFE also fit the same three inputs); includes miRNAs -> PUMA (with a miRNA list).",
+  "questions_asked": [
+   "Does the regulator list include microRNAs?"
+  ]
+ },
+ {
+  "id": "F13",
+  "request": "I'd like BONOBO networks for each of our 11 psoriasis skin biopsies from expr_log2tpm.tsv. It's definitely log2 TPM, but I can't remember whether I mean-centred each gene afterwards.",
+  "deciding_fact": "Whether each gene was mean-centred: yes -> do, BONOBO; no -> dont as asked, BONOBO requires centred expression.",
+  "questions_asked": [
+   "Did you mean-center each gene after log2 TPM?"
+  ]
+ },
+ {
+  "id": "F14",
+  "request": "For each of our 40 patients I want their own network linking 500 blood transcripts to plasma metabolites. The metabolomics core sent a table that is either the 300 annotated metabolites or the full 3,000-feature untargeted set, and I haven't checked which.",
+  "deciding_fact": "Number of metabolite features: 300 -> do, about 12.8 million values; 3,000 -> dont, about 245 million values, above the 20,000,000 limit.",
+  "questions_asked": [
+   "Did you receive the 300 annotated metabolites?"
+  ]
+ },
+ {
+  "id": "F15",
+  "request": "Could COBRA give us the co-expression linked to HBV status in our liver cancer cohort? The expression matrix has about 20,000 genes for 150 tumours with matching sample IDs in the clinical sheet, but I don't remember whether HBV status there is coded as 0/1 or typed out as 'positive' and 'negative'.",
+  "deciding_fact": "How HBV status is coded in the design sheet: numeric 0/1 -> do, COBRA; text 'positive'/'negative' -> dont, the design needs numeric covariates.",
+  "questions_asked": [
+   "Is the HBV status coded as 0/1?"
+  ]
+ },
+ {
+  "id": "F16",
+  "request": "Run SAMBAR now on mut_matrix.csv, exon_lengths.csv, cancer_genes.txt and kegg.gmt with kmin 2 and kmax 8. I'm not sure whether mut_matrix.csv holds just the 6 melanomas that passed QC or all 12 we sequenced.",
+  "deciding_fact": "Number of samples in mut_matrix.csv: 12 -> do, SAMBAR; 6 -> dont, kmax 8 exceeds the sample count.",
+  "questions_asked": [
+   "Which of these is right: 6 or 12?"
+  ]
+ }
+]
