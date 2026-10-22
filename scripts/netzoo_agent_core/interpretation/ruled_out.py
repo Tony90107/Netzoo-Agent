@@ -17,8 +17,11 @@ from ..capability_sheet import entry
 from ..contracts.capability_check import full_gap
 from ..method_names import workflows_in
 
-__all__ = ["INPUT_KIND", "NO_PROVIDER", "rests_on_inference", "route_available", "without_ruled_out",
+__all__ = ["INPUT_KIND", "NETWORK_GIVEN", "NO_PROVIDER", "rests_on_inference", "route_available", "without_ruled_out",
            "without_unbuilt_network"]
+
+NETWORK_GIVEN = "network_given"
+"""The fact a named CONDOR result waits on when the request does not say whether its network exists."""
 
 INPUT_KIND = {
     "motif_file": "motif_prior", "ppi_file": "ppi", "mirna_file": "mirna_list", "design_file": "covariates",
@@ -155,9 +158,12 @@ def without_unbuilt_network(check, task: str):
     said = check.ruled_out.get("network") or (check.only_inputs_quote if only and "network" not in only else "")
     for row in check.requirements:
         named = row.method.get("named")
-        absent = bool(said) or (row.attrs.get("input_network") in ("none", None)
-                                and _names_in_row(task, row.quote, row.method.get("named_quote", "")))
-        if row.kind != "result" or row.status not in ("available", "with_step", "partial") or not named or not absent:
+        in_row = _names_in_row(task, row.quote, row.method.get("named_quote", ""))
+        absent = bool(said) or (row.attrs.get("input_network") in ("none", None) and in_row)
+        # 2026-10-22 (user decision): a request that does not say whether the network exists is asked, never held.
+        unsaid = not said and row.attrs.get("input_network") == "not_stated" and in_row
+        if (row.kind != "result" or row.status not in ("available", "with_step", "partial") or not named
+                or not (absent or unsaid)):
             rows.append(row)
             continue
         held, reasons = [], []
@@ -178,6 +184,17 @@ def without_unbuilt_network(check, task: str):
             rows.append(row)
             continue
         kept = [key for key in row.delivered_by if key not in held]
+        if unsaid:
+            if not kept:  # the network decides whether the result can be given: ask whether it exists
+                rows.append(row.model_copy(update={
+                    "status": "needs_fact", "depends_on": NETWORK_GIVEN, "delivered_by": held, "unknown_quote": "",
+                    "outcomes": {"has": held, "none": []},
+                    "outcome_notes": {"none": f"building one first ({', '.join(builders)}) is a separate run the "
+                                              "request does not name"}}))
+                changed = True
+            else:
+                rows.append(row)
+            continue
         rows.append(row.model_copy(update={
             "delivered_by": kept, "status": row.status if kept else "not_available",
             "limits": [*row.limits, *dict.fromkeys(reasons)], "blocks": list(dict.fromkeys([*row.blocks, named]))}))

@@ -300,7 +300,8 @@ def _with_conditions(item, conditions: dict[str, str]):
     # Log 413 (heldout18 CK4, CK6): "communities" and "patient subtypes" were read as not about groups, so
     # the ask's own form missed them; a result the sheet says puts each item in one group is about groups.
     grouping = any(known[key].groups for key in item.delivered_by if key in known)
-    if conditions.get("group_membership") and (getattr(item, "group_membership", None) == "one_group" or grouping):
+    if conditions.get("group_membership") and (getattr(item, "group_membership", None) in ("one_group", "not_stated")
+                                               or grouping):
         update["group_membership"] = conditions["group_membership"]
     for name in ("spatial", "time_model"):
         if conditions.get(name):
@@ -343,7 +344,8 @@ def _fitting(keys: list[str], item) -> list[str]:
             if (known[k].layers is None or (item.omics_layers <= known[k].layers and not unmatched))
             and (known[k].regulators is None or wanted <= known[k].regulators)
             and not (item.needs_sign and known[k].signed is False)
-            and (known[k].input_network is None or getattr(item, "input_network", "none") in ("none", known[k].input_network))]
+            and (known[k].input_network is None
+                 or getattr(item, "input_network", "none") in ("none", "not_stated", known[k].input_network))]
     from workflow_registry import ACTION_DEFINITIONS
     def data_fits(key):
         definition = ACTION_DEFINITIONS.get(known[key].action)

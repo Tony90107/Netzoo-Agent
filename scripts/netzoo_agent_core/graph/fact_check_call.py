@@ -90,9 +90,12 @@ def request_fact_check(context, state, user_task: str, decision, usage, budget_w
 
 def without_legacy_waits(check):
     """A check whose legacy `needs_fact` rows are read as what they could give (the agent asks instead)."""
+    from ..interpretation.ruled_out import NETWORK_GIVEN
+
     rows = []
     for row in check.requirements:
-        if row.status == "needs_fact" and not row.by_code:  # phase 5b: a count code judged is no legacy shadow
+        # phase 5b: a count code judged is no legacy shadow; nor is a named CONDOR's unstated network (2026-10-22)
+        if row.status == "needs_fact" and not row.by_code and row.depends_on != NETWORK_GIVEN:
             delivered = row.delivered_by or list(dict.fromkeys(k for keys in row.outcomes.values() for k in keys))
             row = row.model_copy(update={"status": "available" if delivered else "not_available",
                                          "delivered_by": delivered})

@@ -63,3 +63,50 @@ def test_an_only_statement_leaving_out_a_network_counts_for_any_result():
                                           only_inputs_quote="just this expression table"), c18)
     assert held.results()[0].limits[0].startswith('You said "just this expression table"; CONDOR runs only on')
 
+
+def test_a_named_condor_whose_request_does_not_say_whether_a_network_exists_is_asked():
+    # 2026-10-22 (user decision): not stated is asked, never held or refused.
+    task = "Please run CONDOR on our lung cohort and put the communities in condor_lung/."
+    waiting = without_unbuilt_network(_check("not_stated", quote="run CONDOR on our lung cohort"), task)
+    row = waiting.results()[0]
+    assert (row.status, row.depends_on, row.delivered_by, row.limits, row.blocks) == (
+        "needs_fact", "network_given", ["condor.communities"], [], [])
+    assert row.outcomes == {"has": ["condor.communities"], "none": []}
+    assert not waiting.full_gap
+
+    from netzoo_agent_core.interpretation.needed_facts import fact_line, fact_questions
+
+    assert fact_questions(waiting) == [
+        "Do you already have a regulator-gene (source-target-weight) network for CONDOR to run on?"]
+    assert fact_line(row) == (
+        '"run CONDOR on our lung cohort" -- CONDOR needs a regulator-gene (source-target-weight) network, and the '
+        "request does not say whether you have one: if you do, CONDOR; if not, building one first (OTTER, PANDA, "
+        "PUMA) is a separate run the request does not name.")
+
+
+def test_not_stated_is_held_when_the_user_says_there_is_none_and_untouched_when_another_route_is_named():
+    held = without_unbuilt_network(_check("not_stated", ruled_out={"network": "We haven't built any network yet"}),
+                                   L48)
+    assert held.results()[0].status == "not_available"
+    check = _check("not_stated")
+    assert without_unbuilt_network(check, "Build a PANDA network from my expression, then run CONDOR on it.") is check
+
+
+def test_the_unstated_network_wait_survives_the_fact_agent_and_is_asked():
+    # The fact agent's run lifts legacy waits (phase 2); this one is code's, as a judged count is.
+    from netzoo_agent_core.contracts import TaskDecision
+    from netzoo_agent_core.contracts.fact_check import FactCheck
+    from netzoo_agent_core.graph.fact_check_call import without_legacy_waits
+    from netzoo_agent_core.interpretation.core_decision import decide_core
+
+    task = "Please run CONDOR on our lung cohort and put the communities in condor_lung/."
+    waiting = without_legacy_waits(without_unbuilt_network(
+        _check("not_stated", quote="run CONDOR on our lung cohort"), task))
+    assert waiting.results()[0].status == "needs_fact"
+    for agent in (None, FactCheck(status="checked")):
+        decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
+                                capability_check=waiting, fact_check=agent)
+        core = decide_core(decision, task)
+        assert (core.kind, core.basis, core.workflows) == ("ASK", "needs_fact", ["CONDOR"])
+        assert [fact.question for fact in core.facts] == [
+            "Do you already have a regulator-gene (source-target-weight) network for CONDOR to run on?"]

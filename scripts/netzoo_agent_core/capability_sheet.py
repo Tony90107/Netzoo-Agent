@@ -154,7 +154,7 @@ def data_units() -> frozenset[str]:
 
 
 RESULT_FORMS = {
-    "group_membership": {"one_group", "several_groups", "not_about_groups"},
+    "group_membership": {"one_group", "several_groups", "not_stated", "not_about_groups"},
     "time_model": {"dynamic", "not_dynamic"},
     "spatial": {"uses_neighbors", "not_spatial"},
 }

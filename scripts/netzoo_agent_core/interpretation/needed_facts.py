@@ -165,6 +165,10 @@ def fact_line(item) -> str:
     if item.depends_on == "choice":
         answers = "; ".join(f'if "{option}": {_workflows(keys)}' for option, keys in item.outcomes.items())
         return f'"{item.quote}" -- you have not chosen which result you want: {answers}.'
+    if item.depends_on == "network_given":
+        return (f'"{item.quote}" -- {_workflows(item.outcomes.get("has", []))} needs {_network(item)}, and the request '
+                f'does not say whether you have one: if you do, {_workflows(item.outcomes.get("has", []))}; if not, '
+                f'{item.outcome_notes.get("none", "")}.')
     about, _question, values = DIMENSIONS[item.depends_on]
     if item.depends_on == "omics_layers":
         values = [(value, f"{value} layers") for value in item.outcomes]
@@ -188,7 +192,15 @@ def _question(item) -> str:
         options = [f'"{option}"' for option in item.outcomes]
         listed = options[0] if len(options) == 1 else ", ".join(options[:-1]) + " or " + options[-1]
         return f"Which result do you want: {listed}?"
+    if item.depends_on == "network_given":
+        return f"Do you already have {_network(item)} for {_workflows(item.outcomes.get('has', []))} to run on?"
     return DIMENSIONS[item.depends_on][1]
+
+
+def _network(item) -> str:
+    """The network a `network_given` wait is about, in the sheet's words."""
+    inputs = [entry(key).inputs[0] for key in item.outcomes.get("has", []) if entry(key).inputs]
+    return inputs[0] if inputs else "an existing network"
 
 
 def waiting_decision(decision, check):

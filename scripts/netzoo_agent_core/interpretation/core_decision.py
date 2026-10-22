@@ -281,11 +281,17 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
             for words, values in judged_count_words(check))]
         if owned:
             evidence["count_owned"] = [fact.question for fact in owned]
-        asked = [*counted, *(fact for fact in agent.accepted if fact not in owned
-                             and not any(_same_words(task, fact.user_quote, count.user_quote)
-                                         for count in counted))][:MAX_ASKED]
+        # 2026-10-22 (user decision): a named CONDOR whose request does not say whether its network exists is code's
+        # wait too, asked beside the agent's.
+        from .ruled_out import NETWORK_GIVEN
+
+        unstated = [fact for fact in _facts(check, by_code=False, task=task) if fact.depends_on == NETWORK_GIVEN]
+        agents = [fact for fact in agent.accepted if fact not in owned
+                  and not any(_same_words(task, fact.user_quote, count.user_quote) for count in counted)]
+        asked = [*counted, *unstated, *agents][:MAX_ASKED]
         if asked:
-            return call("ASK", "count_fact" if counted else "fact_agent", facts=asked,
+            basis = "count_fact" if counted else "fact_agent" if agents else "needs_fact"
+            return call("ASK", basis, facts=asked,
                         workflows=list(dict.fromkeys(name for fact in asked for name in fact.workflows)))
     elif (facts := _facts(check, task=task)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":
         return call("ASK", "needs_fact", facts=facts, workflows=_names(k for f in facts for k in f.workflows))
