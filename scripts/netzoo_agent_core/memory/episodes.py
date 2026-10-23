@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from workflow_registry import OUTPUT_CAPABILITIES, REQUIRED_INPUTS
 
 from ..contracts.decisions import TaskDecision
-from ..contracts.memory import Episode
+from ..contracts.memory import Episode, InputRevision
 from ..contracts.outcomes import RequestedOutcome
 from ..contracts.planning import WorkflowPlan
 from ..contracts.results import EvaluationResult, ToolExecutionResult
@@ -74,6 +74,18 @@ class EpisodeSearchHit:
             "typed_matches": list(self.typed_matches),
         }
 
+
+
+def _field_revisions(inputs: dict[str, str], revisions: dict | None) -> dict[str, InputRevision]:
+    """Harness repair P4: each recorded input field's file as the execute gate fingerprinted it (by canonical path)."""
+    from ..data.paths import _resolve_user_path
+
+    found = {}
+    for field, value in inputs.items():
+        item = (revisions or {}).get(str(_resolve_user_path(value)))
+        if item is not None:
+            found[field] = InputRevision.model_validate(item)
+    return found
 
 class EpisodeStore:
     """Private, bounded, profile-partitioned outcomes behind one storage interface."""
@@ -297,6 +309,7 @@ class EpisodeStore:
         results: list[ToolExecutionResult],
         evaluation: EvaluationResult,
         replan_count: int = 0,
+        input_revisions: dict | None = None,
     ) -> Episode:
         results = effective_results(results)
         decision = TaskDecision.model_validate(plan.decision)
@@ -355,6 +368,7 @@ class EpisodeStore:
             recovery_actions=recovery_actions,
             log_files=logs,
             policy_hash=plan.policy_hash,
+            input_revisions=_field_revisions(inputs, input_revisions),
             **normalized_memory,
         )
         report = EpisodeCleanupReport()

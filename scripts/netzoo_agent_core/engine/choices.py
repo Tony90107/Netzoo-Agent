@@ -13,9 +13,13 @@ from __future__ import annotations
 from workflow_registry import OUTPUT_CAPABILITIES, RUN_ACTIONS
 
 from ..contracts import ContextualReplyResolution, FollowUpContext
+from ..contracts.interaction import WorkflowContinuation
 from ..contracts.state import NextTurnPrompt
+from ..interpretation.request_requirements import carried_parameters
+from ..routing_window import routing_window
 
-__all__ = ["chosen_option", "confirmed_outcome_task", "follow_up_task", "selectable_options", "trusted_actions"]
+__all__ = ["chosen_option", "confirmed_outcome_task", "execution_continuation", "follow_up_task", "selectable_options",
+           "trusted_actions"]
 
 
 def selectable_options(card: dict | None) -> list[dict]:
@@ -90,3 +94,18 @@ def accepted(action: str) -> ContextualReplyResolution:
         selected_action=action,
         reason="The user chose this workflow from the offered options.",
     )
+
+
+def execution_continuation(action: str, task: str, requirements: dict | None) -> WorkflowContinuation:
+    """The /execute turn re-routes the preview's text; carry what the user stated.
+
+    A value stated in an earlier turn of the request is not in the preview's
+    own text, so without it the re-planned run would fall back to defaults or
+    workspace discovery (plan item 2).
+    """
+    try:
+        return WorkflowContinuation(
+            action=action, task=routing_window(task), parameters=carried_parameters(requirements),
+        )
+    except ValueError:
+        return WorkflowContinuation(action=action, task=routing_window(task))

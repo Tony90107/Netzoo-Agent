@@ -45,6 +45,10 @@ class AgentState(TypedDict):
     data_facts: NotRequired[dict | None]
     # Harness repair P3: the task's questions, answers and rounds before this turn (`contracts.task_state`).
     task_state: NotRequired[dict | None]
+    # Harness repair P4: the input files this turn's steps used, by canonical path (`contracts.memory.InputRevision`),
+    # and the ones the confirmed preview showed; an executed step whose files differ from the preview does not run.
+    input_revisions: NotRequired[dict | None]
+    previewed_inputs: NotRequired[dict | None]
 
 class AgentTurnInterrupted(Exception):
     """Raised when the user interrupts an in-flight graph turn."""

@@ -86,6 +86,7 @@ def consolidate_memory(context: _GraphContext, state: AgentState) -> dict:
         results=results,
         evaluation=evaluation,
         replan_count=state.get("replan_count", 0),
+        input_revisions=state.get("input_revisions"),  # harness repair P4
     )
     _trace(
         "memory",

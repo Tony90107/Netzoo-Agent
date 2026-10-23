@@ -410,7 +410,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
             f"directory:{_resolve_user_path(value).parent.resolve()}"
         )
     if profile_model.preferences.get("reuse_last_inputs") is True:
-        reused = reusable_episode_inputs(action, episode_models)
+        reused = reusable_episode_inputs(action, episode_models, context.policy)
         if reused and all(_offerable(value, search_root, demo_data) for value in reused[0].values()):
             reused_values, reason = reused
             for field_name, value in reused_values.items():
