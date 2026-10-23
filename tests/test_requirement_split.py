@@ -235,7 +235,7 @@ def test_n35_an_unmet_requirement_beside_the_ask_is_its_own_line():
     assert unmet.results()[1].limits[0].startswith('PUMA does not meet "in which the miRNA-gene')
     # ROUND-20 B: the model's answer holds the row and is never said as its reason.
     assert '"in which the miRNA-gene edge weights are driven by our matched small-RNA-seq miRNA expression levels" -- ' \
-           'not matched to any registered workflow.' in understanding_paragraph(unmet)
+           "I couldn't match this to anything a registered NetZoo workflow produces or lets you set." in understanding_paragraph(unmet)
     assert run_check_verdict(unmet, "run_puma")["verdict"] == "partial_gap"
     # Met or unrelated: nothing is added. Unanswered checks are held by the router.
     assert apply_own_sentence_answers(check, pairs, ["satisfies"]).results() == check.results()

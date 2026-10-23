@@ -30,8 +30,10 @@ ALLOWED = {
 _CLOSING = "No files were inspected and no analysis ran."
 
 
-def decline_reply(core) -> str:
-    """DECLINE, from the call alone: each part that cannot be done as asked, why, and what can be done instead."""
+def decline_reply(core, options: str = "") -> str:
+    """DECLINE, from the call alone: each part that cannot be done as asked, why, and what can be done instead.
+    `options`: the registered workflows that take the kind of data the request describes, said with a layer-2
+    closing."""
     if core.basis in ("algorithm_boundary", "cobra_boundary"):
         return core.declined[0].line if core.declined else ""
     if core.basis == "contract_veto":  # hybrid spec 4: "cannot, because <contract words>", then the nearest options
@@ -41,16 +43,19 @@ def decline_reply(core) -> str:
         return "\n\n".join(["\n".join(part.line for part in core.declined), tail, _CLOSING])
     lines = [f"{index}. {part.line or chr(34) + part.quote + chr(34) + ' -- not available here as asked.'}"
              for index, part in enumerate(core.declined, 1)]
-    head = ["What I understood you are asking for:", *lines] if lines else [
-        "What you asked for was not matched to any registered NetZoo workflow."]  # ROUND-21: no row says why
-    from .capability_check import NOT_MATCHED
+    from .reason_layers import is_unmatched
 
+    head = ["What I understood you are asking for:", *lines] if lines else [  # ROUND-21: no row says why
+        "I couldn't match what you asked for to a result any registered NetZoo workflow produces."]
     many = len(core.declined) > 1
-    if lines and all(part.line.endswith(NOT_MATCHED) for part in core.declined):  # ROUND-21: nothing to say why
-        closing = f"{'These were' if many else 'This was'} {NOT_MATCHED[:-1]}, so none is offered."
+    # P2: a "no registered workflow" closing only when every part has a verified reason; else layer 2
+    layer_two = not lines or any(is_unmatched(part.line) for part in core.declined)
+    if layer_two:
+        closing = (f"I couldn't match {'these' if many else 'this'} to a result any registered NetZoo workflow "
+                   "produces, so none is offered." if lines else "So none is offered.")
     else:
         closing = f"No registered workflow can give {'these' if many else 'this'} as you asked, so none is offered as asked."
-    return "\n\n".join(["\n".join(head), closing, _CLOSING])
+    return "\n\n".join(["\n".join(head), closing, *([options] if options and layer_two else []), _CLOSING])
 
 
 def unchecked_reply(core) -> str:
@@ -97,7 +102,9 @@ def core_view(context, state, reply) -> dict | None:
     if core.kind == "DECLINE":
         if core.basis == "full_gap" and (gap := full_gap_result(state, reply)) is not None:
             return gap
-        return reply(with_outside_steps(decline_reply(core), decision, task), DECLINE_KIND)
+        from .reason_layers import options_line
+
+        return reply(with_outside_steps(decline_reply(core, options_line(decision)), decision, task), DECLINE_KIND)
     if core.basis == "routing_failed":  # the system's own failure: never reported as an unclear question
         from .unresolved_router_fallback import render_unresolved_router_fallback
 

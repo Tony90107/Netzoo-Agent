@@ -511,7 +511,8 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
         many = len(decision.capability_check.results()) > 1
         card = ReplyCard(
             kind="capability_gap",
-            headline="No registered workflow produces what you asked for, so none is offered.",
+            # harness repair P2: what was checked, not a claim about every workflow (false on a misjudged gap)
+            headline="I couldn't match what you asked for to a registered workflow, so none is offered.",
             points=[clip(f'Understood: "{item.quote}"', 300) for item in decision.capability_check.results()][:4]
             if many else [],
             unavailable=_capability_rows(decision),

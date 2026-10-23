@@ -42,6 +42,7 @@ from .sentence_ownership import owned_sentences, request_sentences
 from .requirement_split import (
     ask_conditions, condition_requirements, delivery_requirements, form_condition_spans, split_additions, unmet,
 )
+from .reason_layers import UNMATCHED_RESULT, options_line, registry_wide, unmatched
 from .stated_reasons import _form_reasons, claim_sentences, stated  # noqa: F401 -- research tools import _form_reasons
 from .unconfirmed_routes import checked_body_result
 
@@ -604,9 +605,9 @@ def _status_line(item: CheckedRequirement, provisional: bool = False, gap_unconf
         if provisional:  # phase 3 (round p3 C42, C43): what only the backup read is never said as available
             return f"{quote} -- the backup check matched {names} to this (not confirmed)."
         return f"{quote} -- available from {names}."
-    if item.status == "partial":
-        return (f"{quote} -- partly available: {_workflows(item.delivered_by)} gives part of it; no registered "
-                "workflow produces the rest.")
+    if item.status == "partial":  # P2: the rest was not matched, which is no proof nothing produces it
+        return (f"{quote} -- partly available: {_workflows(item.delivered_by)} gives part of it; I couldn't match the "
+                "rest to any registered workflow.")
     if item.status == "with_step":
         first = entry(item.delivered_by[0])
         return (f"{quote} -- available from {_workflows(item.delivered_by)}'s output plus a step you run "
@@ -616,15 +617,14 @@ def _status_line(item: CheckedRequirement, provisional: bool = False, gap_unconf
     if gap_unconfirmed and item.status == "not_available":
         return f"{quote} -- {GAP_UNCONFIRMED_NOT_MATCHED[0].lower()}{GAP_UNCONFIRMED_NOT_MATCHED[1:]}"
     reasons = _why_not(item, check)
-    if not reasons:
-        return f"{quote} -- {NOT_MATCHED}"
+    if not reasons:  # P2 layer 2: what was checked, never why it cannot be done
+        return f"{quote} -- {unmatched(item)}"
     if item.limits:
         return " ".join([f"{quote} -- not available here as asked.", *reasons])
-    return " ".join([f"{quote} -- not available here: no registered workflow produces this.", *reasons])
-
-
-NOT_MATCHED = "not matched to any registered workflow."
-"""A result row with no reason code can verify (ROUND-20); a reply built from such rows claims nothing more."""
+    if registry_wide(stated(item, check)):
+        return " ".join([f"{quote} -- not available here: no registered workflow produces this.", *reasons])
+    # P2: a near miss says what one workflow does not give; that no workflow produces it is unverified
+    return " ".join([f"{quote} -- {UNMATCHED_RESULT}", *reasons])
 
 
 def understanding_paragraph(check: CapabilityCheck, offers_methods: bool = True) -> str | None:
@@ -649,26 +649,34 @@ def understanding_paragraph(check: CapabilityCheck, offers_methods: bool = True)
     return "\n".join(lines)
 
 
-def full_gap_reply(check: CapabilityCheck, *, with_note: bool = False) -> str:
-    """The full-gap reply; `with_note` when an outside-step note follows (Log 393).
+def full_gap_reply(check: CapabilityCheck, *, with_note: bool = False, options: str = "") -> str:
+    """The full-gap reply; `with_note` when an outside-step note follows (Log 393); `options`, the registered
+    workflows that take the kind of data the request describes (`reason_layers.options_line`), said with a layer-2
+    closing.
 
     TEST_PROMPTS r10 test4: "none is offered" read against the note's own "a registered
     route: pseudo-bulk ... then PANDA". The note's route is a different request (bulk, or a
     method not registered here), so the sentence says "as you asked" and points to it.
     """
-    many = len(check.results()) > 1
+    results = check.results()
+    many = len(results) > 1
     them, it = ("these", "them") if many else ("this", "it")
-    said = any(_why_not(item, check) for item in check.results())  # ROUND-21: else no claim beyond "not matched"
-    closing = (f"No registered workflow produces {them} as you asked {it}, so none is offered for {it} as asked. "
-               "The note below describes the closest route." if with_note else
+    said = [item for item in results if _why_not(item, check)]
+    limited = any(item.limits for item in said)
+    # P2: "no registered workflow produces" only beside a registry-wide reason for every result; else layer 2
+    wide = len(said) == len(results) and all(registry_wide(stated(item, check)) for item in said)
+    closing = (f"I couldn't match {them} as you asked {it} to a registered workflow, so none is offered for {it} as "
+               "asked. The note below describes the closest route." if with_note else
                # M1: the result exists, but not by the method, settings or data size asked for.
                f"No registered workflow can give {them} as you asked {it} (above), so none is offered as asked."
-               if said and any(item.limits for item in check.results()) else
-               f"No registered workflow produces {them}, so none is offered as the way to get {it}." if said else
-               f"{'These were' if many else 'This was'} {NOT_MATCHED[:-1]}, so none is offered.")
+               if limited else
+               f"No registered workflow produces {them}, so none is offered as the way to get {it}." if wide else
+               f"I couldn't match {them} to a result any registered NetZoo workflow produces, so none is offered.")
+    layer_two = not with_note and not limited and not wide
     return "\n\n".join([
         understanding_paragraph(check) or "",
         closing,
+        *([options] if options and layer_two else []),
         "No files were inspected and no analysis ran.",
     ])
 
@@ -718,7 +726,7 @@ def full_gap_result(state, reply) -> dict | None:
     plain = full_gap_reply(check)
     if with_outside_steps(plain, decision, task) != plain:
         return reply(with_outside_steps(full_gap_reply(check, with_note=True), decision, task), "capability_check_gap")
-    return reply(plain, "capability_check_gap")
+    return reply(full_gap_reply(check, options=options_line(decision)), "capability_check_gap")
 
 
 def whole_check_result(state, reply) -> dict | None:
@@ -769,7 +777,7 @@ def unavailable_rows(check: CapabilityCheck) -> list[tuple[str, str]]:
         if item.status == "not_available":
             reasons = ([PROVISIONAL_NOT_MATCHED] if check.provisional else
                        [GAP_UNCONFIRMED_NOT_MATCHED] if check.gap_unconfirmed else _why_not(item, check))
-            rows.append((item.quote, reasons[0] if reasons else "Not matched to any registered workflow."))
+            rows.append((item.quote, reasons[0] if reasons else unmatched(item)))  # P2 layer 2
     rows += [(sentence, "Not checked against the registered workflows.") for sentence in check.unchecked]
     return rows
 
@@ -835,7 +843,7 @@ def checked_route_lines(item: CheckedRequirement, provisional: bool = False) -> 
                  f"you run outside NetZoo. {first.step}{unconfirmed}"],
                 f"{names}, then a step outside NetZoo")
     if item.status == "partial":
-        return ([f"Partly available: {names} gives part of it; no registered workflow produces the rest."
+        return ([f"Partly available: {names} gives part of it; I couldn't match the rest to any registered workflow."
                  f"{unconfirmed}"], f"partly {names}")
     return [f"Available from {names}.{unconfirmed}"], names
 

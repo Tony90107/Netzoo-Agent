@@ -7,7 +7,8 @@ hold no clean case of it.
 
 A fixture keeps `baseline` (what 91a8c2d9 does, written once by `record`) apart from `expected` (the spec's case).
 `check` flags every fixture whose behaviour differs from its baseline on the fields the baseline has: in P1/P2 those
-are the intended changes. Fields later code adds (P1: the `obligations` ledger) are printed, never compared.
+are the intended changes. Fields added later (P1: the `obligations` ledger; P2: each declined row's rendered `lines`,
+which show its layer-1 or layer-2 reason) are printed, never compared.
 
 Usage: python3 fixtures.py run | record | check
 """
@@ -37,6 +38,7 @@ def _module(name: str, path: Path):
 def recorded(fixtures: list[dict]) -> dict[str, dict]:
     """B2 on each recorded fixture's reading, with the reasons its reply states."""
     import netzoo_agent_core.interpretation.core_decision as core_decision
+    from netzoo_agent_core.interpretation.capability_check import _status_line
 
     tag = _module("round20_replies", LOGS / "stated-reasons-2026-10-21" / "replies.py").tagged
     by_session, core = harness._gold()
@@ -62,13 +64,15 @@ def recorded(fixtures: list[dict]) -> dict[str, dict]:
         reasons = [[item.quote[:60], kind, text] for item in (check.results() if check else [])
                    if item.status in ("not_available", "partial") for kind, text in (tag(item, check) or [("R0", "")])]
         facts = decision.fact_check
+        lines = [_status_line(item, check.provisional, check.gap_unconfirmed, check) for item in check.results()
+                 if item.status in ("not_available", "partial")] if check else []
         out[fixture] = {"gold": harness._label(sid, by_session, core), "kind": call.kind, "basis": call.basis,
                         "partial": call.partial,
                         "fact_agent": None if facts is None else {
                             "status": facts.status, "asked": [q.question for q in facts.accepted],
                             "rejected": [r.rule for r in facts.rejected], "legacy": [q.question for q in facts.legacy],
                             "legacy_kept": bool(call.evidence.get("legacy_kept"))},
-                        "reasons": reasons, **_ledger(call)}
+                        "reasons": reasons, **_ledger(call), "lines": lines}
     return out
 
 

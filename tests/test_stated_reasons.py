@@ -16,7 +16,7 @@ from netzoo_agent_core.interpretation.requirement_split import unmet  # noqa: E4
 from netzoo_agent_core.interpretation.stated_reasons import _form_reasons, claim_sentences, stated  # noqa: E402
 from netzoo_agent_core.workflow_conditions import UNCLEAR_CHOICE  # noqa: E402
 
-NOT_MATCHED = "-- not matched to any registered workflow."
+NOT_MATCHED = "-- I couldn't match this to anything a registered NetZoo workflow produces or lets you set."  # harness repair P2: the layer-2 reason
 
 
 def _row(quote="the network", **fields):
@@ -119,4 +119,6 @@ def test_e_a_registry_wide_reason_is_said_only_for_a_result_in_its_claims_senten
 def test_the_understanding_paragraph_reads_through_the_same_rules():
     check = CapabilityCheck(requirements=[_row("Run OTTER with seed_W_mm.tsv", limits=[C44])],
                             only_inputs=["coexpression"], only_inputs_quote="only that co-expression file")
-    assert understanding_paragraph(check).endswith(f'"Run OTTER with seed_W_mm.tsv" {NOT_MATCHED}')
+    # P2 layer 2: the row's own words name OTTER, so what OTTER gives is said after the unmatched sentence
+    assert f'"Run OTTER with seed_W_mm.tsv" {NOT_MATCHED} OTTER gives: one weighted TF-to-gene' \
+        in understanding_paragraph(check)

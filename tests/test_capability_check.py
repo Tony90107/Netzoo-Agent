@@ -107,7 +107,8 @@ def test_no_produces_entry_is_a_full_gap_with_the_near_miss_reason():
     check = _splicing_check()
     assert check.full_gap and not check.unchecked
     text = full_gap_reply(check)
-    assert "not available here: no registered workflow produces this" in text
+    # P2: a near miss says what PANDA does not give; that no registered workflow does is not verified
+    assert "I couldn't match this to a result any registered NetZoo workflow produces." in text
     assert "PANDA does not give it: the motif prior is an input" in text
     assert "none is offered" in text
 
@@ -117,7 +118,8 @@ def test_an_ask_without_a_reason_says_it_was_not_matched():
         ("s1", [("isoform-level quantifications from 80 brain samples", "context", (), ())]),
         ("s2", [("find which splicing factors control inclusion of each alternative exon", "result", (), ())]),
     ))[0]
-    assert '-- not matched to any registered workflow.' in understanding_paragraph(check)
+    assert "-- I couldn't match this to anything a registered NetZoo workflow produces or lets you set." \
+        in understanding_paragraph(check)  # P2 layer 2
     assert check.full_gap  # still nothing registered produces it
 
 
@@ -299,7 +301,7 @@ def test_full_gap_card_lists_each_unavailable_result_and_offers_no_workflow():
     decision = TaskDecision.model_validate(_state(_splicing_check())["decision"])
     card = builder._core_card("capability_check_gap", decision, None, SPLICING)
     assert card.kind == "capability_gap" and card.choices is None
-    assert card.headline.startswith("No registered workflow produces what you asked for")
+    assert card.headline.startswith("I couldn't match what you asked for to a registered workflow")
     assert [row.available for row in card.unavailable] == [False]
     assert "motif prior is an input" in card.unavailable[0].reason
 
@@ -535,7 +537,7 @@ def test_a_full_gap_keeps_the_outside_step_notes_of_cleared_candidates():
     without = full_gap_result(state, lambda content, kind: {"messages": [AIMessage(content=content)],
                                                             "reply_kind": kind})["messages"][-1].content
     assert "ALPACA" not in without  # the ALPACA note is tied to CONDOR being a candidate
-    assert "so none is offered as the way to get it." in without
+    assert "to a result any registered NetZoo workflow produces, so none is offered." in without  # P2 layer 2
 
 
 def test_a_gene_gene_network_rules_condor_out():
@@ -915,7 +917,7 @@ def test_a_violating_workflow_is_removed_and_satisfies_or_unrelated_change_nothi
     assert gap.results()[0].violations == [f'PUMA does not meet "{MIRNA_RULE}"']
     # ROUND-20 B: the condition check's answer is the model's judgment -- it decides, and is never said as the reason.
     assert "does not meet" not in understanding_paragraph(gap)
-    assert "-- not matched to any registered workflow." in understanding_paragraph(gap)
+    assert "-- I couldn't match this to anything a registered NetZoo workflow produces or lets you set." in understanding_paragraph(gap)
     assert second_opinion_pairs(gap, ["run_puma"]) == []  # never asked again
 
 

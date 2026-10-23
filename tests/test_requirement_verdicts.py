@@ -50,7 +50,7 @@ def test_a_confirmed_partial_request_does_not_offer_an_incompatible_confidence_m
     decision = TaskDecision.model_validate(LIVE_C10["decision"])
     text, kind, card = _replay(LIVE_C10["task"], decision)
     assert "LIONESS-DRAGON" in text
-    assert "not available here" in text
+    assert "I couldn't match this to a result any registered NetZoo workflow produces." in text  # P2
     assert "BONOBO" not in text
     assert "Which result do you mean" not in text
     assert kind == "capability_partial"
