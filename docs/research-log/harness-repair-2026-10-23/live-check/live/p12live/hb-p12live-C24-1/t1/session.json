@@ -1,0 +1,519 @@
+{
+  "version": 1,
+  "session_id": "hb-p12live-C24-1",
+  "profile_id": "hb-p12live-C24-1",
+  "auto_generated": false,
+  "created_at": 1792739974.794643,
+  "updated_at": 1792739974.794785,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Reviewers asked for 'a network analysis' of our placenta study. We have mRNA-seq and small-RNA-seq from 45 preeclampsia and control placentas. Honestly I don't know what kind of network they expect or what it's supposed to show. The two groups are roughly balanced and both libraries come from the same placentas; can you set something up that would satisfy them?"
+    },
+    {
+      "role": "assistant",
+      "content": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nWith expression data, the registered workflows can give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample (BONOBO)\n\nWhich of these results do you want, or what question should the analysis answer?\n\nNothing was selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request names no result yet; the goal is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.0,
+      "reason": "The request names no result yet; the goal is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "multi_omic_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "'a network analysis' of our placenta study.",
+              "rationale": "The user is looking for a network analysis based on their data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "multi_omic_network",
+              "source": "explicit",
+              "text_span": "We have mRNA-seq and small-RNA-seq from 45 preeclampsia and control placentas.",
+              "rationale": "The request involves both mRNA-seq and small-RNA-seq data, which suggests a multi-omic approach."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "The two groups are roughly balanced and both libraries come from the same placentas.",
+              "rationale": "The user mentions both groups are balanced and derived from the same placentas, indicating a cohort-wide analysis."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user has RNA-seq data available for analysis."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "unverified_evidence",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these results do you want, or what question should the analysis answer?",
+      "addressed_concerns": [
+        {
+          "action": "run_dragon",
+          "concern": "downstream_use",
+          "text_span": "what it's supposed to show"
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "a network analysis",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 45,
+              "samples_quote": "45 preeclampsia and control placentas"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@104-141"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "mRNA-seq and small-RNA-seq from 45 preeclampsia and control placentas",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "can you set something up that would satisfy them?",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "purpose_only",
+        "goal_quote": "a network analysis",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "both libraries come from the same placentas"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@104-141",
+            "property": "sample_count",
+            "name": "",
+            "value": "45",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "45 preeclampsia and control placentas",
+            "span": [
+              104,
+              141
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "45 preeclampsia and control placentas",
+                "span": [
+                  104,
+                  141
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "45 preeclampsia and control placentas",
+                "span": [
+                  104,
+                  141
+                ],
+                "result": "a network analysis",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "CLARIFY",
+        "partial": false,
+        "workflows": [],
+        "declined": [],
+        "facts": [],
+        "clarify": {
+          "missing": "result",
+          "candidates": [
+            "PANDA",
+            "PUMA",
+            "LIONESS-PANDA",
+            "LIONESS-PUMA",
+            "LIONESS-COEXPRESSION",
+            "COBRA",
+            "DRAGON",
+            "LIONESS-DRAGON",
+            "OTTER",
+            "GIRAFFE",
+            "BONOBO"
+          ],
+          "inputs": [
+            "expression_matrix"
+          ],
+          "question": "Which of these results do you want, or what question should the analysis answer?",
+          "goal_quote": "a network analysis"
+        },
+        "run_allowed": false,
+        "basis": "goal_unclear",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": null,
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "purpose_only",
+            "a network analysis"
+          ],
+          "run_verdict": null
+        }
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 35534,
+    "output_tokens": 1297,
+    "total_tokens": 36831,
+    "calls": [
+      {
+        "call_id": "a329a24d-bc75-4285-9d4d-4aef87548277",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792739956-81M04EyQ34LFVBW6Klv6",
+        "input_tokens": 5360,
+        "output_tokens": 265,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5625,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 598,
+        "price_snapshot": null,
+        "duration_ms": 3469,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "5a157d60-b0a7-4556-a7cc-6989617748c5",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792739959-EQkuXzmPP13G86TiQ6Mh",
+        "input_tokens": 5623,
+        "output_tokens": 315,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5938,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 735,
+        "price_snapshot": null,
+        "duration_ms": 4164,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "71ddb65f-9310-4b9f-b1b9-f045493865b2",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 675,
+        "output_tokens": 56,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 731,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 135,
+        "price_snapshot": {
+          "snapshot_id": "75cff143-4cc6-54a4-b039-7ea8a02542ea",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-23T07:17:21.931011Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1292,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "6265b29c-bc53-4616-a59e-560a5374bca6",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792739964-uV0NtKh2EsPt9uYSG4Sk",
+        "input_tokens": 1678,
+        "output_tokens": 34,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1712,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 272,
+        "price_snapshot": null,
+        "duration_ms": 1357,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0713f407-4c6a-4088-8f01-ebf935be9142",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792739966-c2DtPtAo3EL45nnMENa1",
+        "input_tokens": 21615,
+        "output_tokens": 569,
+        "cache_read_tokens": 11136,
+        "cache_write_tokens": 0,
+        "total_tokens": 22184,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2748,
+        "price_snapshot": null,
+        "duration_ms": 7146,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0b581a47-3577-4e9d-ac8b-e24ae32270e0",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792739973-kX3tfVjB0f3NB1hYwpec",
+        "input_tokens": 583,
+        "output_tokens": 58,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 641,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 122,
+        "price_snapshot": null,
+        "duration_ms": 1337,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "db2c17a2-1349-4a81-9b88-aa62a89f0cf1"
+}

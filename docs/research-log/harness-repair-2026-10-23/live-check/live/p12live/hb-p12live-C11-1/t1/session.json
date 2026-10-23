@@ -1,0 +1,894 @@
+{
+  "version": 1,
+  "session_id": "hb-p12live-C11-1",
+  "profile_id": "hb-p12live-C11-1",
+  "auto_generated": false,
+  "created_at": 1792740073.237202,
+  "updated_at": 1792740073.2372851,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt. The analysis plan just says 'a network for each AD and control', and I can't tell if that means one network per diagnostic group or one network per donor; the person who wrote it is on leave until next month."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt.\" -- available from LIONESS-PANDA, LIONESS-PUMA, OTTER or GIRAFFE.\n2. \"one network per diagnostic group or one network per donor\" -- you have not chosen which result you want: if \"one network per diagnostic group\": LIONESS-PANDA, LIONESS-PUMA, OTTER or GIRAFFE; if \"one network per donor\": LIONESS-PANDA, LIONESS-PUMA or GIRAFFE.\n3. \"a network for each AD and control\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n\nBefore I choose a workflow, please tell me: Which result do you want: \"one network per diagnostic group\" or \"one network per donor\"?\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A result waits on a fact the user said they do not know; nothing is selected before it is known.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A result waits on a fact the user said they do not know; nothing is selected before it is known.",
+      "candidate_actions": [
+        "run_lioness_panda",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "Run the TF network inference",
+              "rationale": "The user requests TF network inference, which typically results in a regulatory network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The request implies a network for each donor, indicating sample-specific granularity."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The request involves TF network inference, which indicates the presence of transcription factors as regulators."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The request for a TF network implies that genes are the targets of regulation."
+            }
+          ],
+          "assumptions": []
+        },
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "Run the TF network inference",
+              "rationale": "The user requests TF network inference, which typically results in a regulatory network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The role is inferred from the structured TF-gene outcome; it is not a quoted user claim."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The role is inferred from the structured TF-gene outcome; it is not a quoted user claim."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "a network for each AD and control",
+              "rationale": "The analysis plan indicates 'a network for each AD and control', suggesting one network per diagnostic group, which supports aggregate granularity."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_otter",
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which result do you want: \"one network per diagnostic group\" or \"one network per donor\"?",
+      "operation_authorization": {
+        "requested": [
+          "run"
+        ],
+        "forbidden": [],
+        "explain_only": null,
+        "preview_requested": false,
+        "blocked_action": null
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_panda.per_sample_networks",
+              "lioness_panda.per_sample_targeting",
+              "lioness_panda.association_tests",
+              "lioness_puma.per_sample_networks",
+              "lioness_puma.per_sample_targeting",
+              "lioness_puma.association_tests",
+              "otter.tf_gene_network",
+              "otter.targeting_scores",
+              "giraffe.signed_regulation",
+              "giraffe.tf_activity",
+              "giraffe.activity_tests"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 88,
+              "samples_quote": "88 donors: 44 AD, 44 controls"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@52-81"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "one network per diagnostic group or one network per donor",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "lioness_panda.per_sample_networks",
+              "lioness_panda.association_tests",
+              "lioness_puma.per_sample_networks",
+              "lioness_puma.association_tests",
+              "otter.tf_gene_network",
+              "otter.targeting_scores",
+              "giraffe.signed_regulation",
+              "giraffe.activity_tests",
+              "lioness_panda.per_sample_targeting",
+              "lioness_puma.per_sample_targeting",
+              "giraffe.tf_activity"
+            ],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "choice",
+            "outcomes": {
+              "one network per diagnostic group": [
+                "lioness_panda.per_sample_networks",
+                "lioness_panda.association_tests",
+                "lioness_puma.per_sample_networks",
+                "lioness_puma.association_tests",
+                "otter.tf_gene_network",
+                "otter.targeting_scores",
+                "giraffe.signed_regulation",
+                "giraffe.activity_tests"
+              ],
+              "one network per donor": [
+                "lioness_panda.per_sample_networks",
+                "lioness_panda.per_sample_targeting",
+                "lioness_panda.association_tests",
+                "lioness_puma.per_sample_networks",
+                "lioness_puma.per_sample_targeting",
+                "lioness_puma.association_tests",
+                "giraffe.tf_activity",
+                "giraffe.activity_tests"
+              ]
+            },
+            "unknown_quote": "one network per diagnostic group or one network per donor",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "expr_alzheimer.tsv (88 donors: 44 AD, 44 controls)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "motifs_hg38.txt",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "ppi_tf.txt",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a network for each AD and control",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 88,
+              "samples_quote": "88 donors: 44 AD, 44 controls"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@52-81"
+            ],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "a network for each AD and control",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "one network per diagnostic group or one network per donor"
+        ],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@52-81",
+            "property": "sample_count",
+            "name": "",
+            "value": "88",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "88 donors: 44 AD, 44 controls",
+            "span": [
+              52,
+              81
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "88 donors: 44 AD, 44 controls",
+                "span": [
+                  52,
+                  81
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "88 donors: 44 AD, 44 controls",
+                "span": [
+                  52,
+                  81
+                ],
+                "result": "Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "88 donors: 44 AD, 44 controls",
+                "span": [
+                  52,
+                  81
+                ],
+                "result": "a network for each AD and control",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "88 donors: 44 AD, 44 controls",
+                "span": [
+                  52,
+                  81
+                ],
+                "result": "I can't tell if that means one network per diagnostic group or one network per donor",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "execution_requested": true,
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "OTTER",
+          "GIRAFFE"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which result do you want: \"one network per diagnostic group\" or \"one network per donor\"?",
+            "user_quote": "one network per diagnostic group or one network per donor",
+            "workflows": [
+              "LIONESS-PANDA",
+              "LIONESS-PUMA",
+              "OTTER",
+              "GIRAFFE"
+            ],
+            "contract_quote": "",
+            "depends_on": "choice",
+            "outcomes": {
+              "one network per diagnostic group": [
+                "LIONESS-PANDA",
+                "LIONESS-PUMA",
+                "OTTER",
+                "GIRAFFE"
+              ],
+              "one network per donor": [
+                "LIONESS-PANDA",
+                "LIONESS-PUMA",
+                "GIRAFFE"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "dimension:choice@212-269"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "needs_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "result",
+              "not_available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "a network for each AD and control"
+          ],
+          "run_verdict": null,
+          "legacy_facts": [
+            "Which result do you want: \"one network per diagnostic group\" or \"one network per donor\"?"
+          ],
+          "legacy_kept": true
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "OTTER",
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "the analysis plan just says 'a network for each AD and control'",
+              "uncertainty": "two_readings",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "When a patient or sample identifier is supplied, produce sample-specific networks for all available samples, select the requested sample afterward, and keep it separate from the aggregate network.",
+              "question": "Do you want one network per donor?",
+              "yes_outcome": "supported",
+              "yes_workflow": "LIONESS-PANDA",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "one network per diagnostic group",
+                "one network per donor"
+              ]
+            }
+          }
+        ],
+        "legacy": [
+          {
+            "question": "Which result do you want: \"one network per diagnostic group\" or \"one network per donor\"?",
+            "user_quote": "one network per diagnostic group or one network per donor",
+            "workflows": [
+              "LIONESS-PANDA",
+              "LIONESS-PUMA",
+              "OTTER",
+              "GIRAFFE"
+            ],
+            "contract_quote": "",
+            "depends_on": "choice",
+            "outcomes": {
+              "one network per diagnostic group": [
+                "LIONESS-PANDA",
+                "LIONESS-PUMA",
+                "OTTER",
+                "GIRAFFE"
+              ],
+              "one network per donor": [
+                "LIONESS-PANDA",
+                "LIONESS-PUMA",
+                "GIRAFFE"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "dimension:choice@212-269"
+          }
+        ],
+        "open_results": []
+      },
+      "missing_inputs": [
+        "output_file",
+        "lioness_output"
+      ],
+      "expression_file": "expr_alzheimer.tsv",
+      "design_file": null,
+      "motif_file": "motifs_hg38.txt",
+      "ppi_file": "ppi_tf.txt",
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 45359,
+    "output_tokens": 2108,
+    "total_tokens": 47467,
+    "calls": [
+      {
+        "call_id": "88452d76-e408-48f4-9d1f-d1d2165b0b99",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792740043-D2KWZPKzkPXGwFCYIjss",
+        "input_tokens": 5355,
+        "output_tokens": 206,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5561,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 562,
+        "price_snapshot": null,
+        "duration_ms": 3395,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "3cde5208-90a8-4b3f-b3e5-f1f2e7f7201d",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792740050-cUJYiqm6YRzLmpQYaSG7",
+        "input_tokens": 5522,
+        "output_tokens": 182,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5704,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 640,
+        "price_snapshot": null,
+        "duration_ms": 3369,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0a54dacf-8a73-4e0d-b117-d56b6ab3c92b",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792740046-UUk2TV5EmH65GXlMLdrK",
+        "input_tokens": 6678,
+        "output_tokens": 255,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6933,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 857,
+        "price_snapshot": null,
+        "duration_ms": 7313,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "31fd8c0a-fce1-4b9c-8edf-3bc514737a56",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 660,
+        "output_tokens": 60,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 720,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 135,
+        "price_snapshot": {
+          "snapshot_id": "75cff143-4cc6-54a4-b039-7ea8a02542ea",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-23T07:17:21.931011Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1364,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "11b64ae9-1678-4f3b-b7b6-99da73698276",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792740055-cN9gjm80nKMfA8MOOfZD",
+        "input_tokens": 15261,
+        "output_tokens": 953,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 16214,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1805,
+        "price_snapshot": null,
+        "duration_ms": 10547,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "022d41ed-8e22-4386-bbc5-3fb3d4a9ba8b",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792740066-tKqV4aG3Z1Pp8NLNrft2",
+        "input_tokens": 578,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 589,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 93,
+        "price_snapshot": null,
+        "duration_ms": 926,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9ee323cf-1837-45f3-9b40-239b8d8992b3",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792740067-37ScUT2Pv3DFTg3O0jI0",
+        "input_tokens": 8408,
+        "output_tokens": 306,
+        "cache_read_tokens": 8192,
+        "cache_write_tokens": 0,
+        "total_tokens": 8714,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 830,
+        "price_snapshot": null,
+        "duration_ms": 4058,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "03c19aa8-432b-4a3f-aef4-5631d6848869",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792740071-TeEh9TnbnD5tpvao0PzV",
+        "input_tokens": 2897,
+        "output_tokens": 135,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 3032,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 516,
+        "price_snapshot": null,
+        "duration_ms": 1924,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "14f6bea4-9902-415f-8a4e-63fb144a57fb"
+}

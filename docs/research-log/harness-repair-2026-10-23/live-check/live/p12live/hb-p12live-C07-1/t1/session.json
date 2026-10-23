@@ -1,0 +1,942 @@
+{
+  "version": 1,
+  "session_id": "hb-p12live-C07-1",
+  "profile_id": "hb-p12live-C07-1",
+  "auto_generated": false,
+  "created_at": 1792739984.459818,
+  "updated_at": 1792739984.459876,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We measured 180 circulating miRNAs (normalized, continuous qPCR values) and 45 plasma cytokines in the same 64 sepsis patients; both tables have samples in rows, identical patient IDs and no missing values. What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers, so I can compare survivors with non-survivors patient by patient afterwards."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers\" -- available from LIONESS-DRAGON.\n2. \"so I can compare survivors with non-survivors patient by patient afterwards\" -- available from LIONESS-DRAGON.\n\nFor the sample-specific output you described, use **LIONESS-DRAGON**.\n\nRequired inputs:\n   - `omics_layer_1`: Omics layer 1 (samples x features)\n   - `omics_layer_2`: Omics layer 2 (the same samples)\n\nOutputs:\n   - Aggregate network (`output_file`).\n   - Sample-specific network for each patient/sample (`lioness_output`).\n\nYou do not need to run **DRAGON** separately; **LIONESS-DRAGON** also produces the aggregate output. Use **DRAGON** alone only when a cohort-level aggregate result is sufficient.\n\nCost: LIONESS runs DRAGON once on all samples and once more without each sample, so N samples take N+1 DRAGON runs and give N network files (for your 64 patients, 65 DRAGON runs). Plan the runtime and disk space, and filter edges before downstream statistics.\n\nAbout your concern that what to do with the result afterwards, for example comparing conditions or relating it to clinical variables:\n- **LIONESS-DRAGON** — Each sample column holds that sample's edge weights; comparing the columns between groups of samples shows which within- and cross-layer associations differ. A sample's edges are estimated from how removing it changes the cohort network, so they are relative to the cohort the network was built from, not absolute values.\n\nFor your question (\"compare survivors with non-survivors patient by patient afterwards\"):\n- **DRAGON** — Build one network per time point or condition on the same features and compare the cross-layer edges; this does not use the pairing -- to keep it, use LIONESS-DRAGON and compare each individual's samples.\n- **LIONESS-DRAGON** — Each sample gets its own two-layer network; comparing the samples' edge weights between the groups or conditions (paired when the same individuals give both) shows which within- and cross-layer associations differ.\nNote: Partial correlations are conditional on every other feature in both layers, so use the same feature set in every network you compare.\nNote: A sample's edges are estimated from how removing it changes the cohort network, so they are relative to the cohort the network was built from.\nNote: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request involves guidance on how to create separate networks linking miRNAs and cytokines based on partial correlations, which falls under the category of answer requests rather than execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request involves guidance on how to create separate networks linking miRNAs and cytokines based on partial correlations, which falls under the category of answer requests rather than execution.",
+      "candidate_actions": [
+        "run_lioness_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_dragon",
+        "run_lioness_dragon"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "multi_omic_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "multi_omic_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations.",
+              "rationale": "The user wants to construct networks based on partial correlations."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "multi_omic_network",
+              "source": "explicit",
+              "text_span": "links miRNAs and cytokines through partial correlations.",
+              "rationale": "The user specifies a network linking two types of biological entities."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "a separate network for every patient.",
+              "rationale": "The user requests separate networks for each patient."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_lioness_dragon"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "addressed_concerns": [
+        {
+          "action": "run_dragon",
+          "concern": "downstream_use",
+          "text_span": "so I can compare survivors with non-survivors patient by patient afterwards."
+        },
+        {
+          "action": "run_lioness_dragon",
+          "concern": "downstream_use",
+          "text_span": "so I can compare survivors with non-survivors patient by patient afterwards."
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "claims",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_dragon.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "mirna",
+                "other"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 64,
+              "samples_quote": "64 sepsis patients",
+              "features": 225,
+              "feature_counts": 2,
+              "feature_items": [
+                [
+                  12,
+                  34,
+                  180
+                ],
+                [
+                  76,
+                  95,
+                  45
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@108-126",
+              "feature_count@12-34",
+              "feature_count@76-95",
+              "feature_count=feature_count@12-34+feature_count@76-95"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "180 circulating miRNAs (normalized, continuous qPCR values)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "45 plasma cytokines",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "64 sepsis patients",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "both tables have samples in rows",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "identical patient IDs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "no missing values",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "so I can compare survivors with non-survivors patient by patient afterwards",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_dragon.per_sample_networks",
+              "lioness_dragon.association_tests"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": true,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 64,
+              "samples_quote": "64 sepsis patients"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@108-126"
+            ],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {
+          "joint_layers": "2"
+        },
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {
+          "group_difference": [
+            "What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers, so I can compare survivors with non-survivors patient by patient afterwards."
+          ]
+        },
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@108-126",
+            "property": "sample_count",
+            "name": "",
+            "value": "64",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "64 sepsis patients",
+            "span": [
+              108,
+              126
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "64 sepsis patients",
+                "span": [
+                  108,
+                  126
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "64 sepsis patients",
+                "span": [
+                  108,
+                  126
+                ],
+                "result": "a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "64 sepsis patients",
+                "span": [
+                  108,
+                  126
+                ],
+                "result": "What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "64 sepsis patients",
+                "span": [
+                  108,
+                  126
+                ],
+                "result": "so I can compare survivors with non-survivors patient by patient afterwards",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@12-34",
+            "property": "feature_count",
+            "name": "",
+            "value": "180",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "180 circulating miRNAs",
+            "span": [
+              12,
+              34
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "180 circulating miRNAs",
+                "span": [
+                  12,
+                  34
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "180 circulating miRNAs",
+                "span": [
+                  12,
+                  34
+                ],
+                "result": "a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "180 circulating miRNAs",
+                "span": [
+                  12,
+                  34
+                ],
+                "result": "What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@76-95",
+            "property": "feature_count",
+            "name": "",
+            "value": "45",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "45 plasma cytokines",
+            "span": [
+              76,
+              95
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "45 plasma cytokines",
+                "span": [
+                  76,
+                  95
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "45 plasma cytokines",
+                "span": [
+                  76,
+                  95
+                ],
+                "result": "a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "45 plasma cytokines",
+                "span": [
+                  76,
+                  95
+                ],
+                "result": "What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count=feature_count@12-34+feature_count@76-95",
+            "property": "feature_count",
+            "name": "",
+            "value": "225",
+            "values": [],
+            "state": "stated",
+            "origin": "derived",
+            "quote": "",
+            "span": [],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "180 circulating miRNAs",
+                "span": [
+                  12,
+                  34
+                ],
+                "result": "",
+                "role": "operand"
+              },
+              {
+                "reader": "request",
+                "quote": "45 plasma cytokines",
+                "span": [
+                  76,
+                  95
+                ],
+                "result": "",
+                "role": "operand"
+              }
+            ],
+            "derived_from": [
+              "feature_count@12-34",
+              "feature_count@76-95"
+            ],
+            "formula": "180 + 45",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "LIONESS-DRAGON"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "multi_omic_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "result",
+              "available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-DRAGON",
+          "DRAGON"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers, so I can compare survivors with non-survivors patient by patient afterwards.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-DRAGON",
+              "contract_quote": "Infer one sample-specific two-layer multi-omic partial-correlation network per sample with LIONESS-DRAGON.",
+              "question": "Do you have at least three samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "a separate network for every patient that links miRNAs and cytokines through partial correlations"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 34567,
+    "output_tokens": 1499,
+    "total_tokens": 36066,
+    "calls": [
+      {
+        "call_id": "600072a7-4885-4776-8fd4-3a1be9911ea9",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792739961-iXgEASsRp7XyNuOjFp14",
+        "input_tokens": 5366,
+        "output_tokens": 291,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5657,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 615,
+        "price_snapshot": null,
+        "duration_ms": 3889,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "891e06b0-d671-411b-a6c9-64da677c8ad0",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 691,
+        "output_tokens": 61,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 752,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 140,
+        "price_snapshot": {
+          "snapshot_id": "75cff143-4cc6-54a4-b039-7ea8a02542ea",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-23T07:17:21.931011Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1537,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "cbdaeb19-4b99-45c3-add7-58b4b83ce142",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792739966-kpigL61EIHPObfVPv0qZ",
+        "input_tokens": 1707,
+        "output_tokens": 43,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1750,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 282,
+        "price_snapshot": null,
+        "duration_ms": 1200,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c88524c2-bdfd-42c8-840c-530b268666be",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792739967-ra0PduUdooxwgv1PjCwY",
+        "input_tokens": 15283,
+        "output_tokens": 548,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15831,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1565,
+        "price_snapshot": null,
+        "duration_ms": 6384,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ed2519bb-659f-4956-8f97-c90f482c98eb",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792739974-cszQOIxkiBUZ9kxUZdnK",
+        "input_tokens": 589,
+        "output_tokens": 40,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 629,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 112,
+        "price_snapshot": null,
+        "duration_ms": 980,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d52f5d28-7d9c-42ab-8a29-179079162075",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792739975-olMm85Gg9NSoUHZEtxAF",
+        "input_tokens": 8405,
+        "output_tokens": 357,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 8762,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1110,
+        "price_snapshot": null,
+        "duration_ms": 4023,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e945c21c-d27e-4dae-81a5-70fefbbdd921",
+        "role": "capability_second_opinion",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792739979-R4yWag3FfP415eHDruP3",
+        "input_tokens": 391,
+        "output_tokens": 6,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 397,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 62,
+        "price_snapshot": null,
+        "duration_ms": 921,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "fbc6ca3d-2166-4ea1-852b-7467977c51fb",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792739980-vw7MFBhLjHLE79U3u8mM",
+        "input_tokens": 2135,
+        "output_tokens": 153,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2288,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 412,
+        "price_snapshot": null,
+        "duration_ms": 4367,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "ff91c304-c0f1-42a9-94b5-fff14e0b7be1"
+}

@@ -1,0 +1,131 @@
+{
+ "about": "P1/P2 live check (2026-10-23): 18 affected items, rep 1, prompts copied verbatim from the recorded first turns.",
+ "items": [
+  {
+   "id": "L21",
+   "source": "hb-h3main-L21-1",
+   "check": "P2 partial: GIRAFFE optimizer settings",
+   "replay_expect": "DO partial, run held",
+   "prompt": "Please run GIRAFFE on our 44 psoriasis skin biopsies (expression, motif prior and PPI are ready), but change the optimizer: learning rate 0.0005, 5,000 iterations, and a heavier weight on the PPI term of the loss. The defaults gave us nearly flat TF activities last time."
+  },
+  {
+   "id": "J44",
+   "source": "hb-h2main-J44-1",
+   "check": "P2 partial: OTTER on GPU",
+   "replay_expect": "DO partial, run held",
+   "prompt": "Time to rerun OTTER: expr_pbmc.tsv, motif_pbmc.tsv and ppi_pbmc.tsv, output otter_pbmc.tsv as an edge list. This time set computing to gpu and precision to single, because the CPU run took far too long on our 19,000-gene matrix. Start it now."
+  },
+  {
+   "id": "H40",
+   "source": "hb-h1-H40-1",
+   "check": "P2 partial: GIRAFFE settings",
+   "replay_expect": "DO partial, run held",
+   "prompt": "I'd like GIRAFFE run on 75 AML samples with a custom learning rate of 0.001, 5,000 iterations and a heavier weight on the PPI term in the loss - with the defaults it seemed to stop before the TF activities stabilised."
+  },
+  {
+   "id": "H18",
+   "source": "hb-h1-H18-1",
+   "check": "control: only a question row is doable",
+   "replay_expect": "DECLINE",
+   "prompt": "With DRAGON, I'd like three separately tuned penalties on our 110 matched colorectal tumours: lambda1 for the methylation block, lambda2 for the expression block, and a lambda_inter of 0.2 controlling only the cross-layer methylation-expression edges. Can you set it up that way?"
+  },
+  {
+   "id": "C08",
+   "source": "cj-p2-C08-1",
+   "check": "control: can GIRAFFE take my settings",
+   "replay_expect": "DECLINE",
+   "prompt": "Can GIRAFFE be run with my own optimizer settings? For our 52 rice leaf samples from the drought trial I want a learning rate of 1e-4, 2,000 iterations and a heavier weight on the PPI term in the loss, because in a pilot the package defaults gave a TF activity matrix that looked over-smoothed and I'd like to see whether these settings change that."
+  },
+  {
+   "id": "L13",
+   "source": "hb-h3main-L13-1",
+   "check": "control: past LIONESS-DRAGON's size cap",
+   "replay_expect": "DECLINE",
+   "prompt": "Kick off LIONESS-DRAGON now on rna_2000.csv and prot_500.csv: 120 matched samples, 2,000 transcripts and 500 proteins, sample ID in the first column of both. Per-sample edges to lioness_dragon/edges.tsv and the cohort matrix to lioness_dragon/all.tsv. We have a big server, so memory isn't a concern."
+  },
+  {
+   "id": "C12",
+   "source": "cj-p0-C12-1",
+   "check": "layer 2; live R21-A goal read (gold CLARIFY)",
+   "replay_expect": "DECLINE with layer 2 in replay",
+   "prompt": "Please run the network analysis on expr_sle_monocytes.tsv and send me the results."
+  },
+  {
+   "id": "C51",
+   "source": "cj-p2-C51-1",
+   "check": "once a misjudged gap with a false 'no registered workflow produces this' (gold DO)",
+   "replay_expect": "layer-2 wording if a gap",
+   "prompt": "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list? Inputs would be expression for 60 breast tumours (header row, gene IDs in the first column), a TF-by-gene seed edge list, and a TF-TF PPI edge list whose TFs are exactly the seed's TFs."
+  },
+  {
+   "id": "C24",
+   "source": "cj-p2-C24-1",
+   "check": "reasonless gap (gold CLARIFY)",
+   "replay_expect": "DECLINE with layer 2 in replay",
+   "prompt": "Reviewers asked for 'a network analysis' of our placenta study. We have mRNA-seq and small-RNA-seq from 45 preeclampsia and control placentas. Honestly I don't know what kind of network they expect or what it's supposed to show. The two groups are roughly balanced and both libraries come from the same placentas; can you set something up that would satisfy them?"
+  },
+  {
+   "id": "C07",
+   "source": "cj-p2-C07-1",
+   "check": "near-miss prefix (gold DO)",
+   "replay_expect": "DO partial",
+   "prompt": "We measured 180 circulating miRNAs (normalized, continuous qPCR values) and 45 plasma cytokines in the same 64 sepsis patients; both tables have samples in rows, identical patient IDs and no missing values. What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers, so I can compare survivors with non-survivors patient by patient afterwards."
+  },
+  {
+   "id": "M20",
+   "source": "hb-h4main-M20-1",
+   "check": "control: truly not doable; layer 2 must not mislead (gold DECLINE)",
+   "replay_expect": "DECLINE with layer 2",
+   "prompt": "From 140 melanoma patients treated with anti-PD-1, with pre-treatment RNA-seq and responder labels, I want a trained model that predicts whether a new patient will respond, reported with an AUC on held-out patients."
+  },
+  {
+   "id": "J19",
+   "source": "hb-h2main-J19-1",
+   "check": "P1: legacy scale question beside the agent's",
+   "replay_expect": "ASK",
+   "prompt": "We have paired proteome (250 proteins) and phosphoproteome (150 sites) tables from 46 kidney tumours and want a partial-correlation network linking the two layers. The aims page says one network for the whole cohort, the grant narrative says one per tumour, and I can't tell which my PI meant."
+  },
+  {
+   "id": "C56",
+   "source": "cj-p3-C56-1",
+   "check": "P1: was UNCHECKED (gold ASK)",
+   "replay_expect": "ASK",
+   "prompt": "Can SAMBAR subtype our 160 pediatric medulloblastomas? The sequencing core sent a samples-by-genes variant-count matrix along with gene lengths, a cancer-gene list and a KEGG GMT, but their README doesn't say whether the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself."
+  },
+  {
+   "id": "J34",
+   "source": "hb-h2main-J34-1",
+   "check": "P1: was UNCHECKED, somatic or germline (gold ask)",
+   "replay_expect": "ASK",
+   "prompt": "I've put calls_30pts.csv, gene_lengths.csv, cancer_genes.txt and kegg.gmt in data/; start SAMBAR into sambar_30/ now. No one documented the old pipeline that made calls_30pts.csv, so it's unclear to me whether it holds somatic mutations or germline variants."
+  },
+  {
+   "id": "M06",
+   "source": "hb-h4main-M06-1",
+   "check": "P1: legacy wait bound to the agent's same question",
+   "replay_expect": "ASK, one question",
+   "prompt": "SAMBAR pathway-based subtypes are what we want for 210 tumours, from a mutation matrix our core facility produced. I honestly don't know whether their calls are somatic (tumour versus matched normal) or germline variants; the README doesn't say and the analyst has left."
+  },
+  {
+   "id": "C11",
+   "source": "cj-p2-C11-1",
+   "check": "A01 regression: agent asks nothing, legacy wait kept (gold ASK)",
+   "replay_expect": "ASK",
+   "prompt": "Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt. The analysis plan just says 'a network for each AD and control', and I can't tell if that means one network per diagnostic group or one network per donor; the person who wrote it is on leave until next month."
+  },
+  {
+   "id": "L05",
+   "source": "hb-h3main-L05-1",
+   "check": "P1 live path: run request with somatic doubt",
+   "replay_expect": "ASK",
+   "prompt": "We have exome variant calls for 85 pediatric sarcomas as a samples-by-genes count table, and I'd like to group the patients into subtypes from pathway-level mutation scores. One problem: I don't know if these are tumor somatic calls or germline variants, because the pipeline output just says 'variants'."
+  },
+  {
+   "id": "C31",
+   "source": "cj-p2-C31-1",
+   "check": "P1: per-biopsy scale (gold ASK)",
+   "replay_expect": "ASK",
+   "prompt": "Can GIRAFFE give us signed TF-to-gene effects, activation versus repression, for our 40 atopic dermatitis skin biopsies? We have expression, a motif prior and a TF PPI. My supervisor's notes say we need those signed effects for each biopsy separately, but the grant text says one set of signed effects for the whole cohort, and I'm not sure which she actually wants."
+  }
+ ]
+}
