@@ -1,0 +1,465 @@
+{
+ "about": "P0 fixtures of the harness repair (docs/superpowers/plans/2026-10-23-evidence-bound-harness-repair.md). Each fixture keeps what 91a8c2d9 does (`baseline`, written by `fixtures.py record`) apart from what the spec asks (`expected`). Run with docs/research-log/harness-repair-2026-10-23/fixtures.py.",
+ "fixtures": [
+  {
+   "id": "F01",
+   "cases": [
+    "A01"
+   ],
+   "scenario": "A checked fact agent asks nothing; the legacy scale wait (one result for all samples, or one per sample) is kept. Regression of the 91a8c2d9 fix (keep-legacy-waits).",
+   "source": {
+    "kind": "recorded",
+    "session": "hb-h2hyb-J19-1",
+    "turn": "t1",
+    "from": "docs/research-log/closed-menu-options-first-2026-10-18/h2/live/h2hyb/hb-h2hyb-J19-1/t1"
+   },
+   "expected": {
+    "kind": "ASK",
+    "note": "the scale obligation stays open and is asked; an empty agent answer resolves nothing"
+   },
+   "baseline": {
+    "gold": null,
+    "kind": "ASK",
+    "basis": "needs_fact",
+    "partial": false,
+    "fact_agent": {
+     "status": "checked",
+     "asked": [],
+     "rejected": [
+      "R2 contract words not in its contract"
+     ],
+     "legacy": [
+      "Do you want one result for all your samples together, or one per sample?"
+     ],
+     "legacy_kept": true
+    },
+    "reasons": []
+   }
+  },
+  {
+   "id": "F02",
+   "cases": [
+    "A02",
+    "A04"
+   ],
+   "scenario": "The agent asks the same fact as the legacy wait in other words (somatic or germline calls); the legacy wait is lifted as a shadow. Agent questions carry no fact key, so code cannot tell that the two are the same fact.",
+   "source": {
+    "kind": "recorded",
+    "session": "hb-h4main-M06-1",
+    "turn": "t1",
+    "from": "docs/research-log/closed-menu-hybrid-2026-10-19/h4/live/h4main/hb-h4main-M06-1/t1"
+   },
+   "expected": {
+    "kind": "ASK",
+    "note": "the legacy obligation is discharged only with a reference to the agent question for the same fact key; otherwise it stays open"
+   },
+   "baseline": {
+    "gold": "ASK",
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "partial": false,
+    "fact_agent": {
+     "status": "checked",
+     "asked": [
+      "Are the calls somatic variants?"
+     ],
+     "rejected": [
+      "R6 the same words already ask a fact"
+     ],
+     "legacy": [
+      "Are these acquired somatic mutations, or inherited germline variants?"
+     ],
+     "legacy_kept": false
+    },
+    "reasons": []
+   }
+  },
+  {
+   "id": "F03",
+   "cases": [
+    "A02"
+   ],
+   "scenario": "The agent asks an unrelated BONOBO fact; the CONDOR network-kind wait is lifted and its row credited, so the regulator-gene answer is assumed. No clean recorded case: built as tests/test_fact_check.py builds it.",
+   "source": {
+    "kind": "synthetic_lift",
+    "task": "Run CONDOR on net.tsv to get communities; I can't recall whether it links TFs to genes or genes to genes. Also run BONOBO on lesions.tsv for my 9 biopsies: the matrix was mean-centered, but I can't tell whether the values were log-transformed before centering.",
+    "check": {
+     "requirements": [
+      {
+       "quote": "Run CONDOR on net.tsv",
+       "kind": "result",
+       "status": "needs_fact",
+       "depends_on": "input_network",
+       "unknown_quote": "I can't recall",
+       "outcomes": {
+        "regulator_gene": [
+         "condor.communities"
+        ],
+        "gene_gene": []
+       },
+       "delivered_by": [
+        "condor.communities"
+       ]
+      }
+     ]
+    },
+    "agent": {
+     "status": "checked",
+     "accepted": [
+      {
+       "question": "Were the values log-transformed before they were centered?",
+       "user_quote": "I can't tell whether the values were log-transformed before centering",
+       "workflows": [
+        "BONOBO"
+       ],
+       "contract_quote": "The agent requires the caller to declare log_transformed=true and centered=true",
+       "if_yes": "supported",
+       "if_no": "not_supported",
+       "uncertainty": "said_unknown"
+      }
+     ]
+    }
+   },
+   "expected": {
+    "kind": "ASK",
+    "note": "the CONDOR obligation stays open (asked now or queued); the row is not credited until the user answers"
+   },
+   "baseline": {
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "partial": false,
+    "rows": [
+     [
+      "Run CONDOR on net.tsv",
+      "available",
+      [
+       "condor.communities"
+      ]
+     ]
+    ],
+    "asked": [
+     "Were the values log-transformed before they were centered?"
+    ],
+    "legacy_shadow": [
+     "Does your network link regulators (such as TFs) to their target genes, or genes to genes?"
+    ],
+    "legacy_kept": false
+   }
+  },
+  {
+   "id": "F04",
+   "cases": [
+    "A02",
+    "A05"
+   ],
+   "scenario": "A lifted wait whose outcomes deliver nothing becomes not_available, so a lift can produce a refusal. Code path only: no recorded legacy wait delivers nothing (2026-10-23 scan).",
+   "source": {
+    "kind": "synthetic_lift",
+    "task": "Run CONDOR on net.tsv to get communities; I can't recall whether it links TFs to genes or genes to genes. Also run BONOBO on lesions.tsv for my 9 biopsies: the matrix was mean-centered, but I can't tell whether the values were log-transformed before centering.",
+    "check": {
+     "requirements": [
+      {
+       "quote": "Run CONDOR on net.tsv",
+       "kind": "result",
+       "status": "needs_fact",
+       "depends_on": "input_network",
+       "unknown_quote": "I can't recall",
+       "outcomes": {
+        "regulator_gene": [],
+        "gene_gene": []
+       },
+       "delivered_by": []
+      }
+     ]
+    },
+    "agent": {
+     "status": "checked",
+     "accepted": [
+      {
+       "question": "Were the values log-transformed before they were centered?",
+       "user_quote": "I can't tell whether the values were log-transformed before centering",
+       "workflows": [
+        "BONOBO"
+       ],
+       "contract_quote": "The agent requires the caller to declare log_transformed=true and centered=true",
+       "if_yes": "supported",
+       "if_no": "not_supported",
+       "uncertainty": "said_unknown"
+      }
+     ]
+    }
+   },
+   "expected": {
+    "kind": "ASK",
+    "note": "the row stays unresolved; nothing delivered is no counter-evidence and never a refusal reason"
+   },
+   "baseline": {
+    "kind": "ASK",
+    "basis": "fact_agent",
+    "partial": false,
+    "rows": [
+     [
+      "Run CONDOR on net.tsv",
+      "not_available",
+      []
+     ]
+    ],
+    "asked": [
+     "Were the values log-transformed before they were centered?"
+    ],
+    "legacy_shadow": [
+     "Does your network link regulators (such as TFs) to their target genes, or genes to genes?"
+    ],
+    "legacy_kept": false
+   }
+  },
+  {
+   "id": "F05",
+   "cases": [
+    "A03"
+   ],
+   "scenario": "Three valid questions: the third is rejected (R6 more than two questions). No recorded case: R6 'more than two' never fired in the 1,340 readings.",
+   "source": {
+    "kind": "synthetic_kept",
+    "task": "Run BONOBO on lesions.tsv for my 9 biopsies. The matrix was mean-centered, but I can't tell whether the values were log-transformed before centering.",
+    "uncertain": [
+     "I can't tell whether the values were log-transformed before centering",
+     "mean-centered",
+     "9 biopsies"
+    ],
+    "proposals": [
+     {},
+     {
+      "user_quote": "9 biopsies",
+      "question": "third?"
+     },
+     {
+      "user_quote": "mean-centered"
+     }
+    ]
+   },
+   "expected": {
+    "note": "two questions are asked; the third valid one is queued (open), not rejected, and the turn does not claim its conditions complete"
+   },
+   "baseline": {
+    "asked": [
+     "9 biopsies",
+     "mean-centered"
+    ],
+    "rejected": [
+     [
+      "R6 more than two questions",
+      "I can't tell whether the values were log-transformed before centering"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F06",
+   "cases": [
+    "A05",
+    "A22"
+   ],
+   "scenario": "'Please run the network analysis on expr_sle_monocytes.tsv and send me the results.' names no result: the empty match becomes a full gap, declined with no reason (gold CLARIFY).",
+   "source": {
+    "kind": "recorded",
+    "session": "cj-p0-C12-1",
+    "turn": "t1",
+    "from": "main tree docs/research-log/core-judgment-2026-10-15/live/p0/cj-p0-C12-1/t1 (1c2e66ac, branch evidence-contract-grounding)"
+   },
+   "expected": {
+    "kind": "CLARIFY",
+    "note": "an empty match is no counter-evidence; the goal is unnamed, so ask which result. A DECLINE here would need a layer-2 reason"
+   },
+   "baseline": {
+    "gold": "CLARIFY",
+    "kind": "DECLINE",
+    "basis": "full_gap",
+    "partial": false,
+    "fact_agent": null,
+    "reasons": [
+     [
+      "send me the results",
+      "R0",
+      ""
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F07",
+   "cases": [
+    "A06",
+    "A07",
+    "A22"
+   ],
+   "scenario": "GIRAFFE's no-settings reason is attached to the background phrase 'TF activities stabilised', read as a request row; the PPI-weight row states no reason.",
+   "source": {
+    "kind": "recorded",
+    "session": "hb-h1-H40-1",
+    "turn": "t1",
+    "from": "docs/research-log/closed-menu-phase1b-2026-10-18/heldout/live/h1/hb-h1-H40-1/t1"
+   },
+   "expected": {
+    "kind": "DO",
+    "partial": true,
+    "note": "background is not a current requirement; reasons sit only on the requested settings; every not-doable item has a layer-1 or layer-2 reason. Under the 10-23 partial decision GIRAFFE with defaults is listed as doable, run_allowed=false"
+   },
+   "baseline": {
+    "gold": "DECLINE",
+    "kind": "DECLINE",
+    "basis": "all_results_not_available",
+    "partial": false,
+    "fact_agent": {
+     "status": "checked",
+     "asked": [],
+     "rejected": [
+      "R1 the check did not read these words as the user being unsure",
+      "R1 the check did not read these words as the user being unsure",
+      "R1 the check did not read these words as the user being unsure"
+     ],
+     "legacy": [],
+     "legacy_kept": false
+    },
+    "reasons": [
+     [
+      "I'd like GIRAFFE run",
+      "R1",
+      "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"custom learning rate of 0.001\" cannot be applied."
+     ],
+     [
+      "I'd like GIRAFFE run",
+      "R1",
+      "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"5,000 iterations\" cannot be applied."
+     ],
+     [
+      "TF activities stabilised",
+      "R1",
+      "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"custom learning rate of 0.001\" cannot be applied."
+     ],
+     [
+      "TF activities stabilised",
+      "R1",
+      "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"5,000 iterations\" cannot be applied."
+     ],
+     [
+      "custom learning rate of 0.001",
+      "R1",
+      "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"custom learning rate of 0.001\" cannot be applied."
+     ],
+     [
+      "5,000 iterations",
+      "R1",
+      "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"5,000 iterations\" cannot be applied."
+     ],
+     [
+      "heavier weight on the PPI term in the loss",
+      "R0",
+      ""
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F08",
+   "cases": [
+    "A08",
+    "A22"
+   ],
+   "scenario": "GIRAFFE run with settings it does not take: the run row is held with the settings (ROUND-17 same_run_holds) and the turn is declined whole; the PPI-weight row states no reason.",
+   "source": {
+    "kind": "recorded",
+    "session": "hb-h3main-L21-1",
+    "turn": "t1",
+    "from": "docs/research-log/closed-menu-slim-2026-10-19/h3/live/h3main/hb-h3main-L21-1/t1"
+   },
+   "expected": {
+    "kind": "DO",
+    "partial": true,
+    "note": "10-23 decision: DO + partial -- GIRAFFE with its defaults listed as doable, the settings as not, run_allowed=false until the user confirms the changed request; every not-doable item has a reason. Gold L21 (DECLINE) is to be relabelled"
+   },
+   "baseline": {
+    "gold": "DECLINE",
+    "kind": "DECLINE",
+    "basis": "all_results_not_available",
+    "partial": false,
+    "fact_agent": {
+     "status": "checked",
+     "asked": [],
+     "rejected": [
+      "R1 the check did not read these words as the user being unsure"
+     ],
+     "legacy": [],
+     "legacy_kept": false
+    },
+    "reasons": [
+     [
+      "Please run GIRAFFE",
+      "R1",
+      "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"learning rate 0.0005\" cannot be applied."
+     ],
+     [
+      "Please run GIRAFFE",
+      "R1",
+      "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"5,000 iterations\" cannot be applied."
+     ],
+     [
+      "learning rate 0.0005",
+      "R1",
+      "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"learning rate 0.0005\" cannot be applied."
+     ],
+     [
+      "5,000 iterations",
+      "R1",
+      "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"5,000 iterations\" cannot be applied."
+     ],
+     [
+      "a heavier weight on the PPI term of the loss",
+      "R0",
+      ""
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F09",
+   "cases": [
+    "A21"
+   ],
+   "scenario": "A doable request (gold DO, LIONESS-DRAGON) states an unrelated PANDA near miss as why 'within and across the two layers' cannot be given.",
+   "source": {
+    "kind": "recorded",
+    "session": "cj-g4o1-C07-1",
+    "turn": "t1",
+    "from": "main tree docs/research-log/core-judgment-2026-10-15/live/g4o1/cj-g4o1-C07-1/t1 (1c2e66ac, branch evidence-contract-grounding)"
+   },
+   "expected": {
+    "kind": "DO",
+    "note": "no reason whose binding code cannot verify; the near miss is not said. If the row stays not available, its reason is layer 2"
+   },
+   "baseline": {
+    "gold": "DO",
+    "kind": "DO",
+    "basis": "results_given",
+    "partial": true,
+    "fact_agent": {
+     "status": "checked",
+     "asked": [],
+     "rejected": [
+      "R1 the check did not read these words as the user being unsure"
+     ],
+     "legacy": [],
+     "legacy_kept": false
+    },
+    "reasons": [
+     [
+      "within and across the two layers",
+      "R3",
+      "PANDA does not give it: the PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or stoichiometry."
+     ]
+    ]
+   }
+  }
+ ],
+ "baseline_code": "91a8c2d9 (netzoo-agent/main da39e8ac)"
+}
