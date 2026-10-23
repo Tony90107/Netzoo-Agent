@@ -196,6 +196,34 @@ def test_rounds_survive_resumes_and_reach_the_third_turn(sessions):
     assert _payload(sessions)["task_state"]["rounds"] == 3
 
 
+def test_vague_replies_to_open_questions_are_rounds_restated_then_exhausted(sessions):
+    """A13 as it happened live (LIVE-P3.md S11, S12): "I don't know" is resolved as needs_detail and never reaches the
+    graph; it still counts as a round -- the questions restated, then the exhausted note -- and the session waits."""
+    from netzoo_agent_core.interpretation.task_answers import EXHAUSTED_NOTE
+
+    graph = Graph(lambda inv: _result(inv, "ASK", _origin()), lambda inv: _result(inv, "DO"))
+    _turn(GOAL, graph)
+    _machine, action = _turn("I really am not sure.", graph, resume=True, resolver=_resolver("needs_detail"))
+    assert "I couldn't match your reply to an answer" in action.text and "Answer with one of: somatic" in action.text
+    assert (_payload(sessions)["task_state"]["rounds"], _payload(sessions)["task_state"]["status"]) == (2, "active")
+    _machine, action = _turn("Still not sure.", graph, resume=True, resolver=_resolver("needs_detail"))
+    assert EXHAUSTED_NOTE in action.text and "Are these acquired somatic mutations" in action.text
+    assert (_payload(sessions)["task_state"]["rounds"], _payload(sessions)["task_state"]["status"]) == (3, "exhausted")
+    assert len(graph.invocations) == 1 and session_module.latest_pending_session_id("p") == SID
+    _turn("They are somatic mutations.", graph, resume=True)  # an answer later still binds and reaches the graph
+    assert [(f["value"], f["status"]) for f in graph.invocations[1]["task_state"]["facts"]] == [("somatic", "known")]
+
+
+def test_a_vague_reply_with_no_open_question_keeps_the_generic_prompt(sessions):
+    graph = Graph(lambda inv: _result(inv, "DECLINE"))
+    machine = ConversationMachine(SimpleNamespace(task=GOAL, keep_session=True), _runtime(graph))
+    machine.next_action()
+    machine.run_turn()  # a declined request: no task waits on the user
+    _machine, action = _turn("hmm", graph, resume=True, resolver=_resolver("needs_detail"))
+    assert "Please enter a concrete follow-up question" in action.text
+    assert _payload(sessions)["task_state"] is None and len(graph.invocations) == 1
+
+
 def test_compaction_never_drops_the_tasks_facts(sessions):
     """A14: past 12 messages the oldest are dropped, the task's answers are not."""
     graph = Graph(lambda inv: _result(inv, "ASK", _origin(), reply="x" * 3000),

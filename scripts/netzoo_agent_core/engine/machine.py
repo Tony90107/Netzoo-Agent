@@ -81,7 +81,7 @@ from .choices import (
     trusted_actions,
 )
 from .state import ConversationState, PreviewState
-from .task_updates import after_turn, reply_answers
+from .task_updates import after_turn, reply_answers, unanswered_round
 from .view import Event, Prompt, Stop, Turn
 
 __all__ = ["ConversationMachine"]
@@ -616,8 +616,8 @@ class ConversationMachine:
         if resolution.kind == "needs_detail" and bound:
             # Harness repair P3: a short reply answering the open question ("yes", "200") is that answer, not vague.
             return self._accept_task(follow_up_task(state.follow_up_context, answer))
-        if resolution.kind == "needs_detail":
-            retry_question = _ui_text(
+        if resolution.kind == "needs_detail":  # P3 (a): with questions open, a round (restated, then exhausted)
+            retry_question = unanswered_round(state, self.runtime.recorder) or _ui_text(
                 "Please enter a concrete follow-up question, provide the "
                 "requested input path, or describe another NetZoo goal."
             )
