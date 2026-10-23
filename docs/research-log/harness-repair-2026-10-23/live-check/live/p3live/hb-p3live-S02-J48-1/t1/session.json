@@ -1,0 +1,784 @@
+{
+  "version": 1,
+  "session_id": "hb-p3live-S02-J48-1",
+  "profile_id": "hb-p3live-S02-J48-1",
+  "auto_generated": false,
+  "created_at": 1792754531.960808,
+  "updated_at": 1792754531.960862,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish. After QC we kept either two or four libraries; the sequencing core still hasn't told me which. We have the zebrafish motif prior and PPI."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 2 or 4?\n  You wrote: \"After QC we kept either two or four libraries; the sequencing core still hasn't told me which\".\n  - 2: no registered workflow can do this as asked -- LIONESS-PANDA needs at least 3 samples; the request has 2\n  - 4: LIONESS-PANDA can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_panda",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [
+          "lioness_base_compatibility"
+        ],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [
+              "lioness_base_compatibility"
+            ],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish.",
+              "rationale": "The user is requesting LIONESS-PANDA networks, which are a type of regulatory network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "the zebrafish motif prior",
+              "rationale": "The user mentions having a zebrafish motif prior, which typically involves transcription factors as regulators."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish.",
+              "rationale": "The user is requesting LIONESS-PANDA networks, which involve gene targets in the context of zebrafish heart regeneration."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "lioness_base_compatibility",
+              "source": "explicit",
+              "text_span": "LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish.",
+              "rationale": "The user is requesting LIONESS-PANDA networks, which indicates compatibility with LIONESS base networks."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "registry_features",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these is right: 2 or 4?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "we have the zebrafish motif prior and PPI",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "we have the zebrafish motif prior and PPI",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "we have the zebrafish motif prior and PPI",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish.",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "lioness_panda.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "4": [
+                "lioness_panda.per_sample_networks"
+              ]
+            },
+            "unknown_quote": "After QC we kept either two or four libraries; the sequencing core still hasn't told me which.",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PANDA",
+              "named_quote": "LIONESS-PANDA"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": true,
+            "outcome_notes": {
+              "2": "LIONESS-PANDA needs at least 3 samples; the request has 2"
+            },
+            "fact_ids": [
+              "sample_count@112-123:candidates"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "After QC we kept either two or four libraries; the sequencing core still hasn't told me which.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "We have the zebrafish motif prior and PPI.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {
+          "After QC we kept either two or four libraries; the sequencing core still hasn't told me which.": {
+            "kind": "choices",
+            "values": [
+              2,
+              4
+            ],
+            "kept_without_scope": true
+          }
+        },
+        "unknown_scopes": {},
+        "unknowns": [
+          [
+            "sample_count",
+            "After QC we kept either two or four libraries; the sequencing core still hasn't told me which."
+          ]
+        ],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [
+          {
+            "of": "samples",
+            "quote": "After QC we kept either two or four libraries; the sequencing core still hasn't told me which.",
+            "values": [
+              2,
+              4
+            ]
+          }
+        ],
+        "uncertain_quotes": [
+          "After QC we kept either two or four libraries; the sequencing core still hasn't told me which."
+        ],
+        "stated_quotes": [
+          "LIONESS-PANDA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@112-123:candidates",
+            "property": "sample_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "2",
+              "4"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "After QC we kept either two or four libraries; the sequencing core still hasn't told me which.",
+            "span": [
+              112,
+              123
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "context_candidates",
+                "quote": "After QC we kept either two or four libraries; the sequencing core still hasn't told me which.",
+                "span": [
+                  112,
+                  123
+                ],
+                "result": "",
+                "role": "alternative"
+              },
+              {
+                "reader": "unknown_facts",
+                "quote": "After QC we kept either two or four libraries; the sequencing core still hasn't told me which.",
+                "span": [
+                  88,
+                  182
+                ],
+                "result": "",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": [
+          {
+            "property": "sample_count",
+            "name": "",
+            "result": "",
+            "used": [
+              "sample_count@112-123:candidates"
+            ],
+            "set_aside": [],
+            "reason": "empty_scope_kept"
+          }
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-PANDA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which of these is right: 2 or 4?",
+            "user_quote": "After QC we kept either two or four libraries; the sequencing core still hasn't told me which.",
+            "workflows": [
+              "LIONESS-PANDA"
+            ],
+            "contract_quote": "",
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "4": [
+                "LIONESS-PANDA"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": true,
+            "notes": {
+              "2": "LIONESS-PANDA needs at least 3 samples; the request has 2"
+            },
+            "fact_key": "count:sample_count@88-182"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "count_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "obligations": [
+            {
+              "fact_key": "count:sample_count@88-182",
+              "source": "count",
+              "question": "Which of these is right: 2 or 4?",
+              "user_quote": "After QC we kept either two or four libraries; the sequencing core still hasn't told me which.",
+              "workflows": [
+                "LIONESS-PANDA"
+              ],
+              "status": "asked",
+              "asked_as": ""
+            },
+            {
+              "fact_key": "agent:LIONESS-PANDA@97-182",
+              "source": "agent",
+              "question": "Do you have at least three expression samples?",
+              "user_quote": "we kept either two or four libraries; the sequencing core still hasn't told me which.",
+              "workflows": [
+                "LIONESS-PANDA"
+              ],
+              "status": "asked",
+              "asked_as": "count:sample_count@88-182"
+            }
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PANDA",
+          "PANDA"
+        ],
+        "accepted": [
+          {
+            "question": "Do you have at least three expression samples?",
+            "user_quote": "we kept either two or four libraries; the sequencing core still hasn't told me which.",
+            "workflows": [
+              "LIONESS-PANDA"
+            ],
+            "contract_quote": "Require at least three expression samples before execution.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "not_supported",
+            "if_no": "supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:LIONESS-PANDA@97-182"
+          }
+        ],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "When a patient or sample identifier is supplied, produce sample-specific networks for all available samples, select the requested sample afterward, and keep it separate from the aggregate network.",
+              "question": "Will you supply a patient or sample identifier for each fish?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "sample-specific networks",
+                "aggregate networks"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 35696,
+    "output_tokens": 1551,
+    "total_tokens": 37247,
+    "calls": [
+      {
+        "call_id": "a1b2c9f7-d0a5-4ecc-83f5-6e8604c112b3",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792754507-xNyfgDRTo3t9iMuCHyfr",
+        "input_tokens": 5330,
+        "output_tokens": 421,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5751,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 687,
+        "price_snapshot": null,
+        "duration_ms": 6052,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "be3cf1ce-d7b3-4d2b-9560-4df3301e468c",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792754512-i9vVrBYzQgZtziO6R1fe",
+        "input_tokens": 5838,
+        "output_tokens": 182,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 6020,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 985,
+        "price_snapshot": null,
+        "duration_ms": 3637,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3008f626-6de7-4eb2-9c6f-028f5814c174",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792754516-PbJadTGZ6Is9S97bP7rJ",
+        "input_tokens": 1544,
+        "output_tokens": 82,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1626,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 281,
+        "price_snapshot": null,
+        "duration_ms": 1863,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a80430ab-d9ec-4336-b8cc-9413bfcd6782",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 636,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 678,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 121,
+        "price_snapshot": {
+          "snapshot_id": "4092c3c0-342a-5929-b46e-75c39ebc32d5",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-23T11:21:40.220919Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1152,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "d0839a31-ac04-46d0-a4fe-dc5538df20e2",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792754519-TX2jD205DEle3xk0g4jO",
+        "input_tokens": 1650,
+        "output_tokens": 46,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1696,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 275,
+        "price_snapshot": null,
+        "duration_ms": 1533,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b5863612-a992-4e54-a8db-123436b28314",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792754521-3wmUcDvmtwfhSZOtFike",
+        "input_tokens": 18383,
+        "output_tokens": 494,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 18877,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 3054,
+        "price_snapshot": null,
+        "duration_ms": 6278,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "fb1790eb-c6b0-4d65-adfb-17c9bda8c1cb",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792754527-E8ytQLaUh9EPbc4cNIsR",
+        "input_tokens": 553,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 564,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 90,
+        "price_snapshot": null,
+        "duration_ms": 990,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8c5d88fa-3c28-4084-84c8-abee2811515e",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792754528-KouoL6V2XgKZtgpnMFJ7",
+        "input_tokens": 542,
+        "output_tokens": 46,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 588,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 109,
+        "price_snapshot": null,
+        "duration_ms": 1057,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9f149731-4887-4968-bc72-c89c5419500c",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792754529-rK57TLkVcvUVEYgMMpi1",
+        "input_tokens": 1220,
+        "output_tokens": 227,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1447,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 319,
+        "price_snapshot": null,
+        "duration_ms": 2584,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "37bef809-1c34-4e9d-b21b-4a108519f314",
+  "task_state": {
+    "version": 1,
+    "task_id": "516b0b83",
+    "revision": 1,
+    "goal": "I want LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish. After QC we kept either two or four libraries; the sequencing core still hasn't told me which. We have the zebrafish motif prior and PPI.",
+    "pending": [
+      {
+        "question_id": "count:sample_count:6be3fd256a",
+        "source": "count",
+        "what": "sample_count",
+        "question": "Which of these is right: 2 or 4?",
+        "user_quote": "After QC we kept either two or four libraries; the sequencing core still hasn't told me which.",
+        "workflows": [
+          "LIONESS-PANDA"
+        ],
+        "options": {
+          "2": [],
+          "4": [
+            "LIONESS-PANDA"
+          ]
+        },
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

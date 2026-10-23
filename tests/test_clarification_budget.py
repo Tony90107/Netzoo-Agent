@@ -11,7 +11,7 @@ from netzoo_agent_core.contracts import AIMessage, HumanMessage, TaskDecision  #
 from netzoo_agent_core.contracts.capability_check import CapabilityCheck, CheckedRequirement  # noqa: E402
 from netzoo_agent_core.contracts.core_decision import CoreDecision, FactQuestion  # noqa: E402
 from netzoo_agent_core.contracts.task_state import PendingQuestion, TaskFact, TaskState  # noqa: E402
-from netzoo_agent_core.engine.task_updates import bind_answers, opened_goal  # noqa: E402
+from netzoo_agent_core.engine.task_updates import bind_answers, opened_goal, unanswered_reply  # noqa: E402
 from netzoo_agent_core.interpretation.core_decision import with_core  # noqa: E402
 from netzoo_agent_core.interpretation.task_answers import (  # noqa: E402
     EXHAUSTED_NOTE, answered_check, clarification_rounds,
@@ -144,3 +144,37 @@ def test_an_exhausted_ask_says_so_before_what_is_still_missing():
     text = result["messages"][-1].content
     assert text.startswith(EXHAUSTED_NOTE) and "Are the calls somatic?" in text
     assert result["reply_kind"] == "ask_facts"
+
+
+def test_a_reply_answering_nothing_is_a_round_restated_below_two_then_exhausted():
+    """P3 live fix (a): "I don't know" never reached a turn, so the two-round cap was never met (LIVE-P3.md)."""
+    queued = _origin(status="queued").model_copy(update={"question_id": "agent:q", "question": "Queued, not asked."})
+    task, text = unanswered_reply(_task(_origin(), queued, rounds=1))
+    assert (task.rounds, task.status, task.revision, task.turns) == (2, "active", 1, 1)
+    assert text.splitlines() == [
+        "I couldn't match your reply to an answer, so nothing was chosen or run. I still need:",
+        "- Are these acquired somatic mutations, or inherited germline variants?",
+        f'  You wrote: "{UNSURE}".',
+        "  Answer with one of: somatic mutations, germline variants."]
+    task, text = unanswered_reply(task)
+    assert (task.rounds, task.status) == (3, "exhausted") and len(task.pending) == 2
+    assert text.startswith(f"{EXHAUSTED_NOTE}\n\nStill missing:\n- Are these acquired somatic")
+
+
+def test_yes_or_no_is_offered_only_for_the_one_open_agent_question():
+    agent = PendingQuestion(question_id="agent:SAMBAR:x", source="agent", what="SAMBAR", yes_no=True,
+                            question="Are the calls somatic?", user_quote="somatic calls")
+    assert unanswered_reply(_task(agent, rounds=1))[1].endswith("  Answer yes or no.")
+    other = agent.model_copy(update={"question_id": "agent:SAMBAR:y", "question": "Are all 80 tumours in it?"})
+    assert "yes or no" not in unanswered_reply(_task(agent, other, rounds=1))[1]
+
+
+def test_answers_are_named_by_label_or_the_questions_own_words_never_internal_values():
+    """LIVE-P3.md S12 rerun: network_given's internal "has" and "none" were offered as answers."""
+    network = PendingQuestion(question_id="dimension:network_given:x", source="dimension", what="network_given",
+                              question="Do you already have a regulator-gene network for CONDOR to run on?",
+                              options={"has": ["CONDOR"], "none": []})
+    panel = PendingQuestion(question_id="count:feature_count:x", source="count", what="feature_count",
+                            question="Which of these is right: 200 or 2,000?", options={"200": ["LIONESS-DRAGON"], "2000": []})
+    assert "Answer with one of" not in unanswered_reply(_task(network, rounds=1))[1]
+    assert unanswered_reply(_task(panel, rounds=1))[1].endswith("  Answer with one of: 200, 2000.")

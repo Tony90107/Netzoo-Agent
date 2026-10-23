@@ -1,0 +1,138 @@
+{
+  "about": "Harness repair P3 multi-turn live check (2026-10-23, user-approved: these 13 sessions, cap US$0.30). Seen items; behaviour check of task state across turns, not an accuracy estimate. Turn 1 is the recorded item's prompt; later turns are scripted replies. A session stops after turn 1 unless it ended in ASK or CLARIFY.",
+  "items": [
+    {
+      "id": "S01-C45",
+      "source": "cj-g4o1-C45-1",
+      "check": "count answered, no outcome",
+      "expect": "2000 bound; not re-asked; DECLINE with the answer quoted",
+      "turns": [
+        "We'd like a separate miRNA-protein partial-correlation network for each of our 50 heart-failure patients, from 300 serum miRNAs and a plasma proteomics panel measured on the same patients (complete, continuous, matching IDs). The catch: I don't remember whether the proteomics we got back is the 200-protein targeted panel or the 2,000-protein discovery panel, and the files are still on the CRO's server.",
+        "It's the 2,000-protein discovery panel."
+      ]
+    },
+    {
+      "id": "S02-J48",
+      "source": "hb-h2hyb-J48-1",
+      "check": "count answered, outcome",
+      "expect": "4 bound; not re-asked; DO (LIONESS-PANDA)",
+      "turns": [
+        "I want LIONESS-PANDA networks for our zebrafish heart regeneration study, one per fish. After QC we kept either two or four libraries; the sequencing core still hasn't told me which. We have the zebrafish motif prior and PPI.",
+        "We kept 4 libraries."
+      ]
+    },
+    {
+      "id": "S03-J14",
+      "source": "hb-h2hyb-J14-1",
+      "check": "count answered with a volunteered condition",
+      "expect": "4500 bound; not re-asked; the whole-cohort condition read (DRAGON, DO)",
+      "turns": [
+        "LIONESS-DRAGON for 40 paired RNA and miRNA profiles from the same placentas would be ideal. The miRNA layer has 300 features, but I can't remember whether we kept 450 or 4,500 genes in the RNA layer after filtering.",
+        "4,500 genes. And we'd now prefer one network for the whole cohort rather than one per placenta."
+      ]
+    },
+    {
+      "id": "S04-J19",
+      "source": "hb-h2hyb-J19-1",
+      "check": "dimension answered by its option words",
+      "expect": "per_sample bound; not re-asked; DO (LIONESS-DRAGON), or not available with the answer quoted",
+      "turns": [
+        "We have paired proteome (250 proteins) and phosphoproteome (150 sites) tables from 46 kidney tumours and want a partial-correlation network linking the two layers. The aims page says one network for the whole cohort, the grant narrative says one per tumour, and I can't tell which my PI meant.",
+        "One per sample, please."
+      ]
+    },
+    {
+      "id": "S05-J19",
+      "source": "hb-h2hyb-J19-1",
+      "check": "control: free-text answer the code does not bind",
+      "expect": "nothing bound by code; the reading takes 'each tumour'; scale not re-asked",
+      "turns": [
+        "We have paired proteome (250 proteins) and phosphoproteome (150 sites) tables from 46 kidney tumours and want a partial-correlation network linking the two layers. The aims page says one network for the whole cohort, the grant narrative says one per tumour, and I can't tell which my PI meant.",
+        "My PI confirmed: a separate network for each tumour."
+      ]
+    },
+    {
+      "id": "S06-C56",
+      "source": "hb-p12live-C56-1",
+      "check": "dimension answered",
+      "expect": "somatic bound; origin not re-asked; DO or ASK on other facts only",
+      "turns": [
+        "Can SAMBAR subtype our 160 pediatric medulloblastomas? The sequencing core sent a samples-by-genes variant-count matrix along with gene lengths, a cancer-gene list and a KEGG GMT, but their README doesn't say whether the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself.",
+        "They are somatic mutations, tumour versus matched normal."
+      ]
+    },
+    {
+      "id": "S07-C56",
+      "source": "hb-p12live-C56-1",
+      "check": "correction (A12)",
+      "expect": "t3: somatic superseded, germline known; DECLINE with the answer quoted",
+      "turns": [
+        "Can SAMBAR subtype our 160 pediatric medulloblastomas? The sequencing core sent a samples-by-genes variant-count matrix along with gene lengths, a cancer-gene list and a KEGG GMT, but their README doesn't say whether the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself.",
+        "somatic",
+        "Sorry, I checked again: they are germline variants."
+      ]
+    },
+    {
+      "id": "S08-M06",
+      "source": "hb-h4main-M06-1",
+      "check": "single agent yes/no answered 'yes'",
+      "expect": "not re-prompted for detail; agent yes recorded; DO (SAMBAR)",
+      "turns": [
+        "SAMBAR pathway-based subtypes are what we want for 210 tumours, from a mutation matrix our core facility produced. I honestly don't know whether their calls are somatic (tumour versus matched normal) or germline variants; the README doesn't say and the analyst has left.",
+        "yes"
+      ]
+    },
+    {
+      "id": "S09-M06",
+      "source": "hb-h4main-M06-1",
+      "check": "single agent yes/no answered 'no'",
+      "expect": "agent no recorded; DECLINE with a verifiable reason",
+      "turns": [
+        "SAMBAR pathway-based subtypes are what we want for 210 tumours, from a mutation matrix our core facility produced. I honestly don't know whether their calls are somatic (tumour versus matched normal) or germline variants; the README doesn't say and the analyst has left.",
+        "No, they are germline variants."
+      ]
+    },
+    {
+      "id": "S10-L14",
+      "source": "hb-h3main-L14-1",
+      "check": "two questions and a bare 'yes' (spec 7.2)",
+      "expect": "if t1 asked two: nothing bound, ASK again",
+      "turns": [
+        "I want DRAGON on serum proteomics and stool metabolomics from our IBD study, 60 profiles in each table. I'm not sure the two tables cover the same people, though: the proteomics came from the 2023 visit and the metabolomics may be a different subset of patients.",
+        "yes"
+      ]
+    },
+    {
+      "id": "S11-C12",
+      "source": "hb-goalRead20261021-C12-1",
+      "check": "round cap on CLARIFY (A13)",
+      "expect": "t3 opens with the exhausted note, CLARIFY, nothing run or declined",
+      "turns": [
+        "Please run the network analysis on expr_sle_monocytes.tsv and send me the results.",
+        "I'm not sure, whatever is standard.",
+        "Still not sure, sorry."
+      ]
+    },
+    {
+      "id": "S12-H13",
+      "source": "hb-h1-H13-1",
+      "check": "round cap on ASK (A13)",
+      "expect": "t3 opens with the exhausted note, ASK",
+      "turns": [
+        "Can CONDOR find modules in the network a collaborator emailed me? It's a three-column weighted edge list, but I genuinely have no idea whether it's a TF-to-gene regulatory network or a gene-gene co-expression network - she only called it 'the network'.",
+        "I really don't know.",
+        "Still no idea, she hasn't replied."
+      ]
+    },
+    {
+      "id": "S13-C24",
+      "source": "hb-goalRead20261021-C24-1",
+      "check": "new goal (A12)",
+      "expect": "new task, no old facts; DO (PANDA)",
+      "turns": [
+        "Reviewers asked for 'a network analysis' of our placenta study. We have mRNA-seq and small-RNA-seq from 45 preeclampsia and control placentas. Honestly I don't know what kind of network they expect or what it's supposed to show. The two groups are roughly balanced and both libraries come from the same placentas; can you set something up that would satisfy them?",
+        "Forget that request. New question: build one PANDA TF-to-gene network for our liver RNA-seq; we have expression, a motif prior and a PPI."
+      ]
+    }
+  ]
+}

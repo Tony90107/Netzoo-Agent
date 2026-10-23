@@ -13,10 +13,12 @@ import hashlib
 import re
 import uuid
 
-from ..contracts.task_state import PendingQuestion, TaskFact, TaskState
+from ..contracts.task_state import MAX_ROUNDS, PendingQuestion, TaskFact, TaskState
+from ..interpretation.task_answers import EXHAUSTED_NOTE
 from ..interpretation.task_answers import fold as _fold
 
-__all__ = ["after_turn", "bind_answers", "opened_goal", "question_id", "reply_answers"]
+__all__ = ["after_turn", "bind_answers", "opened_goal", "question_id", "reply_answers", "unanswered_reply",
+           "unanswered_round"]
 
 _PREVIOUS = "Previous NetZoo goal: "
 _FOLLOW_UP = "\nUser follow-up:"
@@ -154,3 +156,57 @@ def reply_answers(state, recorder, answer: str, intent: str) -> list[TaskFact]:
         state.clear_preview()
         state.pending_plan = None
     return bound
+
+
+def _option_names(question: PendingQuestion) -> list[str]:
+    """How to name a question's answers to the user: its labels, else its option words when the question itself says
+    them ("2 or 4"); never internal values such as network_given's "has" and "none" (LIVE-P3.md, S12 rerun)."""
+    if question.options and set(question.options) <= set(question.labels):
+        return [question.labels[value] for value in question.options]
+    asked = _fold(question.question)
+    if question.options and all(re.search(rf"(?<!\w){re.escape(_fold(value))}(?!\w)", asked)
+                                for value in question.options):
+        return list(question.options)
+    return []
+
+
+def unanswered_reply(task: TaskState) -> tuple[TaskState, str]:
+    """The task after a reply that answers none of its open questions, and what the user is told (P3 live fix (a)).
+
+    The reply counts as a round. Below two rounds the questions asked are restated; from then on the exhausted note
+    lists what is still missing and nothing is asked again (spec 7.2)."""
+    asked = [question for question in task.pending if question.status == "asked"] or task.pending
+    lines = []
+    for question in asked:
+        lines.append(f"- {question.question}")
+        if question.user_quote:
+            lines.append(f'  You wrote: "{question.user_quote}".')
+        if names := _option_names(question):
+            lines.append(f"  Answer with one of: {', '.join(names)}.")
+        elif question.yes_no and len(asked) == 1:  # with two open, a bare yes binds neither (bind_answers)
+            lines.append("  Answer yes or no.")
+    exhausted = task.rounds >= MAX_ROUNDS
+    head = (f"{EXHAUSTED_NOTE}\n\nStill missing:" if exhausted
+            else "I couldn't match your reply to an answer, so nothing was chosen or run. I still need:")
+    return task.model_copy(update={
+        "rounds": task.rounds + 1, "status": "exhausted" if exhausted else task.status,
+        "revision": task.revision + 1, "turns": task.turns + 1}), "\n".join([head, *lines])
+
+
+def unanswered_round(state, recorder) -> str | None:
+    """A reply the resolver found too vague that answers none of the open task's questions, counted as a round in
+    code: no graph turn and no model call. The task is saved, so a resumed session keeps the round. None when no task
+    waits on the user (the generic prompt for a more concrete reply stands)."""
+    task = state.task_state
+    if task is None or not task.waiting():
+        return None
+    from ..presentation import _ui_text_quoting
+    from ..session import save_task_state
+
+    state.task_state, text = unanswered_reply(task)
+    save_task_state(state.session_id, state.task_state.model_dump(mode="json"))
+    recorder.append(state.run_id, "task.unanswered_round", "cli", {
+        "task_id": task.task_id, "rounds": state.task_state.rounds, "status": state.task_state.status})
+    quoted = [value for question in task.pending
+              for value in (question.question, question.user_quote, *question.options, *question.labels.values())]
+    return _ui_text_quoting(text, quoted)

@@ -39,6 +39,7 @@ __all__ = [
     "delete_session",
     "compact_conversation",
     "save_session",
+    "save_task_state",
     "load_session",
     "load_session_payload",
 ]
@@ -325,6 +326,16 @@ def load_session(
     if include_usage:
         return messages, plan, payload.get("token_usage")
     return messages, plan
+
+
+def save_task_state(session_id: str, task_state: dict | None) -> None:
+    """Harness repair P3 (a): a round counted without a graph turn changes only the saved task state."""
+    path = _session_path(session_id)
+    if not path.exists():
+        return
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload.update(task_state=task_state, updated_at=time.time())
+    _write_json_atomic(path, payload)
 
 
 def load_session_payload(session_id: str) -> dict:
