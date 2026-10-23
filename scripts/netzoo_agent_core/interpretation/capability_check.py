@@ -604,6 +604,8 @@ def _status_line(item: CheckedRequirement, provisional: bool = False, gap_unconf
         names = _workflows([k for k in item.delivered_by if entry(k).level == 'direct'])
         if provisional:  # phase 3 (round p3 C42, C43): what only the backup read is never said as available
             return f"{quote} -- the backup check matched {names} to this (not confirmed)."
+        if item.method.get("settings_apart"):  # P2 (a): the settings asked for are lines of their own
+            return f"{quote} -- available from {names}, run with its own settings (the settings asked for are below)."
         return f"{quote} -- available from {names}."
     if item.status == "partial":  # P2: the rest was not matched, which is no proof nothing produces it
         return (f"{quote} -- partly available: {_workflows(item.delivered_by)} gives part of it; I couldn't match the "
@@ -943,7 +945,7 @@ def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, lis
     `task`: the request, so a credited result's candidate counts are weighed (`weigh_credited_counts`).
     """
     requirements = [item.model_copy() for item in check.requirements]
-    full, fitted = {}, {}
+    full, fitted, apart = {}, {}, []
     for (index, _action, keys), answer in zip(pairs, answers):
         # "named": the words only ask to run this workflow ("請跑 PANDA"), naming no result -- its own results are
         # what is asked (10-13b F40, F46 were refused when the only choices were all/part/none).
@@ -957,14 +959,20 @@ def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, lis
         # Revalidate at the credit boundary, even if a caller supplied stale/unfiltered pairs.
         candidate = list(dict.fromkeys([*previous, *keys]))
         candidate = fitted[index] = _fitting(candidate, SimpleNamespace(**item.attrs)) if item.attrs else []
-        kept, limits, _instead, own = method_fitting(item.method, candidate)
+        method = item.method
+        if task and (span := _span(task, item.quote)) is not None:
+            # Harness repair P2 (a): a named run's unusable settings are set apart here too (live 2026-10-23 L21: the
+            # first reading credited nothing, and the second opinion's GIRAFFE ran "with its own settings" in one row)
+            method, found = settings_apart(task, method, candidate, [span])
+            apart += [row for row in found if row.quote not in {other.quote for other in requirements + apart}]
+        kept, limits, _instead, own = method_fitting(method, candidate)
         previous = []
         delivered = list(dict.fromkeys([*previous, *kept]))
         requirements[index] = item.model_copy(update={
-            "delivered_by": delivered, "status": _status(delivered), "second_opinion": True,
-            "limits": list(dict.fromkeys([*item.limits, *limits])),
+            "delivered_by": delivered, "status": _status(delivered), "second_opinion": True, "method": method,
+            "limits": list(dict.fromkeys([*(item.limits if method is item.method else []), *limits])),
             "defaults": list(dict.fromkeys([*item.defaults, *own]))})
-    requirements = weigh_credited_counts(task, check, requirements, fitted)
+    requirements = weigh_credited_counts(task, check, [*requirements, *apart], fitted)
     results = [item for item in requirements if item.kind == "result"]
     full_gap = _full_gap(results, check.unchecked)
     return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})

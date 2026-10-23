@@ -298,11 +298,15 @@ F6 = ("Please build LIONESS-PANDA networks for our 40 liver samples with an edge
       "inside the method; motif and PPI files are ready.")
 
 
-def test_m1b_f6_a_setting_joined_to_the_ask_still_limits_it():
-    # m1b F6's gold judges the networks and the threshold as one requirement, not supported; no clause boundary
-    # separates the threshold from "LIONESS-PANDA networks".
+def test_m1b_f6_a_setting_joined_to_a_named_run_is_set_apart():
+    # m1b F6's gold judged the networks and the threshold as one requirement, not supported. Harness repair P2 (a)
+    # (user decision 2026-10-23): the run is named and LIONESS-PANDA runs with its own settings, so the threshold is a
+    # requirement of its own wherever it sits -- DO + partial, the run held (partial_gap approves none).
     check = _check(F6, _ask("LIONESS-PANDA networks", ["lioness_panda.per_sample_networks"], named="LIONESS-PANDA",
                             named_quote="LIONESS-PANDA", scale="per_sample", regulator_kinds=["tf"],
                             settings=[("unregistered", "edge sparsity threshold of 0.3", "0.3")]))
-    [result] = check.results()
-    assert result.status == "not_available" and result.defaults == ["lioness_panda.per_sample_networks"]
+    run, threshold = check.results()
+    assert (run.status, threshold.status) == ("available", "not_available")
+    assert threshold.defaults == ["lioness_panda.per_sample_networks"]
+    assert run_check_verdict(check, "run_lioness_panda")["verdict"] == "partial_gap"
+    assert "run with its own settings (the settings asked for are below)" in understanding_paragraph(check)

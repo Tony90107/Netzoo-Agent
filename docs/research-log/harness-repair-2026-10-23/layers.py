@@ -36,6 +36,9 @@ REVIEW: dict[str, tuple[str, str]] = {
     "cj-p3-C08-1": ("right", "as p2"),
     "cj-p5-C08-1": ("right", "as p2"),
     "cj-p5r-C08-1": ("right", "as p2"),
+    # P2b (a): the same reason, now on the setting row set apart from the named run, plus the true ALT
+    "hb-h2main-J41-1": ("right", "the parquet reason (the gold) on the '.parquet file' row; BONOBO runs with its own"),
+    "hb-h1-H18-1": ("right", "the lambda_inter reason (the gold) on its own row and on the question row; DRAGON runs"),
 }
 
 

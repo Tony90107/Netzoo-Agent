@@ -12,10 +12,10 @@ import re
 
 from ..capability_sheet import entry, sheet_entries
 from ..contracts.capability_check import CheckedRequirement
-from ..method_names import LIONESS_FAMILY, registered_workflows
+from ..method_names import LIONESS_FAMILY, registered_workflows, workflows_in
 from ..workflow_conditions import (
-    UNREGISTERED, StatedSetting, combination_issues, contract_forbids, control_boolean_value, conditions_for,
-    data_issue, enum_value, named_workflows, setting_issue, setting_unresolved,
+    UNCLEAR_CHOICE, UNREGISTERED, StatedSetting, combination_issues, contract_forbids, control_boolean_value,
+    conditions_for, data_issue, enum_value, named_workflows, setting_issue, setting_unresolved,
     stated_numbers,
 )
 from .count_words import side_by_side
@@ -396,7 +396,11 @@ def settings_apart(task: str, method: dict, keys: list[str], asked: list[tuple[i
 
     Harness repair P2 (user decision 2026-10-23): the setting's own row names, as `defaults`, the workflows that can
     still run with their own settings (no data-size issue), as `method_fitting` does (M1), so the run stays doable
-    beside it (`same_run.same_run_holds`).
+    beside it (`same_run.same_run_holds`). P2 (a): when the ask's own words name such a run, its unusable settings are
+    set apart wherever they sit, so the turn is DO + partial however the reading quoted the ask (live 2026-10-23 L21
+    read the run and its optimizer settings as one result and was declined; the replayed reading split them). N11 and
+    F6 above are superseded by this decision; a value the contract forbids (C13) still holds the run. The run's method
+    records the words set apart (`settings_apart`), so its line says it runs with its own settings.
     """
     named = method.get("named")
     allowed = named_workflows(named) if named else None
@@ -408,12 +412,23 @@ def settings_apart(task: str, method: dict, keys: list[str], asked: list[tuple[i
     kept, apart = [], []
     runs = {conditions.workflow for conditions in found
             if not data_issue(conditions, method.get("samples"), method.get("features"), _single(method))}
+    named_run = bool(runs & {name for start, end in asked for name in workflows_in(task[start:end])})
+    judged = []
     for item in method["settings"]:
-        where = _setting_words(task, item)
         setting = StatedSetting(item["name"], item["quote"], item.get("value", ""))
         issues = [setting_issue(conditions, setting) for conditions in found]
         forbidden = any(contract_forbids(conditions, setting) for conditions in found)
-        if all(issues) and not forbidden and all(_own_clause(task, where, ask) for ask in asked):
+        # P2 (a): only a part code can say why it cannot have is set apart from the ask -- words naming no allowed
+        # choice are unsettled (asked), and words of no setting shape are the reading's (C58: a co-expression file
+        # PANDA takes as an input, read as a setting, would be declined)
+        judged.append((item, issues, forbidden, all(issues) and all(_said(issue, item) for issue in issues)))
+    # ... and all of them or none: one unusable setting code cannot say keeps the run in its row with every reason
+    # it has (live L21's number-free "heavier weight on the PPI term" would leave the run unmatched beside its parts)
+    whole = named_run and all(definite and not forbidden for _item, issues, forbidden, definite in judged if all(issues))
+    for item, issues, forbidden, definite in judged:
+        where = _setting_words(task, item)
+        if all(issues) and not forbidden and (whole and definite
+                                              or all(_own_clause(task, where, ask) for ask in asked)):
             words = task[where[0]:where[1]].strip().rstrip(" .;,!?")
             apart.append(CheckedRequirement(quote=words, kind="result", status="not_available",
                                             method={"settings": [item]}, limits=list(dict.fromkeys(issues)),
@@ -423,7 +438,20 @@ def settings_apart(task: str, method: dict, keys: list[str], asked: list[tuple[i
             kept.append(item)
     if not apart:
         return method, []
-    return ({**method, "settings": kept} if kept else {k: v for k, v in method.items() if k != "settings"}), apart
+    rest = {**method, "settings": kept} if kept else {k: v for k, v in method.items() if k != "settings"}
+    return {**rest, "settings_apart": [row.quote for row in apart]}, apart
+
+
+def _said(issue: str, item: dict) -> bool:
+    """Whether a setting's issue is a reason the reply can verify (ROUND-20 `stated_reasons`): not words naming no
+    allowed choice, and a "no setting for" only on words shaped like a setting's value."""
+    from ..workflow_conditions import unpassed_setting
+    from .setting_words import _settable
+
+    if issue.endswith(UNCLEAR_CHOICE):
+        return False
+    found = unpassed_setting(issue)
+    return found is None or _settable(found[0], " ".join([found[1], item.get("value") or ""]))
 
 
 def _own_clause(task: str, words: tuple[int, int], ask: tuple[int, int]) -> bool:

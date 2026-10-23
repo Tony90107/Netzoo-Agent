@@ -63,6 +63,15 @@ def hold_run(decision: TaskDecision, verdict: RunVerdict) -> TaskDecision:
     })
 
 
+def _left_out(gaps: list[dict]) -> str:
+    """What a run leaves out (harness repair P2): a part with a verified limit cannot be given as asked (its reason is
+    above); any other part was not matched -- never "no registered workflow covers" it, a claim the check cannot make."""
+    limited = [row for row in gaps if row.get("limited")]
+    unmatched = [row for row in gaps if not row.get("limited")]
+    return " and ".join([*([f"{_quotes(limited)} cannot be given as asked (above)"] if limited else []),
+                         *([f"I couldn't match {_quotes(unmatched)} to any registered workflow"] if unmatched else [])])
+
+
 def _why(verdict: RunVerdict, offers: list[str]) -> str:
     name, rows = _name(verdict.action), verdict.results
     others = [_name(action) for action in offers if action != verdict.action]
@@ -76,14 +85,13 @@ def _why(verdict: RunVerdict, offers: list[str]) -> str:
                     f"planned {name}, and I have not put another workflow in its place.")
         gives = (f"{_names(others, 'and')} {'gives' if len(others) == 1 else 'give'} what you asked for"
                  if others else "No single registered workflow gives everything you asked for")
-        rest = f", but no registered workflow covers {_quotes(gaps)}" if others and gaps else ""
+        rest = f", but {_left_out(gaps)}" if others and gaps else ""
         return f"You asked me to run this. {gives}{rest}, so I have not planned a run yet."
     if verdict.verdict == "partial_gap":
         given = [row for row in rows if row["status"] in ("available", "with_step")]
         parts = [row for row in rows if row["status"] == "partial"]
         what = f"It covers {_quotes(given)}" if given else "It covers part of what you asked for"
-        rest = (f", but no registered workflow covers {_quotes(gaps)}" if gaps
-                else f", but only part of {_quotes(parts)}")
+        rest = f", but {_left_out(gaps)}" if gaps else f", but only part of {_quotes(parts)}"
         return (f"You asked me to run {name}. {what}{rest}, so the run would do only part of what you asked. "
                 "I have not planned it.")
     if verdict.verdict == "outside_step":
