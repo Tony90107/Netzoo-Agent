@@ -10,6 +10,7 @@ from typing import Callable
 from ..contracts import ReplyIntentDecision
 from ..contracts.planning import WorkflowPlan
 from ..contracts.policy import ProjectPolicySnapshot
+from ..contracts.task_state import TaskState, TaskStateError, load_task_state
 from ..graph import build_graph, invoke_graph_turn
 from ..llm import build_llm, validate_response_model, validate_router_model
 from ..memory import EpisodeStore, UserProfileStore, _safe_memory_id
@@ -62,6 +63,41 @@ class CliRuntime:
     # Log 410: a resumed session's finished last turn (plan, tool results, evaluation), from which
     # the machine rebuilds the follow-up context its next message is resolved against.
     resumed_turn: dict | None = None
+    # Harness repair P3: a resumed session's task state (`contracts.task_state`).
+    task_state: TaskState | None = None
+
+
+@dataclass(slots=True)
+class ResumedSession:
+    """What a saved session gives the runtime that resumes it."""
+
+    conversation: list
+    pending_plan: WorkflowPlan | None
+    resumed_turn: dict | None
+    task_state: TaskState | None
+    active_usage: dict | None
+    run_id: str | None
+
+
+def resumed_session(resume_id: str) -> ResumedSession:
+    """A saved session read back: its conversation, a plan still waiting on input or confirmation, else the finished
+    last turn (Log 410), and its task state (harness repair P3) -- a newer or damaged one is never read as none."""
+    saved_payload = load_session_payload(resume_id)
+    try:
+        task_state = load_task_state(saved_payload)
+    except TaskStateError as error:
+        raise SystemExit(f"Session {resume_id} cannot be resumed: {error}") from error
+    conversation, saved_plan, active_usage = load_session(resume_id, include_usage=True)
+    pending_plan = resumed_turn = None
+    if saved_plan:
+        candidate = WorkflowPlan.model_validate(saved_plan)
+        if candidate.status in {"needs_input", "needs_confirmation"}:
+            pending_plan = candidate
+        else:
+            resumed_turn = {"plan": saved_plan, "tool_results": saved_payload.get("tool_results") or [],
+                            "evaluation": saved_payload.get("evaluation")}
+    return ResumedSession(conversation, pending_plan, resumed_turn, task_state, active_usage,
+                          saved_payload.get("run_id"))
 
 
 def _keep_session_models(args, resume_id: str) -> None:
@@ -249,24 +285,17 @@ def bootstrap_runtime(
         synchronizing_runs.add(active_run_id)
 
     run_id = None
+    task_state = None
     if resume_id:
-        saved_payload = load_session_payload(resume_id)
-        conversation, saved_plan, active_usage = load_session(
-            resume_id,
-            include_usage=True,
-        )
-        run_id, paused = resumed_run_id(trace_store, recorder, saved_payload.get("run_id"),
+        saved = resumed_session(resume_id)
+        conversation, pending_plan, resumed_turn, task_state = (saved.conversation, saved.pending_plan,
+                                                                saved.resumed_turn, saved.task_state)
+        active_usage = saved.active_usage
+        run_id, paused = resumed_run_id(trace_store, recorder, saved.run_id,
                                         session_id=session_id, profile_id=memory_runtime.profile_id)
         if not paused:
             active_usage = None
         ensure_trace_sync(run_id)
-        if saved_plan:
-            candidate = WorkflowPlan.model_validate(saved_plan)
-            if candidate.status in {"needs_input", "needs_confirmation"}:
-                pending_plan = candidate
-            else:
-                resumed_turn = {"plan": saved_plan, "tool_results": saved_payload.get("tool_results") or [],
-                                "evaluation": saved_payload.get("evaluation")}
         _trace("done", f"Resumed session {session_id}")
     else:
         _trace("done", f"Session: {session_id}")
@@ -327,4 +356,5 @@ def bootstrap_runtime(
         invoke_graph_turn_func=invoke_graph_turn,
         reply_resolver=reply_resolver,
         resumed_turn=resumed_turn,
+        task_state=task_state,
     )

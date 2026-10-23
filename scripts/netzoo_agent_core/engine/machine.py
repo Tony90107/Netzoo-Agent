@@ -81,6 +81,7 @@ from .choices import (
     trusted_actions,
 )
 from .state import ConversationState, PreviewState
+from .task_updates import after_turn, reply_answers
 from .view import Event, Prompt, Stop, Turn
 
 __all__ = ["ConversationMachine"]
@@ -129,6 +130,7 @@ class ConversationMachine:
             one_shot=bool(args.task) and not runtime.resume_id,
             queued_task=args.task,
         )
+        self.state.task_state = getattr(runtime, "task_state", None)  # harness repair P3: kept across a resume
         self._stopped = False
         self._exit_code = 0
         self._awaiting: Prompt | None = None
@@ -610,6 +612,10 @@ class ConversationMachine:
         )
         state.active_usage = reply_result.usage.model_dump()
         resolution = reply_result.resolution
+        bound = reply_answers(state, self.runtime.recorder, answer, resolution.kind)
+        if resolution.kind == "needs_detail" and bound:
+            # Harness repair P3: a short reply answering the open question ("yes", "200") is that answer, not vague.
+            return self._accept_task(follow_up_task(state.follow_up_context, answer))
         if resolution.kind == "needs_detail":
             retry_question = _ui_text(
                 "Please enter a concrete follow-up question, provide the "
@@ -749,6 +755,8 @@ class ConversationMachine:
                 "method_comparison": (
                     method_comparison.model_dump() if method_comparison else None
                 ),
+                # Harness repair P3: answered waits are settled; a third round of clarification is not asked.
+                "task_state": state.task_state.model_dump(mode="json") if state.task_state else None,
             }
             if state.active_usage is not None:
                 invocation["token_usage"] = state.active_usage
@@ -820,10 +828,11 @@ class ConversationMachine:
         events: list[Event] = []
         state.conversation = compact_conversation(result["messages"])
         state.active_usage = result.get("token_usage")
+        state.task_state = after_turn(state.task_state, result, task)
         save_session(
             state.session_id,
             state.conversation,
-            result,
+            {**result, "task_state": state.task_state.model_dump(mode="json") if state.task_state else None},
             profile_id=self.runtime.memory.profile_id,
         )
         plan = WorkflowPlan.model_validate(result["plan"])
@@ -896,6 +905,8 @@ class ConversationMachine:
                 _is_auto_session_id(state.session_id)
                 and not self.args.keep_session
                 and evaluation_status != "failed"
+                # Harness repair P3: a session waiting on its clarifying questions is kept to be resumed.
+                and not (state.task_state is not None and state.task_state.waiting())
             ):
                 delete_session(state.session_id)
                 _trace("done", "Removed the successful ephemeral session checkpoint")

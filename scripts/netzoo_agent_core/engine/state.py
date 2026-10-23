@@ -13,6 +13,7 @@ from ..contracts import FollowUpContext
 from ..contracts.interaction import MethodComparison, WorkflowContinuation
 from ..contracts.planning import WorkflowPlan
 from ..contracts.state import NextTurnPrompt
+from ..contracts.task_state import TaskState
 
 __all__ = ["ConversationState", "PreviewState"]
 
@@ -55,6 +56,8 @@ class ConversationState:
     run_paused: bool = False
     # The last reply's card (display only); its options answer the main prompt.
     reply_card: dict | None = None
+    # Harness repair P3: the open task's questions, answers and rounds; saved with the session.
+    task_state: TaskState | None = None
 
     # Set once an input phase has produced a task; consumed by the turn phase.
     pending_task: str | None = None

@@ -623,6 +623,10 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         check = held
     # Core decision phase 2: the fact agent asks; the fixed dimensions below stand only when it did not run.
     result, decision, check = apply_fact_check(context, state, user_task, result, decision, check)
+    # Harness repair P3: a wait the user already answered is settled by that answer, never asked again.
+    from ..interpretation.task_answers import answered_check
+
+    check = answered_check(check, state.get("task_state"))
     if check.needed_facts():
         # Verdict layer step 2: a result waits on a fact the user said they do not know -- on a guidance turn or a
         # run, nothing is selected, refused or run before it is known.
