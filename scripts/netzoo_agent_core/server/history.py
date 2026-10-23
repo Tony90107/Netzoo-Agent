@@ -42,8 +42,8 @@ __all__ = [
 #: Summaries are cheap but there are hundreds of checkpoints; show the recent.
 DEFAULT_LIMIT = 60
 
-#: Statuses a session can be resumed from, per `latest_pending_session_id`.
-RESUMABLE = {"needs_input", "needs_confirmation"}
+#: Statuses a session can be resumed from, per `latest_pending_session_id` (`session.waiting_session`).
+RESUMABLE = {"needs_input", "needs_confirmation", "awaiting_answer"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +113,9 @@ def _saved_status(payload: dict) -> str:
     status = str(plan.get("status") or "unknown")
     if status in RESUMABLE:
         return status
+    task = payload.get("task_state")
+    if isinstance(task, dict) and task.get("status") != "closed" and task.get("pending"):
+        return "awaiting_answer"  # harness repair P3: clarifying questions not yet answered
     evaluation = payload.get("evaluation") or {}
     if evaluation.get("status") == "failed":
         return "failed"

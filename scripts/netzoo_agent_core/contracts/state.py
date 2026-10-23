@@ -43,6 +43,8 @@ class AgentState(TypedDict):
     study_purpose: NotRequired[dict | None]
     # Log 380 (plan item 4): what the request says about its TF priors and miRNA data.
     data_facts: NotRequired[dict | None]
+    # Harness repair P3: the task's questions, answers and rounds before this turn (`contracts.task_state`).
+    task_state: NotRequired[dict | None]
 
 class AgentTurnInterrupted(Exception):
     """Raised when the user interrupts an in-flight graph turn."""

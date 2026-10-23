@@ -55,6 +55,10 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     # Hybrid spec 2026-10-19: the contract veto replaces the hard gates at the same hook (both off by default).
     core, usage, budget_warnings = apply_contract_veto(context, state, decision, core, user_task, usage,
                                                        budget_warnings)
+    # Harness repair P3: a third round of clarification is not asked (spec 7.2).
+    from ..interpretation.task_answers import clarification_rounds
+
+    core = clarification_rounds(core, state.get("task_state"))
     decision = with_core(decision, core)
     record_event(context, state, "core.decision", "classify", core.model_dump(mode="json"))
     routing_state = invocation.routing_state

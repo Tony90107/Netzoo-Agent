@@ -59,6 +59,15 @@ def _is_auto_session_id(session_id: str) -> bool:
     return bool(re.fullmatch(r"[0-9a-f]{8}", session_id))
 
 
+def waiting_session(payload: dict) -> bool:
+    """Whether a saved session waits on its user: a plan needing input or confirmation, or (harness repair P3) a task
+    whose clarifying questions are unanswered -- an ASK or CLARIFY turn, saved as respond_only, is resumed, not pruned."""
+    if (payload.get("plan") or {}).get("status") in {"needs_input", "needs_confirmation"}:
+        return True
+    task = payload.get("task_state")
+    return isinstance(task, dict) and task.get("status") != "closed" and bool(task.get("pending"))
+
+
 def latest_pending_session_id(profile_id: str | None = None) -> str | None:
     """Return the newest resumable clarification without requiring the user to know its id."""
     if not SESSION_ROOT.exists():
@@ -67,9 +76,8 @@ def latest_pending_session_id(profile_id: str | None = None) -> str | None:
     for path in SESSION_ROOT.glob("*.json"):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
-            if (payload.get("plan") or {}).get("status") != "needs_input":
-                if (payload.get("plan") or {}).get("status") != "needs_confirmation":
-                    continue
+            if not waiting_session(payload):
+                continue
             if profile_id and payload.get("profile_id", "default") != profile_id:
                 continue
             pending.append(
@@ -127,10 +135,7 @@ def cleanup_runtime_storage(
                 continue
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
-                if (payload.get("plan") or {}).get("status") in {
-                    "needs_input",
-                    "needs_confirmation",
-                }:
+                if waiting_session(payload):
                     continue
                 if _is_kept(path.stem):
                     # A session someone tagged, named or annotated is an
@@ -299,6 +304,8 @@ def save_session(
             if state.get("token_usage") is not None else None
         ),
         "run_id": state.get("run_id"),
+        # Harness repair P3: the task's questions, answers and rounds -- apart from the messages, so compaction keeps it.
+        "task_state": state.get("task_state"),
     }
     _write_json_atomic(path, payload)
     return path
