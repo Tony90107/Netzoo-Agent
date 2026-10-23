@@ -393,6 +393,10 @@ def settings_apart(task: str, method: dict, keys: list[str], asked: list[tuple[i
     1.5" split lam off whenever the ask's quote stopped before the file list (two reads of three), so OTTER ran in
     part; read with the whole sentence, lam held the run. A setting no credited workflow has (MX12's learning rate,
     MX05's lambda for GIRAFFE) or a value only this runtime cannot honour (MX04's GPU) still stands apart.
+
+    Harness repair P2 (user decision 2026-10-23): the setting's own row names, as `defaults`, the workflows that can
+    still run with their own settings (no data-size issue), as `method_fitting` does (M1), so the run stays doable
+    beside it (`same_run.same_run_holds`).
     """
     named = method.get("named")
     allowed = named_workflows(named) if named else None
@@ -402,6 +406,8 @@ def settings_apart(task: str, method: dict, keys: list[str], asked: list[tuple[i
     if not found or None in found or not method.get("settings"):
         return method, []
     kept, apart = [], []
+    runs = {conditions.workflow for conditions in found
+            if not data_issue(conditions, method.get("samples"), method.get("features"), _single(method))}
     for item in method["settings"]:
         where = _setting_words(task, item)
         setting = StatedSetting(item["name"], item["quote"], item.get("value", ""))
@@ -411,7 +417,8 @@ def settings_apart(task: str, method: dict, keys: list[str], asked: list[tuple[i
             words = task[where[0]:where[1]].strip().rstrip(" .;,!?")
             apart.append(CheckedRequirement(quote=words, kind="result", status="not_available",
                                             method={"settings": [item]}, limits=list(dict.fromkeys(issues)),
-                                            blocks=[conditions.workflow for conditions in found]))
+                                            blocks=[conditions.workflow for conditions in found],
+                                            defaults=[key for key in keys if entry(key).workflow in runs]))
         else:
             kept.append(item)
     if not apart:

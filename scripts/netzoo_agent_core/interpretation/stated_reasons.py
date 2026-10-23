@@ -1,5 +1,6 @@
 """ROUND-20 (user decision, 2026-10-21): a reply never gives wrong information. It says only the reasons code can verify,
-and "not matched to any registered workflow" when it can verify none of a result's reasons.
+and "not matched to any registered workflow" when it can verify none of a result's reasons -- since harness repair
+P2 (2026-10-23) the layer-2 reason of `reason_layers`: what was checked, not why it cannot be done.
 
 ROUND-19 measured the reasons in the 209 replies saying something cannot be done: 14 stated something false, from five
 sources, each with its rule here --

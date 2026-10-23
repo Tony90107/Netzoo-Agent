@@ -98,8 +98,9 @@ def test_a_confirmed_gap_is_answered_and_the_run_is_not_planned(monkeypatch):
 
     reply = respond(None, {"decision": updated.decision.model_dump(), "messages": []})
     assert reply["reply_kind"] == "capability_check_gap"
-    # ROUND-21: a gap no reason can be given for claims only that nothing was matched.
-    assert "This was not matched to any registered workflow, so none is offered." in reply["messages"][-1].content
+    # ROUND-21: a gap no reason can be given for claims only that nothing was matched (P2: layer 2).
+    assert ("I couldn't match this to a result any registered NetZoo workflow produces, so none is offered."
+            in reply["messages"][-1].content)
 
 
 def _unchanged_but_verdict(updated, invocation, verdict):

@@ -1,6 +1,15 @@
 """ROUND-17 (user decision, 2026-10-21): when the registered workflows cannot put a feasible result together, the
 turn is declined, and the reply says why -- never a run of what is left.
 
+Harness repair P2 (user decision, 2026-10-23): a setting a workflow cannot take no longer blocks a run the user asked
+for by the workflow's name. When the workflow can still run with its own settings (`defaults`, M1: only settings are
+at issue, not its data size) and a doable row naming it asks for the run, the turn is DO + partial -- what it gives is
+listed, the setting is declined with its reason, and the run is held for the user (`partial_gap` approves no run),
+never run in part on its own. J44 (GPU), L21 and H40 (GIRAFFE's optimizer) are relabelled DO. Still held: a run limit
+-- sample count, data size (L13) -- as nothing of that run can be produced; and settings whose only doable row names
+no workflow, an attached question or purpose read as a result (H18 "Can you set it up that way?", C08 "I'd like to see
+whether these settings change that"), where listing it as available would be false.
+
 The h1-h3 gold judged a run whose own setting, size or stated requirement cannot be met as not doable (J44 "set
 computing to gpu", L21 GIRAFFE "change the optimizer: learning rate 0.0005", H40, H27 CONDOR "directly on
 rnaseq_tpm.tsv ... without building any network first", L13 LIONESS-DRAGON past its size cap), but the check kept a
@@ -49,10 +58,18 @@ def same_run_holds(check: CapabilityCheck | None) -> CapabilityCheck | None:
     """The check with every doable row that rests only on blocked workflows held, citing why they cannot run."""
     if check is None:
         return check
-    reasons: dict[str, list[str]] = {}
+    from ..method_names import workflows_in
+
+    limited: dict[str, list[str]] = {}
+    unset: dict[str, list[str]] = {}  # P2: only a setting it cannot take is at issue (it runs with its own)
     for row in check.results():
+        runs_anyway = {entry(key).workflow for key in row.defaults}
         for workflow in blocked_workflows(row):
-            reasons.setdefault(workflow, []).extend(_hard(row))
+            (unset if workflow in runs_anyway else limited).setdefault(workflow, []).extend(_hard(row))
+    asked_by_name = {name for row in check.results() if row.kind == "result" and row.status in _DOABLE
+                     for name in workflows_in(row.quote)}
+    reasons = {workflow: [*limited.get(workflow, []), *unset.get(workflow, [])] for workflow in [*limited, *unset]
+               if workflow in limited or workflow not in asked_by_name}
     if not reasons:
         return check
     requirements, held = [], False

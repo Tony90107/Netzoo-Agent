@@ -34,9 +34,9 @@ def test_each_ruled_out_form_says_why():
 
 
 def test_a_gap_no_attribute_explains_stays_unmatched():
-    assert _line(_gap()) == '"the result" -- not matched to any registered workflow.'
-    assert _line(_gap(omics_layers=3, regulator_kinds=["tf", "mirna"], data_unit="bulk_samples")) \
-        == '"the result" -- not matched to any registered workflow.'
+    assert _line(_gap()) == ('"the result" -- I couldn\'t match this to anything a registered NetZoo workflow produces '
+                             'or lets you set.')
+    assert _line(_gap(omics_layers=3, regulator_kinds=["tf", "mirna"], data_unit="bulk_samples")) == _line(_gap())
 
 
 def test_two_reasons_at_most_and_none_on_an_available_result():
