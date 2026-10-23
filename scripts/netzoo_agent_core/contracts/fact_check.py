@@ -69,6 +69,8 @@ class FactCheck(BaseModel):
     model: str = ""
     candidates: list[str] = Field(default_factory=list)
     accepted: list[FactQuestion] = Field(default_factory=list)
+    queued: list[FactQuestion] = Field(default_factory=list)
+    """Harness repair P1: kept questions past the two this turn asks -- still open, never rejected (A03)."""
     rejected: list[RejectedFact] = Field(default_factory=list)
     legacy: list[FactQuestion] = Field(default_factory=list)
     """What the fixed `needed_facts` dimensions would have asked this turn -- shadow only while the agent runs."""

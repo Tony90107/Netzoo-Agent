@@ -41,6 +41,9 @@ class FactQuestion(BaseModel):
     """Phase 5b: a candidate count, each candidate judged in code; its outcomes are said with the question."""
     notes: dict[str, str] = Field(default_factory=dict)
     """Phase 5b: for a candidate whose workflows lose a credit, the contract limit that removes it."""
+    fact_key: str = ""
+    """Harness repair P1: the obligation this question asks -- `<source>:<what>@<start>-<end>` of the user's words in
+    the request (`interpretation.obligations.fact_key`); empty on facts recorded before P1, computed when read."""
 
 
 class DeclinedPart(BaseModel):

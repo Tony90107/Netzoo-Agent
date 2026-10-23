@@ -93,15 +93,13 @@ def test_not_stated_is_held_when_the_user_says_there_is_none_and_untouched_when_
 
 
 def test_the_unstated_network_wait_survives_the_fact_agent_and_is_asked():
-    # The fact agent's run lifts legacy waits (phase 2); this one is code's, as a judged count is.
+    # Harness repair P1: no wait is lifted when the fact agent runs; this one is code's, as a judged count is.
     from netzoo_agent_core.contracts import TaskDecision
     from netzoo_agent_core.contracts.fact_check import FactCheck
-    from netzoo_agent_core.graph.fact_check_call import without_legacy_waits
     from netzoo_agent_core.interpretation.core_decision import decide_core
 
     task = "Please run CONDOR on our lung cohort and put the communities in condor_lung/."
-    waiting = without_legacy_waits(without_unbuilt_network(
-        _check("not_stated", quote="run CONDOR on our lung cohort"), task))
+    waiting = without_unbuilt_network(_check("not_stated", quote="run CONDOR on our lung cohort"), task)
     assert waiting.results()[0].status == "needs_fact"
     for agent in (None, FactCheck(status="checked")):
         decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
@@ -113,19 +111,17 @@ def test_the_unstated_network_wait_survives_the_fact_agent_and_is_asked():
 
 
 def test_the_unstated_network_is_asked_beside_a_fact_agent_question():
-    # With keep-legacy-waits (a72f748f): an agent that asks something lifts legacy waits, never this one.
+    # Asked first beside the agent's question (2026-10-22); since harness repair P1 no wait is lifted at all.
     from netzoo_agent_core.contracts import TaskDecision
     from netzoo_agent_core.contracts.core_decision import FactQuestion
     from netzoo_agent_core.contracts.fact_check import FactCheck
-    from netzoo_agent_core.graph.fact_check_call import waits_after_agent
     from netzoo_agent_core.interpretation.core_decision import decide_core
 
     task = "Please run CONDOR on our lung cohort; I am not sure whether the weights are signed."
     asked = FactQuestion(question="Are the edge weights signed?", user_quote="I am not sure whether the weights are "
                          "signed", workflows=["CONDOR"])
     agent = FactCheck(status="checked", accepted=[asked])
-    waiting = waits_after_agent(without_unbuilt_network(_check("not_stated", quote="Please run CONDOR on our lung "
-                                                                                    "cohort"), task), agent, task)
+    waiting = without_unbuilt_network(_check("not_stated", quote="Please run CONDOR on our lung cohort"), task)
     assert waiting.results()[0].status == "needs_fact"
     core = decide_core(TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
                                     capability_check=waiting, fact_check=agent), task)

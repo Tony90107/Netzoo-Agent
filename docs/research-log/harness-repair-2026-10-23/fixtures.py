@@ -6,7 +6,8 @@ fixtures build the smallest check a scenario needs, as tests/test_fact_check.py 
 hold no clean case of it.
 
 A fixture keeps `baseline` (what 91a8c2d9 does, written once by `record`) apart from `expected` (the spec's case).
-`check` flags every fixture whose behaviour differs from its baseline: in P1/P2 those are the intended changes.
+`check` flags every fixture whose behaviour differs from its baseline on the fields the baseline has: in P1/P2 those
+are the intended changes. Fields later code adds (P1: the `obligations` ledger) are printed, never compared.
 
 Usage: python3 fixtures.py run | record | check
 """
@@ -67,17 +68,28 @@ def recorded(fixtures: list[dict]) -> dict[str, dict]:
                             "status": facts.status, "asked": [q.question for q in facts.accepted],
                             "rejected": [r.rule for r in facts.rejected], "legacy": [q.question for q in facts.legacy],
                             "legacy_kept": bool(call.evidence.get("legacy_kept"))},
-                        "reasons": reasons}
+                        "reasons": reasons, **_ledger(call)}
     return out
+
+
+def _ledger(call) -> dict:
+    """P1's obligations, when the code records them: (source, status, asked_as) and the question."""
+    found = call.evidence.get("obligations")
+    return {} if found is None else {"obligations": [[o["source"], o["status"], o["asked_as"], o["question"]]
+                                                     for o in found]}
 
 
 def synthetic_lift(source: dict) -> dict:
     from netzoo_agent_core.contracts import TaskDecision
     from netzoo_agent_core.contracts.capability_check import CapabilityCheck
     from netzoo_agent_core.contracts.fact_check import FactCheck
-    from netzoo_agent_core.graph.fact_check_call import waits_after_agent
     from netzoo_agent_core.interpretation.core_decision import _facts, decide_core
 
+    try:  # 91a8c2d9 lifts the waits when the agent asks; from P1 (2026-10-23) nothing is lifted
+        from netzoo_agent_core.graph.fact_check_call import waits_after_agent
+    except ImportError:
+        def waits_after_agent(check, facts, task):
+            return check
     check = CapabilityCheck.model_validate(source["check"])
     agent = FactCheck.model_validate(source["agent"])
     agent = agent.model_copy(update={"legacy": _facts(check, by_code=False)})
@@ -88,7 +100,8 @@ def synthetic_lift(source: dict) -> dict:
     return {"kind": call.kind, "basis": call.basis, "partial": call.partial,
             "rows": [[row.quote, row.status, row.delivered_by] for row in lifted.results()],
             "asked": [q.question for q in agent.accepted],
-            "legacy_shadow": call.evidence.get("legacy_facts", []), "legacy_kept": bool(call.evidence.get("legacy_kept"))}
+            "legacy_shadow": call.evidence.get("legacy_facts", []), "legacy_kept": bool(call.evidence.get("legacy_kept")),
+            "core_asks": [q.question for q in call.facts], **_ledger(call)}
 
 
 def synthetic_kept(source: dict) -> dict:
@@ -101,8 +114,11 @@ def synthetic_kept(source: dict) -> dict:
     policy = ProjectPolicyLoader(ROOT).load()
     proposals = FactProposals(facts=[_proposal(**extra) for extra in source["proposals"]])
     facts = kept_facts(source["task"], proposals, _decision(uncertain=tuple(source["uncertain"])), policy)
-    return {"asked": [q.user_quote for q in facts.accepted],
-            "rejected": [[r.rule, r.proposal.get("user_quote")] for r in facts.rejected]}
+    found = {"asked": [q.user_quote for q in facts.accepted],
+             "rejected": [[r.rule, r.proposal.get("user_quote")] for r in facts.rejected]}
+    if hasattr(facts, "queued"):  # P1: past two questions, queued -- still open
+        found["queued"] = [q.user_quote for q in facts.queued]
+    return found
 
 
 def observe() -> tuple[dict, dict]:
@@ -128,7 +144,7 @@ def main(mode: str):
         print(f"== {f['id']} {'/'.join(f['cases'])} {f['source'].get('session', f['source']['kind'])}")
         print(f"   now      {json.dumps(now, ensure_ascii=False)}")
         print(f"   expected {json.dumps(f['expected'], ensure_ascii=False)}")
-        if mode == "check" and f.get("baseline") != now:
+        if mode == "check" and f.get("baseline") != {key: now.get(key) for key in f.get("baseline", {})}:
             changed.append(f["id"])
         if mode == "record":
             f["baseline"] = now

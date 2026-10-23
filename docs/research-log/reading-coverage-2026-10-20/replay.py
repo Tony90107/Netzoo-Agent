@@ -14,7 +14,11 @@ sys.path.insert(0, str(WT / "scripts"))
 
 from netzoo_agent_core.contracts import TaskDecision
 from netzoo_agent_core.contracts.capability_check import proposal_model, reread_as_proposal, reread_model
-from netzoo_agent_core.graph.fact_check_call import without_legacy_waits
+try:  # harness repair P1 (2026-10-23) removed the lift: no wait is lifted when the fact agent runs
+    from netzoo_agent_core.graph.fact_check_call import without_legacy_waits
+except ImportError:
+    def without_legacy_waits(check):
+        return check
 from netzoo_agent_core.interpretation.capability_check import (
     apply_second_opinion, build_capability_check, understanding_paragraph,
 )

@@ -204,7 +204,9 @@ SCHEMA_DIGESTS = {
     # claim's words; read by the reply only, so a registry-wide reason is said for a result in one of them.
     # 2026-10-21 (ROUND-21, R21-A): code-owned open_goal_quote on the check -- set only from a narrow goal read's quote
     # verified in the request, on a full gap no reason can be given for; it turns that DECLINE into CLARIFY.
-    "TaskDecision": "525bbb6ab4b09d89afda05fbda0d5f37d758101bb19f9fbe25eac75298f9498e",
+    # 2026-10-23 (harness repair P1): code-owned FactQuestion.fact_key and FactCheck.queued (kept questions past
+    # the two asked, still open). Verified the digest returns to the previous pin when only these two are removed.
+    "TaskDecision": "c58744b0ef8cdf90f6b940acea9c269d75ac7533f1f6120fb6fc6bb1064102f5",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

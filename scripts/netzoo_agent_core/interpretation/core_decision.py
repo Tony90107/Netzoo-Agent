@@ -17,10 +17,11 @@ Rules, in the spec's order of precedence:
    Phase 5c: also when the fact agent read a wanted result the user is unsure of with fewer than two options named
    (R7, `result_open`) -- before any ASK, so the turn's data facts wait for the goal.
 3. ASK -- phase 2: the fact agent's kept questions (R1-R6, `interpretation.fact_check`); the fixed dimensions
-   (`needs_fact`, or a run held for it) only when the agent did not run or asked nothing, and recorded as shadow
-   when it asked (2026-10-22: lifting them on an agent's empty answer made gold-ASK items DO, `waits_after_agent`).
-   Phase 5b: a count the user gave as candidates, each judged in code, is asked whether or not the agent ran
-   (`count_fact`), before the agent's questions.
+   (`needs_fact`, or a run held for it) when the agent did not run or asked nothing (2026-10-22: lifting them on an
+   agent's empty answer made gold-ASK items DO). Phase 5b: a count the user gave as candidates, each judged in code,
+   is asked whether or not the agent ran (`count_fact`), before the agent's questions. Harness repair P1: when the
+   agent asks, a fixed-dimension wait on other words is asked beside its questions or queued, never lifted
+   (`interpretation.obligations.ask_plan`; the evidence's `obligations` say what became of each).
 4. DECLINE -- every result read is not available (a full gap), a run was held on a gap, routing found the request
    unsupported with nothing read, or the request names a method combination no workflow implements.
 5. CLARIFY (phase 0) -- no result was read, nothing is run and routing offered no workflow.
@@ -38,9 +39,9 @@ from ..capability_sheet import entry, produced_text
 from ..contracts.capability_check import APPROVING_RUN_VERDICTS
 from ..contracts.core_decision import ClarifyNeed, CoreDecision, DeclinedPart, FactQuestion
 from ..method_names import workflows_in
-from .count_alternatives import judged_count_words, splits_candidates
-from .fact_check import MAX_ASKED
 from .needed_facts import _question
+from .obligations import MAX_ASKED, ask_plan, fact_key
+from .request_spans import same_words as _same_words
 
 __all__ = ["decide_core", "goal_unclear", "with_core"]
 
@@ -112,7 +113,9 @@ def _facts(check, by_code: bool | None = None, task: str = "") -> list[FactQuest
         fact = FactQuestion(question=_question(row), user_quote=row.unknown_quote, depends_on=row.depends_on or "",
                             workflows=_names(key for keys in row.outcomes.values() for key in keys),
                             outcomes={value: _names(keys) for value, keys in row.outcomes.items()},
-                            by_code=row.by_code, notes=dict(row.outcome_notes))
+                            by_code=row.by_code, notes=dict(row.outcome_notes),
+                            fact_key=fact_key("count" if row.by_code else "dimension", row.depends_on or "", task,
+                                              row.unknown_quote))
         same = next((index for index, known in enumerate(found)
                      if (known.depends_on, known.by_code, list(known.outcomes)) == (fact.depends_on, fact.by_code,
                                                                                     list(fact.outcomes))
@@ -129,33 +132,16 @@ def _facts(check, by_code: bool | None = None, task: str = "") -> list[FactQuest
     return found
 
 
-def agent_questions(check, agent, task: str = "") -> tuple[list[FactQuestion], list[FactQuestion]]:
-    """What a checked fact agent's turn asks, and the agent's facts a count code judged owns (not asked)."""
-    # Phase 5b (spec 13.3): a count code judged is asked first, beside the agent's (the code's on the same words).
-    counted = _facts(check, by_code=True, task=task)
-    # ROUND-09 (R8): a question on candidates code weighed must be able to tell them apart, or it is not asked.
-    # ROUND-21 (user decision): a fact the run's file check could settle is asked too (recorded R5 flags ignored).
-    owned = [fact for fact in agent.accepted if any(
-        _same_words(task, fact.user_quote, words) and not splits_candidates(fact.question, values)
-        for words, values in judged_count_words(check))]
-    asked = [*counted, *(fact for fact in agent.accepted if fact not in owned
-                         and not any(_same_words(task, fact.user_quote, count.user_quote)
-                                     for count in counted))][:MAX_ASKED]
-    return asked, owned
+def _plan(check, agent, task: str, limit: int = MAX_ASKED):
+    """P1: the checked agent's turn's open facts -- the check's waits (code-judged counts, then the legacy
+    dimensions) beside the agent's questions -- asked or queued (`obligations.ask_plan`)."""
+    return ask_plan(_facts(check, by_code=True, task=task), _facts(check, by_code=False, task=task), agent, check,
+                    task, limit)
 
 
 def _overlaps(a: str, b: str) -> bool:
     a, b = a.casefold().strip(), b.casefold().strip()
     return bool(a and b) and (a in b or b in a)
-
-
-def _same_words(task: str, a: str, b: str) -> bool:
-    """Whether two quotes are, in the request, overlapping words (by containment when they cannot be placed)."""
-    from .request_spans import _span
-
-    if task and (first := _span(task, a)) is not None and (second := _span(task, b)) is not None:
-        return first[0] < second[1] and second[0] < first[1]
-    return _overlaps(a, b)
 
 
 def goal_unclear(check, decision=None, task: str = "") -> bool:
@@ -285,23 +271,21 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         return call("CLARIFY", "goal_unclear", clarify=_clarify_need(decision, check, task=task))
     agent = getattr(decision, "fact_check", None)
     if agent is not None and agent.status == "checked" and agent.open_results:  # phase 5c R7: before any ASK
+        # P1: the turn's facts wait for the goal -- queued, not settled
+        evidence["obligations"] = [o.model_dump() for o in _plan(check, agent, task, limit=0).ledger]
         return call("CLARIFY", "result_open", clarify=_clarify_need(decision, check, agent.open_results[0]))
     if agent is not None and agent.status == "checked":
-        evidence["legacy_facts"] = [fact.question for fact in agent.legacy]  # phase 2: shadow
-        asked, owned = agent_questions(check, agent, task)
-        if owned:
-            evidence["count_owned"] = [fact.question for fact in owned]
-        if asked:
+        evidence["legacy_facts"] = [fact.question for fact in agent.legacy]
+        plan = _plan(check, agent, task)
+        if plan.owned:
+            evidence["count_owned"] = [fact.question for fact in plan.owned]
+        if plan.agent_asks():
             # 2026-10-22 (user decision): a named CONDOR whose request does not say whether its network exists is
-            # code's wait too, asked beside the agent's (asking nothing, the legacy path below asks it).
-            from .ruled_out import NETWORK_GIVEN
-
-            unstated = [fact for fact in _facts(check, by_code=False, task=task) if fact.depends_on == NETWORK_GIVEN]
-            basis = "count_fact" if asked[0].by_code else "fact_agent"
-            asked = [*(fact for fact in asked if fact.by_code), *unstated,
-                     *(fact for fact in asked if not fact.by_code)][:MAX_ASKED]
-            return call("ASK", basis, facts=asked,
-                        workflows=list(dict.fromkeys(name for fact in asked for name in fact.workflows)))
+            # code's wait too, asked beside the agent's; P1: so is every other wait on other words, or it is queued.
+            evidence["obligations"] = [o.model_dump() for o in plan.ledger]
+            basis = "count_fact" if plan.asked[0].by_code else "fact_agent"
+            return call("ASK", basis, facts=plan.asked,
+                        workflows=list(dict.fromkeys(name for fact in plan.asked for name in fact.workflows)))
         if check is not None and check.needed_facts():  # 2026-10-22: an agent asking nothing left them standing
             evidence["legacy_kept"] = True
     if (facts := _facts(check, task=task)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":

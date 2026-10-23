@@ -19,7 +19,6 @@ from test_request_facts import _check  # noqa: E402
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
 from netzoo_agent_core.contracts.core_decision import FactQuestion  # noqa: E402
 from netzoo_agent_core.contracts.fact_check import FactCheck  # noqa: E402
-from netzoo_agent_core.graph.fact_check_call import without_legacy_waits  # noqa: E402
 from netzoo_agent_core.interpretation.core_decision import decide_core  # noqa: E402
 
 ASK = "Build a TF-to-gene network for each sample"
@@ -39,7 +38,7 @@ def _decision(check, *questions):
                              contract_quote="Require at least three expression samples", uncertainty="two_versions",
                              if_yes="supported", if_no="not_supported") for text, quote in questions]
     return TaskDecision(action="no_tool", in_scope=True, should_execute=False, execution_requested=False,
-                        confidence=0.9, reason="guidance", capability_check=without_legacy_waits(check),
+                        confidence=0.9, reason="guidance", capability_check=check,
                         fact_check=FactCheck(status="checked", accepted=accepted))
 
 

@@ -178,7 +178,6 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
     from replay import _proposal
     from netzoo_agent_core.contracts import TaskDecision
     from netzoo_agent_core.contracts.capability_check import reread_as_proposal, reread_model
-    from netzoo_agent_core.graph.fact_check_call import without_legacy_waits
     from netzoo_agent_core.graph.router_invocation import _not_checked
     from netzoo_agent_core.interpretation.capability_check import (
         apply_condition_answers, apply_redirect_answers, apply_second_opinion, build_capability_check,
@@ -318,13 +317,18 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
                 decision = decision.model_copy(update={"fact_check": agent.model_copy(
                     update={"accepted": kept, "open_results": opened})})
                 steps.append("R4 stated setting")
-        try:  # 2026-10-22: an agent that asks nothing leaves the legacy waits (older checkouts lift them always)
-            from netzoo_agent_core.graph.fact_check_call import waits_after_agent
+        try:  # harness repair P1 (2026-10-23): no wait is lifted; decide_core asks or queues each one
+            from netzoo_agent_core.interpretation.obligations import ask_plan  # noqa: F401
+            lifts = None
         except ImportError:
-            waits_after_agent = None
-        if waits_after_agent is None:
-            check = without_legacy_waits(check)
-        elif (after := waits_after_agent(check, decision.fact_check, task)) is not check:
+            try:  # 2026-10-22: an agent that asks nothing leaves the legacy waits (older checkouts lift them always)
+                from netzoo_agent_core.graph.fact_check_call import waits_after_agent as lifts
+            except ImportError:
+                from netzoo_agent_core.graph.fact_check_call import without_legacy_waits
+
+                def lifts(check, facts, task):
+                    return without_legacy_waits(check)
+        if lifts is not None and (after := lifts(check, decision.fact_check, task)) is not check:
             check = after
         elif any(not row.by_code for row in check.needed_facts()):
             steps.append("legacy waits kept")

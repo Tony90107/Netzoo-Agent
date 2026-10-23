@@ -103,7 +103,11 @@ def test_at_most_two_questions_in_the_requests_order(policy):
     check = _kept(policy, _proposal(), third, first,
                   decision=_decision(uncertain=(UNSURE, "mean-centered", "9 biopsies")))
     assert [fact.user_quote for fact in check.accepted] == ["9 biopsies", "mean-centered"]
-    assert check.rejected[0].rule.startswith("R6")
+    # harness repair P1 (A03): the third valid question is queued, still open -- never rejected
+    assert [fact.user_quote for fact in check.queued] == [UNSURE] and check.rejected == []
+    assert [fact.fact_key for fact in check.accepted] == [
+        f"agent:BONOBO@{TASK.index('9 biopsies')}-{TASK.index('9 biopsies') + len('9 biopsies')}",
+        f"agent:BONOBO@{TASK.index('mean-centered')}-{TASK.index('mean-centered') + len('mean-centered')}"]
 
 
 def test_candidates_come_from_the_check_then_routing(policy):
@@ -129,29 +133,32 @@ def _condor_waiting():
         delivered_by=["condor.communities"])])
 
 
-def test_when_the_agent_asks_the_fixed_dimensions_are_shadow(policy):
-    from netzoo_agent_core.graph.fact_check_call import waits_after_agent
-
+def test_a_fixed_dimension_wait_on_other_words_is_asked_beside_the_agents_question(policy):
+    """Harness repair P1 (P0 fixture F03): until P1 the agent's unrelated question lifted the CONDOR wait and credited
+    its row, as if the regulator-gene answer were given; now the wait is asked beside it."""
     agent = _kept(policy, _proposal())
-    lifted = waits_after_agent(_condor_waiting(), agent, TASK)
-    (row,) = lifted.results()
-    assert (row.status, row.delivered_by) == ("available", ["condor.communities"])
+    check = _condor_waiting()
     decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
-                            capability_check=lifted, fact_check=agent.model_copy(update={"legacy": [FactQuestion(
+                            capability_check=check, fact_check=agent.model_copy(update={"legacy": [FactQuestion(
                                 question="Which network?", user_quote="I can't recall")]}))
     core = decide_core(decision, TASK)
     assert (core.kind, core.basis, core.evidence["legacy_facts"]) == ("ASK", "fact_agent", ["Which network?"])
-    opened = FactCheck(status="checked", open_results=["I can't recall"])  # R7 asks the goal first
-    assert waits_after_agent(_condor_waiting(), opened, TASK).needed_facts() == []
+    assert [fact.question for fact in core.facts] == [
+        "Were the values log-transformed before they were centered?",
+        "Does your network link regulators (such as TFs) to their target genes, or genes to genes?"]
+    assert [(o["source"], o["status"], o["asked_as"]) for o in core.evidence["obligations"]] == [
+        ("agent", "asked", ""), ("dimension", "asked", "")]
+    assert check.results()[0].status == "needs_fact"  # not credited before the user answers
+    opened = decision.model_copy(update={"fact_check": FactCheck(status="checked", open_results=["I can't recall"])})
+    core = decide_core(opened, TASK)  # R7 asks the goal first; the wait is queued, not settled
+    assert (core.kind, core.basis) == ("CLARIFY", "result_open")
+    assert [(o["source"], o["status"]) for o in core.evidence["obligations"]] == [("dimension", "queued")]
 
 
 def test_when_the_agent_asks_nothing_the_fixed_dimensions_stand():
     """2026-10-22: replayed, the silent agent's lifted waits made C11, C31 and h2 J19 (all gold ASK) DO."""
-    from netzoo_agent_core.graph.fact_check_call import waits_after_agent
-
     check = _condor_waiting()
     silent = FactCheck(status="checked")
-    assert waits_after_agent(check, silent, "") is check
     decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
                             capability_check=check, fact_check=silent)
     core = decide_core(decision)

@@ -22,8 +22,7 @@ from .capability_check_call import _check_model, with_reading_allowance
 from .context import preflight_budget, record_event
 from .required_check_budget import check_output_reserve, fact_check_input, retryable_check_error
 
-__all__ = ["apply_fact_check", "fact_model", "invoke_fact_agent", "request_fact_check", "waits_after_agent",
-           "without_legacy_waits"]
+__all__ = ["apply_fact_check", "fact_model", "invoke_fact_agent", "request_fact_check"]
 
 
 def fact_model(context):
@@ -89,40 +88,13 @@ def request_fact_check(context, state, user_task: str, decision, usage, budget_w
     return FactCheck(status="failed", model=model or "", candidates=names), usage, budget_warnings
 
 
-def without_legacy_waits(check):
-    """A check whose legacy `needs_fact` rows are read as what they could give (the agent asks instead)."""
-    from ..interpretation.ruled_out import NETWORK_GIVEN
-
-    rows = []
-    for row in check.requirements:
-        # phase 5b: a count code judged is no legacy shadow; nor is a named CONDOR's unstated network (2026-10-22)
-        if row.status == "needs_fact" and not row.by_code and row.depends_on != NETWORK_GIVEN:
-            delivered = row.delivered_by or list(dict.fromkeys(k for keys in row.outcomes.values() for k in keys))
-            row = row.model_copy(update={"status": "available" if delivered else "not_available",
-                                         "delivered_by": delivered})
-        rows.append(row)
-    return check.model_copy(update={"requirements": rows})
-
-
-def waits_after_agent(check, facts, task: str):
-    """The check a checked fact agent leaves: its waits lifted only when the agent's turn asks something.
-
-    2026-10-22 (user decision): a question the agent did not keep is no evidence the legacy wait is settled. Replayed
-    over 1,171 recorded readings, keeping them changed 4 calls from DO to the legacy ASK, all on gold-ASK items
-    (C11 x2, C31, h2 J19), and broke none (research log kept-legacy-waits-2026-10-22).
-    """
-    from ..interpretation.core_decision import agent_questions
-
-    lifted = without_legacy_waits(check)
-    return lifted if facts.open_results or agent_questions(lifted, facts, task)[0] else check
-
-
 def apply_fact_check(context, state, user_task: str, result, decision, check):
     """Phase 2: the fact agent at the point the legacy dimensions would wait on a fact (`_with_capability_check`).
 
-    When it ran and asks something, the legacy questions are recorded (shadow) and the check's waits are lifted, so
-    the turn's asks are the agent's alone (decided by `decide_core`); when it did not run or asks nothing, the legacy
-    questions stand (`waits_after_agent`). Returns (result, decision, check).
+    The legacy questions are recorded beside the agent's and the check's waits stand: `decide_core` asks the agent's
+    questions with each wait on other words, or queues it (harness repair P1, `interpretation.obligations`). Until P1
+    an agent that asked anything lifted every wait -- the row credited as if the favourable answer were given, or made
+    not available when nothing was delivered (P0 fixtures F03, F04). Returns (result, decision, check).
     """
     from ..interpretation.core_decision import _facts, goal_unclear
 
@@ -135,8 +107,7 @@ def apply_fact_check(context, state, user_task: str, result, decision, check):
         return result, decision, check
     result = replace(result, usage=usage, budget_warnings=warnings)
     if facts.status == "checked":
-        facts = facts.model_copy(update={"legacy": _facts(check, by_code=False)})
-        check = waits_after_agent(check, facts, user_task)
+        facts = facts.model_copy(update={"legacy": _facts(check, by_code=False, task=user_task)})
     record_event(context, state, "core.fact_check", "classify", facts.model_dump(mode="json"))
     decision = decision.model_copy(update={"fact_check": facts})
     return replace(result, decision=decision), decision, check  # the run path reads result.decision
