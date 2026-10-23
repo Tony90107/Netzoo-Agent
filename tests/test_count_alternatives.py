@@ -18,7 +18,6 @@ from test_method_conditions import _ask  # noqa: E402
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
 from netzoo_agent_core.contracts.core_decision import FactQuestion  # noqa: E402
 from netzoo_agent_core.contracts.fact_check import FactCheck  # noqa: E402
-from netzoo_agent_core.graph.fact_check_call import without_legacy_waits  # noqa: E402
 from netzoo_agent_core.interpretation.ask_facts import ask_reply  # noqa: E402
 from netzoo_agent_core.interpretation.core_decision import decide_core, with_core  # noqa: E402
 from netzoo_agent_core.interpretation.count_alternatives import verified_count_alternatives  # noqa: E402
@@ -141,8 +140,8 @@ def test_the_code_judged_count_is_asked_first_and_the_agents_question_on_the_sam
                          workflows=["LIONESS-DRAGON"], contract_quote="LIONESS-DRAGON")
     other = FactQuestion(question="Were the serum and plasma samples drawn on the same day?",
                          user_quote="a plasma proteomics panel", workflows=["LIONESS-DRAGON"], contract_quote="x")
-    check = without_legacy_waits(_waiting_check())
-    assert check.results()[0].status == "needs_fact"  # a code-judged wait is no legacy shadow
+    check = _waiting_check()
+    assert check.results()[0].status == "needs_fact"  # a code-judged wait (P1: no wait is lifted)
     core = decide_core(_decision(check, FactCheck(status="checked", accepted=[agent, other])), TASK)
     assert (core.kind, core.basis) == ("ASK", "count_fact")
     assert [fact.question for fact in core.facts] == ["Which of these is right: 200 or 2,000?", other.question]

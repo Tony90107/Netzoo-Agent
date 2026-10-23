@@ -15,7 +15,6 @@ from test_method_conditions import _ask  # noqa: E402
 
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
 from netzoo_agent_core.contracts.fact_check import FactCheck  # noqa: E402
-from netzoo_agent_core.graph.fact_check_call import without_legacy_waits  # noqa: E402
 from netzoo_agent_core.interpretation.core_decision import decide_core, with_core  # noqa: E402
 from netzoo_agent_core.graph.response import respond  # noqa: E402
 from netzoo_agent_core.interpretation.capability_check import wait_on_asked  # noqa: E402
@@ -56,9 +55,9 @@ def test_feature_candidates_do_not_replace_the_stated_patient_count():
 
 def test_deciding_sample_count_cannot_be_cleared_by_the_fact_agent():
     task, check = _sample_check([2, 10])
-    (row,) = without_legacy_waits(check).results()
+    (row,) = check.results()
     assert row.status == "needs_fact" and row.by_code
-    core = decide_core(_run_decision(without_legacy_waits(check)), task)
+    core = decide_core(_run_decision(check), task)
     assert (core.kind, core.basis) == ("ASK", "count_fact")
     assert core.facts[0].outcomes == {"2": [], "10": ["LIONESS-PANDA"]}
     held = with_core(_run_decision(check), core)
@@ -78,8 +77,7 @@ def test_discrete_counts_have_the_same_three_way_verdict_through_either_field(va
     task, check = _sample_check(values, duplicate=duplicate)
     (row,) = check.results()
     assert (row.status, row.outcomes) == (status, outcomes)
-    checked = without_legacy_waits(check)
-    assert decide_core(_run_decision(checked), task).kind == kind
+    assert decide_core(_run_decision(check), task).kind == kind
 
 
 def test_second_opinion_count_question_has_the_same_protection():
@@ -88,7 +86,7 @@ def test_second_opinion_count_question_has_the_same_protection():
         row.model_copy(update={"status": "not_available", "delivered_by": [], "by_code": False})
         for row in check.results()]})
     checked = wait_on_asked(blank, [(0, "run_lioness_panda", ["lioness_panda.per_sample_networks"])])
-    core = decide_core(_run_decision(without_legacy_waits(checked)), task)
+    core = decide_core(_run_decision(checked), task)
     assert core.kind == "ASK" and core.facts[0].by_code
 
 
@@ -135,10 +133,10 @@ def test_sample_count_candidates_affect_only_the_result_they_are_scoped_to(scope
     check = _check(task, *asks, unknown_facts=[{
         "about": "sample_count", "quote": "either 2 or 10 tumours", "count_kind": "choices",
         "count_values": [2, 10], "applies_to": applies}], **extra)
-    confirmed, archive = without_legacy_waits(check).results()
+    confirmed, archive = check.results()
     assert confirmed.status == "available" and confirmed.method["samples"] == 12
     assert (archive.status == "needs_fact") is waiting
-    assert decide_core(_run_decision(without_legacy_waits(check)), task).kind == ("ASK" if waiting else "DO")
+    assert decide_core(_run_decision(check), task).kind == ("ASK" if waiting else "DO")
 
 
 def test_deduplication_still_sets_aside_a_count_the_user_left_in_doubt():

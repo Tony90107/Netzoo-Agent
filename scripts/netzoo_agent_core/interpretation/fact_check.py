@@ -13,7 +13,8 @@ readings) could not be asked at all. The agent may propose any fact, but code ke
   hold no stated setting -- ROUND-22: live M25 and C35's subtype ranges, typed as kmin/kmax, were made open results);
 - R5 (withdrawn, user decision 2026-10-21): a fact the workflow's own input check could settle on a run was said and
   not asked; the user is asked first (ROUND-21: M38 "either 8 or 15 tumours", L40, C44 ran on what they did not know);
-- R6 at most two are asked, in the request's order;
+- R6 at most two are asked, in the request's order; the rest are queued, still open (harness repair P1, A03: before it
+  a third valid question was rejected as if it did not matter);
 - R7 (phase 5c, spec 13.4) a fact about the wanted result is asked only when the request names at least two options
   in its own words; with fewer it is a goal to clarify (`FactCheck.open_results`; rounds p4b/p4c C24: "I don't know
   what kind of network they expect" was asked as a fact) -- it still needs R1, R2 and R4.
@@ -30,12 +31,12 @@ from ..contract_text import contract_text, normalized
 from ..contracts.core_decision import FactQuestion
 from ..contracts.fact_check import FactCheck, RejectedFact
 from ..method_names import registered_workflows, workflows_in
+from .obligations import MAX_ASKED, fact_key
 from .request_spans import _span
 
 __all__ = ["FACT_INSTRUCTIONS", "fact_candidates", "fact_messages_text", "holds_stated_setting", "kept_facts"]
 
 MAX_CANDIDATES = 4
-MAX_ASKED = 2
 
 FACT_INSTRUCTIONS = (
     "Return only the FactProposals structure. You are given a user's request and the contracts of the registered "
@@ -173,12 +174,12 @@ def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> Fa
             continue
         seen.add(span)
         workflows = [spec.workflow, *(o.split(":", 1)[1] for o in (yes, no) if o.startswith("other_workflow:"))]
+        workflows = list(dict.fromkeys(workflows))
         kept.append((span[0], FactQuestion(
-            question=proposal.question.strip(), user_quote=task[span[0]:span[1]], workflows=list(dict.fromkeys(workflows)),
-            contract_quote=proposal.contract_quote.strip(), uncertainty=proposal.uncertainty, if_yes=yes, if_no=no)))
+            question=proposal.question.strip(), user_quote=task[span[0]:span[1]], workflows=workflows,
+            contract_quote=proposal.contract_quote.strip(), uncertainty=proposal.uncertainty, if_yes=yes, if_no=no,
+            fact_key=fact_key("agent", "+".join(workflows), task, task[span[0]:span[1]]))))
     kept.sort(key=lambda item: item[0])
     asked = [fact for _, fact in kept]
-    for fact in asked[MAX_ASKED:]:
-        rejected.append(RejectedFact(rule="R6 more than two questions", proposal=fact.model_dump()))
     return FactCheck(status="checked", model=model, candidates=[workflow_name(a) for a in actions],
-                     accepted=asked[:MAX_ASKED], rejected=rejected, open_results=open_results)
+                     accepted=asked[:MAX_ASKED], queued=asked[MAX_ASKED:], rejected=rejected, open_results=open_results)

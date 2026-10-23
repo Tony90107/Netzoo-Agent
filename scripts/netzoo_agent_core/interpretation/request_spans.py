@@ -47,6 +47,14 @@ def _span(task: str, quote: str) -> tuple[int, int] | None:
     return _locate(task, quote) or _locate_tokens(task, quote)
 
 
+def same_words(task: str, a: str, b: str) -> bool:
+    """Whether two quotes are, in the request, overlapping words (by containment when they cannot be placed)."""
+    if task and (first := _span(task, a)) is not None and (second := _span(task, b)) is not None:
+        return first[0] < second[1] and second[0] < first[1]
+    a, b = a.casefold().strip(), b.casefold().strip()
+    return bool(a and b) and (a in b or b in a)
+
+
 def scope_applies(result: str, scopes: list[str] | None) -> bool:
     """An already verified scope contains the result's words, or vice versa. None means shared, [] unrelated.
 
