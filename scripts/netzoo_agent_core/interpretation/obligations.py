@@ -20,10 +20,11 @@ from dataclasses import dataclass, field
 from ..contracts.core_decision import FactQuestion
 from ..contracts.evidence import Obligation
 from .count_alternatives import judged_count_words, splits_candidates
+from ..contract_text import normalized
 from .request_spans import _span, same_words
 from .ruled_out import NETWORK_GIVEN
 
-__all__ = ["MAX_ASKED", "AskPlan", "ask_plan", "fact_key", "key_of"]
+__all__ = ["MAX_ASKED", "AskPlan", "ask_plan", "fact_key", "file_check", "key_of"]
 
 MAX_ASKED = 2
 
@@ -41,8 +42,31 @@ def key_of(fact: FactQuestion, task: str, source: str) -> str:
     return fact.fact_key or fact_key(source, what, task, fact.user_quote)
 
 
+def file_check(fact: FactQuestion) -> bool:
+    """Whether an agent question cites its workflow's file checks (`input_checks`): what the input check reads from
+    the files. It never stands for a fixed-dimension wait, which only the user can answer (live 2026-10-23 C56: "Do
+    the mutation rows contain unique sample IDs?" bound the somatic-or-germline wait, which was never asked)."""
+    quote = normalized(fact.contract_quote)
+    if not quote or fact.depends_on or fact.by_code:  # only an agent question cites contract words
+        return False
+    from ..contract_text import check_text
+    from ..method_names import registered_workflows
+    from .menu_requirements import _policy
+
+    workflows, known = _policy().workflows, registered_workflows()
+    specs = [workflows[known[name]] for name in fact.workflows if known.get(name) in workflows]
+    return any(quote in (words := normalized(check_text(item))) or words in quote
+               for spec in specs for item in spec.input_checks)
+
+
 def _same_fact(task: str, cover: FactQuestion, fact: FactQuestion) -> bool:
     if not same_words(task, cover.user_quote, fact.user_quote):
+        return False
+    def wait(found: FactQuestion) -> bool:  # a fixed `needed_facts` dimension (a count code judged is not one)
+        return bool(found.depends_on) and not found.by_code
+
+    # harness repair P2 (c): a file check never stands for a dimension wait, nor a wait for it
+    if file_check(cover) and wait(fact) or file_check(fact) and wait(cover):
         return False
     return cover.by_code or not cover.workflows or not fact.workflows or bool(set(cover.workflows) & set(fact.workflows))
 

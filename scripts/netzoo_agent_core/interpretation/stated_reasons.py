@@ -22,11 +22,12 @@ from typing import Mapping
 from ..capability_sheet import data_units, entry, result_forms, sheet_entries
 from ..contracts.capability_check import CheckedRequirement
 from ..routing.study_purpose_verify import _locate
-from ..workflow_conditions import UNCLEAR_CHOICE, conditions_for, unpassed_setting
+from ..workflow_conditions import UNCLEAR_CHOICE, unpassed_setting
 from .request_spans import _span
 from .requirement_split import model_judged
 from .ruled_out import rests_on_inference
 from .sentence_ownership import request_sentences
+from .setting_words import _settable, _unbound
 
 __all__ = ["claim_sentences", "stated"]
 
@@ -91,6 +92,8 @@ def stated(item: CheckedRequirement, check=None) -> CheckedRequirement | None:
 def _verifiable(reason: str, item: CheckedRequirement, check) -> bool:
     if model_judged(reason) or reason.endswith(UNCLEAR_CHOICE) or rests_on_inference(check, reason):
         return False
+    if any(re.search(rf"(?<![\w.]){re.escape(name.split('.', 1)[1])}(?![\w.])", reason) for name in _unbound(item)):
+        return False  # harness repair P2 (b, spec A21): a premise is a setting bound to a control its words do not name
     if (found := unpassed_setting(reason)) is None:
         return True
     workflow, words = found
@@ -99,35 +102,6 @@ def _verifiable(reason: str, item: CheckedRequirement, check) -> bool:
     values = [setting.get("value") or "" for setting in item.method.get("settings") or []
               if setting.get("quote") == words]
     return _settable(workflow, " ".join([words, *values]))
-
-
-_PATH = re.compile(r"\S*/\S*|[\w.-]*[A-Za-z_][\w-]*\.[A-Za-z][A-Za-z0-9]{0,7}\b")
-"""A path or a file name with its extension (agg_dragon.tsv, condor_brain/), never a number (0.001, 1e-4)."""
-_SHAPED = re.compile(r"\d|_|(?<![\w.])\.[A-Za-z][A-Za-z0-9]{0,7}\b")
-"""A number, an identifier (lambda_inter, L1) or a bare extension (.parquet)."""
-
-
-def _settable(workflow: str, words: str) -> bool:
-    """Whether "W has no setting for <words>" can be said, from the shape of the words and W's own contract.
-
-    The words (with the value stated for them), without file names and paths, must hold a value something could be set
-    to -- a number, an identifier or a bare extension -- and name none of W's controls or allowed values: DRAGON's
-    output_format allows edge_list, so "no setting for edge list" is false. Words of neither shape ("start it right away", "header row, gene IDs in the
-    first column", a design table's description) were read as a setting by the model and are none (ROUND-19 A: J20,
-    C51, C57, C32 p5r); "learning rate 1e-4", "lambda_inter of 0.2", "L1 (lasso)" and ".parquet file" are said.
-    """
-    rest = _PATH.sub(" ", words)
-    if not _SHAPED.search(rest):
-        return False
-    conditions = conditions_for(workflow)
-    own = [] if conditions is None else [*conditions.settings, *(str(value) for limit in conditions.settings.values()
-                                                                  for value in limit.allowed_values)]
-    plain = _plain(rest)
-    return not any(re.search(rf"(?<![\w.]){re.escape(_plain(name))}(?!\w)", plain) for name in own if _plain(name))
-
-
-def _plain(text: str) -> str:
-    return " ".join(text.replace("_", " ").casefold().split())
 
 
 def _about(quote: str, sentences) -> bool:

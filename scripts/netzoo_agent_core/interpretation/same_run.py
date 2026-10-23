@@ -70,13 +70,17 @@ def same_run_holds(check: CapabilityCheck | None) -> CapabilityCheck | None:
                      for name in workflows_in(row.quote)}
     reasons = {workflow: [*limited.get(workflow, []), *unset.get(workflow, [])] for workflow in [*limited, *unset]
                if workflow in limited or workflow not in asked_by_name}
-    if not reasons:
+    # P2 (a): a question resting on a released run asks whether it can run so -- the settings answer it (H18 "Can you
+    # set it up that way?"), so it is held with them, never listed as available
+    asking = {workflow: unset[workflow] for workflow in unset if workflow not in reasons}
+    if not reasons and not asking:
         return check
     requirements, held = [], False
     for row in check.requirements:
         credited = {entry(key).workflow for key in row.delivered_by if entry(key).workflow}
-        if row.kind == "result" and row.status in _DOABLE and credited and credited <= reasons.keys():
-            why = [reason for workflow in sorted(credited) for reason in dict.fromkeys(reasons[workflow])]
+        holding = {**reasons, **asking} if row.asked_as == "question" else reasons
+        if row.kind == "result" and row.status in _DOABLE and credited and credited <= holding.keys():
+            why = [reason for workflow in sorted(credited) for reason in dict.fromkeys(holding[workflow])]
             row = row.model_copy(update={"status": "not_available", "delivered_by": [],
                                          "limits": list(dict.fromkeys([*row.limits, *why])), "blocks": sorted(credited)})
             held = True

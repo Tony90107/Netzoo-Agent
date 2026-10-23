@@ -75,30 +75,38 @@ N11 = ("Run OTTER with an L1 sparsity penalty of 0.1 so that most TF-gene edges 
        "expression for 64 samples are attached.")
 
 
-def test_n11_a_penalty_otter_does_not_have_is_not_given_and_the_run_is_held():
+def test_n11_a_penalty_otter_does_not_have_is_declined_and_the_run_is_held():
+    # Harness repair P2 (a) (user decision 2026-10-23): the named run with a setting OTTER does not have is DO +
+    # partial -- OTTER with its own settings, the penalty declined -- and the run is still held for the user.
     check = _check(N11, _ask(
         "Run OTTER with an L1 sparsity penalty of 0.1 so that most TF-gene edges are exactly zero",
         ["otter.tf_gene_network"], named="OTTER", named_quote="OTTER", scale="whole_cohort", regulator_kinds=["tf"],
         settings=[("unregistered", "an L1 sparsity penalty of 0.1", "0.1")], samples=64, samples_quote="64 samples"),
         has=["motif, PPI and expression for 64 samples are attached."])
-    result = _result(check)
-    assert result.status == "not_available" and not result.delivered_by
-    assert 'has no setting for "an L1 sparsity penalty of 0.1"' in result.limits[0]
-    assert result.defaults == ["otter.tf_gene_network"]
-    # OTTER itself is offered, as what it is: the run is held for the user, never planned as asked.
-    assert not check.full_gap
+    run, penalty = check.results()
+    assert run.status == "available" and run.delivered_by == ["otter.tf_gene_network"]
+    assert penalty.status == "not_available" and 'has no setting for "an L1 sparsity penalty of 0.1"' in penalty.limits[0]
+    assert penalty.defaults == ["otter.tf_gene_network"] and not check.full_gap
     verdict = run_check_verdict(check, "run_otter")
-    assert verdict["verdict"] == "gap" and verdict["results"][0]["limited"] is True
+    assert verdict["verdict"] == "partial_gap" and verdict["results"][1]["limited"] is True
     held = held_run_reply(TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=1.0,
                                        reason="held", recommended_actions=["run_otter"],
-                                       run_verdict=RunVerdict(action="run_otter", verdict="gap", held=True,
+                                       run_verdict=RunVerdict(action="run_otter", verdict="partial_gap", held=True,
                                                               results=verdict["results"])),
                           understanding_paragraph(check))
-    assert "it cannot run as you asked (above)" in held and "Tell me to run OTTER anyway" in held
+    assert '"an L1 sparsity penalty of 0.1" cannot be given as asked (above)' in held
+    assert "Tell me to run OTTER for the part it gives" in held and "no registered workflow covers" not in held
     line = understanding_paragraph(check)
-    assert "not available here as asked" in line and "OTTER itself can still run" in line
+    assert "available from OTTER, run with its own settings" in line and "OTTER itself can still run" in line
     assert "no registered workflow produces this" not in line
     # A second opinion may credit OTTER only as itself, with its own settings -- never the result as asked (m1b MX05).
+    # Read without naming the run, the penalty stays in the result's own words (one row), as m1b read it.
+    check = _check(N11, _ask(
+        "an L1 sparsity penalty of 0.1 so that most TF-gene edges are exactly zero",
+        ["otter.tf_gene_network"], named="OTTER", named_quote="OTTER", scale="whole_cohort", regulator_kinds=["tf"],
+        settings=[("unregistered", "an L1 sparsity penalty of 0.1", "0.1")], samples=64, samples_quote="64 samples"),
+        has=["motif, PPI and expression for 64 samples are attached."])
+    assert _result(check).status == "not_available" and _result(check).defaults == ["otter.tf_gene_network"]
     gap = check.model_copy(update={"full_gap": True})
     pairs = second_opinion_pairs(gap, ["run_otter", "run_panda"])
     assert [action for _index, action, _keys in pairs] == ["run_otter"]
@@ -149,7 +157,8 @@ def test_gpu_is_a_value_this_runtime_does_not_take():
     task = "Run OTTER on our GPU for the 64 samples."
     check = _check(task, _ask("Run OTTER on our GPU for the 64 samples", ["otter.tf_gene_network"],
                               named="OTTER", named_quote="OTTER", settings=[("OTTER.computing", "on our GPU", "GPU")]))
-    assert _result(check).status == "not_available" and "computing=gpu is not enabled" in _result(check).limits[0]
+    run, gpu = check.results()  # P2 (a): the named run stays doable, the GPU is declined
+    assert run.status == "available" and gpu.status == "not_available" and "computing=gpu is not enabled" in gpu.limits[0]
 
 
 # --- MX05: a workflow that takes no settings at all ---------------------------------------------------------------
@@ -163,9 +172,9 @@ def test_mx05_giraffe_takes_no_settings_but_is_still_offered():
                               named="GIRAFFE", named_quote="GIRAFFE", scale="whole_cohort", regulator_kinds=["tf"],
                               needs_sign=True, input_network="regulator_gene",
                               settings=[("OTTER.lam", "its regularisation lambda", "0.5")]))
-    result = _result(check)
-    assert result.status == "not_available" and "passes no settings" in result.limits[0]
-    assert result.defaults == ["giraffe.signed_regulation"]  # the sign the reading asks for leaves only it
+    run, lam = check.results()  # P2 (a): as a24b's gold had it -- the fit doable, the lambda not
+    assert run.status == "available" and lam.status == "not_available" and "passes no settings" in lam.limits[0]
+    assert run.delivered_by == ["giraffe.signed_regulation"]  # the sign the reading asks for leaves only it
     assert not check.full_gap  # GIRAFFE's guidance stays: fitting it is what R1 asks, and it is given
     assert "GIRAFFE itself can still run" in understanding_paragraph(check)
 
@@ -367,16 +376,15 @@ def test_an_unmapped_request_offers_the_workflow_that_runs_with_its_own_settings
                                   "target_types": [], "granularity": "unknown"}})
         return unmapped_reply(decision, ProjectPolicyLoader(Path(__file__).parents[1]).load())
 
-    # The GPU joined to the ask's words: the result is asked so, and OTTER is offered with its own settings.
+    # The GPU joined to the ask's words: P2 (a) sets it apart from the named run, so OTTER is offered for the run.
     check = _check(task, _ask("run OTTER", ["otter.tf_gene_network"], named="OTTER", named_quote="OTTER",
                               settings=[("OTTER.computing", "on the GPU", "GPU")]))
     reply = reply_for(check)
-    assert "**OTTER**" in reply and "with its own settings instead" in reply
-    assert "no workflow is offered" not in reply
+    assert '**OTTER** — for "run OTTER"' in reply
     # Round m3: a24b's own wording sets the GPU apart by a clause boundary, and its gold judged it apart ("run OTTER on
     # the 110 lung samples" supported, "on the GPU so it finishes faster" not); OTTER is offered for the network, and
-    # the GPU line says why it is not available. ROUND-17 (user decision) supersedes that gold after the check: the
-    # router holds the run with its GPU line, so the turn is declined with this reason (h2 J44's gold).
+    # the GPU line says why it is not available. ROUND-17 held the run with its GPU line (h2 J44's gold then);
+    # harness repair P2 (user decision 2026-10-23) restores this gold: DO + partial, the run held for the user.
     task = ("Go ahead and run OTTER on the 110 lung samples (motif, PPI and expression attached) on the GPU so it "
             "finishes faster.")
     check = _check(task, _ask("run OTTER", ["otter.tf_gene_network"], named="OTTER", named_quote="OTTER",
@@ -421,7 +429,9 @@ def test_the_request_method_applies_to_its_one_result_but_not_across_two():
     whole = ("OTTER", "OTTER", [("unregistered", "an L1 sparsity penalty of 0.1", "0.1")])
     one = _check(task, _ask("Run OTTER", ["otter.tf_gene_network"], scale="whole_cohort", regulator_kinds=["tf"]),
                  whole=whole)
-    assert _result(one).status == "not_available" and _result(one).defaults == ["otter.tf_gene_network"]
+    # P2 (a): the request names OTTER, so the penalty is set apart even with no clause boundary (the run still held)
+    assert [(item.quote, item.status) for item in one.results()] == [
+        ("Run OTTER", "available"), ("an L1 sparsity penalty of 0.1", "not_available")]
     # Round m3: stated in a clause of its own, the penalty is a requirement of its own and the run is still held.
     task = "Run OTTER on our 64 samples, and use an L1 sparsity penalty of 0.1."
     apart = _check(task, _ask("Run OTTER", ["otter.tf_gene_network"], scale="whole_cohort", regulator_kinds=["tf"]),
