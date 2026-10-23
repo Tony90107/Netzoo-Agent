@@ -1,4 +1,8 @@
-"""Validation of reusable inputs from completed workflow episodes."""
+"""Validation of reusable inputs from completed workflow episodes.
+
+Harness repair P4 (spec 9): a reused path is a candidate, never an earlier result. Its reason says, per file,
+whether the content is the one that run used (sha256) and the rules the same, and what was checked now.
+"""
 
 from __future__ import annotations
 
@@ -13,6 +17,7 @@ from ..data.inspection import (
     expression_sample_count as _expression_sample_count,
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
+from ..data.artifact_revision import freshness
 from ..data.panda_preflight import inspect_panda_inputs_with_provenance
 from ..data.paths import _resolve_user_path
 from ..data.sambar import inspect_sambar_inputs_impl
@@ -24,6 +29,7 @@ __all__: list[str] = []
 def reusable_episode_inputs(
     action: str,
     episodes: list[Episode],
+    policy=None,
 ) -> tuple[dict[str, str], str] | None:
     expected_workflow = _workflow_name(action)
     for episode in episodes:
@@ -48,6 +54,7 @@ def reusable_episode_inputs(
         }
         if any(not _resolve_user_path(path).exists() for path in values.values()):
             continue
+        checked = True
         if action == "run_condor":
             _, ok = _inspect_condor_inputs_impl(values["network_file"])
         elif action == "run_sambar":
@@ -76,12 +83,21 @@ def reusable_episode_inputs(
                 sample_count, _ = _expression_sample_count(values["expression_file"])
                 ok = sample_count >= 3
         else:
-            ok = True
+            ok, checked = True, False
         if ok:
-            return (
-                values,
-                "Reused validated inputs from successful episode "
-                f"{episode.episode_id[:8]} under the confirmed "
-                "reuse_last_inputs preference.",
-            )
+            return values, _reason(episode, action, values, checked, policy)
     return None
+
+
+def _reason(episode: Episode, action: str, values: dict[str, str], checked: bool, policy) -> str:
+    """Why these paths are offered, without claiming more than was checked (harness repair P4)."""
+    states = {field: freshness(episode.input_revisions.get(field), path, action, policy)
+              for field, path in values.items()}
+    if all(state == "unchanged" for state, _ in states.values()):
+        files = "the files are the ones that run used (same sha256) and the rules are unchanged"
+    else:
+        files = "; ".join(f"{field}: {words}" for field, (state, words) in states.items() if state != "unchanged")
+    now = ("they were checked again now with the current input checks" if checked
+           else "they were not checked here; the plan's input checks run on them before anything runs")
+    return (f"Paths reused from successful episode {episode.episode_id[:8]} under the confirmed reuse_last_inputs "
+            f"preference ({files}); {now}.")

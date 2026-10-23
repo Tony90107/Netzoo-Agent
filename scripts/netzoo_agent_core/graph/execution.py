@@ -23,6 +23,7 @@ from ..evaluation import (
     recover_workflow_plan,
     render_plan_evaluation,
 )
+from ..data.artifact_revision import preview_check
 from ..evaluation.plan_review import plan_digest
 from ..outcomes import supersede_triggering_failure
 from ..planning import render_plan
@@ -115,6 +116,10 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
     )
     execution_started_at = datetime.now().astimezone()
     refusal = _unapproved_run(state, plan)
+    revisions: dict = {}
+    if refusal is None:  # harness repair P4 (A17): a confirmed preview runs only on the files it showed
+        revisions, refusal = preview_check(step.action, decision, getattr(context, "project_policy", None),
+                                           state.get("previewed_inputs") if EXECUTE_TOOLS else None)
     if refusal is not None:
         # Items 1-2 (2026-10-14): the approval is checked once more right before an analysis starts.
         record_event(context, state, "tool.refused", "execute_tool", {"step_index": step_index, "action": step.action,
@@ -150,6 +155,7 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
     return {
         "tool_result": result.model_dump(),
         "tool_results": [*state.get("tool_results", []), result.model_dump()],
+        "input_revisions": {**(state.get("input_revisions") or {}), **revisions},
     }
 
 

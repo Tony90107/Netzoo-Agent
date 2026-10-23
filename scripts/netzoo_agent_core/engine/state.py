@@ -29,6 +29,9 @@ class PreviewState:
     # The preview turn's RequestRequirements: /execute re-routes ``task`` and
     # carries the values the user stated (plan item 2).
     requirements: dict | None = None
+    # Harness repair P4: the preview's input files by canonical path (`data.artifact_revision`); a confirmed run
+    # whose files differ does not start.
+    input_revisions: dict | None = None
 
 
 @dataclass(slots=True)

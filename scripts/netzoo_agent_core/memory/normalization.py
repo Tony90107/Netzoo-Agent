@@ -155,4 +155,7 @@ def compact_episode_payload(episode: Episode) -> dict:
         "artifacts": episode.artifacts,
         "memory_tags": memory_tags,
         "policy_hash": episode.policy_hash,
+        # Harness repair P4: each input's content hash and when it was checked; empty before P4 (unverified).
+        "input_revisions": {field: {"sha256": item.sha256[:12], "size": item.size, "validated_at": item.validated_at}
+                            for field, item in episode.input_revisions.items()},
     }

@@ -52,7 +52,7 @@ PUBLIC_SIGNATURES = {
     "_is_fatal_exception": "(error: 'BaseException') -> 'bool'",
     "_best_named_file": "(directory: 'Path', keywords: 'tuple[str, ...]') -> 'Path | None'",
     "discover_demo_bundle": "(action: 'str') -> 'tuple[dict[str, str], str] | None'",
-    "reusable_episode_inputs": "(action: 'str', episodes: 'list[Episode]') -> 'tuple[dict[str, str], str] | None'",
+    "reusable_episode_inputs": "(action: 'str', episodes: 'list[Episode]', policy=None) -> 'tuple[dict[str, str], str] | None'",
 }
 
 

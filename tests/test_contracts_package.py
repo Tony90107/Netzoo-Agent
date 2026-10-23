@@ -219,7 +219,7 @@ SCHEMA_DIGESTS = {
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     # Updated deliberately on 2026-09-10: episodes retain the typed scientific
     # outcome used for semantic memory retrieval.
-    "Episode": "90413517536ca2e8fc6c1dfde5d02cc6085d8ccb5179f8fd47524be9e06ac566",
+    "Episode": "a503c11baa35dd1d27e50280e7525df00131427a107ce24a2be35ccb0503e451",  # harness repair P4: input_revisions
 }
 
 

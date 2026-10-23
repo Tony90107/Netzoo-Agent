@@ -47,7 +47,6 @@ from ..session import (
     save_session,
 )
 from ..session_outputs import session_output_scope
-from ..interpretation.request_requirements import carried_parameters
 from ..routing_window import routing_window
 from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS
 from ..cli.clarification import (
@@ -77,6 +76,7 @@ from .choices import (
     accepted,
     chosen_option,
     confirmed_outcome_task,
+    execution_continuation,
     follow_up_task,
     trusted_actions,
 )
@@ -94,20 +94,6 @@ def _notice(text: str) -> Event:
     return Event("notice", _ui_text(text))
 
 
-
-def _execution_continuation(action: str, task: str, requirements: dict | None) -> WorkflowContinuation:
-    """The /execute turn re-routes the preview's text; carry what the user stated.
-
-    A value stated in an earlier turn of the request is not in the preview's
-    own text, so without it the re-planned run would fall back to defaults or
-    workspace discovery (plan item 2).
-    """
-    try:
-        return WorkflowContinuation(
-            action=action, task=routing_window(task), parameters=carried_parameters(requirements),
-        )
-    except ValueError:
-        return WorkflowContinuation(action=action, task=routing_window(task))
 
 class ConversationMachine:
     """One interactive conversation, independent of how it is presented."""
@@ -318,7 +304,7 @@ class ConversationMachine:
         if state.preview is not None:
             action = state.preview.plan.decision["action"]
             if action in RUN_ACTIONS:
-                state.pending_continuation = _execution_continuation(
+                state.pending_continuation = execution_continuation(
                     action, task, state.preview.requirements,
                 )
         return self._accept_task(task)
@@ -757,6 +743,8 @@ class ConversationMachine:
                 ),
                 # Harness repair P3: answered waits are settled; a third round of clarification is not asked.
                 "task_state": state.task_state.model_dump(mode="json") if state.task_state else None,
+                # Harness repair P4: the confirmed preview's input files; a changed one does not run.
+                "previewed_inputs": state.preview.input_revisions if execute_once and state.preview else None,
             }
             if state.active_usage is not None:
                 invocation["token_usage"] = state.active_usage
@@ -870,6 +858,7 @@ class ConversationMachine:
                     plan=plan,
                     plan_evaluation=result.get("plan_evaluation"),
                     requirements=result.get("request_requirements"),
+                    input_revisions=result.get("input_revisions"),  # harness repair P4: compared at execute
                 )
             elif state.next_prompt.kind == "completed":
                 state.clear_preview()
