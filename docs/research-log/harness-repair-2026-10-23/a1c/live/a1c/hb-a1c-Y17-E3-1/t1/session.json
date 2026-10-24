@@ -1,0 +1,966 @@
+{
+  "version": 1,
+  "session_id": "hb-a1c-Y17-E3-1",
+  "profile_id": "hb-a1c-Y17-E3-1",
+  "auto_generated": false,
+  "created_at": 1792852720.8947399,
+  "updated_at": 1792852720.894773,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We sequenced 120 colorectal tumours and have a samples-by-genes table of non-negative somatic mutation counts, an exon-length file, a tab-delimited cancer gene list and the MSigDB hallmark GMT. Please run SAMBAR with kmin 2 and kmax 6. What I want back is the pathway mutation score matrix and a subtype label for every tumour, written to out/crc_sambar/."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Please run SAMBAR with kmin 2 and kmax 6.\" -- available from SAMBAR.\n2. \"What I want back is the pathway mutation score matrix and a subtype label for every tumour, written to out/crc_sambar/.\" -- available from SAMBAR.\n\nNo tool was executed because the Planner requires additional input.\n\nPlease provide the next missing input. The CLI wizard will ask for each unresolved field one at a time."
+    }
+  ],
+  "plan": {
+    "workflow": "SAMBAR",
+    "objective": "Run requested; the capability check credited this workflow for what the request asks for.",
+    "decision": {
+      "action": "run_sambar",
+      "in_scope": false,
+      "should_execute": false,
+      "intent_type": "run_analysis",
+      "confidence": 0.9,
+      "reason": "Run requested; the capability check credited this workflow for what the request asks for.",
+      "candidate_actions": [
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_sambar"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "mutation_matrix"
+        ],
+        "artifact_type": "pathway_mutation_matrix",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "mutation_matrix"
+            ],
+            "artifact_type": "pathway_mutation_matrix",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Please run SAMBAR with kmin 2 and kmax 6.",
+              "rationale": "The user requests to run SAMBAR, which infers pathway mutation scores."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "pathway_mutation_matrix",
+              "source": "explicit",
+              "text_span": "What I want back is the pathway mutation score matrix.",
+              "rationale": "The user specifies that they want a pathway mutation score matrix as the output."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "mutation_matrix",
+              "source": "explicit",
+              "text_span": "somatic mutation",
+              "rationale": "The user specifies somatic mutation counts as input data, which corresponds to the mutation_matrix artifact type."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "operation_authorization": {
+        "requested": [
+          "run"
+        ],
+        "forbidden": [],
+        "explain_only": null,
+        "preview_requested": false,
+        "blocked_action": null
+      },
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Please run SAMBAR with kmin 2 and kmax 6.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "SAMBAR",
+              "named_quote": "SAMBAR",
+              "settings": [
+                {
+                  "name": "SAMBAR.kmin",
+                  "quote": "kmin 2",
+                  "value": "2",
+                  "span": [
+                    217,
+                    223
+                  ],
+                  "at": 222
+                },
+                {
+                  "name": "SAMBAR.kmax",
+                  "quote": "kmax 6",
+                  "value": "6",
+                  "span": [
+                    228,
+                    234
+                  ],
+                  "at": 233
+                }
+              ],
+              "samples": 120,
+              "samples_quote": "120 colorectal tumours"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "setting:SAMBAR.kmin@217-223",
+              "setting:SAMBAR.kmax@228-234",
+              "sample_count@13-35"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "What I want back is the pathway mutation score matrix and a subtype label for every tumour, written to out/crc_sambar/.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "SAMBAR",
+              "named_quote": "SAMBAR",
+              "samples": 120,
+              "samples_quote": "120 colorectal tumours",
+              "settings": [
+                {
+                  "name": "SAMBAR.kmin",
+                  "quote": "kmin 2",
+                  "value": "2",
+                  "span": [
+                    217,
+                    223
+                  ],
+                  "at": 222
+                },
+                {
+                  "name": "SAMBAR.kmax",
+                  "quote": "kmax 6",
+                  "value": "6",
+                  "span": [
+                    228,
+                    234
+                  ],
+                  "at": 233
+                }
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "setting:SAMBAR.kmin@217-223",
+              "setting:SAMBAR.kmax@228-234",
+              "sample_count@13-35"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "120 colorectal tumours",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "samples-by-genes table of non-negative somatic mutation counts",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "an exon-length file",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a tab-delimited cancer gene list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "the MSigDB hallmark GMT",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "the pathway mutation score matrix and a subtype label for every tumour, written to out/crc_sambar/.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "SAMBAR",
+          "kmin 2",
+          "2",
+          "kmax 6",
+          "6"
+        ],
+        "facts": [
+          {
+            "id": "setting:SAMBAR.kmin@217-223",
+            "property": "setting",
+            "name": "SAMBAR.kmin",
+            "value": "2",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "kmin 2",
+            "span": [
+              217,
+              223
+            ],
+            "value_quote": "2",
+            "value_span": [
+              222,
+              223
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "kmin 2",
+                "span": [
+                  217,
+                  223
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "kmin 2",
+                "span": [
+                  217,
+                  223
+                ],
+                "result": "Please run SAMBAR with kmin 2 and kmax 6.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:SAMBAR.kmax@228-234",
+            "property": "setting",
+            "name": "SAMBAR.kmax",
+            "value": "6",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "kmax 6",
+            "span": [
+              228,
+              234
+            ],
+            "value_quote": "6",
+            "value_span": [
+              233,
+              234
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "kmax 6",
+                "span": [
+                  228,
+                  234
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "kmax 6",
+                "span": [
+                  228,
+                  234
+                ],
+                "result": "Please run SAMBAR with kmin 2 and kmax 6.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@13-35",
+            "property": "sample_count",
+            "name": "",
+            "value": "120",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "120 colorectal tumours",
+            "span": [
+              13,
+              35
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "120 colorectal tumours",
+                "span": [
+                  13,
+                  35
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "120 colorectal tumours",
+                "span": [
+                  13,
+                  35
+                ],
+                "result": "Please run SAMBAR with kmin 2 and kmax 6.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "120 colorectal tumours",
+                "span": [
+                  13,
+                  35
+                ],
+                "result": "What I want back is the pathway mutation score matrix and a subtype label for every tumour, written to out/crc_sambar/.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "execution_requested": true,
+      "run_verdict": {
+        "action": "run_sambar",
+        "verdict": "agrees",
+        "request_sha256": "8fa8153636349441bac59eaa6c092e2c1fd841bef2d312e98b3b18082b0db304",
+        "held": false,
+        "named": true,
+        "credited": [
+          "run_sambar"
+        ],
+        "results": [
+          {
+            "quote": "Please run SAMBAR with kmin 2 and kmax 6.",
+            "status": "available",
+            "credited": [
+              "run_sambar"
+            ]
+          },
+          {
+            "quote": "What I want back is the pathway mutation score matrix and a subtype label for every tumour, written to out/crc_sambar/.",
+            "status": "available",
+            "credited": [
+              "run_sambar"
+            ]
+          }
+        ],
+        "unchecked": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": true,
+        "basis": "run",
+        "evidence": {
+          "action": "run_sambar",
+          "match_status": "exact",
+          "artifact_type": "pathway_mutation_matrix",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "the pathway mutation score matrix and a subtype label for every tumour, written to out/crc_sambar/."
+          ],
+          "run_verdict": {
+            "verdict": "agrees",
+            "held": false
+          },
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "What I want back is the pathway mutation score matrix and a subtype label for every tumour",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length CSV, a tab-delimited cancer-gene list, and a GMT pathway file. It produces gene and pathway mutation-score matrices plus optional sample cluster labels.",
+              "question": "Do you want both the pathway mutation score matrix and subtype labels for every tumour?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "pathway mutation score matrix",
+                "subtype label for every tumour"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "kmin 2 and kmax 6",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.",
+              "question": "Do you have at least 6 mutation samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "kmin 2 and kmax 6",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "setting kmin (integer; minimum 2): Smallest number of sample subtypes (clusters) tried; at least 2.",
+              "question": "Is kmin set to 2?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [
+        "mutation_file",
+        "exon_size_file",
+        "cancer_gene_file",
+        "pathway_file"
+      ],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": "outputs/sessions/hb-a1c-Y17-E3-1",
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 6,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [
+      {
+        "field": "mutation_file",
+        "status": "missing",
+        "value": null,
+        "reason": "No single complete validated dataset bundle contains every remaining required input.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "exon_size_file",
+        "status": "missing",
+        "value": null,
+        "reason": "No single complete validated dataset bundle contains every remaining required input.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "cancer_gene_file",
+        "status": "missing",
+        "value": null,
+        "reason": "No single complete validated dataset bundle contains every remaining required input.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "pathway_file",
+        "status": "missing",
+        "value": null,
+        "reason": "No single complete validated dataset bundle contains every remaining required input.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "output_dir",
+        "status": "defaulted",
+        "value": "outputs/sessions/hb-a1c-Y17-E3-1",
+        "reason": "The Planner used the default SAMBAR output directory.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      }
+    ],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [
+      "mutation_file",
+      "exon_size_file",
+      "cancer_gene_file",
+      "pathway_file"
+    ],
+    "status": "needs_input",
+    "question": "Please provide the next missing input. The CLI wizard will ask for each unresolved field one at a time.",
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [
+      "Validated workflow specification SAMBAR under project policy cf89ad9eddd6.",
+      "Mutation rows are unique sample IDs and mutation columns are unique gene IDs with non-negative numeric values.",
+      "The pinned SAMBAR implementation requires one positive numeric exon-length row whose CSV columns are unique gene IDs.",
+      "The cancer-gene list follows the installed SAMBAR reader: one non-empty tab-delimited line of identifiers.",
+      "GMT rows contain a pathway name, description, and one or more gene identifiers.",
+      "All four inputs must have a non-empty four-way gene identifier overlap before execution.",
+      "cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.",
+      "SAMBAR fixed-name runtime outputs are staged privately and then validated in output_dir; no SAMBAR result is a direct handoff to another registered workflow."
+    ],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 32089,
+    "output_tokens": 1517,
+    "total_tokens": 33606,
+    "calls": [
+      {
+        "call_id": "296d1f5c-9a50-4f5a-8b75-111491d555a6",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852699-KRCxvrGFImLEE0yUYtJT",
+        "input_tokens": 5363,
+        "output_tokens": 211,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5574,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 566,
+        "price_snapshot": null,
+        "duration_ms": 3194,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "c0922801-50eb-4152-b945-381f123372f0",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852702-1IJb2OaVHae2Sqt3M9xl",
+        "input_tokens": 5800,
+        "output_tokens": 233,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6033,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 712,
+        "price_snapshot": null,
+        "duration_ms": 3176,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7bd70a4f-fb66-4632-820a-f60c931c5161",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 665,
+        "output_tokens": 32,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 697,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 119,
+        "price_snapshot": {
+          "snapshot_id": "5eaeb3c0-0243-5e4f-bbf6-367f8119f46f",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-24T14:35:41.867889Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1239,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "631a232c-960a-45cf-87e6-7ac5d987d9f8",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792852707-eYNA2R3szadargXwGbs3",
+        "input_tokens": 18449,
+        "output_tokens": 690,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 19139,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1818,
+        "price_snapshot": null,
+        "duration_ms": 6893,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7c4ef9e9-ae67-4f7b-b3f6-e074bc7006af",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852714-DRXm3mNn5Wow85jVhIZk",
+        "input_tokens": 586,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 597,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 95,
+        "price_snapshot": null,
+        "duration_ms": 992,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7bf584dd-401c-45fe-8933-870f95dcacc9",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852715-MOQZsPf7YuXWawgxLNPU",
+        "input_tokens": 1226,
+        "output_tokens": 340,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1566,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 388,
+        "price_snapshot": null,
+        "duration_ms": 4173,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "4e732861-3404-46aa-a080-7152d615a44b",
+  "task_state": null
+}

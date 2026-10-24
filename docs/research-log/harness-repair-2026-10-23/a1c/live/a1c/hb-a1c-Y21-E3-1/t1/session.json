@@ -1,0 +1,661 @@
+{
+  "version": 1,
+  "session_id": "hb-a1c-Y21-E3-1",
+  "profile_id": "hb-a1c-Y21-E3-1",
+  "auto_generated": false,
+  "created_at": 1792852587.9365199,
+  "updated_at": 1792852587.9365609,
+  "messages": [
+    {
+      "role": "user",
+      "content": "A collaborator writing up our rheumatoid arthritis synovium study needs a supplementary figure on regulatory modules. We already have two TF-to-gene networks as source-target-weight edge lists with non-negative weights, one for RA synovium and one for osteoarthritis controls. From his email I can't tell whether he wants the TF and gene communities of the RA network, or a direct comparison of how the module structure differs between the RA and control networks."
+    },
+    {
+      "role": "assistant",
+      "content": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample (BONOBO)\n\nWhich of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?\n\nNothing was selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request names no result yet; the goal is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request names no result yet; the goal is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_condor",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [],
+        "artifact_type": "community_assignment",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [],
+            "artifact_type": "community_assignment",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.7,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "community_assignment",
+              "source": "explicit",
+              "text_span": "needs a supplementary figure on regulatory modules.",
+              "rationale": "The request involves analyzing community structures within the regulatory modules."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "needs a supplementary figure on regulatory modules.",
+              "rationale": "The request implies a summary of community structures rather than individual patient data."
+            }
+          ],
+          "assumptions": [
+            "The collaborator is interested in community structures within the RA network."
+          ]
+        },
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [],
+            "artifact_type": "community_assignment",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.5,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "direct comparison of how the module structure differs between the RA and control networks.",
+              "rationale": "The request involves comparing module structures between two networks."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "community_assignment",
+              "source": "explicit",
+              "text_span": "direct comparison of how the module structure differs between the RA and control networks.",
+              "rationale": "The request involves analyzing community structures within the regulatory modules."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "direct comparison of how the module structure differs between the RA and control networks.",
+              "rationale": "The request implies a summary of community structures rather than individual patient data."
+            }
+          ],
+          "assumptions": [
+            "The collaborator may want to compare community structures between RA and control networks."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+      "stated_hypotheses": [
+        {
+          "axis": "unclear_goal",
+          "basis": "run_condor",
+          "text_span": "TF and gene communities of the RA network",
+          "target_artifact": "community_assignment",
+          "target_granularity": "aggregate"
+        },
+        {
+          "axis": "unclear_goal",
+          "basis": "run_condor",
+          "text_span": "direct comparison of how the module structure differs between the RA and control networks",
+          "target_artifact": "community_assignment",
+          "target_granularity": "aggregate"
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "a supplementary figure on regulatory modules",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [
+              "condor.no_two_network_comparison",
+              "condor.no_variant_mapping"
+            ],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a direct comparison of how the module structure differs between the RA and control networks",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [
+              "condor.no_two_network_comparison",
+              "condor.no_variant_mapping"
+            ],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "two TF-to-gene networks as source-target-weight edge lists with non-negative weights, one for RA synovium and one for osteoarthritis controls",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_condor"
+        ],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "module structure differs between the RA and control networks",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "a supplementary figure on regulatory modules",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "CLARIFY",
+        "partial": false,
+        "workflows": [],
+        "declined": [],
+        "facts": [],
+        "clarify": {
+          "missing": "both",
+          "candidates": [
+            "PANDA",
+            "PUMA",
+            "LIONESS-PANDA",
+            "LIONESS-PUMA",
+            "LIONESS-COEXPRESSION",
+            "CONDOR",
+            "COBRA",
+            "SAMBAR",
+            "DRAGON",
+            "LIONESS-DRAGON",
+            "OTTER",
+            "GIRAFFE",
+            "BONOBO"
+          ],
+          "inputs": [],
+          "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+          "goal_quote": "a supplementary figure on regulatory modules"
+        },
+        "run_allowed": false,
+        "basis": "goal_open",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "community_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "module structure differs between the RA and control networks"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "CONDOR"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I can't tell whether he wants the TF and gene communities of the RA network, or a direct comparison of how the module structure differs between the RA and control networks.",
+              "uncertainty": "two_versions",
+              "workflow": "CONDOR",
+              "contract_quote": "CONDOR consumes a weighted source-target bipartite edge list made from a validated regulator-gene network and returns community assignments with regulator-side and gene-side partitions.",
+              "question": "Does he want the TF and gene communities of the RA network?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "other_workflow",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "TF and gene communities of the RA network",
+                "direct comparison of how the module structure differs between the RA and control networks"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 34159,
+    "output_tokens": 1538,
+    "total_tokens": 35697,
+    "calls": [
+      {
+        "call_id": "65419404-293c-4716-b707-cce41e1cee79",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852563-iHFC3Dj5VfjeRQ718u0m",
+        "input_tokens": 5366,
+        "output_tokens": 385,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5751,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 671,
+        "price_snapshot": null,
+        "duration_ms": 5053,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "08b700ae-b0b8-4a58-90ed-65e1da146457",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852568-fSSSNEoJV27F6nnvXlAf",
+        "input_tokens": 5483,
+        "output_tokens": 169,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5652,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 626,
+        "price_snapshot": null,
+        "duration_ms": 2588,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "dbe7176b-3097-425d-b4dd-e53ed0defb4f",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 701,
+        "output_tokens": 67,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 768,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 145,
+        "price_snapshot": {
+          "snapshot_id": "5eaeb3c0-0243-5e4f-bbf6-367f8119f46f",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-24T14:35:41.867889Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1442,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "3b9ee802-2f8c-41b3-b0ea-cb0050eb338c",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852572-zHVBoaap5KX2eieLEauC",
+        "input_tokens": 1663,
+        "output_tokens": 105,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1768,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 312,
+        "price_snapshot": null,
+        "duration_ms": 1971,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3d7fd907-f17c-40ed-baaa-cd08a615f986",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792852574-nBpF5ChbSepvFliyfAWr",
+        "input_tokens": 18455,
+        "output_tokens": 586,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 19041,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1757,
+        "price_snapshot": null,
+        "duration_ms": 7317,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "afd615bd-ccf0-46e8-9618-379c1d9c4756",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852582-wvAa35fb231Ycg3t4Ipj",
+        "input_tokens": 589,
+        "output_tokens": 36,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 625,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 110,
+        "price_snapshot": null,
+        "duration_ms": 1119,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9789c7ff-ee42-4756-a9a5-b107fd5a0bad",
+        "role": "capability_second_opinion",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792852583-ecm4SlnTchuGaRXvlerf",
+        "input_tokens": 587,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 598,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 95,
+        "price_snapshot": null,
+        "duration_ms": 1444,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f0af2d70-5a36-4bc3-bce1-7a821af4c461",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852584-b2FUFe8jRf6J7FlyDkNJ",
+        "input_tokens": 938,
+        "output_tokens": 162,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1100,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 238,
+        "price_snapshot": null,
+        "duration_ms": 2126,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "11ded0f3-37ed-4d39-b455-291d63ae75d9",
+        "role": "goal_read",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792852586-WGcWZBbHOZgSU9uolZEP",
+        "input_tokens": 377,
+        "output_tokens": 17,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 394,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 67,
+        "price_snapshot": null,
+        "duration_ms": 1185,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "2239b4f8-3767-4855-b566-ce2ac9e5ca18",
+  "task_state": {
+    "version": 1,
+    "task_id": "c2c35ebc",
+    "revision": 1,
+    "goal": "A collaborator writing up our rheumatoid arthritis synovium study needs a supplementary figure on regulatory modules. We already have two TF-to-gene networks as source-target-weight edge lists with non-negative weights, one for RA synovium and one for osteoarthritis controls. From his email I can't tell whether he wants the TF and gene communities of the RA network, or a direct comparison of how the module structure differs between the RA and control networks.",
+    "pending": [
+      {
+        "question_id": "goal::a5a3094a08",
+        "source": "goal",
+        "what": "",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+        "user_quote": "a supplementary figure on regulatory modules",
+        "workflows": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

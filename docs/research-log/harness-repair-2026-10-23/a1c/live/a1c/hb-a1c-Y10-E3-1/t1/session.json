@@ -1,0 +1,785 @@
+{
+  "version": 1,
+  "session_id": "hb-a1c-Y10-E3-1",
+  "profile_id": "hb-a1c-Y10-E3-1",
+  "auto_generated": false,
+  "created_at": 1792852620.693098,
+  "updated_at": 1792852620.6931431,
+  "messages": [
+    {
+      "role": "user",
+      "content": "My thesis committee wants a network analysis added to my chapter on 45 prostate cancer samples, and I'm torn between either PUMA, LIONESS-PUMA or LIONESS-COEXPRESSION. Which one should I go with?"
+    },
+    {
+      "role": "assistant",
+      "content": "Routing matched these registered workflows to your words, but the capability check did not confirm that any of them gives what you asked for:\n- **PANDA** — produces: One weighted TF-to-gene regulatory network across all the samples given.\n- **PUMA** — produces: One weighted network of how TFs and miRNAs regulate genes, across all samples.\n- **LIONESS-PANDA** — produces: One TF-gene network per sample, plus the aggregate network.\n- **LIONESS-PUMA** — produces: One TF/miRNA-gene network per sample, plus the aggregate network.\n- **OTTER** — produces: One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression.\n- **GIRAFFE** — produces: A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples. Each TF's activity in each sample, estimated apart from its own mRNA level.\n- **LIONESS-COEXPRESSION** — produces: One gene-gene co-expression network per sample, plus the aggregate.\n- **COBRA** — produces: The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix.\n- **BONOBO** — produces: One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample.\n\nCompare what each produces with what you asked for. Ask again to re-run the check, or say which result you want and from which workflow.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The user is seeking guidance on which network analysis method to choose for their thesis, which qualifies as an answer request.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The user is seeking guidance on which network analysis method to choose for their thesis, which qualifies as an answer request.",
+      "candidate_actions": [
+        "run_panda",
+        "run_puma",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_otter",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "network analysis added to my chapter on 45 prostate cancer samples",
+              "rationale": "The user is considering network analysis methods for prostate cancer samples, which typically involve regulatory networks."
+            }
+          ],
+          "assumptions": []
+        },
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "coexpression_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.8,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "LIONESS-COEXPRESSION",
+              "rationale": "LIONESS-COEXPRESSION suggests a focus on co-expression relationships, which may be relevant for the analysis of gene interactions in cancer samples."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_panda",
+        "run_puma",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_otter",
+        "run_giraffe",
+        "run_lioness_coexpression",
+        "run_cobra",
+        "run_bonobo"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which result do you mean: inferred regulator-to-target associations (PANDA or PUMA or LIONESS-PANDA or LIONESS-PUMA or OTTER or GIRAFFE); or inferred gene-to-gene associations (LIONESS-COEXPRESSION or COBRA or BONOBO)?",
+      "data_facts": {
+        "source": "model",
+        "priors": "unstated",
+        "priors_quote": "",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_puma",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_puma",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_coexpression",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_cobra",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_bonobo",
+          "status": "applicable",
+          "basis": []
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "PUMA, LIONESS-PUMA or LIONESS-COEXPRESSION",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "PUMA",
+              "named_quote": "PUMA",
+              "samples": 45,
+              "samples_quote": "45 prostate cancer samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@68-94"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "a network analysis",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "45 prostate cancer samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": true,
+        "goal": "purpose_only",
+        "goal_quote": "Which one should I go with?",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@68-94",
+            "property": "sample_count",
+            "name": "",
+            "value": "45",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "45 prostate cancer samples",
+            "span": [
+              68,
+              94
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "45 prostate cancer samples",
+                "span": [
+                  68,
+                  94
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "45 prostate cancer samples",
+                "span": [
+                  68,
+                  94
+                ],
+                "result": "PUMA, LIONESS-PUMA or LIONESS-COEXPRESSION",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "45 prostate cancer samples",
+                "span": [
+                  68,
+                  94
+                ],
+                "result": "PUMA, LIONESS-PUMA or LIONESS-COEXPRESSION",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "45 prostate cancer samples",
+                "span": [
+                  68,
+                  94
+                ],
+                "result": "PUMA, LIONESS-PUMA or LIONESS-COEXPRESSION",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "UNCHECKED",
+        "partial": false,
+        "workflows": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "OTTER",
+          "GIRAFFE",
+          "LIONESS-COEXPRESSION",
+          "COBRA",
+          "BONOBO"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "check_unconfirmed",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": true,
+          "goal": [
+            "purpose_only",
+            "Which one should I go with?"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm torn between either PUMA, LIONESS-PUMA or LIONESS-COEXPRESSION.",
+              "uncertainty": "two_versions",
+              "workflow": "PUMA",
+              "contract_quote": "PUMA consumes a gene-by-sample expression matrix plus motif, PPI, and miRNA priors, or a validated adjusted gene-by-gene co-expression matrix through coexpression_file.",
+              "question": "Do you have a validated one-ID-per-line miRNA list?",
+              "yes_outcome": "supported",
+              "yes_workflow": "PUMA",
+              "no_outcome": "other_workflow",
+              "no_workflow": "LIONESS-PUMA",
+              "about": "wanted_result",
+              "alternatives": [
+                "PUMA",
+                "LIONESS-PUMA"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm torn between either PUMA, LIONESS-PUMA or LIONESS-COEXPRESSION.",
+              "uncertainty": "two_versions",
+              "workflow": "LIONESS-PUMA",
+              "contract_quote": "LIONESS-PUMA uses the original gene-by-sample expression matrix, motif, PPI, and miRNA priors to internally infer the aggregate PUMA network and derive sample-specific TF/miRNA-to-gene networks.",
+              "question": "Do you have at least three expression samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "LIONESS-PUMA",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "PUMA",
+                "LIONESS-PUMA"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 42643,
+    "output_tokens": 1943,
+    "total_tokens": 44586,
+    "calls": [
+      {
+        "call_id": "9837feb7-a411-40a5-b5af-bf43e6d0152c",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852590-4rSazigzb6MJkatRpccW",
+        "input_tokens": 5325,
+        "output_tokens": 293,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5618,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 610,
+        "price_snapshot": null,
+        "duration_ms": 4380,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "3026b455-eba2-4683-9b54-f0f5f997b4e2",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852596-c8MNZRYUEvbjKAISO0z4",
+        "input_tokens": 5496,
+        "output_tokens": 161,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5657,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 623,
+        "price_snapshot": null,
+        "duration_ms": 2589,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d3fb7242-e803-433d-88e4-97389b6dac0e",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852599-rqusSVKAdJM5MMaoubNs",
+        "input_tokens": 5531,
+        "output_tokens": 158,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 5689,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 713,
+        "price_snapshot": null,
+        "duration_ms": 2734,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e0961c02-4c50-49f8-80de-897697dffa72",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852594-QKAZCYfFR1Ji1NBV975G",
+        "input_tokens": 6076,
+        "output_tokens": 140,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6216,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 698,
+        "price_snapshot": null,
+        "duration_ms": 7651,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8165762c-a285-4c7d-8a7e-83b6e796ae7b",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852601-dOYIZNI3TumdvAErA7BR",
+        "input_tokens": 1581,
+        "output_tokens": 120,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1701,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 309,
+        "price_snapshot": null,
+        "duration_ms": 2282,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "73f08a8b-26f9-40ec-8714-bc699913f7df",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 711,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 755,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 133,
+        "price_snapshot": {
+          "snapshot_id": "5eaeb3c0-0243-5e4f-bbf6-367f8119f46f",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-24T14:35:41.867889Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 2376,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "1e2fae9f-6eb7-443f-8141-bf4657b4b7b0",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792852606-uvvrLPOYX7cKEgf52jmh",
+        "input_tokens": 15201,
+        "output_tokens": 691,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15892,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1639,
+        "price_snapshot": null,
+        "duration_ms": 8515,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "77c15363-1d3b-418b-b3a6-1e27994f5469",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852615-ogtqrn9uIN2mKmDPd9nZ",
+        "input_tokens": 548,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 559,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 89,
+        "price_snapshot": null,
+        "duration_ms": 1046,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d891400c-ad63-40b8-8173-932b592c2033",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852616-1iVWqQvpuOTHjxyAIB9o",
+        "input_tokens": 537,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 570,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 100,
+        "price_snapshot": null,
+        "duration_ms": 1257,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c33f0fb1-d5b3-4211-9561-212b333a8ac5",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852617-ydLrmOwKgEaisPUFG1aW",
+        "input_tokens": 1637,
+        "output_tokens": 292,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1929,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 421,
+        "price_snapshot": null,
+        "duration_ms": 3391,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "9590b476-38e4-4fbb-8cf8-b1c3520affed",
+  "task_state": null
+}

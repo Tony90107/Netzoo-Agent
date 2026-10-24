@@ -1,0 +1,689 @@
+{
+  "version": 1,
+  "session_id": "hb-a1c2-Y22-E3-1",
+  "profile_id": "hb-a1c2-Y22-E3-1",
+  "auto_generated": false,
+  "created_at": 1792852779.94736,
+  "updated_at": 1792852779.947399,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Last month COBRA wrote adjusted_coexpression.tsv for our 64 kidney transplant biopsies, with sequencing batch as the covariate. Please run OTTER with that matrix as the co-expression input, together with our TF-by-gene seed prior (kidney_motif.tsv) and TF-TF PPI edge list (kidney_ppi.tsv), keeping the default lam and gamma. The goal is one TF-to-gene network for the cohort, written as an edge list to results/kidney_otter_edges.tsv."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Please run OTTER with that matrix as the co-expression input, together with our TF-by-gene seed prior (kidney_motif.tsv) and TF-TF PPI edge list (kidney_ppi.tsv), keeping the default lam and gamma.\" -- available from OTTER.\n\nNo tool was executed because the Planner requires additional input.\n\nInput preflight failed, so the Work Plan is not ready:\n\n- OTTER inputs: error: OTTER seed/prior file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-a1c-e3/kidney_motif.tsv\n\nPlease provide corrected files or fix the file contents, then I will re-check them."
+    }
+  ],
+  "plan": {
+    "workflow": "OTTER",
+    "objective": "The user has explicitly requested to run OTTER with the specified inputs and parameters.",
+    "decision": {
+      "action": "run_otter",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "run_analysis",
+      "confidence": 1.0,
+      "reason": "The user has explicitly requested to run OTTER with the specified inputs and parameters.",
+      "candidate_actions": [
+        "run_otter",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_otter"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Please run OTTER with that matrix as the co-expression input.",
+              "rationale": "The user requests to run OTTER, which infers a regulatory network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "The goal is one TF-to-gene network for the cohort.",
+              "rationale": "The goal is to produce a TF-to-gene network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "The goal is one TF-to-gene network for the cohort.",
+              "rationale": "The user specifies a cohort-wide analysis."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "workflow_name",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_otter"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "operation_authorization": {
+        "requested": [
+          "run"
+        ],
+        "forbidden": [],
+        "explain_only": null,
+        "preview_requested": false,
+        "blocked_action": null
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Please run OTTER with that matrix as the co-expression input, together with our TF-by-gene seed prior (kidney_motif.tsv) and TF-TF PPI edge list (kidney_ppi.tsv), keeping the default lam and gamma.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "otter.tf_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "OTTER",
+              "named_quote": "OTTER",
+              "samples": 64,
+              "samples_quote": "64 kidney transplant biopsies"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@57-86"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "adjusted_coexpression.tsv for our 64 kidney transplant biopsies",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "sequencing batch as the covariate",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "The goal is one TF-to-gene network for the cohort, written as an edge list to results/kidney_otter_edges.tsv.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "one TF-to-gene network for the cohort, written as an edge list to results/kidney_otter_edges.tsv.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "OTTER"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@57-86",
+            "property": "sample_count",
+            "name": "",
+            "value": "64",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "64 kidney transplant biopsies",
+            "span": [
+              57,
+              86
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "64 kidney transplant biopsies",
+                "span": [
+                  57,
+                  86
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "64 kidney transplant biopsies",
+                "span": [
+                  57,
+                  86
+                ],
+                "result": "Please run OTTER with that matrix as the co-expression input, together with our TF-by-gene seed prior (kidney_motif.tsv) and TF-TF PPI edge list (kidney_ppi.tsv), keeping the default lam and gamma.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "execution_requested": true,
+      "run_verdict": {
+        "action": "run_otter",
+        "verdict": "agrees",
+        "request_sha256": "3d339054083c9eabd472cddef0a9143b2c0b30cb1a7577ea8ad967759ed53dd7",
+        "held": false,
+        "named": true,
+        "credited": [
+          "run_otter"
+        ],
+        "results": [
+          {
+            "quote": "Please run OTTER with that matrix as the co-expression input, together with our TF-by-gene seed prior (kidney_motif.tsv) and TF-TF PPI edge list (kidney_ppi.tsv), keeping the default lam and gamma.",
+            "status": "available",
+            "credited": [
+              "run_otter"
+            ]
+          }
+        ],
+        "unchecked": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "OTTER"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": true,
+        "basis": "run",
+        "evidence": {
+          "action": "run_otter",
+          "match_status": "exact",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "one TF-to-gene network for the cohort, written as an edge list to results/kidney_otter_edges.tsv."
+          ],
+          "run_verdict": {
+            "verdict": "agrees",
+            "held": false
+          },
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "OTTER"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "with sequencing batch as the covariate",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "COBRA is an explicit predecessor when batch/confounder adjustment is needed.",
+              "question": "Did COBRA adjust for sequencing batch in the co-expression matrix?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "keeping the default lam and gamma",
+              "uncertainty": "two_versions",
+              "workflow": "OTTER",
+              "contract_quote": "lam weights C versus P as (lam, 1-lam); gamma is regularization; iterations, eta, and bexp control optimization.",
+              "question": "Do you want to use the default values for lam and gamma?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "one TF-to-gene network for the cohort, written as an edge list to results/kidney_otter_edges.tsv"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": "adjusted_coexpression.tsv",
+      "design_file": null,
+      "motif_file": "kidney_motif.tsv",
+      "ppi_file": "kidney_ppi.tsv",
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": "outputs/sessions/hb-a1c2-Y22-E3-1/adjusted_co-otter.tsv",
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [
+      {
+        "field": "motif_file",
+        "status": "provided",
+        "value": "kidney_motif.tsv",
+        "reason": "Explicitly provided by the user or the intent parser.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "ppi_file",
+        "status": "discovered",
+        "value": "kidney_ppi.tsv",
+        "reason": "Role inferred from the filename and awaiting content compatibility confirmation.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "expression_file",
+        "status": "discovered",
+        "value": "adjusted_coexpression.tsv",
+        "reason": "Role inferred from the filename and awaiting content compatibility confirmation.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "output_file",
+        "status": "defaulted",
+        "value": "outputs/sessions/hb-a1c2-Y22-E3-1/adjusted_co-otter.tsv",
+        "reason": "The output location is reversible and does not overwrite an input, so the Planner used the project default.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      }
+    ],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "needs_input",
+    "question": "Input preflight failed, so the Work Plan is not ready:\n\n- OTTER inputs: error: OTTER seed/prior file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-a1c-e3/kidney_motif.tsv\n\nPlease provide corrected files or fix the file contents, then I will re-check them.",
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [
+      "Validated workflow specification OTTER under project policy cf89ad9eddd6.",
+      "motif_file is OTTER's TF-by-gene seed/prior W; it is not a request to use OTTER's PPI or co-expression as a PANDA motif prior.",
+      "ppi_file must be a TF-TF edge list. Its identifier set must equal the TF identifier set in motif_file; the adapter symmetrizes it into P and uses a binary adjacency projection: an edge listed with a positive weight projects to 1, and one listed with weight 0 projects to 0 rather than being treated as present. Interaction confidences are therefore not carried into P.",
+      "expression_file must have a header, a unique gene-ID first column, and at least two unique sample columns. It is gene-by-sample; C is computed from its gene rows. The installed official API has no sample_metadata argument.",
+      "coexpression_file is an optional precomputed source supported by this agent's adapter, not by the official OTTER CLI/API signature. It must be a labeled symmetric square gene-by-gene matrix with exact row/column order.",
+      "When both expression_file and coexpression_file are supplied, their gene IDs and order must match exactly. W genes, C genes, and expression genes must match exactly; no implicit intersection or reordering is performed.",
+      "NAs, non-finite values, non-numeric cells, duplicate IDs, empty rows/columns, duplicate edge pairs, and malformed matrix/edge-list shapes are rejected before the API call. OTTER's official reader/merging behavior is otherwise permissive and its README warns that NAs and non-intersection inputs need care.",
+      "netZooPy 0.11.0 exposes netZooPy.otter.otter(W, P, C, lam=0.035, gamma=0.335, Iter=60, eta=0.00001, bexp=1). lam weights C versus P as (lam, 1-lam); gamma is regularization; iterations, eta, and bexp control optimization.",
+      "The verified API has no independent sparsity penalty or threshold parameter. gamma is an L2-style regularization term, not a sparsity claim; an unknown sparsity argument is rejected rather than silently mapped.",
+      "computing=cpu and precision=single/double are validated controls. The current agent runtime does not enable OTTER GPU execution. The official CLI exposes expression, motif, PPI, output, computing, precision, mode_process, iterations, lam, gamma, eta, and bexp; it does not expose a precomputed C file or metadata.",
+      "output_format=matrix writes a labeled TF-by-gene matrix. output_format=edge_list writes a complete source,target,weight TF-to-gene grid. Weight means the optimized OTTER W score; output is aggregate, not sample-specific.",
+      "Official netZooPy includes a separate LionessOtter class and otterlioness CLI command for sample-specific networks. This agent's registered OTTER action is aggregate only and does not silently label its output LIONESS-OTTER.",
+      "COBRA is an explicit predecessor when batch/confounder adjustment is needed. Only COBRA's adjusted co-expression artifact after this exact identifier/order validation may hand off to OTTER; OTTER does not perform batch correction.",
+      "OTTER-to-CONDOR requires a validated edge-list export and the CONDOR input validator. A matrix output must be explicitly converted and revalidated first."
+    ],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 32909,
+    "output_tokens": 1503,
+    "total_tokens": 34412,
+    "calls": [
+      {
+        "call_id": "3d4378ca-ef05-41fb-884c-d198b2e88f5d",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852760-vqr5Qw6cgPZO4sAwP0Yk",
+        "input_tokens": 5384,
+        "output_tokens": 316,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5700,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 604,
+        "price_snapshot": null,
+        "duration_ms": 4170,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "2432e1ea-7507-48ae-a686-e01d2c8e8568",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852764-X18Erpmf66sBgmazLpsp",
+        "input_tokens": 5817,
+        "output_tokens": 268,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 6085,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 669,
+        "price_snapshot": null,
+        "duration_ms": 3328,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e03503c1-c54c-4354-8042-373e925a20e7",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 682,
+        "output_tokens": 34,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 716,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 123,
+        "price_snapshot": {
+          "snapshot_id": "65269e64-6062-59c8-9c67-5ab874c44f1a",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-24T14:39:17.781664Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1081,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "111b8b92-bd6c-49c6-9b7e-64a02ddf8cef",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792852768-vkqVqWqW657u1uzcycvE",
+        "input_tokens": 18491,
+        "output_tokens": 630,
+        "cache_read_tokens": 18432,
+        "cache_write_tokens": 0,
+        "total_tokens": 19121,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1769,
+        "price_snapshot": null,
+        "duration_ms": 7113,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0cbc945d-b2e4-4940-8fbc-e58a671291ed",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852775-D28FNRXwjV20JfhCCjzL",
+        "input_tokens": 607,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 640,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 111,
+        "price_snapshot": null,
+        "duration_ms": 1315,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4e4c56f7-8dd1-4aed-91ef-eed5d5c5fd2d",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792852777-A8r6MBd7oUfAgiYeq2DK",
+        "input_tokens": 1928,
+        "output_tokens": 222,
+        "cache_read_tokens": 1792,
+        "cache_write_tokens": 0,
+        "total_tokens": 2150,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 288,
+        "price_snapshot": null,
+        "duration_ms": 3073,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "64e1c354-abcb-453b-849e-777caae92e86",
+  "task_state": null
+}
