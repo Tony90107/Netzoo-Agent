@@ -4024,9 +4024,12 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 {"messages": [agent.HumanMessage(content="Run a PANDA demo")]}
             )
 
-        self.assertTrue(result["token_usage"]["budget_exhausted"])
-        self.assertEqual(result["token_usage"]["calls"], [])
+        # Harness repair A3: the refused router did not spend the turn, so the reads with their own allowance (the
+        # check, the study purpose) may still try; routing never ran and nothing was selected or claimed.
+        roles = {call["role"] for call in result["token_usage"]["calls"]}
+        self.assertLessEqual(roles, {"capability_check", "study_purpose", "data_facts"})
         self.assertEqual(result["decision"]["action"], "no_tool")
+        self.assertEqual(result["decision"]["core"]["kind"], "UNCHECKED")
 
     @patch("netzoo_agent.build_llm")
     @unittest.skipIf(

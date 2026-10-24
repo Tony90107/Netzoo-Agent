@@ -174,6 +174,33 @@ def _goal_read(check, decision, task: str, found: list[dict], steps: list[str]):
     return with_goal_read(check, task, GoalRead.model_validate(read))
 
 
+def _read_by_todays_model(found: list[dict]) -> bool:
+    """Harness repair B (ROUND-B.md), opt-in with NETZOO_REPLAY_CURRENT_MODELS=1: a backup reading recorded when
+    another own model failed (nemotron), read by the model that is today's check model, is read as today's system
+    reads its own check -- not held as provisional. Off by default, so earlier replays reproduce."""
+    import os
+
+    if os.environ.get("NETZOO_REPLAY_CURRENT_MODELS") != "1":
+        return False
+    from netzoo_agent_core.graph.capability_check_call import same_model
+
+    today = os.environ.get("NETZOO_REPLAY_CHECK_MODEL", "openai/gpt-4o-mini-2024-07-18")
+    calls = [e.get("payload") or {} for e in found
+             if e.get("event_type") == "llm.completed" and (e.get("payload") or {}).get("role") == "capability_check"]
+    failed = [c for c in calls if c.get("status") != "success"]
+    read = [c for c in calls if c.get("status") == "success"]
+    if not (failed and read) or any(same_model(c.get("model"), today) for c in failed) \
+            or not same_model(read[-1].get("model"), today):
+        return False
+    # As the live rule: a backup that had to read the compact schema (over the enum limit) stays provisional.
+    from netzoo_agent_core.contracts.capability_check import proposal_model
+    from netzoo_agent_core.contracts.strict_schema import expanded_enum_values
+
+    checked = next((e.get("payload") or {} for e in found if e.get("event_type") == "routing.capability_checked"), {})
+    count = len([k for k in (checked.get("proposal") or {}) if k.startswith("s")])
+    return bool(count) and expanded_enum_values(proposal_model(count).model_json_schema()) <= 1000
+
+
 def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: list[dict]) -> dict:
     from replay import _proposal
     from netzoo_agent_core.contracts import TaskDecision
@@ -276,10 +303,13 @@ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: l
             check = check.model_copy(update={"full_gap": False, "gap_unconfirmed": True})
             steps.append("second opinion unanswered: gap unconfirmed")
 
-    # 6: a provisional reading
+    # 6: a provisional reading (harness repair B: not when today's check model read it, opt-in)
     if _first(found, "routing.capability_check_provisional") is not None:
-        check = check.model_copy(update={"full_gap": False, "provisional": True})
-        steps.append("provisional")
+        if _read_by_todays_model(found):
+            steps.append("provisional lifted: read by today's check model")
+        else:
+            check = check.model_copy(update={"full_gap": False, "provisional": True})
+            steps.append("provisional")
 
     # 7: the user's ruled-out inputs
     stated_inputs = frozenset(value for item in decision.outcome_hypotheses for value in item.outcome.input_artifacts

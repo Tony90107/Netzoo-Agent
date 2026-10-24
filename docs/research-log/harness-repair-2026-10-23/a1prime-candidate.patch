@@ -1,0 +1,239 @@
+diff --git a/scripts/netzoo_agent_core/interpretation/core_decision.py b/scripts/netzoo_agent_core/interpretation/core_decision.py
+index 4203defa..08b8fb37 100644
+--- a/scripts/netzoo_agent_core/interpretation/core_decision.py
++++ b/scripts/netzoo_agent_core/interpretation/core_decision.py
+@@ -41,7 +41,7 @@ from ..contracts.core_decision import ClarifyNeed, CoreDecision, DeclinedPart, F
+ from ..method_names import workflows_in
+ from .needed_facts import _question
+ from .obligations import MAX_ASKED, ask_plan, fact_key
+-from .request_spans import same_words as _same_words
++from .request_spans import _span, same_words as _same_words
+ 
+ __all__ = ["decide_core", "goal_unclear", "with_core"]
+ 
+@@ -144,6 +144,46 @@ def _overlaps(a: str, b: str) -> bool:
+     return bool(a and b) and (a in b or b in a)
+ 
+ 
++_CREDITED = ("available", "with_step", "partial")
++
++
++def _anchored(row, task: str) -> bool:
++    """Harness repair A1 (ROUND-A.md): a result row whose content code verified -- a named registered method credited
++    to the ask, or a fact code built to decide it (two outcomes that differ, one of them delivering something).
++
++    Replay: nine readings were CLARIFY goal_unclear beside such a row -- the goal read quoted other words ("the
++    network", the output-file sentence: h1 H21, h2 J03, J13 named PANDA and LIONESS-PUMA) or was read purpose_only
++    over a built fact (h2 J27's 600 or 6,000 genes, p4c/p5r C34's two deliverables, h1 H39, g4o2 C11). Phase 5c
++    already asks such a fact (two options named in the request) instead of clarifying the goal.
++    """
++    method = row.method or {}
++    named, words = method.get("named"), method.get("named_quote") or ""
++    if (named and row.status in _CREDITED and words.strip() and (span := _span(task, words)) is not None
++            and named in workflows_in(words)):
++        return any(workflow_name(entry(key).action) == named for key in row.delivered_by) and not _offered(task, span)
++    return (row.status == "needs_fact" and bool(row.unknown_quote.strip()) and _span(task, row.unknown_quote) is not None
++            and len({frozenset(found) for found in row.outcomes.values()}) >= 2 and any(row.outcomes.values()))
++
++
++def _offered(task: str, span) -> bool:
++    """A1': the sentence naming the method names another registered one as its alternative ("Should I be using COBRA
++    or CONDOR", "Is SAMBAR the right thing to run, or one of the network methods like PANDA") -- a choice the user
++    asks about, never a goal (replay: A1 as declared ran both for p3 C10, p3/p5 C26)."""
++    from .goal_evidence import ALTERNATIVE
++    from .sentence_ownership import request_sentences
++
++    sentence = next((task[s:e] for s, e in request_sentences(task) if s <= span[0] < e), "")
++    return len(set(workflows_in(sentence))) > 1 and bool(ALTERNATIVE.search(sentence))
++
++
++def _anchors(check, task: str) -> bool:
++    """A1: some result row is anchored, and the anchored rows name one method at most (two named methods credited
++    side by side are a choice too)."""
++    anchored = [row for row in check.results() if _anchored(row, task)]
++    return bool(anchored) and len({(row.method or {}).get("named") for row in anchored
++                                   if row.status != "needs_fact"} - {None}) <= 1
++
++
+ def goal_unclear(check, decision=None, task: str = "") -> bool:
+     """Spec section 5: the request names no result, by the check's own confirmed reading and its verified words.
+ 
+@@ -162,6 +202,8 @@ def goal_unclear(check, decision=None, task: str = "") -> bool:
+         return False
+     if len(named) > 1 and check.goal == "method_named" and not any(row.kind == "result" for row in check.requirements):
+         return True
++    if _anchors(check, task):
++        return False  # harness repair A1: the rows verified what is asked; the goal read does not overrule them
+     if check.goal == "purpose_only":
+         return True
+     asked = [row.quote for row in check.requirements if row.kind in ("result", "about_methods")]
+diff --git a/scripts/netzoo_agent_core/interpretation/goal_evidence.py b/scripts/netzoo_agent_core/interpretation/goal_evidence.py
+index e4b1b725..d6ace3b1 100644
+--- a/scripts/netzoo_agent_core/interpretation/goal_evidence.py
++++ b/scripts/netzoo_agent_core/interpretation/goal_evidence.py
+@@ -49,6 +49,10 @@ def _considered(check, decision) -> set[str]:
+     return names | {entry(key).workflow for row in check.results() for key in row.delivered_by if entry(key)}
+ 
+ 
++ALTERNATIVE = re.compile(r"\b(?:or|either|versus|vs)\b", re.I)
++"""Words joining two methods as alternatives ("COBRA or CONDOR", "OTTER or maybe GIRAFFE")."""
++
++
+ def method_choice(check, decision=None, task: str = "") -> list[str]:
+     """Positive evidence of an open choice between different results, not a generic unmatched-row escape."""
+     if check is None or check.unconfirmed():
+@@ -72,7 +76,7 @@ def method_choice(check, decision=None, task: str = "") -> list[str]:
+     known = registered_workflows()
+     for quote in choices:
+         names = [name for name in workflows_in(quote) if name in known]
+-        if len(names) < 2 or not re.search(r"\b(?:or|either|versus|vs)\b", quote, re.I):
++        if len(names) < 2 or not ALTERNATIVE.search(quote):
+             continue
+         signatures = {(OUTPUT_CAPABILITIES[known[name]].artifact_type,
+                        OUTPUT_CAPABILITIES[known[name]].granularities) for name in names}
+diff --git a/tests/test_a1_goal_anchor.py b/tests/test_a1_goal_anchor.py
+new file mode 100644
+index 00000000..3a5984c3
+--- /dev/null
++++ b/tests/test_a1_goal_anchor.py
+@@ -0,0 +1,140 @@
++"""Harness repair A1 (ROUND-A.md): a result row code verified is not overruled by the goal read.
++
++Replay: h1 H21, h2 J03 and J13 named PANDA / LIONESS-PUMA, credited, while the goal read quoted "the network" or the
++output-file sentence; h1 H39, g4o2 C11, h2 J27 and C34 held a fact code built to decide the ask while the goal was read
++as another span or purpose_only. All nine were CLARIFY goal_unclear. A row that names a credited method, or holds a
++built fact with two different outcomes, now anchors the goal; anything less still leaves it to the goal read.
++"""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
++
++from netzoo_agent_core.contracts.capability_check import CapabilityCheck, CheckedRequirement  # noqa: E402
++from netzoo_agent_core.interpretation.core_decision import goal_unclear  # noqa: E402
++
++PANDA = ("Kick off PANDA with expr_kidney.tsv, motif_kidney.tsv and ppi_kidney.tsv. "
++         "Save the network as panda_kidney.txt now.")
++COBRA = ("COBRA seems right for separating sex and batch effects on co-expression. The README says the matrix has 600 "
++         "genes, but the methods draft says 6,000, and I honestly don't know which is right.")
++SCALE = ("Run the TF network inference on expr.tsv. The plan says 'a network for each AD and control', and I can't tell "
++         "if that means one network per group or one per donor.")
++
++
++def check(goal, goal_quote, *rows):
++    return CapabilityCheck(goal=goal, goal_quote=goal_quote, requirements=list(rows))
++
++
++def named(quote, status="available", delivered=("panda.tf_gene_network",), method="PANDA", words="PANDA"):
++    return CheckedRequirement(kind="result", quote=quote, status=status, delivered_by=list(delivered),
++                              method={"named": method, "named_quote": words})
++
++
++def fact(quote, unknown, outcomes):
++    return CheckedRequirement(kind="result", quote=quote, status="needs_fact", depends_on="feature_count",
++                              unknown_quote=unknown, outcomes=outcomes,
++                              delivered_by=list(dict.fromkeys(k for keys in outcomes.values() for k in keys)))
++
++
++GENES = "The README says the matrix has 600 genes, but the methods draft says 6,000"
++PER = "I can't tell if that means one network per group or one per donor"
++
++
++def test_a_named_credited_method_anchors_a_goal_read_on_other_words():  # h2 J03, h1 H21
++    row = named("Kick off PANDA with expr_kidney.tsv, motif_kidney.tsv and ppi_kidney.tsv.")
++    assert not goal_unclear(check("result_named", "the network", row), task=PANDA)
++
++
++def test_a_built_fact_anchors_a_goal_read_on_other_words():  # g4o2 C11
++    row = fact("a network for each AD and control", PER,
++               {"whole_cohort": ["lioness_panda.per_sample_networks"],
++                "per_sample": ["lioness_panda.per_sample_networks", "lioness_panda.per_sample_targeting"]})
++    assert not goal_unclear(check("result_named", "Run the TF network inference", row), task=SCALE)
++
++
++def test_a_built_fact_anchors_a_purpose_only_goal():  # h2 J27
++    row = fact("separating sex and batch effects on co-expression", GENES,
++               {"600": [], "6000": ["cobra.covariate_components"]})
++    assert not goal_unclear(check("purpose_only", "separating sex and batch effects on co-expression", row), task=COBRA)
++
++
++def test_a_credited_row_naming_no_method_leaves_the_goal_to_the_read():  # p5r C36
++    task = "For each patient I need one number per TF that captures its regulatory strength, to relate to survival."
++    row = CheckedRequirement(kind="result", quote="one number per TF that captures its regulatory strength",
++                             status="available", delivered_by=["lioness_panda.per_sample_targeting", "giraffe.tf_activity"])
++    assert goal_unclear(check("purpose_only", "to relate to survival", row), task=task)
++
++
++def test_a_fact_whose_outcomes_are_the_same_is_no_anchor():
++    row = fact("separating sex and batch effects", GENES,
++               {"600": ["cobra.covariate_components"], "6000": ["cobra.covariate_components"]})
++    assert goal_unclear(check("purpose_only", "separating sex and batch effects", row), task=COBRA)
++
++
++def test_a_fact_that_delivers_nothing_either_way_is_no_anchor():
++    row = fact("separating sex and batch effects", GENES, {"600": [], "6000": []})
++    assert goal_unclear(check("purpose_only", "separating sex and batch effects", row), task=COBRA)
++
++
++def test_a_fact_whose_words_are_not_in_the_request_is_no_anchor():
++    row = fact("separating sex and batch effects", "the panel had 250 or 2,000 genes",
++               {"600": [], "6000": ["cobra.covariate_components"]})
++    assert goal_unclear(check("purpose_only", "separating sex and batch effects", row), task=COBRA)
++
++
++def test_a_named_method_not_credited_is_no_anchor():
++    row = named("Kick off PANDA with expr_kidney.tsv", status="not_available", delivered=())
++    assert goal_unclear(check("result_named", "the network", row), task=PANDA)
++
++
++def test_a_named_method_credited_to_another_workflow_is_no_anchor():
++    row = named("Kick off PANDA with expr_kidney.tsv", delivered=("otter.tf_gene_network",))
++    assert goal_unclear(check("result_named", "the network", row), task=PANDA)
++
++
++def test_a_method_name_not_in_the_request_is_no_anchor():
++    row = named("Kick off PANDA with expr_kidney.tsv", method="PANDA", words="the PANDA tool")
++    assert goal_unclear(check("result_named", "the network", row), task=PANDA)
++
++
++def test_two_methods_named_as_the_choice_with_no_result_stay_unclear():
++    task = "Should I use COBRA or CONDOR for my cohort?"
++    about = CheckedRequirement(kind="about_methods", quote="Should I use COBRA or CONDOR", status="not_checked")
++    assert goal_unclear(check("method_named", "Should I use COBRA or CONDOR", about), task=task)
++
++
++# A1' (post hoc, after the declared A1's replay): a method the request offers as one of two is a choice, not a goal.
++
++def test_two_named_methods_credited_side_by_side_are_a_choice():  # p3 C10
++    task = ("Should I be using COBRA or CONDOR on our lupus nephritis cohort? I keep seeing both names in NetZoo papers "
++            "and I'm not sure what either would give me.")
++    cobra = named("COBRA", delivered=("cobra.covariate_components",), method="COBRA", words="COBRA")
++    condor = named("CONDOR", delivered=("condor.communities",), method="CONDOR", words="CONDOR")
++    assert goal_unclear(check("purpose_only", "what either would give me", cobra, condor), task=task)
++
++
++def test_a_method_whose_sentence_offers_another_is_no_anchor():  # p5 C26
++    task = ("We have somatic mutation calls and RNA-seq for the same 90 bladder tumours. Is SAMBAR the right thing to "
++            "run, or one of the network methods like PANDA? I'm open to whatever gives the most interesting result.")
++    sambar = named("SAMBAR", delivered=("sambar.subtypes",), method="SAMBAR", words="SAMBAR")
++    assert goal_unclear(check("purpose_only", "I'm open to whatever gives the most interesting result.", sambar),
++                        task=task)
++
++
++def test_a_method_offered_with_maybe_another_is_no_anchor():  # h5 Q44 (unlabelled)
++    task = ("We'd like to try OTTER or maybe GIRAFFE on RNA-seq from 26 thyroid nodules, using the usual human motif and "
++            "PPI files. We just need something network-based to show at lab meeting.")
++    otter = named("We'd like to try OTTER or maybe GIRAFFE on RNA-seq from 26 thyroid nodules",
++                  delivered=("otter.tf_gene_network",), method="OTTER", words="OTTER")
++    assert goal_unclear(check("result_named", "something network-based to show at lab meeting.", otter), task=task)
++
++
++def test_another_method_named_as_an_input_source_is_not_an_alternative():  # h2 J03
++    task = ("Kick off PANDA with expr_kidney.tsv and use cobra_out/adjusted_coexpression.tsv from yesterday's COBRA run "
++            "as the co-expression input instead of plain Pearson. Save the network as panda_kidney.txt now.")
++    row = named("Kick off PANDA with expr_kidney.tsv and use cobra_out/adjusted_coexpression.tsv from yesterday's COBRA "
++                "run as the co-expression input instead of plain Pearson.")
++    assert not goal_unclear(check("result_named", "the network", row), task=task)

@@ -18,7 +18,7 @@ from ..interpretation.fact_check import fact_candidates, kept_facts
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage
-from .capability_check_call import _check_model, with_reading_allowance
+from .capability_check_call import _check_model, spent, with_reading_allowance
 from .context import preflight_budget, record_event
 from .required_check_budget import check_output_reserve, fact_check_input, retryable_check_error
 
@@ -61,7 +61,7 @@ def request_fact_check(context, state, user_task: str, decision, usage, budget_w
     _, input_text = fact_check_input(user_task, actions, policy)
     reading = with_reading_allowance(context, usage)
     for attempt in (1, 2):
-        if usage.budget_exhausted:
+        if spent(usage):  # A3: not an optional call's refusal at preflight (live P5 M09's second opinion)
             return FactCheck(status="blocked", model=model or "", candidates=names), usage, budget_warnings
         call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
         budget, budget_warnings = preflight_budget(

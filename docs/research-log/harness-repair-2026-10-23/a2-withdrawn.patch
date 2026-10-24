@@ -1,0 +1,251 @@
+diff --git a/scripts/netzoo_agent_core/interpretation/fact_check.py b/scripts/netzoo_agent_core/interpretation/fact_check.py
+index 1c8dcd35..021868e2 100644
+--- a/scripts/netzoo_agent_core/interpretation/fact_check.py
++++ b/scripts/netzoo_agent_core/interpretation/fact_check.py
+@@ -6,7 +6,8 @@ readings) could not be asked at all. The agent may propose any fact, but code ke
+ 
+ - R1 the user's words for it are in the request, and the capability check -- a second, independent reading --
+   read the same words as the user not knowing or not having decided something (`CapabilityCheck.uncertain_quotes`;
+-  dev set m3: the agent alone asked on 10-20 of 27 supported requests);
++  dev set m3: the agent alone asked on 10-20 of 27 supported requests) -- or, for a required declaration, the user's
++  words and the cited contract words name its control (harness repair A2', `declaration_doubt`);
+ - R2 the contract words that make it decide are in that candidate workflow's contract;
+ - R3 a yes and a no lead to different outcomes;
+ - R4 the reading did not type it as stated (its words are not inside a definite condition, method or setting, and
+@@ -34,7 +35,8 @@ from ..method_names import registered_workflows, workflows_in
+ from .obligations import MAX_ASKED, fact_key
+ from .request_spans import _span
+ 
+-__all__ = ["FACT_INSTRUCTIONS", "fact_candidates", "fact_messages_text", "holds_stated_setting", "kept_facts"]
++__all__ = ["FACT_INSTRUCTIONS", "declaration_doubt", "fact_candidates", "fact_messages_text", "holds_stated_setting",
++           "kept_facts"]
+ 
+ MAX_CANDIDATES = 4
+ 
+@@ -124,6 +126,29 @@ def _named_options(task: str, alternatives) -> list[tuple[int, int]]:
+             if not any(other != span and other[0] <= span[0] and span[1] <= other[1] for other in spans)]
+ 
+ 
++def declaration_doubt(task: str, proposal) -> bool:
++    """Harness repair A2' (ROUND-A.md): R1's witness for a required declaration the check never read.
++
++    A required declaration (`judgment_defaults.required_settings`: BONOBO's log_transformed, centered) is asked when
++    not stated, never assumed (user decision 2026-10-19 (a)). h7 S16 (both rounds): "I centred every gene myself, but
++    I can't remember whether I log-transformed the values first" -- the agent asked "Did you log-transform the
++    values?" citing BONOBO's declaration; the check read no row and no unknown on that sentence, so R1 dropped it and
++    BONOBO ran. Here the user's words, the agent's question and the cited contract words all name the same declared
++    control (its second proposal, "Did you center the values?" on the same words, names another); R2-R7 (R4: words
++    the reading typed as stated) still hold.
++    """
++    from ..judgment_defaults import judgment_defaults
++    from ..workflow_conditions import control_named
++
++    required = judgment_defaults().required_settings
++    workflow = next((name for name in required if name.upper() == (proposal.workflow or "").strip().upper()), None)
++    if workflow is None or not proposal.user_quote.strip() or _span(task, proposal.user_quote) is None:
++        return False
++    return any(control_named(control, proposal.user_quote, stems=True) and control_named(control, proposal.question,
++                                                                                   stems=True)
++               and control_named(control, proposal.contract_quote) for control in required[workflow])
++
++
+ def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> FactCheck:
+     """R1-R6 over the agent's proposals; what is kept is what the turn may ask."""
+     actions = fact_candidates(decision, policy)
+@@ -143,7 +168,7 @@ def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> Fa
+         if span is None:
+             reject("R1 user words not in the request")
+             continue
+-        if not any(_overlaps(proposal.user_quote, quote) for quote in uncertain):
++        if not any(_overlaps(proposal.user_quote, quote) for quote in uncertain) and not declaration_doubt(task, proposal):
+             reject("R1 the check did not read these words as the user being unsure")
+             continue
+         action = by_name.get(proposal.workflow.strip().upper())
+diff --git a/scripts/netzoo_agent_core/workflow_conditions.py b/scripts/netzoo_agent_core/workflow_conditions.py
+index b57d6c1d..bb46f3e3 100644
+--- a/scripts/netzoo_agent_core/workflow_conditions.py
++++ b/scripts/netzoo_agent_core/workflow_conditions.py
+@@ -224,9 +224,19 @@ def control_boolean_value(limit: SettingLimit, words: str, quote: str = "") -> b
+     value = boolean_value(words, quote)
+     if value is not None or not (words or "").strip():
+         return value
+-    own = {token for token in _tokens(limit.name.replace("_", " ")) if len(token) > 3 and not token.isdigit()}
++    return True if control_named(limit.name, words) and not _tokens(words) & _NEGATIONS else None
++
++
++def control_named(control: str, words: str, stems: bool = False) -> bool:
++    """Whether the words hold a word of the control's own name ("log2-transformed" for log_transformed): its words of
++    more than three letters, never a phrase list. `stems` (harness repair A2'): also a word of five letters or more
++    that begins one of them or that one of them begins ("log-transform", "center" for centered)."""
++    own = {token for token in _tokens(control.replace("_", " ")) if len(token) > 3 and not token.isdigit()}
+     tokens = _tokens(words)
+-    return True if own & tokens and not tokens & _NEGATIONS else None
++    if not stems:
++        return bool(own & tokens)
++    return any(word == token or len(token) >= 5 and (word.startswith(token) or token.startswith(word))
++               for word in own for token in tokens)
+ 
+ 
+ def setting_issue(conditions: WorkflowConditions, setting: StatedSetting) -> str | None:
+diff --git a/tests/test_fact_check.py b/tests/test_fact_check.py
+index 9a7d5b63..8256caf1 100644
+--- a/tests/test_fact_check.py
++++ b/tests/test_fact_check.py
+@@ -59,8 +59,12 @@ def test_a_fact_with_the_users_and_the_contracts_words_and_two_outcomes_is_kept(
+ 
+ 
+ def test_words_the_check_did_not_read_as_unsure_are_not_asked(policy):
+-    """Dev set m3: alone, the agent asked on 10 (nemotron) and 20 (gpt-4o-mini) of 27 supported requests."""
+-    check = _kept(policy, _proposal(), decision=_decision(uncertain=()))
++    """Dev set m3: alone, the agent asked on 10 (nemotron) and 20 (gpt-4o-mini) of 27 supported requests.
++
++    Harness repair A2': a required declaration the words, question and contract all name is witnessed by them instead
++    (`test_a2_declaration_doubt`), so the unwitnessed fact here is another one."""
++    other = _proposal(user_quote="Run BONOBO on lesions.tsv for my 9 biopsies", question="Are there 9 biopsies?")
++    check = _kept(policy, other, decision=_decision(uncertain=()))
+     assert check.accepted == [] and check.rejected[0].rule.startswith("R1 the check did not read")
+ 
+ 
+diff --git a/tests/test_a2_declaration_doubt.py b/tests/test_a2_declaration_doubt.py
+new file mode 100644
+index 00000000..d1beb2dd
+--- /dev/null
++++ b/tests/test_a2_declaration_doubt.py
+@@ -0,0 +1,83 @@
++"""Harness repair A2' (ROUND-A.md): a required declaration the check never read is witnessed by its own control's name.
++
++h7 S16, both rounds: the agent asked "Did you log-transform the values?" on "I can't remember whether I log-transformed
++the values first", citing BONOBO's declaration; the check had read nothing on that sentence, R1 dropped the question
++and BONOBO ran. A required declaration (BONOBO's log_transformed, centered) whose control the user's words and the cited
++contract words both name now passes R1; every other rule still holds.
++"""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++import pytest
++
++sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
++
++from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
++from netzoo_agent_core.contracts.capability_check import CapabilityCheck, CheckedRequirement  # noqa: E402
++from netzoo_agent_core.contracts.fact_check import FactProposal, FactProposals  # noqa: E402
++from netzoo_agent_core.interpretation.fact_check import declaration_doubt, kept_facts  # noqa: E402
++from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
++
++TASK = ("Run BONOBO on islet_expr.tsv (12 human islet donors, genes in rows) and write .h5 output to bonobo_islets/. "
++        "I centred every gene myself, but I can't remember whether I log-transformed the values first.")
++DOUBT = "I can't remember whether I log-transformed the values first."
++CONTRACT = ("The agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes "
++            "log-transformed centered expression.")
++
++
++@pytest.fixture(scope="module")
++def policy():
++    return ProjectPolicyLoader(Path(__file__).parents[1]).load()
++
++
++def proposal(question="Did you log-transform the values?", words=DOUBT, contract=CONTRACT, workflow="BONOBO"):
++    return FactProposal(user_quote=words, uncertainty="said_unknown", workflow=workflow, contract_quote=contract,
++                        question=question, yes_outcome="supported", yes_workflow="", no_outcome="not_supported",
++                        no_workflow="", about="user_data", alternatives=[])
++
++
++def decision(task=TASK, settings=()):
++    row = CheckedRequirement(kind="result", quote=task.split(". ")[0], status="available",
++                             delivered_by=["bonobo.per_sample_networks"],
++                             method={"named": "BONOBO", "named_quote": "BONOBO", "settings": list(settings)})
++    return TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
++                        matched_actions=["run_bonobo"], capability_check=CapabilityCheck(requirements=[row]))
++
++
++def test_the_s16_question_is_kept_though_the_check_read_nothing_there(policy):
++    found = kept_facts(TASK, FactProposals(facts=[proposal()]), decision(), policy)
++    assert [fact.question for fact in found.accepted] == ["Did you log-transform the values?"]
++
++
++def test_a_question_on_another_declaration_than_the_words_name_is_dropped(policy):
++    """S16's second proposal: centering, on the log-transform sentence."""
++    found = kept_facts(TASK, FactProposals(facts=[proposal("Did you center the values?")]), decision(), policy)
++    assert found.accepted == [] and found.rejected[0].rule.startswith("R1 the check did not read")
++    centring = proposal("Did you center the values?", words="I centred every gene myself")
++    assert not declaration_doubt(TASK, centring)  # "centred" does not begin "centered"; R1 decides as before
++
++
++def test_the_question_must_ask_about_the_declaration():
++    assert not declaration_doubt(TASK, proposal("Which BONOBO version did you install?"))
++
++
++def test_a_workflow_without_required_declarations_has_no_such_witness():
++    assert not declaration_doubt(TASK, proposal(workflow="PANDA"))
++
++
++def test_contract_words_that_do_not_name_the_control_are_no_witness():
++    assert not declaration_doubt(TASK, proposal(contract="BONOBO assumes centered expression with genes on rows."))
++
++
++def test_words_not_in_the_request_are_no_witness():
++    assert not declaration_doubt(TASK, proposal(words="I never log-transformed anything"))
++
++
++def test_words_the_reading_typed_as_a_stated_setting_are_still_dropped_by_r4(policy):
++    start = TASK.index(DOUBT)
++    stated = {"name": "BONOBO.log_transformed", "quote": DOUBT, "value": "true", "span": [start, start + len(DOUBT)]}
++    found = kept_facts(TASK, FactProposals(facts=[proposal()]), decision(settings=[stated]), policy)
++    assert found.accepted == [] and found.rejected[0].rule == "R4 the reading typed it as stated"
+--- a/docs/research-log/false-accept-replay-2026-10-21/replay_full.py
++++ b/docs/research-log/false-accept-replay-2026-10-21/replay_full.py
+@@ -199,6 +199,30 @@
+     checked = next((e.get("payload") or {} for e in found if e.get("event_type") == "routing.capability_checked"), {})
+     count = len([k for k in (checked.get("proposal") or {}) if k.startswith("s")])
+     return bool(count) and expanded_enum_values(proposal_model(count).model_json_schema()) <= 1000
++
++
++def _declaration_doubts(task, decision, check):
++    """Harness repair A2': the recorded proposals R1 dropped only for want of the check's witness that today's
++    `declaration_doubt` witnesses, re-judged by today's `kept_facts` (R2-R7). None without that function."""
++    from netzoo_agent_core.contracts.fact_check import FactProposal, FactProposals
++    from netzoo_agent_core.interpretation.fact_check import declaration_doubt, kept_facts
++    from netzoo_agent_core.interpretation.menu_requirements import _policy
++
++    found = []
++    for rejected in decision.fact_check.rejected:
++        if not rejected.rule.startswith("R1 the check did not read"):
++            continue
++        try:
++            proposal = FactProposal.model_validate(rejected.proposal)
++        except ValueError:
++            continue  # recorded before the proposal's current fields
++        if declaration_doubt(task, proposal):
++            found.append(proposal)
++    if not found:
++        return []
++    again = kept_facts(task, FactProposals(facts=found), decision.model_copy(update={"capability_check": check}),
++                       _policy())
++    return [*again.accepted, *again.queued]
+ 
+ 
+ def replay(folder: Path, task: str, payload: dict, reread: dict | None, found: list[dict]) -> dict:
+@@ -347,6 +371,20 @@
+                 decision = decision.model_copy(update={"fact_check": agent.model_copy(
+                     update={"accepted": kept, "open_results": opened})})
+                 steps.append("R4 stated setting")
++        try:  # harness repair A2' (ROUND-A.md): a required declaration the check never read, by today's R1-R7
++            from netzoo_agent_core.interpretation.fact_check import declaration_doubt  # noqa: F401
++        except ImportError:
++            declaration_doubt = None
++        if declaration_doubt is not None and (again := _declaration_doubts(task, decision, check)):
++            agent = decision.fact_check
++            taken = {fact.user_quote for fact in [*agent.accepted, *agent.queued]}
++            if new := [fact for fact in again if fact.user_quote not in taken]:
++                from netzoo_agent_core.interpretation.obligations import MAX_ASKED
++
++                merged = sorted([*agent.accepted, *agent.queued, *new], key=lambda fact: task.find(fact.user_quote))
++                decision = decision.model_copy(update={"fact_check": agent.model_copy(
++                    update={"accepted": merged[:MAX_ASKED], "queued": merged[MAX_ASKED:]})})
++                steps.append("A2' declaration doubt")
+         try:  # harness repair P1 (2026-10-23): no wait is lifted; decide_core asks or queues each one
+             from netzoo_agent_core.interpretation.obligations import ask_plan  # noqa: F401
+             lifts = None
