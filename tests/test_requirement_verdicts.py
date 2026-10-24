@@ -50,7 +50,9 @@ def test_a_confirmed_partial_request_does_not_offer_an_incompatible_confidence_m
     decision = TaskDecision.model_validate(LIVE_C10["decision"])
     text, kind, card = _replay(LIVE_C10["task"], decision)
     assert "LIONESS-DRAGON" in text
-    assert "I couldn't match this to a result any registered NetZoo workflow produces." in text  # P2
+    # P5 r1 fix (3): the p-value row's near miss is the model's reading, so the row says layer 2 (P2)
+    assert ('"a statistically calibrated p-value for every edge in each individual patient\'s network" -- I couldn\'t '
+            "match this to anything a registered NetZoo workflow produces or lets you set.") in text
     assert "BONOBO" not in text
     assert "Which result do you mean" not in text
     assert kind == "capability_partial"

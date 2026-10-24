@@ -175,7 +175,11 @@ def test_mx03_the_two_layer_network_stands_and_the_third_layer_is_refused():
     assert core.quote == ("We'd like a DRAGON network between the proteome and the transcriptome of our 64 matched "
                           "tumours")
     assert core.status == "available" and "dragon.two_layer_network" in core.delivered_by
-    assert third.status == "not_available" and "DRAGON does not give it: two layers only" in understanding_paragraph(check)
+    # P5 r1 (h7 S04): the near miss is the model's reading, which code cannot verify, so it is not said -- the cost: here
+    # it was the right reason. The third layer is still refused, in layer 2.
+    paragraph = understanding_paragraph(check)
+    assert third.status == "not_available" and "does not give it" not in paragraph
+    assert "I couldn't match this to anything a registered NetZoo workflow produces or lets you set." in paragraph
     assert run_check_verdict(check, "run_dragon")["verdict"] == "partial_gap"
 
 

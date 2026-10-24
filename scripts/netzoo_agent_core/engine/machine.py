@@ -669,9 +669,14 @@ class ConversationMachine:
     def _recheck(self, text: str, action: str) -> list[Event]:
         """The planned run, checked again with what the user just added (M2).
 
-        The pending plan is dropped: the request it was planned for has changed, so it is planned or held again.
+        The pending plan is dropped: the request it was planned for has changed, so it is planned or held again, with
+        a turn budget of its own (P5 r1 M01: the paused turn's usage blocked the check, which held it unconfirmed).
+        A plan that is no run has nothing to check again: the message is a new turn, as before M2 (P5 r1 M11).
         """
         state = self.state
+        state.active_usage = None
+        if action not in RUN_ACTIONS:
+            return self._accept_task(text)
         task = recheck_task(state.conversation, text)
         state.pending_plan = None
         state.clarification_selections = {}
