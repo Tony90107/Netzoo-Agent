@@ -1,0 +1,1144 @@
+[
+ {
+  "session": "hb-p5r1-M01-A-1",
+  "item": "M01",
+  "system": "A",
+  "task": "Run LIONESS-DRAGON for our 80 kidney transplant recipients on the transcript and protein tables our bioinformatician exported. The filtered export has 150 transcripts and 60 proteins, the full one has 1,500 transcripts and 600 proteins, and I'm not sure which one she sent. | follow-up: She sent the filtered export. | Sorry, I checked again: she sent the full export.",
+  "gold": "DECLINE",
+  "gold_reason": "After the correction F = 1,500 + 600 = 2,100 features, 2,100*2,099/2 = 2,203,950 pairs x 80 = 176,316,000 values, above the 20,000,000-value limit. Evidence: lioness-dragon.yaml: \"runs above 20,000,000 values are refused before they start\"",
+  "gold_evidence": "lioness-dragon.yaml: \"The per-sample table holds one value per feature pair per sample; runs above 20,000,000 values are refused before they start.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "Run LIONESS-DRAGON for our 80 kidney transplant recipients on the transcript and protein tables our bioinformatician exported.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. LIONESS-DRAGON writes at most 20,000,000 values (features x (features - 1) / 2 x samples); 750 features and 80 samples give 22,470,000."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-M05-A-1",
+  "item": "M05",
+  "system": "A",
+  "task": "For each of our 90 IBD patients, with 40 faecal metabolites and 25 serum cytokines measured in all of them, I want a network of how the metabolites drive the cytokines. I'm not sure whether what I need counts as cause and effect or just which levels are linked.",
+  "gold": "ASK",
+  "gold_reason": "Conditional co-variation per patient is what LIONESS-DRAGON's per-sample partial correlations give; 40 + 25 = 65 features, 65*64/2 = 2,080 pairs x 90 = 187,200 values, under the limit. Evidence: lioness-dragon.yaml: \"description: Infer one sample-specific two-layer multi-omic partial-correlation network per sample with LIONESS-DRAGON.\"; lioness-dragon.yaml: \"runs above 20,000,000 values are refused before they start\"",
+  "gold_evidence": "lioness-dragon.yaml: \"partial correlations are conditional associations, not causal relationships.\"; lioness-dragon.yaml: \"runs above 20,000,000 values are refused before they start\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "I want a network of how the metabolites drive the cytokines.",
+    "status": "not_available",
+    "type": "R0",
+    "text": "not matched to any registered workflow."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R0",
+    "text": "This was not matched to any registered workflow, so none is offered."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-M05-D-1",
+  "item": "M05",
+  "system": "D",
+  "task": "For each of our 90 IBD patients, with 40 faecal metabolites and 25 serum cytokines measured in all of them, I want a network of how the metabolites drive the cytokines. I'm not sure whether what I need counts as cause and effect or just which levels are linked.",
+  "gold": "ASK",
+  "gold_reason": "Conditional co-variation per patient is what LIONESS-DRAGON's per-sample partial correlations give; 40 + 25 = 65 features, 65*64/2 = 2,080 pairs x 90 = 187,200 values, under the limit. Evidence: lioness-dragon.yaml: \"description: Infer one sample-specific two-layer multi-omic partial-correlation network per sample with LIONESS-DRAGON.\"; lioness-dragon.yaml: \"runs above 20,000,000 values are refused before they start\"",
+  "gold_evidence": "lioness-dragon.yaml: \"partial correlations are conditional associations, not causal relationships.\"; lioness-dragon.yaml: \"runs above 20,000,000 values are refused before they start\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "I want a network of how the metabolites drive the cytokines.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-M05-E-1",
+  "item": "M05",
+  "system": "E",
+  "task": "For each of our 90 IBD patients, with 40 faecal metabolites and 25 serum cytokines measured in all of them, I want a network of how the metabolites drive the cytokines. I'm not sure whether what I need counts as cause and effect or just which levels are linked.",
+  "gold": "ASK",
+  "gold_reason": "Conditional co-variation per patient is what LIONESS-DRAGON's per-sample partial correlations give; 40 + 25 = 65 features, 65*64/2 = 2,080 pairs x 90 = 187,200 values, under the limit. Evidence: lioness-dragon.yaml: \"description: Infer one sample-specific two-layer multi-omic partial-correlation network per sample with LIONESS-DRAGON.\"; lioness-dragon.yaml: \"runs above 20,000,000 values are refused before they start\"",
+  "gold_evidence": "lioness-dragon.yaml: \"partial correlations are conditional associations, not causal relationships.\"; lioness-dragon.yaml: \"runs above 20,000,000 values are refused before they start\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "I want a network of how the metabolites drive the cytokines.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-M06-D-1",
+  "item": "M06",
+  "system": "D",
+  "task": "We profiled 24 zebrafish fins during regeneration and have the expression matrix with motif and PPI priors. I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment. | follow-up: One per fish, please. Also, the regulators should include the miR-203 family; we have their target edges in the prior and a one-per-line miRNA list.",
+  "gold": "DO",
+  "gold_reason": "Per-fish networks with miRNA regulators switch the workflow from LIONESS-PANDA to LIONESS-PUMA, which takes the miRNA list and 24 (>= 3) samples. Evidence: lioness-puma.yaml: \"Require at least three expression samples and a validated one-ID-per-line miRNA list.\"; lioness-puma.yaml: \"regulator_types: [tf, mirna]\"",
+  "gold_evidence": "panda.yaml: \"description: Infer an aggregate TF-to-gene regulatory network with PANDA.\"; lioness-panda.yaml: \"description: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to a result any registered NetZoo workflow produces. PANDA does not give it: the PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or stoichiometry."
+   },
+   {
+    "quote": "One per fish, please.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to a result any registered NetZoo workflow produces. PANDA does not give it: the PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or stoichiometry."
+   },
+   {
+    "quote": "Also, the regulators should include the miR-203 family; we have their target edges in the prior and a one-per-line miRNA list.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to a result any registered NetZoo workflow produces. PANDA does not give it: the PPI network is an input of possible TF cooperation. PANDA refines a cooperativity matrix internally, but the executor does not save it, and it is not a measurement of physical complexes or stoichiometry."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match these to a result any registered NetZoo workflow produces, so none is offered."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-M06-E-1",
+  "item": "M06",
+  "system": "E",
+  "task": "We profiled 24 zebrafish fins during regeneration and have the expression matrix with motif and PPI priors. I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment. | follow-up: One per fish, please. Also, the regulators should include the miR-203 family; we have their target edges in the prior and a one-per-line miRNA list.",
+  "gold": "DO",
+  "gold_reason": "Per-fish networks with miRNA regulators switch the workflow from LIONESS-PANDA to LIONESS-PUMA, which takes the miRNA list and 24 (>= 3) samples. Evidence: lioness-puma.yaml: \"Require at least three expression samples and a validated one-ID-per-line miRNA list.\"; lioness-puma.yaml: \"regulator_types: [tf, mirna]\"",
+  "gold_evidence": "panda.yaml: \"description: Infer an aggregate TF-to-gene regulatory network with PANDA.\"; lioness-panda.yaml: \"description: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+   },
+   {
+    "quote": "One per fish, please.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match these to a result any registered NetZoo workflow produces, so none is offered."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-M07-A-1",
+  "item": "M07",
+  "system": "A",
+  "task": "My postdoc left me a weighted edge list (source, target, weight) from our zebrafish heart-regeneration project, and I'd like CONDOR communities from it. I can't remember whether it's her TF-to-gene network or the gene-gene co-expression network she also built. | follow-up: It's the gene-gene co-expression network.",
+  "gold": "DECLINE",
+  "gold_reason": "A gene-gene co-expression network is not the regulator-gene bipartite network CONDOR consumes, so nothing in the request can be done as asked. Evidence: condor.yaml: \"Build the source-target-weight edge list from a validated regulator-gene network; CONDOR does not consume the raw expression matrix directly.\"; condor.yaml: \"input_artifacts: [regulatory_network]\"",
+  "gold_evidence": "condor.yaml: \"CONDOR consumes a weighted source-target bipartite edge list made from a\"; condor.yaml: \"input_artifacts: [regulatory_network]\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "I'd like CONDOR communities from it.",
+    "status": "not_available",
+    "type": "R0",
+    "text": "not matched to any registered workflow."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R0",
+    "text": "This was not matched to any registered workflow, so none is offered."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-M07-D-1",
+  "item": "M07",
+  "system": "D",
+  "task": "My postdoc left me a weighted edge list (source, target, weight) from our zebrafish heart-regeneration project, and I'd like CONDOR communities from it. I can't remember whether it's her TF-to-gene network or the gene-gene co-expression network she also built. | follow-up: It's the gene-gene co-expression network.",
+  "gold": "DECLINE",
+  "gold_reason": "A gene-gene co-expression network is not the regulator-gene bipartite network CONDOR consumes, so nothing in the request can be done as asked. Evidence: condor.yaml: \"Build the source-target-weight edge list from a validated regulator-gene network; CONDOR does not consume the raw expression matrix directly.\"; condor.yaml: \"input_artifacts: [regulatory_network]\"",
+  "gold_evidence": "condor.yaml: \"CONDOR consumes a weighted source-target bipartite edge list made from a\"; condor.yaml: \"input_artifacts: [regulatory_network]\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "I'd like CONDOR communities from it.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to anything a registered NetZoo workflow produces or lets you set. CONDOR gives: communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity. Each regulator's and gene's core score -- its share of its community's modularity -- to pick out each community's core nodes."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-M07-E-1",
+  "item": "M07",
+  "system": "E",
+  "task": "My postdoc left me a weighted edge list (source, target, weight) from our zebrafish heart-regeneration project, and I'd like CONDOR communities from it. I can't remember whether it's her TF-to-gene network or the gene-gene co-expression network she also built. | follow-up: It's the gene-gene co-expression network.",
+  "gold": "DECLINE",
+  "gold_reason": "A gene-gene co-expression network is not the regulator-gene bipartite network CONDOR consumes, so nothing in the request can be done as asked. Evidence: condor.yaml: \"Build the source-target-weight edge list from a validated regulator-gene network; CONDOR does not consume the raw expression matrix directly.\"; condor.yaml: \"input_artifacts: [regulatory_network]\"",
+  "gold_evidence": "condor.yaml: \"CONDOR consumes a weighted source-target bipartite edge list made from a\"; condor.yaml: \"input_artifacts: [regulatory_network]\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "I'd like CONDOR communities from it.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to anything a registered NetZoo workflow produces or lets you set. CONDOR gives: communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity. Each regulator's and gene's core score -- its share of its community's modularity -- to pick out each community's core nodes."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-M12-A-1",
+  "item": "M12",
+  "system": "A",
+  "task": "Forget that question. Different project: please run OTTER on motif_hs.tsv, ppi_hs.tsv and expr_hs.tsv for 30 human lung samples, with lam set to 1.3.",
+  "gold": "DECLINE",
+  "gold_reason": "New request: OTTER's lam is limited to [0, 1], so lam 1.3 is outside the stated range and the run cannot be done as asked. Evidence: workflow_registry.py: \"0.035, minimum=0, maximum=1\"; otter.yaml: \"Weight of gene co-expression versus the TF-TF PPI network in OTTER's fit, as (lam, 1 - lam); not a sparsity penalty.\"",
+  "gold_evidence": "panda.yaml: \"description: Infer an aggregate TF-to-gene regulatory network with PANDA.\"; cobra.yaml: \"description: Model covariate-associated gene co-expression with COBRA.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "please run OTTER on motif_hs.tsv, ppi_hs.tsv and expr_hs.tsv for 30 human lung samples, with lam set to 1.3.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. OTTER's lam must be between 0 and 1; \"1.3\" is not. OTTER itself can still run, with its own settings instead -- an alternative, not the setting you asked for."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "No registered workflow can give this as you asked, so none is offered as asked."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-M12-D-1",
+  "item": "M12",
+  "system": "D",
+  "task": "Forget that question. Different project: please run OTTER on motif_hs.tsv, ppi_hs.tsv and expr_hs.tsv for 30 human lung samples, with lam set to 1.3.",
+  "gold": "DECLINE",
+  "gold_reason": "New request: OTTER's lam is limited to [0, 1], so lam 1.3 is outside the stated range and the run cannot be done as asked. Evidence: workflow_registry.py: \"0.035, minimum=0, maximum=1\"; otter.yaml: \"Weight of gene co-expression versus the TF-TF PPI network in OTTER's fit, as (lam, 1 - lam); not a sparsity penalty.\"",
+  "gold_evidence": "panda.yaml: \"description: Infer an aggregate TF-to-gene regulatory network with PANDA.\"; cobra.yaml: \"description: Model covariate-associated gene co-expression with COBRA.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "please run OTTER on motif_hs.tsv, ppi_hs.tsv and expr_hs.tsv for 30 human lung samples, with lam set to 1.3.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. OTTER's lam must be between 0 and 1; \"1.3\" is not. OTTER itself can still run, with its own settings instead -- an alternative, not the setting you asked for."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "No registered workflow can give this as you asked, so none is offered as asked."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-M12-E-1",
+  "item": "M12",
+  "system": "E",
+  "task": "Forget that question. Different project: please run OTTER on motif_hs.tsv, ppi_hs.tsv and expr_hs.tsv for 30 human lung samples, with lam set to 1.3.",
+  "gold": "DECLINE",
+  "gold_reason": "New request: OTTER's lam is limited to [0, 1], so lam 1.3 is outside the stated range and the run cannot be done as asked. Evidence: workflow_registry.py: \"0.035, minimum=0, maximum=1\"; otter.yaml: \"Weight of gene co-expression versus the TF-TF PPI network in OTTER's fit, as (lam, 1 - lam); not a sparsity penalty.\"",
+  "gold_evidence": "panda.yaml: \"description: Infer an aggregate TF-to-gene regulatory network with PANDA.\"; cobra.yaml: \"description: Model covariate-associated gene co-expression with COBRA.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "please run OTTER on motif_hs.tsv, ppi_hs.tsv and expr_hs.tsv for 30 human lung samples, with lam set to 1.3.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. OTTER's lam must be between 0 and 1; \"1.3\" is not. OTTER itself can still run, with its own settings instead -- an alternative, not the setting you asked for."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "No registered workflow can give this as you asked, so none is offered as asked."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S01-A-1",
+  "item": "S01",
+  "system": "A",
+  "task": "Which of the NetZoo methods fits our data best? We've got a PPI network and a motif prior, and bulk RNA-seq for 48 lung adenocarcinomas.",
+  "gold": "CLARIFY",
+  "gold_reason": "Same request as its paraphrase: a tool-choice question with no result named.",
+  "gold_evidence": "panda.yaml: \"description: Infer an aggregate TF-to-gene regulatory network with PANDA.\"; lioness-panda.yaml: \"description: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "Which of the NetZoo methods fits our data best?",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. NetZoo has no registered method or variant \"NetZoo\"."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S02-A-1",
+  "item": "S02",
+  "system": "A",
+  "task": "I'd like a PUMA network for our 58 cervical cancer samples. We have the expression matrix, a motif prior with TargetScan miRNA-target edges added, a STRING PPI, and a one-per-line list of the miRNAs, all using the same IDs. Please set PUMA's update rate alpha to 0.05 instead of the usual 0.1.",
+  "gold": "PARTIAL",
+  "gold_reason": "PUMA can run on these inputs with its own settings, but it exposes no controls, so alpha cannot be set (the agent sets no weight of its own); the answer refuses the alpha setting with that reason and does not start the run by itself.",
+  "gold_evidence": "puma.yaml: \"controls: []\"; workflow_registry.py: \"fraction `alpha` (0.1) toward the agreement\"; workflow_registry.py: \"this agent sets no weight for the prior\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "I'd like a PUMA network for our 58 cervical cancer samples.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. NetZoo runs PUMA with its package defaults and passes no settings to it, so \"Please set PUMA's update rate alpha to 0.05 instead of the usual 0.1.\" cannot be applied."
+   },
+   {
+    "quote": "Please set PUMA's update rate alpha to 0.05 instead of the usual 0.1",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. NetZoo runs PUMA with its package defaults and passes no settings to it, so \"Please set PUMA's update rate alpha to 0.05 instead of the usual 0.1.\" cannot be applied."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "No registered workflow can give these as you asked, so none is offered as asked."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S02-E-1",
+  "item": "S02",
+  "system": "E",
+  "task": "I'd like a PUMA network for our 58 cervical cancer samples. We have the expression matrix, a motif prior with TargetScan miRNA-target edges added, a STRING PPI, and a one-per-line list of the miRNAs, all using the same IDs. Please set PUMA's update rate alpha to 0.05 instead of the usual 0.1.",
+  "gold": "PARTIAL",
+  "gold_reason": "PUMA can run on these inputs with its own settings, but it exposes no controls, so alpha cannot be set (the agent sets no weight of its own); the answer refuses the alpha setting with that reason and does not start the run by itself.",
+  "gold_evidence": "puma.yaml: \"controls: []\"; workflow_registry.py: \"fraction `alpha` (0.1) toward the agreement\"; workflow_registry.py: \"this agent sets no weight for the prior\"",
+  "kind": "DO",
+  "partial": true,
+  "lines": [
+   {
+    "quote": "I'd like a PUMA network for our 58 cervical cancer samples.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "available from PUMA, run with its own settings (the settings asked for are below)."
+   },
+   {
+    "quote": "Please set PUMA's update rate alpha to 0.05 instead of the usual 0.1",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. NetZoo runs PUMA with its package defaults and passes no settings to it, so \"Please set PUMA's update rate alpha to 0.05 instead of the usual 0.1.\" cannot be applied. PUMA itself can still run, with its own settings instead -- an alternative, not the setting you asked for."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "No scale was stated; PUMA gives one result for the whole cohort; LIONESS-PUMA gives one result for the whole cohort or one result per sample."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "Selected path: **PUMA**."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "Your question asks for a regulatory network. **PUMA** fits that result."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "PUMA** — Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA. PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "`expression_file`: expression matrix"
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "`motif_file`: motif/prior"
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "`ppi_file`: PPI network"
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "`mirna_file`: miRNA list"
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "`regulatory_network`: Inferred regulator-to-target associations."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "PUMA uses message passing to integrate miRNA-target predictions with target-gene co-expression alongside TF motif and PPI evidence."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "Ask for the workflow's controls and defaults if you want to set them."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S04-A-1",
+  "item": "S04",
+  "system": "A",
+  "task": "For 36 mouse liver samples from a fasting time course, I want to estimate how active each transcription factor is in each sample, apart from its own mRNA level, together with signed activating or repressing effects on its targets. We have the expression matrix, a motif prior and a TF-TF PPI with matching IDs.",
+  "gold": "DO",
+  "gold_reason": "GIRAFFE returns a TF-by-sample activity matrix and a signed TF-gene effect matrix from expression, motif and PPI; 36 >= 2 samples.",
+  "gold_evidence": "giraffe.yaml: \"produced_artifacts: [regulatory_network, tf_activity_matrix]\"; giraffe.yaml: \"prefer_when: [tf_activity_vs_expression:yes, per_sample_quantity:activity]\"; giraffe.yaml: \"Require at least two expression samples before execution.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "I want to estimate how active each transcription factor is in each sample, apart from its own mRNA level, together with signed activating or repressing effects on its targets.",
+    "status": "not_available",
+    "type": "R0",
+    "text": "not matched to any registered workflow."
+   },
+   {
+    "quote": "together with signed activating or repressing effects on its targets.",
+    "status": "not_available",
+    "type": "R0",
+    "text": "not matched to any registered workflow."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R0",
+    "text": "These were not matched to any registered workflow, so none is offered."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S04-E-1",
+  "item": "S04",
+  "system": "E",
+  "task": "For 36 mouse liver samples from a fasting time course, I want to estimate how active each transcription factor is in each sample, apart from its own mRNA level, together with signed activating or repressing effects on its targets. We have the expression matrix, a motif prior and a TF-TF PPI with matching IDs.",
+  "gold": "DO",
+  "gold_reason": "GIRAFFE returns a TF-by-sample activity matrix and a signed TF-gene effect matrix from expression, motif and PPI; 36 >= 2 samples.",
+  "gold_evidence": "giraffe.yaml: \"produced_artifacts: [regulatory_network, tf_activity_matrix]\"; giraffe.yaml: \"prefer_when: [tf_activity_vs_expression:yes, per_sample_quantity:activity]\"; giraffe.yaml: \"Require at least two expression samples before execution.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "I want to estimate how active each transcription factor is in each sample, apart from its own mRNA level, together with signed activating or repressing effects on its targets.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+   },
+   {
+    "quote": "together with signed activating or repressing effects on its targets.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to a result any registered NetZoo workflow produces. GIRAFFE does not give it: activity is inferred from expression and priors, not measured."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match these to a result any registered NetZoo workflow produces, so none is offered."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "Registered workflows that take the kind of data you described: PANDA, PUMA, LIONESS-PANDA, LIONESS-PUMA, LIONESS-COEXPRESSION, COBRA, DRAGON, LIONESS-DRAGON, OTTER, GIRAFFE, BONOBO. Tell me if one of them gives what you meant, or which result you need."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S09-A-1",
+  "item": "S09",
+  "system": "A",
+  "task": "We have an expression matrix for 36 mouse liver samples across a fasting time course, plus a motif prior and a TF-TF protein interaction table whose IDs match. What we're after is each transcription factor's activity in every sample, not just how much of its transcript is present, and whether it switches its targets on or off.",
+  "gold": "DO",
+  "gold_reason": "Same request as its paraphrase: per-sample TF activity distinct from TF mRNA plus the sign of regulation is GIRAFFE's activity matrix and signed effect matrix; 36 >= 2 samples.",
+  "gold_evidence": "giraffe.yaml: \"produced_artifacts: [regulatory_network, tf_activity_matrix]\"; giraffe.yaml: \"prefer_when: [tf_activity_vs_expression:yes, per_sample_quantity:activity]\"; giraffe.yaml: \"Require at least two expression samples before execution.\"",
+  "kind": "DO",
+  "partial": true,
+  "lines": [
+   {
+    "quote": "each transcription factor's activity in every sample",
+    "status": "not_available",
+    "type": "R0",
+    "text": "not matched to any registered workflow."
+   },
+   {
+    "quote": "whether it switches its targets on or off",
+    "status": "not_available",
+    "type": "R1",
+    "text": "available from GIRAFFE."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "Selected path: **GIRAFFE**."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "Your question asks for a cohort-level TF activity matrix. **GIRAFFE** fits that result and scale."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "GIRAFFE** — Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "`expression_file`: expression matrix"
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "`motif_file`: motif/prior"
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "`ppi_file`: PPI network"
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "`regulatory_network`: Inferred regulator-to-target associations."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "`tf_activity_matrix`: Inferred transcription-factor-by-sample activity values."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "TF activity is how active a TF is in each sample, apart from its own mRNA level. If you mean how strongly each TF is wired to its targets in each sample, the out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the same inputs."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "Ask for the workflow's controls and defaults if you want to set them."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S09-E-1",
+  "item": "S09",
+  "system": "E",
+  "task": "We have an expression matrix for 36 mouse liver samples across a fasting time course, plus a motif prior and a TF-TF protein interaction table whose IDs match. What we're after is each transcription factor's activity in every sample, not just how much of its transcript is present, and whether it switches its targets on or off.",
+  "gold": "DO",
+  "gold_reason": "Same request as its paraphrase: per-sample TF activity distinct from TF mRNA plus the sign of regulation is GIRAFFE's activity matrix and signed effect matrix; 36 >= 2 samples.",
+  "gold_evidence": "giraffe.yaml: \"produced_artifacts: [regulatory_network, tf_activity_matrix]\"; giraffe.yaml: \"prefer_when: [tf_activity_vs_expression:yes, per_sample_quantity:activity]\"; giraffe.yaml: \"Require at least two expression samples before execution.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "each transcription factor's activity in every sample",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "Registered workflows that take the kind of data you described: PANDA, PUMA, LIONESS-PANDA, LIONESS-PUMA, LIONESS-COEXPRESSION, COBRA, DRAGON, LIONESS-DRAGON, OTTER, GIRAFFE, BONOBO. Tell me if one of them gives what you meant, or which result you need."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S24-A-1",
+  "item": "S24",
+  "system": "A",
+  "task": "Can LIONESS-DRAGON give me one partial-correlation network per patient for our 60 hepatocellular carcinoma patients? Layer one is 400 liver transcripts and layer two is 600 serum metabolites, both complete continuous tables keyed by the same patient IDs. I'm fine with the shrinkage being estimated from the data.",
+  "gold": "DECLINE",
+  "gold_reason": "400 + 600 = 1,000 features give 1,000*999/2 = 499,500 pairs x 60 samples = 29,970,000 values, above the 20,000,000-value limit, so the run is refused before it starts (size limit).",
+  "gold_evidence": "lioness-dragon.yaml: \"The per-sample table holds one value per feature pair per sample; runs above 20,000,000 values are refused before they start.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "Can LIONESS-DRAGON give me one partial-correlation network per patient for our 60 hepatocellular carcinoma patients?",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. LIONESS-DRAGON writes at most 20,000,000 values (features x (features - 1) / 2 x samples); 1,000 features and 60 samples give 29,970,000."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S24-E-1",
+  "item": "S24",
+  "system": "E",
+  "task": "Can LIONESS-DRAGON give me one partial-correlation network per patient for our 60 hepatocellular carcinoma patients? Layer one is 400 liver transcripts and layer two is 600 serum metabolites, both complete continuous tables keyed by the same patient IDs. I'm fine with the shrinkage being estimated from the data.",
+  "gold": "DECLINE",
+  "gold_reason": "400 + 600 = 1,000 features give 1,000*999/2 = 499,500 pairs x 60 samples = 29,970,000 values, above the 20,000,000-value limit, so the run is refused before it starts (size limit).",
+  "gold_evidence": "lioness-dragon.yaml: \"The per-sample table holds one value per feature pair per sample; runs above 20,000,000 values are refused before they start.\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "Can LIONESS-DRAGON give me one partial-correlation network per patient for our 60 hepatocellular carcinoma patients?",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. LIONESS-DRAGON writes at most 20,000,000 values (features x (features - 1) / 2 x samples); 1,000 features and 60 samples give 29,970,000."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S28-A-1",
+  "item": "S28",
+  "system": "A",
+  "task": "From log2-transformed, gene-centred expression of nine individually profiled zebrafish embryos, I want one co-expression network per embryo with a p-value on every edge. From the same data I also want a directed network showing which genes causally drive the others.",
+  "gold": "PARTIAL",
+  "gold_reason": "Doable: BONOBO per-sample co-expression with matching p-value matrices (sparsify with save_pvals) on >= 3 log-transformed, centred samples. Refused: a directed causal gene network, which BONOBO says it does not produce and the registry says no workflow can show.",
+  "gold_evidence": "bonobo.yaml: \"upstream retains the full co-expression matrix for each selected sample and writes a matching p-value matrix\"; bonobo.yaml: \"network, GRN, TF-gene regulation, or causal network.\"; workflow_registry.py: \"None of the registered workflows can show that one thing causes another\"",
+  "kind": "DO",
+  "partial": true,
+  "lines": [
+   {
+    "quote": "I want one co-expression network per embryo with a p-value on every edge.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "available from LIONESS-COEXPRESSION."
+   },
+   {
+    "quote": "I also want a directed network showing which genes causally drive the others.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here: no registered workflow produces this. Every registered workflow estimates associations or model coefficients from observational data."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "About \"a directed network showing which genes causally drive the others\": None of the registered workflows can show that one thing causes another: they estimate associations or model coefficients from the expression data, so the networks can describe what differs or changes but not show why."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "There are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "LIONESS-COEXPRESSION**. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "You would need expression matrix. The analysis would provide inferred gene-to-gene associations."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "BONOBO**. BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "You would need expression matrix. The analysis would provide inferred gene-to-gene associations; p-value matrix paired with a sample-specific gene-gene co-expression result."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "LIONESS-PANDA**. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "You would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations. LIONESS-PANDA also writes the cohort network, so PANDA need not run first."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "Which scientific question should we start with, and which of these inputs do you have? We can also investigate the hypotheses in parallel."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S28-E-1",
+  "item": "S28",
+  "system": "E",
+  "task": "From log2-transformed, gene-centred expression of nine individually profiled zebrafish embryos, I want one co-expression network per embryo with a p-value on every edge. From the same data I also want a directed network showing which genes causally drive the others.",
+  "gold": "PARTIAL",
+  "gold_reason": "Doable: BONOBO per-sample co-expression with matching p-value matrices (sparsify with save_pvals) on >= 3 log-transformed, centred samples. Refused: a directed causal gene network, which BONOBO says it does not produce and the registry says no workflow can show.",
+  "gold_evidence": "bonobo.yaml: \"upstream retains the full co-expression matrix for each selected sample and writes a matching p-value matrix\"; bonobo.yaml: \"network, GRN, TF-gene regulation, or causal network.\"; workflow_registry.py: \"None of the registered workflows can show that one thing causes another\"",
+  "kind": "DO",
+  "partial": true,
+  "lines": [
+   {
+    "quote": "I want one co-expression network per embryo with a p-value on every edge.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "available from LIONESS-COEXPRESSION."
+   },
+   {
+    "quote": "I also want a directed network showing which genes causally drive the others.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here: no registered workflow produces this. Every registered workflow estimates associations or model coefficients from observational data."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "About \"a directed network showing which genes causally drive the others\": None of the registered workflows can show that one thing causes another: they estimate associations or model coefficients from the expression data, so the networks can describe what differs or changes but not show why."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "There are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "LIONESS-COEXPRESSION**. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "You would need expression matrix. The analysis would provide inferred gene-to-gene associations."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "BONOBO**. BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "You would need expression matrix. The analysis would provide inferred gene-to-gene associations; p-value matrix paired with a sample-specific gene-gene co-expression result."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "LIONESS-PANDA**. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "You would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations. LIONESS-PANDA also writes the cohort network, so PANDA need not run first."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "Which scientific question should we start with, and which of these inputs do you have? We can also investigate the hypotheses in parallel."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S30-E-1",
+  "item": "S30",
+  "system": "E",
+  "task": "I'd like an OTTER network for our 40 rice root samples, using the expression matrix, a motif seed prior and a TF-TF PPI with matching TF IDs. Set lam to 0.2 and add an L1 sparsity penalty of 0.05 so that most edges shrink to zero.",
+  "gold": "PARTIAL",
+  "gold_reason": "OTTER can run on these inputs with lam 0.2 (within [0, 1]), but it has no sparsity penalty or threshold parameter (gamma is L2-style, not sparsity), so the L1 penalty is refused with that reason and the run is not started by itself.",
+  "gold_evidence": "otter.yaml: \"The verified API has no independent sparsity penalty or threshold parameter.\"; otter.yaml: \"sparsity argument is rejected rather than silently mapped.\"; otter.yaml: \"L2-style regularization of the TF-gene matrix W; not a sparsity penalty or threshold.\"; workflow_registry.py: \"0.035, minimum=0, maximum=1\"",
+  "kind": "DO",
+  "partial": true,
+  "lines": [
+   {
+    "quote": "I'd like an OTTER network for our 40 rice root samples, using the expression matrix, a motif seed prior and a TF-TF PPI with matching TF IDs.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "available from OTTER."
+   },
+   {
+    "quote": "Set lam to 0.2 and add an L1 sparsity penalty of 0.05 so that most edges shrink to zero.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "TF-only regulatory network**"
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "TF-only signed regulatory-effect network**"
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S31-A-1",
+  "item": "S31",
+  "system": "A",
+  "task": "We'd like to subtype 85 colorectal cancer patients into 2 to 5 groups based on pathway-level mutation scores. We have a patient-by-gene matrix of variant counts from whole-exome sequencing, a gene-length table, a cancer-gene list and a Reactome GMT.",
+  "gold": "ASK",
+  "gold_reason": "Everything else fits SAMBAR (four inputs, kmax 5 <= 85), but SAMBAR is defined for somatic mutations and the request never says whether the exome variants are somatic or germline; no file check or default settles that.",
+  "gold_evidence": "sambar.yaml: \"description: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\"; sambar.yaml: \"accepted_input_modalities: [somatic_mutation]\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "We'd like to subtype 85 colorectal cancer patients into 2 to 5 groups based on pathway-level mutation scores.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here: no registered workflow produces this. Registered grouping puts each item in exactly one group (CONDOR: one community per regulator or gene; SAMBAR: one subtype per sample); none returns overlapping memberships."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "No registered workflow produces this, so none is offered as the way to get it."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S31-E-1",
+  "item": "S31",
+  "system": "E",
+  "task": "We'd like to subtype 85 colorectal cancer patients into 2 to 5 groups based on pathway-level mutation scores. We have a patient-by-gene matrix of variant counts from whole-exome sequencing, a gene-length table, a cancer-gene list and a Reactome GMT.",
+  "gold": "ASK",
+  "gold_reason": "Everything else fits SAMBAR (four inputs, kmax 5 <= 85), but SAMBAR is defined for somatic mutations and the request never says whether the exome variants are somatic or germline; no file check or default settles that.",
+  "gold_evidence": "sambar.yaml: \"description: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\"; sambar.yaml: \"accepted_input_modalities: [somatic_mutation]\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "We'd like to subtype 85 colorectal cancer patients into 2 to 5 groups based on pathway-level mutation scores.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here: no registered workflow produces this. Registered grouping puts each item in exactly one group (CONDOR: one community per regulator or gene; SAMBAR: one subtype per sample); none returns overlapping memberships."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "No registered workflow produces this, so none is offered as the way to get it."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S32-A-1",
+  "item": "S32",
+  "system": "A",
+  "task": "Run LIONESS co-expression on organoid_expr.tsv now: 5,000 genes across our two biological replicates of patient-derived colon organoids. Write the aggregate network to coexp_all.tsv and the per-sample networks to lioness_out/.",
+  "gold": "DECLINE",
+  "gold_reason": "LIONESS co-expression requires at least three samples; two replicates fail the minimum (BONOBO, the other per-sample co-expression workflow, also needs three).",
+  "gold_evidence": "lioness-coexpression.yaml: \"Require at least three samples and validate expression inside the execution wrapper.\"; bonobo.yaml: \"at least three total samples\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "Run LIONESS co-expression on organoid_expr.tsv now: 5,000 genes across our two biological replicates of patient-derived colon organoids.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. LIONESS-COEXPRESSION needs at least 3 samples; the request has 2."
+   },
+   {
+    "quote": "Write the aggregate network to coexp_all.tsv and the per-sample networks to lioness_out/.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. LIONESS-COEXPRESSION needs at least 3 samples; the request has 2."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "No registered workflow can give these as you asked, so none is offered as asked."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S32-E-1",
+  "item": "S32",
+  "system": "E",
+  "task": "Run LIONESS co-expression on organoid_expr.tsv now: 5,000 genes across our two biological replicates of patient-derived colon organoids. Write the aggregate network to coexp_all.tsv and the per-sample networks to lioness_out/.",
+  "gold": "DECLINE",
+  "gold_reason": "LIONESS co-expression requires at least three samples; two replicates fail the minimum (BONOBO, the other per-sample co-expression workflow, also needs three).",
+  "gold_evidence": "lioness-coexpression.yaml: \"Require at least three samples and validate expression inside the execution wrapper.\"; bonobo.yaml: \"at least three total samples\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "Run LIONESS co-expression on organoid_expr.tsv now: 5,000 genes across our two biological replicates of patient-derived colon organoids.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. LIONESS-COEXPRESSION needs at least 3 samples; the request has 2."
+   },
+   {
+    "quote": "Write the aggregate network to coexp_all.tsv and the per-sample networks to lioness_out/.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. LIONESS-COEXPRESSION needs at least 3 samples; the request has 2."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "No registered workflow can give these as you asked, so none is offered as asked."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S34-A-1",
+  "item": "S34",
+  "system": "A",
+  "task": "We measured liver transcripts, proteins and metabolites in the same 50 mice, each as a complete continuous table. I'd like one partial-correlation network linking the transcript and protein layers, and a second network that models all three layers together in a single fit.",
+  "gold": "PARTIAL",
+  "gold_reason": "Doable: DRAGON on the paired transcript and protein tables (two continuous layers, 50 >= 3 samples). Refused: the joint three-layer network, because DRAGON takes exactly two layers and has no three-layer argument, and no other workflow models three omics layers.",
+  "gold_evidence": "dragon.yaml: \"DRAGON consumes exactly two paired sample-by-feature continuous omics tables\"; dragon.yaml: \"The verified API has no sample_metadata, motif, PPI, expression-matrix, or three-layer argument.\"",
+  "kind": "DO",
+  "partial": true,
+  "lines": [
+   {
+    "quote": "one partial-correlation network linking the transcript and protein layers",
+    "status": "not_available",
+    "type": "R1",
+    "text": "available from DRAGON."
+   },
+   {
+    "quote": "a second network that models all three layers together in a single fit",
+    "status": "not_available",
+    "type": "R0",
+    "text": "not matched to any registered workflow."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "DRAGON**. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "You would need DRAGON omics layer 1, DRAGON omics layer 2. The analysis would provide inferred associations between omics features."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "For “partial-correlation network linking the transcript and protein layers”, no registered workflow meets the stated requirement. That part needs a clearer measurement or an external method."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "What measurement would let you distinguish the remaining explanation?"
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S34-E-1",
+  "item": "S34",
+  "system": "E",
+  "task": "We measured liver transcripts, proteins and metabolites in the same 50 mice, each as a complete continuous table. I'd like one partial-correlation network linking the transcript and protein layers, and a second network that models all three layers together in a single fit.",
+  "gold": "PARTIAL",
+  "gold_reason": "Doable: DRAGON on the paired transcript and protein tables (two continuous layers, 50 >= 3 samples). Refused: the joint three-layer network, because DRAGON takes exactly two layers and has no three-layer argument, and no other workflow models three omics layers.",
+  "gold_evidence": "dragon.yaml: \"DRAGON consumes exactly two paired sample-by-feature continuous omics tables\"; dragon.yaml: \"The verified API has no sample_metadata, motif, PPI, expression-matrix, or three-layer argument.\"",
+  "kind": "DO",
+  "partial": true,
+  "lines": [
+   {
+    "quote": "one partial-correlation network linking the transcript and protein layers",
+    "status": "not_available",
+    "type": "R1",
+    "text": "available from DRAGON."
+   },
+   {
+    "quote": "a second network that models all three layers together in a single fit",
+    "status": "not_available",
+    "type": "R1",
+    "text": "I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "DRAGON**. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "You would need DRAGON omics layer 1, DRAGON omics layer 2. The analysis would provide inferred associations between omics features."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "For “partial-correlation network linking the transcript and protein layers”, no registered workflow meets the stated requirement. That part needs a clearer measurement or an external method."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "For “liver transcripts, proteins and metabolites”, no registered workflow meets the stated requirement. That part needs a clearer measurement or an external method."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "What measurement would let you distinguish the remaining explanation?"
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S36-A-1",
+  "item": "S36",
+  "system": "A",
+  "task": "Run BONOBO on hepatocyte_expr.tsv (15 samples, log2-transformed and gene-centred) with sparsify on, confidence 0.01 and delta fixed at 0.5, writing .csv files to bonobo_out/.",
+  "gold": "DECLINE",
+  "gold_reason": "With sparsify on, delta must be above 0 and below 1/3; delta 0.5 with sparsify is an invalid setting combination, so the run cannot be done as asked.",
+  "gold_evidence": "bonobo.yaml: \"With sparsify it must be above 0 and below 1/3 (Log 224).\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "Run BONOBO on hepatocyte_expr.tsv (15 samples, log2-transformed and gene-centred) with sparsify on, confidence 0.01 and delta fixed at 0.5, writing .csv files to bonobo_out/.",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. BONOBO: with sparsify, delta must be above 0 and below 1/3, got 0.5. BONOBO itself can still run, with its own settings instead -- an alternative, not the setting you asked for."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "No registered workflow can give this as you asked, so none is offered as asked."
+   }
+  ]
+ },
+ {
+  "session": "hb-p5r1-S36-E-1",
+  "item": "S36",
+  "system": "E",
+  "task": "Run BONOBO on hepatocyte_expr.tsv (15 samples, log2-transformed and gene-centred) with sparsify on, confidence 0.01 and delta fixed at 0.5, writing .csv files to bonobo_out/.",
+  "gold": "DECLINE",
+  "gold_reason": "With sparsify on, delta must be above 0 and below 1/3; delta 0.5 with sparsify is an invalid setting combination, so the run cannot be done as asked.",
+  "gold_evidence": "bonobo.yaml: \"With sparsify it must be above 0 and below 1/3 (Log 224).\"",
+  "kind": "DECLINE",
+  "partial": false,
+  "lines": [
+   {
+    "quote": "15 samples, log2-transformed and gene-centred) with sparsify on, confidence 0.01 and delta fixed at 0.5, writing .csv files to bonobo_out/",
+    "status": "not_available",
+    "type": "R1",
+    "text": "not available here as asked. BONOBO: with sparsify, delta must be above 0 and below 1/3, got 0.5. BONOBO itself can still run, with its own settings instead -- an alternative, not the setting you asked for."
+   },
+   {
+    "quote": "",
+    "status": "not_available",
+    "type": "R1",
+    "text": "No registered workflow can give this as you asked, so none is offered as asked."
+   }
+  ]
+ }
+]

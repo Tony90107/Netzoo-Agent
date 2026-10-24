@@ -1,0 +1,877 @@
+{
+  "version": 1,
+  "session_id": "hb-p5r1-M06-E-1",
+  "profile_id": "hb-p5r1-M06-E-1",
+  "auto_generated": false,
+  "created_at": 1792770407.3926332,
+  "updated_at": 1792770407.392679,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We profiled 24 zebrafish fins during regeneration and have the expression matrix with motif and PPI priors. I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment.\" -- available from PANDA or LIONESS-PANDA.\n2. \"I haven't settled whether I need one per fish or a single one for the whole experiment.\" -- you have not chosen which result you want: if \"one per fish\": LIONESS-PANDA; if \"a single one for the whole experiment\": PANDA.\n\nBefore I choose a workflow, please tell me: Which result do you want: \"one per fish\" or \"a single one for the whole experiment\"?\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A result waits on a fact the user said they do not know; nothing is selected before it is known.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A result waits on a fact the user said they do not know; nothing is selected before it is known.",
+      "candidate_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "I'd like PANDA-style TF-to-gene networks.",
+              "rationale": "The user is interested in creating TF-to-gene networks."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user provided an expression matrix as a current input for the analysis."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        },
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "I'd like PANDA-style TF-to-gene networks.",
+              "rationale": "The user is interested in creating TF-to-gene networks."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user has not settled whether to create one network per fish or a single one for the whole experiment, indicating a potential for an aggregate network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_lioness_panda",
+        "run_panda"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which result do you want: \"one per fish\" or \"a single one for the whole experiment\"?",
+      "stated_hypotheses": [
+        {
+          "axis": "unclear_goal",
+          "basis": "unsupported",
+          "text_span": "one per fish",
+          "target_artifact": "regulatory_network",
+          "target_granularity": "sample_specific"
+        },
+        {
+          "axis": "unclear_goal",
+          "basis": "run_giraffe",
+          "text_span": "a single one for the whole experiment",
+          "target_artifact": "regulatory_network",
+          "target_granularity": "aggregate"
+        }
+      ],
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "motif and PPI priors",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "motif and PPI priors",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "panda.tf_gene_network",
+              "lioness_panda.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "PANDA",
+              "named_quote": "PANDA-style TF-to-gene networks",
+              "samples": 24,
+              "samples_quote": "24 zebrafish fins"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@12-29"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "I haven't settled whether I need one per fish or a single one for the whole experiment.",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "lioness_panda.per_sample_networks",
+              "panda.tf_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "choice",
+            "outcomes": {
+              "one per fish": [
+                "lioness_panda.per_sample_networks"
+              ],
+              "a single one for the whole experiment": [
+                "panda.tf_gene_network"
+              ]
+            },
+            "unknown_quote": "I haven't settled whether I need one per fish or a single one for the whole experiment.",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "24 zebrafish fins",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "motif and PPI priors",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "PANDA-style TF-to-gene networks",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I haven't settled whether I need one per fish or a single one for the whole experiment."
+        ],
+        "stated_quotes": [
+          "PANDA-style TF-to-gene networks"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@12-29",
+            "property": "sample_count",
+            "name": "",
+            "value": "24",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "24 zebrafish fins",
+            "span": [
+              12,
+              29
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "24 zebrafish fins",
+                "span": [
+                  12,
+                  29
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "24 zebrafish fins",
+                "span": [
+                  12,
+                  29
+                ],
+                "result": "I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-PANDA",
+          "PANDA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which result do you want: \"one per fish\" or \"a single one for the whole experiment\"?",
+            "user_quote": "I haven't settled whether I need one per fish or a single one for the whole experiment.",
+            "workflows": [
+              "LIONESS-PANDA",
+              "PANDA"
+            ],
+            "contract_quote": "",
+            "depends_on": "choice",
+            "outcomes": {
+              "one per fish": [
+                "LIONESS-PANDA"
+              ],
+              "a single one for the whole experiment": [
+                "PANDA"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "dimension:choice@154-241"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "needs_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "PANDA-style TF-to-gene networks"
+          ],
+          "run_verdict": null,
+          "legacy_facts": [
+            "Which result do you want: \"one per fish\" or \"a single one for the whole experiment\"?"
+          ],
+          "legacy_kept": true
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "PANDA",
+          "LIONESS-PANDA",
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R3 yes and no do not lead to different outcomes",
+            "proposal": {
+              "user_quote": "I haven't settled whether I need one per fish or a single one for the whole experiment.",
+              "uncertainty": "two_versions",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI priors to internally infer the aggregate PANDA network and derive sample-specific TF-to-gene networks.",
+              "question": "Do you want a single network for the whole experiment?",
+              "yes_outcome": "supported",
+              "yes_workflow": "PANDA",
+              "no_outcome": "other_workflow",
+              "no_workflow": "LIONESS-PANDA",
+              "about": "wanted_result",
+              "alternatives": [
+                "one per fish",
+                "a single one for the whole experiment"
+              ]
+            }
+          }
+        ],
+        "legacy": [
+          {
+            "question": "Which result do you want: \"one per fish\" or \"a single one for the whole experiment\"?",
+            "user_quote": "I haven't settled whether I need one per fish or a single one for the whole experiment.",
+            "workflows": [
+              "LIONESS-PANDA",
+              "PANDA"
+            ],
+            "contract_quote": "",
+            "depends_on": "choice",
+            "outcomes": {
+              "one per fish": [
+                "LIONESS-PANDA"
+              ],
+              "a single one for the whole experiment": [
+                "PANDA"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "dimension:choice@154-241"
+          }
+        ],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 33601,
+    "output_tokens": 1748,
+    "total_tokens": 35349,
+    "calls": [
+      {
+        "call_id": "a7a75e78-c658-43dd-93f4-d2ddb61a51ac",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770380-t4MZBw7dSP52DCQR2dTJ",
+        "input_tokens": 5332,
+        "output_tokens": 317,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5649,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 596,
+        "price_snapshot": null,
+        "duration_ms": 3760,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "05b775f2-3444-4e84-b3c3-14e2d8eee3e0",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770384-YtZVQADLU7Cv2Lum3AZv",
+        "input_tokens": 6151,
+        "output_tokens": 179,
+        "cache_read_tokens": 5760,
+        "cache_write_tokens": 0,
+        "total_tokens": 6330,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 598,
+        "price_snapshot": null,
+        "duration_ms": 3359,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a9543e67-df6f-4650-a52c-4724fec9b48b",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770388-7ynVEkgbJNRpQp0ipGS8",
+        "input_tokens": 1586,
+        "output_tokens": 108,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1694,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 303,
+        "price_snapshot": null,
+        "duration_ms": 1709,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "177f45c0-4bbb-406b-8d8c-fb7859cd2af9",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 714,
+        "output_tokens": 53,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 767,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 139,
+        "price_snapshot": {
+          "snapshot_id": "c198f1ae-badc-5607-b4bf-1f82a2762119",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-23T15:40:26.959002Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1087,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "0606eb4f-4802-42a1-a4bf-a58eeeec54f1",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770390-SJqQt9PVIxddyfAZuLwW",
+        "input_tokens": 1729,
+        "output_tokens": 119,
+        "cache_read_tokens": 1664,
+        "cache_write_tokens": 0,
+        "total_tokens": 1848,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 206,
+        "price_snapshot": null,
+        "duration_ms": 2915,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4edca9f3-3fd1-4726-9875-f8eda9b2cae7",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792770393-c84pvSKN68jtpq2vvx7n",
+        "input_tokens": 15215,
+        "output_tokens": 770,
+        "cache_read_tokens": 15104,
+        "cache_write_tokens": 0,
+        "total_tokens": 15985,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1611,
+        "price_snapshot": null,
+        "duration_ms": 7450,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "77cbb2ed-7fa2-4ed5-83d4-3f43641e4709",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770401-DzC2z0hCkFFqTCqP1ItQ",
+        "input_tokens": 555,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 566,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 90,
+        "price_snapshot": null,
+        "duration_ms": 861,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5d38bc7a-4dbf-4e29-8920-f456a31e947f",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770402-R0Qes7G9bg3TqcDeho7z",
+        "input_tokens": 544,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 586,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 107,
+        "price_snapshot": null,
+        "duration_ms": 1232,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "df57c4dc-5030-4839-93ea-f35e67864db6",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770403-6LcV2YiSkDWlLAYUUBph",
+        "input_tokens": 1775,
+        "output_tokens": 149,
+        "cache_read_tokens": 1152,
+        "cache_write_tokens": 0,
+        "total_tokens": 1924,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 269,
+        "price_snapshot": null,
+        "duration_ms": 3977,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "7a558ea7-dc2e-4c27-9ab4-7978e0db86d6",
+  "task_state": {
+    "version": 1,
+    "task_id": "4d4ca189",
+    "revision": 1,
+    "goal": "We profiled 24 zebrafish fins during regeneration and have the expression matrix with motif and PPI priors. I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment.",
+    "pending": [
+      {
+        "question_id": "dimension:choice:ad3732d79c",
+        "source": "dimension",
+        "what": "choice",
+        "question": "Which result do you want: \"one per fish\" or \"a single one for the whole experiment\"?",
+        "user_quote": "I haven't settled whether I need one per fish or a single one for the whole experiment.",
+        "workflows": [
+          "LIONESS-PANDA",
+          "PANDA"
+        ],
+        "options": {
+          "one per fish": [
+            "LIONESS-PANDA"
+          ],
+          "a single one for the whole experiment": [
+            "PANDA"
+          ]
+        },
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

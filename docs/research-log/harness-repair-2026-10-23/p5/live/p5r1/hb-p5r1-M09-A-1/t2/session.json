@@ -1,0 +1,722 @@
+{
+  "version": 1,
+  "session_id": "hb-p5r1-M09-A-1",
+  "profile_id": "hb-p5r1-M09-A-1",
+  "auto_generated": false,
+  "created_at": 1792770443.418792,
+  "updated_at": 1792770475.532871,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs. I'm not sure whether the lab ran the 250-gene panel or the 2,000-gene panel."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Did the lab run a gene panel with more than 300 genes?\n  You wrote: \"I'm not sure whether the lab ran the 250-gene panel or the 2,000-gene panel\". COBRA's contract: \"Expression must be a labeled gene-by-sample matrix with more genes than samples\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs. I'm not sure whether the lab ran the 250-gene panel or the 2,000-gene panel.\nUser follow-up: It was the 2,000-gene panel."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs.\" -- available from COBRA's output plus a step you run outside NetZoo: Pass adjusted_coexpression to PANDA, PUMA or OTTER (registered handoff) after identifier checks.\n2. \"I'm not sure whether the lab ran the 250-gene panel or the 2,000-gene panel.\" -- not matched to any registered workflow.\n\nSelected path: **COBRA**.\n\n**COBRA** — Model covariate-associated gene co-expression with COBRA. COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `design_file`: sample covariate design matrix\n\nOutputs:\n\n- `coexpression_network`: Inferred gene-to-gene associations.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited COBRA for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The capability check credited COBRA for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "run_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_cobra"
+      ],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_cobra"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "unstated",
+        "priors_quote": "",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_puma",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs.",
+            "kind": "result",
+            "status": "with_step",
+            "delivered_by": [
+              "cobra.adjusted_input_to_regulation"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "COBRA",
+              "named_quote": "Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs.",
+              "samples": 300,
+              "samples_quote": "300 COPD patients",
+              "features": 2000,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  250,
+                  270,
+                  2000
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@73-90",
+              "feature_count@250-270"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "I'm not sure whether the lab ran the 250-gene panel or the 2,000-gene panel.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "targeted-panel expression for our 300 COPD patients",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "It was the 2,000-gene panel.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs."
+        ],
+        "facts": [
+          {
+            "id": "sample_count@73-90",
+            "property": "sample_count",
+            "name": "",
+            "value": "300",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "300 COPD patients",
+            "span": [
+              73,
+              90
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "300 COPD patients",
+                "span": [
+                  73,
+                  90
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "300 COPD patients",
+                "span": [
+                  73,
+                  90
+                ],
+                "result": "Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@250-270",
+            "property": "feature_count",
+            "name": "",
+            "value": "2000",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "the 2,000-gene panel",
+            "span": [
+              250,
+              270
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "the 2,000-gene panel",
+                "span": [
+                  250,
+                  270
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "the 2,000-gene panel",
+                "span": [
+                  250,
+                  270
+                ],
+                "result": "Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [
+          {
+            "quote": "I'm not sure whether the lab ran the 250-gene panel or the 2,000-gene panel.",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"I'm not sure whether the lab ran the 250-gene panel or the 2,000-gene panel.\" -- not matched to any registered workflow."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": null,
+          "reason_code": "registry_guidance_fallback",
+          "rows": [
+            [
+              "result",
+              "with_step"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA",
+          "PUMA"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure whether the lab ran the 250-gene panel or the 2,000-gene panel.",
+              "uncertainty": "two_versions",
+              "workflow": "COBRA",
+              "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+              "question": "Was the 2,000-gene panel used?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "250-gene panel",
+                "2,000-gene panel"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 40116,
+    "output_tokens": 2026,
+    "total_tokens": 42142,
+    "calls": [
+      {
+        "call_id": "d7597754-385b-40b9-850e-3edaee51bd17",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770447-VRleyJMdYnldWeonXkFA",
+        "input_tokens": 888,
+        "output_tokens": 40,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 928,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 157,
+        "price_snapshot": null,
+        "duration_ms": 1609,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "93abbe0a-58ef-4c91-acef-8a9e07183604",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770448-NzfY8giCaxzumYColTeQ",
+        "input_tokens": 1631,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1647,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 254,
+        "price_snapshot": null,
+        "duration_ms": 1092,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c4185ded-1fed-4df5-98fa-27c472b2ba61",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770449-iuCkvhjGjeGy7mzANeiI",
+        "input_tokens": 5358,
+        "output_tokens": 171,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5529,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 542,
+        "price_snapshot": null,
+        "duration_ms": 2455,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "04188dad-677e-4274-9b73-76b203331b7c",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770452-6EfE8h9yIm8miVndPxwM",
+        "input_tokens": 5507,
+        "output_tokens": 428,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5935,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 785,
+        "price_snapshot": null,
+        "duration_ms": 5583,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ec237e50-61b2-44d2-a1c7-2ca934fdb90b",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 669,
+        "output_tokens": 59,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 728,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 136,
+        "price_snapshot": {
+          "snapshot_id": "c198f1ae-badc-5607-b4bf-1f82a2762119",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-23T15:40:26.959002Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1159,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "5d0ec3c9-aff5-4b43-b8ee-7c2771c39884",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792770459-Hjoc9kbIFZg73SqVJMJL",
+        "input_tokens": 18439,
+        "output_tokens": 860,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 19299,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1919,
+        "price_snapshot": null,
+        "duration_ms": 7778,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4d242b93-d8c4-4874-b20d-d754c67362d0",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770467-qPuUPw7ox8zefuteqYUj",
+        "input_tokens": 581,
+        "output_tokens": 65,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 646,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 126,
+        "price_snapshot": null,
+        "duration_ms": 1386,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "47f7f870-d628-49f3-a9e0-aeebe8259003",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770468-ynD2QEJkBiTpfBIYyhDp",
+        "input_tokens": 570,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 603,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 105,
+        "price_snapshot": null,
+        "duration_ms": 1752,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f1ad4cc6-0079-4b74-9dea-3992f0125c9f",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792770470-84dWgQ2GRdDrBtfIWut9",
+        "input_tokens": 5331,
+        "output_tokens": 236,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5567,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 557,
+        "price_snapshot": null,
+        "duration_ms": 3537,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5bd6ec2b-c663-48c3-9c9e-25ee39304882",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770473-MxgV2dbJZZUixhOgNvhU",
+        "input_tokens": 1142,
+        "output_tokens": 118,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1260,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 242,
+        "price_snapshot": null,
+        "duration_ms": 1809,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "7245d362-3100-455a-aaf3-3d553b726258"
+}

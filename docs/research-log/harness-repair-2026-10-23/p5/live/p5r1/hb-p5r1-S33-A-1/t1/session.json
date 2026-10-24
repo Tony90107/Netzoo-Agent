@@ -1,0 +1,769 @@
+{
+  "version": 1,
+  "session_id": "hb-p5r1-S33-A-1",
+  "profile_id": "hb-p5r1-S33-A-1",
+  "auto_generated": false,
+  "created_at": 1792770939.706445,
+  "updated_at": 1792770939.706514,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can LIONESS-PUMA give us per-placenta TF and miRNA regulatory networks for our preeclampsia pilot? We'll have the expression matrix, motif and PPI priors and a one-per-line miRNA list, but the core hasn't told me whether two or four of the placenta libraries passed QC."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 2 or 4?\n  You wrote: \"but the core hasn't told me whether two or four of the placenta libraries passed QC\".\n  - 2: no registered workflow can do this as asked -- LIONESS-PUMA needs at least 3 samples; the request has 2\n  - 4: LIONESS-PUMA can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "mirna",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf",
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "mirna",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf",
+              "mirna"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Can LIONESS-PUMA give us per-placenta TF and miRNA regulatory networks",
+              "rationale": "The user is asking if LIONESS-PUMA can infer regulatory networks."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user explicitly stated they will have the expression matrix available for the analysis."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "per-placenta TF and miRNA regulatory networks",
+              "rationale": "The user is seeking regulatory networks, which aligns with the artifact type of regulatory_network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "per-placenta TF and miRNA regulatory networks",
+              "rationale": "The user specifically mentioned TFs as part of the regulatory networks they are interested in."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "mirna",
+              "source": "explicit",
+              "text_span": "per-placenta TF and miRNA regulatory networks",
+              "rationale": "The user specifically mentioned miRNAs as part of the regulatory networks they are interested in."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "per-placenta TF and miRNA regulatory networks",
+              "rationale": "The regulatory networks typically target genes, which aligns with the user's request."
+            }
+          ],
+          "assumptions": [
+            "No scale was stated; PUMA gives one result for the whole cohort; LIONESS-PUMA gives one result for the whole cohort or one result per sample."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "assumed_outcome",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these is right: 2 or 4?",
+      "stated_hypotheses": [
+        {
+          "axis": "unclear_goal",
+          "basis": "unsupported",
+          "text_span": "per-placenta TF and miRNA regulatory networks",
+          "target_artifact": "regulatory_network",
+          "target_granularity": "sample_specific"
+        }
+      ],
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "motif and PPI priors",
+        "mirna": "stated",
+        "mirna_quote": "a one-per-line miRNA list"
+      },
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "motif and PPI priors",
+            "action": "none"
+          },
+          {
+            "kind": "mirna",
+            "state": "stated",
+            "source": "model",
+            "quote": "a one-per-line miRNA list",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Can LIONESS-PUMA give us per-placenta TF and miRNA regulatory networks for our preeclampsia pilot?",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "lioness_puma.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "4": [
+                "lioness_puma.per_sample_networks"
+              ]
+            },
+            "unknown_quote": "but the core hasn't told me whether two or four of the placenta libraries passed QC.",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PUMA",
+              "named_quote": "LIONESS-PUMA"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": true,
+            "outcome_notes": {
+              "2": "LIONESS-PUMA needs at least 3 samples; the request has 2"
+            },
+            "fact_ids": [
+              "sample_count@221-232:candidates"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "motif and PPI priors",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "one-per-line miRNA list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "but the core hasn't told me whether two or four of the placenta libraries passed QC.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {
+          "the core hasn't told me whether two or four of the placenta libraries passed QC.": {
+            "kind": "choices",
+            "values": [
+              2,
+              4
+            ],
+            "kept_without_scope": true
+          }
+        },
+        "unknown_scopes": {},
+        "unknowns": [
+          [
+            "sample_count",
+            "the core hasn't told me whether two or four of the placenta libraries passed QC."
+          ]
+        ],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Can LIONESS-PUMA give us per-placenta TF and miRNA regulatory networks for our preeclampsia pilot?",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [
+          {
+            "of": "samples",
+            "quote": "but the core hasn't told me whether two or four of the placenta libraries passed QC.",
+            "values": [
+              2,
+              4
+            ]
+          }
+        ],
+        "uncertain_quotes": [
+          "the core hasn't told me whether two or four of the placenta libraries passed QC."
+        ],
+        "stated_quotes": [
+          "LIONESS-PUMA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@221-232:candidates",
+            "property": "sample_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "2",
+              "4"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "but the core hasn't told me whether two or four of the placenta libraries passed QC.",
+            "span": [
+              221,
+              232
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "context_candidates",
+                "quote": "but the core hasn't told me whether two or four of the placenta libraries passed QC.",
+                "span": [
+                  221,
+                  232
+                ],
+                "result": "",
+                "role": "alternative"
+              },
+              {
+                "reader": "unknown_facts",
+                "quote": "the core hasn't told me whether two or four of the placenta libraries passed QC.",
+                "span": [
+                  189,
+                  269
+                ],
+                "result": "",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": [
+          {
+            "property": "sample_count",
+            "name": "",
+            "result": "",
+            "used": [
+              "sample_count@221-232:candidates"
+            ],
+            "set_aside": [],
+            "reason": "empty_scope_kept"
+          }
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-PUMA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which of these is right: 2 or 4?",
+            "user_quote": "but the core hasn't told me whether two or four of the placenta libraries passed QC.",
+            "workflows": [
+              "LIONESS-PUMA"
+            ],
+            "contract_quote": "",
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "4": [
+                "LIONESS-PUMA"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": true,
+            "notes": {
+              "2": "LIONESS-PUMA needs at least 3 samples; the request has 2"
+            }
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "count_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "registry_guidance_fallback",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Can LIONESS-PUMA give us per-placenta TF and miRNA regulatory networks for our preeclampsia pilot?"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PUMA"
+        ],
+        "accepted": [
+          {
+            "question": "Do you have at least three expression samples that passed QC?",
+            "user_quote": "the core hasn't told me whether two or four of the placenta libraries passed QC",
+            "workflows": [
+              "LIONESS-PUMA"
+            ],
+            "contract_quote": "Require at least three expression samples and a validated one-ID-per-line miRNA list.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {}
+          }
+        ],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 31841,
+    "output_tokens": 1612,
+    "total_tokens": 33453,
+    "calls": [
+      {
+        "call_id": "5e582ee1-aa9a-47ad-a65a-6f0f36c2a668",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770917-z6TVGRKXVoflBoYmXMJr",
+        "input_tokens": 5343,
+        "output_tokens": 147,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5490,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 525,
+        "price_snapshot": null,
+        "duration_ms": 2436,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "200a6352-ca0d-4ea6-82d4-1a8a99cd1b29",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770920-9q01zZBa5k8chignSV3y",
+        "input_tokens": 6816,
+        "output_tokens": 472,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 7288,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1008,
+        "price_snapshot": null,
+        "duration_ms": 5926,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "891209e7-04ee-4721-93a6-5cbd0546e01f",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 660,
+        "output_tokens": 63,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 723,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 137,
+        "price_snapshot": {
+          "snapshot_id": "c198f1ae-badc-5607-b4bf-1f82a2762119",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-23T15:40:26.959002Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1354,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "3e0640c2-3254-4be9-9ae8-a2d8fdd74ed9",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770927-R0I6OlDYnAYAQBIymTBo",
+        "input_tokens": 1663,
+        "output_tokens": 108,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1771,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 199,
+        "price_snapshot": null,
+        "duration_ms": 1743,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0e637b26-ccf0-4f92-a7a7-a3049bb4e5bf",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792770929-7ttU8mumSXwCL48S8pdB",
+        "input_tokens": 15237,
+        "output_tokens": 616,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15853,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1599,
+        "price_snapshot": null,
+        "duration_ms": 6089,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4592bfae-115e-4afe-9193-e5da37a76cd3",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770935-12drkIYOMGaiNf9Jg1e2",
+        "input_tokens": 566,
+        "output_tokens": 47,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 613,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 113,
+        "price_snapshot": null,
+        "duration_ms": 1469,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3587d6fe-6155-4d15-86bf-bf82c48706d4",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770936-4GZwISpatQ4o5JQ7QGun",
+        "input_tokens": 555,
+        "output_tokens": 51,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 606,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 114,
+        "price_snapshot": null,
+        "duration_ms": 1189,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "17dab7e0-9c14-41d7-9c01-8936f65aa946",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770938-AHAkA3wgXpFr4oqlh3NW",
+        "input_tokens": 1001,
+        "output_tokens": 108,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1109,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 215,
+        "price_snapshot": null,
+        "duration_ms": 1586,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "467851cf-bb31-4ef9-8b7e-831dfd8448c9"
+}

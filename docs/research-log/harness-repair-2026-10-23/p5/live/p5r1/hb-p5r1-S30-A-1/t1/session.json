@@ -1,0 +1,925 @@
+{
+  "version": 1,
+  "session_id": "hb-p5r1-S30-A-1",
+  "profile_id": "hb-p5r1-S30-A-1",
+  "auto_generated": false,
+  "created_at": 1792770773.702707,
+  "updated_at": 1792770773.702773,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I'd like an OTTER network for our 40 rice root samples, using the expression matrix, a motif seed prior and a TF-TF PPI with matching TF IDs. Set lam to 0.2 and add an L1 sparsity penalty of 0.05 so that most edges shrink to zero."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like an OTTER network for our 40 rice root samples, using the expression matrix, a motif seed prior and a TF-TF PPI with matching TF IDs.\" -- available from OTTER.\n\nI can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\nShould the result be aggregate or sample-specific?\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is for guidance on constructing an OTTER network, which falls under the category of answer requests rather than execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request is for guidance on constructing an OTTER network, which falls under the category of answer requests rather than execution.",
+      "candidate_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [
+          "sparsity_penalty",
+          "lam"
+        ],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [
+              "sparsity_penalty",
+              "lam"
+            ],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.5,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like an OTTER network for our 40 rice root samples.",
+              "rationale": "The user requests to construct an OTTER network, which involves inferring a regulatory network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "I'd like an OTTER network for our 40 rice root samples.",
+              "rationale": "The requested output is an OTTER network, which is a type of regulatory network."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "using the expression matrix.",
+              "rationale": "The user specifies using the expression matrix as input for the OTTER network."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "sparsity_penalty",
+              "source": "explicit",
+              "text_span": "add an L1 sparsity penalty of 0.05 so that most edges shrink to zero.",
+              "rationale": "The user specifies an L1 sparsity penalty to influence edge weights in the network."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "lam",
+              "source": "explicit",
+              "text_span": "Set lam to 0.2.",
+              "rationale": "The user specifies a value for lam to be used in the network construction."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "using the expression matrix.",
+              "rationale": "The user specifies using the expression matrix as input for the OTTER network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "using a TF-TF PPI with matching TF IDs.",
+              "rationale": "The user specifies a TF-TF PPI with matching TF IDs, indicating the involvement of transcription factors."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "I'd like an OTTER network for our 40 rice root samples.",
+              "rationale": "The user requests an OTTER network, which typically involves gene targets."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "unverified_evidence",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Should the result be aggregate or sample-specific?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a motif seed prior and a TF-TF PPI with matching TF IDs",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif seed prior and a TF-TF PPI with matching TF IDs",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif seed prior and a TF-TF PPI with matching TF IDs",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif seed prior and a TF-TF PPI with matching TF IDs",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif seed prior and a TF-TF PPI with matching TF IDs",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a motif seed prior and a TF-TF PPI with matching TF IDs",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like an OTTER network for our 40 rice root samples, using the expression matrix, a motif seed prior and a TF-TF PPI with matching TF IDs.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "otter.tf_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "OTTER",
+              "named_quote": "OTTER",
+              "samples": 40,
+              "samples_quote": "40 rice root samples",
+              "settings": [
+                {
+                  "name": "OTTER.lam",
+                  "quote": "Set lam to 0.2",
+                  "value": "0.2",
+                  "span": [
+                    142,
+                    156
+                  ],
+                  "at": 153
+                },
+                {
+                  "name": "OTTER.gamma",
+                  "quote": "add an L1 sparsity penalty of 0.05 so that most edges shrink to zero",
+                  "value": "0.05",
+                  "span": [
+                    161,
+                    229
+                  ],
+                  "at": 191
+                }
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "setting:OTTER.lam@142-156",
+              "setting:OTTER.gamma@161-229",
+              "sample_count@34-54"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "40 rice root samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "motif seed prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "TF-TF PPI with matching TF IDs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "Set lam to 0.2 and add an L1 sparsity penalty of 0.05 so that most edges shrink to zero.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like an OTTER network for our 40 rice root samples, using the expression matrix, a motif seed prior and a TF-TF PPI with matching TF IDs.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "OTTER",
+          "Set lam to 0.2",
+          "0.2",
+          "add an L1 sparsity penalty of 0.05 so that most edges shrink to zero",
+          "0.05"
+        ],
+        "facts": [
+          {
+            "id": "setting:OTTER.lam@142-156",
+            "property": "setting",
+            "name": "OTTER.lam",
+            "value": "0.2",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "Set lam to 0.2",
+            "span": [
+              142,
+              156
+            ],
+            "value_quote": "0.2",
+            "value_span": [
+              153,
+              156
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "Set lam to 0.2",
+                "span": [
+                  142,
+                  156
+                ],
+                "result": "",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:OTTER.gamma@161-229",
+            "property": "setting",
+            "name": "OTTER.gamma",
+            "value": "0.05",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "add an L1 sparsity penalty of 0.05 so that most edges shrink to zero",
+            "span": [
+              161,
+              229
+            ],
+            "value_quote": "0.05",
+            "value_span": [
+              191,
+              195
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "add an L1 sparsity penalty of 0.05 so that most edges shrink to zero",
+                "span": [
+                  161,
+                  229
+                ],
+                "result": "",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@34-54",
+            "property": "sample_count",
+            "name": "",
+            "value": "40",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "40 rice root samples",
+            "span": [
+              34,
+              54
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "40 rice root samples",
+                "span": [
+                  34,
+                  54
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "40 rice root samples",
+                "span": [
+                  34,
+                  54
+                ],
+                "result": "I'd like an OTTER network for our 40 rice root samples, using the expression matrix, a motif seed prior and a TF-TF PPI with matching TF IDs.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "OTTER"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like an OTTER network for our 40 rice root samples, using the expression matrix, a motif seed prior and a TF-TF PPI with matching TF IDs."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "OTTER",
+          "PANDA",
+          "LIONESS-PANDA",
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Set lam to 0.2",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "setting lam (number; minimum 0; maximum 1): Weight of gene co-expression versus the TF-TF PPI network in OTTER's fit, as (lam, 1 - lam); not a sparsity penalty.",
+              "question": "Is the lam value you want to set 0.2?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "0.2"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "add an L1 sparsity penalty of 0.05",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "The verified API has no independent sparsity penalty or threshold parameter. gamma is an L2-style regularization term, not a sparsity claim; an unknown sparsity argument is rejected rather than silently mapped.",
+              "question": "Do you want to proceed without an L1 sparsity penalty?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "L1 sparsity penalty of 0.05",
+                "no L1 sparsity penalty"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 35616,
+    "output_tokens": 2018,
+    "total_tokens": 37634,
+    "calls": [
+      {
+        "call_id": "3f9fbf02-8f81-4197-bf03-c250d50fd050",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770747-crmuZfD4cTWRXnt4cWKy",
+        "input_tokens": 5341,
+        "output_tokens": 477,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5818,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 723,
+        "price_snapshot": null,
+        "duration_ms": 5736,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "1ea0dbdd-9804-4449-8f29-0000b5839004",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770752-IBpqGcjSyvz265niqXRS",
+        "input_tokens": 7054,
+        "output_tokens": 306,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 7360,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 944,
+        "price_snapshot": null,
+        "duration_ms": 3911,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "175b35cd-dfc6-497c-b680-47eb8e393226",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770756-hOfVuNSjrAKEElYnxNiu",
+        "input_tokens": 1569,
+        "output_tokens": 122,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1691,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 309,
+        "price_snapshot": null,
+        "duration_ms": 2131,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "b15c1c3a-4680-405b-8658-f9ca87e3bbcc",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 664,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 709,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 127,
+        "price_snapshot": {
+          "snapshot_id": "c198f1ae-badc-5607-b4bf-1f82a2762119",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-23T15:40:26.959002Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1042,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "76f50f3c-5f7c-4e18-9192-c3f4fbea611f",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770760-8nsb6nfWjamfnqzFnDBY",
+        "input_tokens": 1738,
+        "output_tokens": 16,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1754,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 155,
+        "price_snapshot": null,
+        "duration_ms": 1063,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a534ed2c-2ab7-42a4-b6fb-3068d920a07b",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792770761-pROaxzj3Vh4JOgxyXjSL",
+        "input_tokens": 15233,
+        "output_tokens": 724,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15957,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1663,
+        "price_snapshot": null,
+        "duration_ms": 7050,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3d0e9d44-12aa-4372-b074-3b4e26301d3f",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770768-wAtbjduXLJFLCk8OyMKj",
+        "input_tokens": 564,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 575,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 91,
+        "price_snapshot": null,
+        "duration_ms": 846,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8a713778-25de-4bd9-9977-bf685ad137e3",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770769-ATygqMAmZju46tUVyhZG",
+        "input_tokens": 553,
+        "output_tokens": 51,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 604,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 114,
+        "price_snapshot": null,
+        "duration_ms": 1224,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1dbd298f-513a-45ef-95df-088797b35e03",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792770770-NqSL0UTe4fAMg5ZezkYc",
+        "input_tokens": 2900,
+        "output_tokens": 266,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 3166,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 595,
+        "price_snapshot": null,
+        "duration_ms": 3273,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "1b38db47-1be5-4bbb-a234-ff0f07e30113"
+}

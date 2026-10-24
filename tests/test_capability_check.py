@@ -103,13 +103,14 @@ def test_proposal_ids_are_enums_of_the_sheet():
         _proposal(("s", [("x", "result", ("panda.invented_capability",), ())]))
 
 
-def test_no_produces_entry_is_a_full_gap_with_the_near_miss_reason():
+def test_no_produces_entry_is_a_full_gap_said_in_layer_two_without_the_near_miss():
     check = _splicing_check()
     assert check.full_gap and not check.unchecked
     text = full_gap_reply(check)
-    # P2: a near miss says what PANDA does not give; that no registered workflow does is not verified
-    assert "I couldn't match this to a result any registered NetZoo workflow produces." in text
-    assert "PANDA does not give it: the motif prior is an input" in text
+    # P5 r1 (h7 S04): the near miss "PANDA does not give it" is the model's reading of what was asked, and no code
+    # verifies it; layer 2 says what was checked instead
+    assert "I couldn't match this to anything a registered NetZoo workflow produces or lets you set." in text
+    assert "does not give it" not in text
     assert "none is offered" in text
 
 
@@ -303,7 +304,8 @@ def test_full_gap_card_lists_each_unavailable_result_and_offers_no_workflow():
     assert card.kind == "capability_gap" and card.choices is None
     assert card.headline.startswith("I couldn't match what you asked for to a registered workflow")
     assert [row.available for row in card.unavailable] == [False]
-    assert "motif prior is an input" in card.unavailable[0].reason
+    # P5 r1 (h7 S04): the unverified near miss is not the card's reason either; layer 2 is
+    assert card.unavailable[0].reason.startswith("I couldn't match this to anything a registered NetZoo workflow")
 
 
 def _ask(task, quote, delivered=(), not_by=(), scale="unstated", layers=0, unit="not_stated", kinds=(),

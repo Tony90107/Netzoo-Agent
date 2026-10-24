@@ -1,0 +1,268 @@
+[
+ {
+  "id": "F001",
+  "request": "Could SAMBAR cluster our pancreatic cancer cohort into anywhere from 2 to 8 subtypes, using tumour-normal somatic mutation calls, exon lengths, a cancer-gene list and the Hallmark GMT? The sequencing core hasn't told me yet whether 7 or 15 of the tumours passed QC.",
+  "deciding_fact": "Tumours passing QC: 15 -> kmax 8 <= 15, DO with SAMBAR; 7 -> kmax 8 > 7 samples, DECLINE as asked.",
+  "questions_asked": [
+   "Do you know how many tumours passed QC?"
+  ]
+ },
+ {
+  "id": "F002",
+  "request": "We profiled 150 asthma patients on a targeted expression panel and have a design table with numeric inhaled-steroid dose and age for the same patient IDs. I want the part of the gene-gene co-expression associated with steroid dose, but I'm not sure whether the lab ran the 96-gene panel or the 384-gene panel.",
+  "deciding_fact": "Panel size: 384 genes > 150 samples -> DO with COBRA; 96 genes < 150 samples -> DECLINE.",
+  "questions_asked": [
+   "Did the lab run the 384-gene panel?"
+  ]
+ },
+ {
+  "id": "F003",
+  "request": "I want one regulatory network per patient for our 85 ovarian tumours from the expression matrix with motif and PPI priors; a TargetScan-based miRNA prior and a miRNA list are also on hand. I'm not sure yet whether the regulators should be just transcription factors or also microRNAs.",
+  "deciding_fact": "Regulators: TFs only -> LIONESS-PANDA; TFs and microRNAs -> LIONESS-PUMA.",
+  "questions_asked": [
+   "Do you want to include microRNAs as regulators?"
+  ]
+ },
+ {
+  "id": "F004",
+  "request": "Start a PANDA-based run on donor_expr.tsv, motif.tsv and ppi.tsv for our 30 healthy lung donors to get TF-to-gene regulatory networks. I haven't decided whether we need one network per donor or just one for the whole group.",
+  "deciding_fact": "Granularity: one network per donor -> LIONESS-PANDA; one for the whole group -> PANDA.",
+  "questions_asked": [
+   "Do you have at least three expression samples?"
+  ]
+ },
+ {
+  "id": "F005",
+  "request": "Please run BONOBO on the expression matrix of our 14 mouse hippocampus samples. The core facility centred each gene, but I don't know whether they log-transformed the data before centring.",
+  "deciding_fact": "Log-transformed -> DO with BONOBO; not log-transformed -> DECLINE as asked.",
+  "questions_asked": [
+   "Was the data log-transformed before centring?"
+  ]
+ },
+ {
+  "id": "F006",
+  "request": "I want one regulatory network per patient for our 85 ovarian tumours from the expression matrix with motif and PPI priors; a TargetScan-based miRNA prior and a miRNA list are also on hand. I'm not sure yet whether the regulators should be just transcription factors or also microRNAs.",
+  "deciding_fact": "Regulators: TFs only -> LIONESS-PANDA; TFs and microRNAs -> LIONESS-PUMA.",
+  "questions_asked": [
+   "Do you want the regulators to include microRNAs as well?"
+  ]
+ },
+ {
+  "id": "F007",
+  "request": "Can BONOBO give me one co-expression network per biopsy for our horse muscle study? The matrix is log2-transformed and gene-centred, but I don't know yet whether two or three of the biopsies passed QC.",
+  "deciding_fact": "Three biopsies -> DO with BONOBO; two -> DECLINE.",
+  "questions_asked": [
+   "Which of these is right: 2 or 3?"
+  ]
+ },
+ {
+  "id": "F008",
+  "request": "We profiled 150 asthma patients on a targeted expression panel and have a design table with numeric inhaled-steroid dose and age for the same patient IDs. I want the part of the gene-gene co-expression associated with steroid dose, but I'm not sure whether the lab ran the 96-gene panel or the 384-gene panel.",
+  "deciding_fact": "Panel size: 384 genes > 150 samples -> DO with COBRA; 96 genes < 150 samples -> DECLINE.",
+  "questions_asked": [
+   "Did the lab run the 384-gene panel?"
+  ]
+ },
+ {
+  "id": "F009",
+  "request": "Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs. I'm not sure whether the lab ran the 250-gene panel or the 2,000-gene panel.",
+  "deciding_fact": "2,000-gene panel (2,000 > 300) -> DO with COBRA; 250-gene panel (250 < 300) -> DECLINE.",
+  "questions_asked": [
+   "Did the lab run the 2,000-gene panel?"
+  ]
+ },
+ {
+  "id": "F010",
+  "request": "Could SAMBAR cluster our pancreatic cancer cohort into anywhere from 2 to 8 subtypes, using tumour-normal somatic mutation calls, exon lengths, a cancer-gene list and the Hallmark GMT? The sequencing core hasn't told me yet whether 7 or 15 of the tumours passed QC.",
+  "deciding_fact": "Tumours passing QC: 15 -> kmax 8 <= 15, DO with SAMBAR; 7 -> kmax 8 > 7 samples, DECLINE as asked.",
+  "questions_asked": [
+   "Do you know how many tumours passed QC?"
+  ]
+ },
+ {
+  "id": "F011",
+  "request": "Please run BONOBO on the expression matrix of our 14 mouse hippocampus samples. The core facility centred each gene, but I don't know whether they log-transformed the data before centring.",
+  "deciding_fact": "Log-transformed -> DO with BONOBO; not log-transformed -> DECLINE as asked.",
+  "questions_asked": [
+   "Was the data log-transformed before centring?"
+  ]
+ },
+ {
+  "id": "F012",
+  "request": "My postdoc left me a weighted edge list (source, target, weight) from our zebrafish heart-regeneration project, and I'd like CONDOR communities from it. I can't remember whether it's her TF-to-gene network or the gene-gene co-expression network she also built.",
+  "deciding_fact": "Network type: TF-to-gene (regulator-gene, bipartite) -> DO with CONDOR; gene-gene co-expression -> DECLINE.",
+  "questions_asked": [
+   "Do you already have a regulator-gene (source-target-weight) network for CONDOR to run on?"
+  ]
+ },
+ {
+  "id": "F013",
+  "request": "My postdoc left me a weighted edge list (source, target, weight) from our zebrafish heart-regeneration project, and I'd like CONDOR communities from it. I can't remember whether it's her TF-to-gene network or the gene-gene co-expression network she also built.",
+  "deciding_fact": "Network type: TF-to-gene (regulator-gene, bipartite) -> DO with CONDOR; gene-gene co-expression -> DECLINE.",
+  "questions_asked": [
+   "Do you already have a regulator-gene (source-target-weight) network for CONDOR to run on?",
+   "Is the edge list from a TF-to-gene network?"
+  ]
+ },
+ {
+  "id": "F014",
+  "request": "Build a DRAGON network between gene expression (log2 TPM) and promoter methylation for 72 colorectal tumours, with both tables keyed by the same tumour IDs. I don't know whether the methylation export holds beta values or binarized methylated/unmethylated calls.",
+  "deciding_fact": "Beta values (continuous) -> DO with DRAGON; binarized 0/1 calls -> DECLINE.",
+  "questions_asked": [
+   "Does the methylation export hold continuous numeric measurements?"
+  ]
+ },
+ {
+  "id": "F015",
+  "request": "Run LIONESS-DRAGON for our 80 kidney transplant recipients on the transcript and protein tables our bioinformatician exported. The filtered export has 150 transcripts and 60 proteins, the full one has 1,500 transcripts and 600 proteins, and I'm not sure which one she sent.",
+  "deciding_fact": "Filtered export -> DO with LIONESS-DRAGON; full export -> DECLINE (size limit).",
+  "questions_asked": [
+   "Did she send the filtered export with 150 transcripts and 60 proteins?"
+  ]
+ },
+ {
+  "id": "F016",
+  "request": "We profiled 24 zebrafish fins during regeneration and have the expression matrix with motif and PPI priors. I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment.",
+  "deciding_fact": "One per fish -> LIONESS-PANDA; one for the whole experiment -> PANDA.",
+  "questions_asked": [
+   "Which result do you want: \"one per fish\" or \"a single one for the whole experiment\"?"
+  ]
+ },
+ {
+  "id": "F017",
+  "request": "Fit COBRA on the targeted-panel expression for our 300 COPD patients, with smoking pack-years and age as numeric covariates in a design table keyed by the same patient IDs. I'm not sure whether the lab ran the 250-gene panel or the 2,000-gene panel.",
+  "deciding_fact": "2,000-gene panel (2,000 > 300) -> DO with COBRA; 250-gene panel (250 < 300) -> DECLINE.",
+  "questions_asked": [
+   "Did the lab run a gene panel with more than 300 genes?"
+  ]
+ },
+ {
+  "id": "F018",
+  "request": "Run LIONESS-DRAGON for our 80 kidney transplant recipients on the transcript and protein tables our bioinformatician exported. The filtered export has 150 transcripts and 60 proteins, the full one has 1,500 transcripts and 600 proteins, and I'm not sure which one she sent.",
+  "deciding_fact": "Filtered export -> DO with LIONESS-DRAGON; full export -> DECLINE (size limit).",
+  "questions_asked": [
+   "Did she send the filtered export with 150 transcripts and 60 proteins?"
+  ]
+ },
+ {
+  "id": "F019",
+  "request": "I want one regulatory network per patient for our 85 ovarian tumours from the expression matrix with motif and PPI priors; a TargetScan-based miRNA prior and a miRNA list are also on hand. I'm not sure yet whether the regulators should be just transcription factors or also microRNAs.",
+  "deciding_fact": "Regulators: TFs only -> LIONESS-PANDA; TFs and microRNAs -> LIONESS-PUMA.",
+  "questions_asked": [
+   "Do you want to include microRNAs as regulators?"
+  ]
+ },
+ {
+  "id": "F020",
+  "request": "We want one cohort-level regulatory network for 110 thyroid tumours, built by message passing over the expression matrix, a motif prior and a PPI; miRNA-target edges and a miRNA list are available too. I can't tell from my notes whether the regulators of interest are only transcription factors or include microRNAs.",
+  "deciding_fact": "Regulators: TFs only -> PANDA; TFs and microRNAs -> PUMA.",
+  "questions_asked": [
+   "Are the regulators of interest only transcription factors?"
+  ]
+ },
+ {
+  "id": "F021",
+  "request": "We profiled 24 zebrafish fins during regeneration and have the expression matrix with motif and PPI priors. I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment.",
+  "deciding_fact": "One per fish -> LIONESS-PANDA; one for the whole experiment -> PANDA.",
+  "questions_asked": [
+   "Do you have at least three expression samples?"
+  ]
+ },
+ {
+  "id": "F022",
+  "request": "Can BONOBO give me one co-expression network per biopsy for our horse muscle study? The matrix is log2-transformed and gene-centred, but I don't know yet whether two or three of the biopsies passed QC.",
+  "deciding_fact": "Three biopsies -> DO with BONOBO; two -> DECLINE.",
+  "questions_asked": [
+   "Which of these is right: 2 or 3?"
+  ]
+ },
+ {
+  "id": "F023",
+  "request": "We want one cohort-level regulatory network for 110 thyroid tumours, built by message passing over the expression matrix, a motif prior and a PPI; miRNA-target edges and a miRNA list are available too. I can't tell from my notes whether the regulators of interest are only transcription factors or include microRNAs.",
+  "deciding_fact": "Regulators: TFs only -> PANDA; TFs and microRNAs -> PUMA.",
+  "questions_asked": [
+   "Are the regulators of interest only transcription factors?"
+  ]
+ },
+ {
+  "id": "F024",
+  "request": "Build a DRAGON network between gene expression (log2 TPM) and promoter methylation for 72 colorectal tumours, with both tables keyed by the same tumour IDs. I don't know whether the methylation export holds beta values or binarized methylated/unmethylated calls.",
+  "deciding_fact": "Beta values (continuous) -> DO with DRAGON; binarized 0/1 calls -> DECLINE.",
+  "questions_asked": [
+   "Does the methylation export hold continuous numeric measurements?"
+  ]
+ },
+ {
+  "id": "F025",
+  "request": "Can LIONESS-PUMA give us per-placenta TF and miRNA regulatory networks for our preeclampsia pilot? We'll have the expression matrix, motif and PPI priors and a one-per-line miRNA list, but the core hasn't told me whether two or four of the placenta libraries passed QC.",
+  "deciding_fact": "Placentas passing QC: four -> DO with LIONESS-PUMA; two -> DECLINE (fewer than three samples).",
+  "questions_asked": [
+   "Which of these is right: 2 or 4?"
+  ]
+ },
+ {
+  "id": "F026",
+  "request": "Can BONOBO give me one co-expression network per biopsy for our horse muscle study? The matrix is log2-transformed and gene-centred, but I don't know yet whether two or three of the biopsies passed QC.",
+  "deciding_fact": "Three biopsies -> DO with BONOBO; two -> DECLINE.",
+  "questions_asked": [
+   "Which of these is right: 2 or 3?"
+  ]
+ },
+ {
+  "id": "F027",
+  "request": "Run LIONESS-DRAGON for our 80 kidney transplant recipients on the transcript and protein tables our bioinformatician exported. The filtered export has 150 transcripts and 60 proteins, the full one has 1,500 transcripts and 600 proteins, and I'm not sure which one she sent.",
+  "deciding_fact": "Filtered export -> DO with LIONESS-DRAGON; full export -> DECLINE (size limit).",
+  "questions_asked": [
+   "Did she send the filtered export with 150 transcripts and 60 proteins?"
+  ]
+ },
+ {
+  "id": "F028",
+  "request": "Build a DRAGON network between gene expression (log2 TPM) and promoter methylation for 72 colorectal tumours, with both tables keyed by the same tumour IDs. I don't know whether the methylation export holds beta values or binarized methylated/unmethylated calls.",
+  "deciding_fact": "Beta values (continuous) -> DO with DRAGON; binarized 0/1 calls -> DECLINE.",
+  "questions_asked": [
+   "Does the methylation export hold continuous numeric measurements?"
+  ]
+ },
+ {
+  "id": "F029",
+  "request": "We profiled 24 zebrafish fins during regeneration and have the expression matrix with motif and PPI priors. I'd like PANDA-style TF-to-gene networks, but I haven't settled whether I need one per fish or a single one for the whole experiment.",
+  "deciding_fact": "One per fish -> LIONESS-PANDA; one for the whole experiment -> PANDA.",
+  "questions_asked": [
+   "Which result do you want: \"one per fish\" or \"a single one for the whole experiment\"?"
+  ]
+ },
+ {
+  "id": "F030",
+  "request": "Please run BONOBO on the expression matrix of our 14 mouse hippocampus samples. The core facility centred each gene, but I don't know whether they log-transformed the data before centring.",
+  "deciding_fact": "Log-transformed -> DO with BONOBO; not log-transformed -> DECLINE as asked.",
+  "questions_asked": [
+   "Was the data log-transformed before centring?"
+  ]
+ },
+ {
+  "id": "F031",
+  "request": "My postdoc left me a weighted edge list (source, target, weight) from our zebrafish heart-regeneration project, and I'd like CONDOR communities from it. I can't remember whether it's her TF-to-gene network or the gene-gene co-expression network she also built.",
+  "deciding_fact": "Network type: TF-to-gene (regulator-gene, bipartite) -> DO with CONDOR; gene-gene co-expression -> DECLINE.",
+  "questions_asked": [
+   "Do you already have a regulator-gene (source-target-weight) network for CONDOR to run on?"
+  ]
+ },
+ {
+  "id": "F032",
+  "request": "Start a PANDA-based run on donor_expr.tsv, motif.tsv and ppi.tsv for our 30 healthy lung donors to get TF-to-gene regulatory networks. I haven't decided whether we need one network per donor or just one for the whole group.",
+  "deciding_fact": "Granularity: one network per donor -> LIONESS-PANDA; one for the whole group -> PANDA.",
+  "questions_asked": [
+   "Do you have at least three expression samples?",
+   "Which result do you want: \"one network per donor\" or \"just one for the whole group\"?"
+  ]
+ },
+ {
+  "id": "F033",
+  "request": "Can LIONESS-PUMA give us per-placenta TF and miRNA regulatory networks for our preeclampsia pilot? We'll have the expression matrix, motif and PPI priors and a one-per-line miRNA list, but the core hasn't told me whether two or four of the placenta libraries passed QC.",
+  "deciding_fact": "Placentas passing QC: four -> DO with LIONESS-PUMA; two -> DECLINE (fewer than three samples).",
+  "questions_asked": [
+   "Which of these is right: 2 or 4?"
+  ]
+ }
+]

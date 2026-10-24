@@ -1,0 +1,794 @@
+{
+  "version": 1,
+  "session_id": "hb-p5r1-S28-A-1",
+  "profile_id": "hb-p5r1-S28-A-1",
+  "auto_generated": false,
+  "created_at": 1792771139.418447,
+  "updated_at": 1792771139.418514,
+  "messages": [
+    {
+      "role": "user",
+      "content": "From log2-transformed, gene-centred expression of nine individually profiled zebrafish embryos, I want one co-expression network per embryo with a p-value on every edge. From the same data I also want a directed network showing which genes causally drive the others."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I want one co-expression network per embryo with a p-value on every edge.\" -- available from LIONESS-COEXPRESSION.\n2. \"I also want a directed network showing which genes causally drive the others.\" -- not available here: no registered workflow produces this. Every registered workflow estimates associations or model coefficients from observational data.\n\nAbout \"a directed network showing which genes causally drive the others\": None of the registered workflows can show that one thing causes another: they estimate associations or model coefficients from the expression data, so the networks can describe what differs or changes but not show why.\n\nThere are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data.\n\nFor “one co-expression network per embryo with a p-value on every edge”:\n\n**LIONESS-COEXPRESSION**. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.\n\nYou would need expression matrix. The analysis would provide inferred gene-to-gene associations.\n\nFor “one co-expression network per embryo with a p-value on every edge”:\n\n**BONOBO**. BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable.\n\nYou would need expression matrix. The analysis would provide inferred gene-to-gene associations; p-value matrix paired with a sample-specific gene-gene co-expression result.\n\nFor “a directed network showing which genes causally drive the others”:\n\n**LIONESS-PANDA**. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.\n\nYou would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations. LIONESS-PANDA also writes the cohort network, so PANDA need not run first.\n\nNo files were inspected and no analysis ran.\n\nWhich scientific question should we start with, and which of these inputs do you have? We can also investigate the hypotheses in parallel."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request involves obtaining specific types of networks and requires guidance on which methods to use for co-expression and causal relationships, rather than executing a workflow directly.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request involves obtaining specific types of networks and requires guidance on which methods to use for co-expression and causal relationships, rather than executing a workflow directly.",
+      "candidate_actions": [
+        "run_lioness_coexpression",
+        "run_cobra",
+        "run_bonobo",
+        "run_panda",
+        "run_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "sparse_pvalue_coexpression"
+        ],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "sparse_pvalue_coexpression"
+            ],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I want one co-expression network per embryo with a p-value on every edge.",
+              "rationale": "The user requests to construct a co-expression network from the expression data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "one co-expression network per embryo with a p-value on every edge.",
+              "rationale": "The user specifies the type of network they want to obtain."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The networks will involve genes as nodes."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "sparse_pvalue_coexpression",
+              "source": "explicit",
+              "text_span": "with a p-value on every edge.",
+              "rationale": "The user requests p-values on every edge of the co-expression network, indicating a need for sparsification and p-value calculation."
+            }
+          ],
+          "assumptions": []
+        },
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "a directed network showing which genes causally drive the others.",
+              "rationale": "The user requests to construct a directed network showing causal relationships."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "a directed network showing which genes causally drive the others.",
+              "rationale": "The user specifies the type of network they want to obtain."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The directed network implies the presence of transcription factors driving gene expression."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The edges in the directed network will connect genes."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_lioness_coexpression",
+        "run_bonobo",
+        "run_lioness_panda"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which scientific question should we start with?",
+      "stated_hypotheses": [
+        {
+          "axis": "multiple_hypotheses",
+          "basis": "run_lioness_coexpression",
+          "text_span": "one co-expression network per embryo with a p-value on every edge",
+          "target_artifact": "coexpression_network",
+          "target_granularity": "sample_specific"
+        },
+        {
+          "axis": "multiple_hypotheses",
+          "basis": "run_bonobo",
+          "text_span": "one co-expression network per embryo with a p-value on every edge",
+          "target_artifact": "coexpression_network",
+          "target_granularity": "sample_specific"
+        },
+        {
+          "axis": "multiple_hypotheses",
+          "basis": "run_lioness_panda",
+          "text_span": "a directed network showing which genes causally drive the others",
+          "target_artifact": "regulatory_network",
+          "target_granularity": "sample_specific"
+        }
+      ],
+      "data_facts": {
+        "source": "model",
+        "priors": "unstated",
+        "priors_quote": "",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_lioness_coexpression",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_bonobo",
+          "status": "applicable",
+          "basis": []
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": false,
+        "basis": "unanswerable",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want one co-expression network per embryo with a p-value on every edge.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_coexpression.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 9,
+              "samples_quote": "nine"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@50-54"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "I also want a directed network showing which genes causally drive the others.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [
+              "causal_proof"
+            ],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 9,
+              "samples_quote": "nine"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@50-54"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "log2-transformed, gene-centred expression of nine individually profiled zebrafish embryos",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want one co-expression network per embryo with a p-value on every edge.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {
+          "causal": [
+            "From the same data I also want a directed network showing which genes causally drive the others."
+          ]
+        },
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@50-54",
+            "property": "sample_count",
+            "name": "",
+            "value": "9",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "nine",
+            "span": [
+              50,
+              54
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "nine",
+                "span": [
+                  50,
+                  54
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "nine",
+                "span": [
+                  50,
+                  54
+                ],
+                "result": "I want one co-expression network per embryo with a p-value on every edge.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "nine",
+                "span": [
+                  50,
+                  54
+                ],
+                "result": "I also want a directed network showing which genes causally drive the others.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "LIONESS-COEXPRESSION"
+        ],
+        "declined": [
+          {
+            "quote": "I also want a directed network showing which genes causally drive the others.",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"I also want a directed network showing which genes causally drive the others.\" -- not available here: no registered workflow produces this. Every registered workflow estimates associations or model coefficients from observational data."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want one co-expression network per embryo with a p-value on every edge."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-COEXPRESSION",
+          "BONOBO",
+          "LIONESS-PANDA"
+        ],
+        "accepted": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want one co-expression network per embryo with a p-value on every edge.",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "BONOBO has no aggregate/prior output. Its sample-specific matrices are not directly valid PANDA/PUMA coexpression_file inputs, which require one validated aggregate labeled gene-by-gene matrix; no implicit averaging or sample-index selection is performed.",
+              "question": "Do you want to produce a validated aggregate labeled gene-by-gene matrix first?",
+              "yes_outcome": "other_workflow",
+              "yes_workflow": "LIONESS",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "one co-expression network per embryo with a p-value on every edge",
+                "a directed network showing which genes causally drive the others"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I also want a directed network showing which genes causally drive the others.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI priors to internally infer the aggregate PANDA network and derive sample-specific TF-to-gene networks.",
+              "question": "Do you have the original gene-by-sample expression matrix and the necessary priors?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "one co-expression network per embryo with a p-value on every edge",
+                "a directed network showing which genes causally drive the others"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 39603,
+    "output_tokens": 2417,
+    "total_tokens": 42020,
+    "calls": [
+      {
+        "call_id": "766c4d92-37d4-44d2-963a-212d270c107e",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792771109-DwinaAaS36ZvG7rTYk0d",
+        "input_tokens": 5333,
+        "output_tokens": 507,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5840,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 711,
+        "price_snapshot": null,
+        "duration_ms": 11059,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "cdbe42eb-7553-49f6-8e32-4e6b2feb1f07",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792771115-kJUJOPdQQVh7P2HaTkm1",
+        "input_tokens": 6112,
+        "output_tokens": 265,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 6377,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 711,
+        "price_snapshot": null,
+        "duration_ms": 3015,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0adc802c-7a47-4451-9476-fd0965110395",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792771118-9umyrinL8PtRgFPwkYwJ",
+        "input_tokens": 1910,
+        "output_tokens": 172,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2082,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 390,
+        "price_snapshot": null,
+        "duration_ms": 2280,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "19a032ac-bd64-4523-a966-976aaefda3e9",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 742,
+        "output_tokens": 59,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 801,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 147,
+        "price_snapshot": {
+          "snapshot_id": "c198f1ae-badc-5607-b4bf-1f82a2762119",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-23T15:40:26.959002Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1069,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "01dee82f-3d06-4280-b9b9-016b14543f92",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792771121-MEdPPwj0tuUYYQpGFV89",
+        "input_tokens": 1749,
+        "output_tokens": 120,
+        "cache_read_tokens": 1664,
+        "cache_write_tokens": 0,
+        "total_tokens": 1869,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 210,
+        "price_snapshot": null,
+        "duration_ms": 1957,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bbf43f73-965a-47b4-977a-e14ddbbdc802",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792771123-NVPdjgVGFrKjfAb0nvvd",
+        "input_tokens": 15217,
+        "output_tokens": 566,
+        "cache_read_tokens": 15104,
+        "cache_write_tokens": 0,
+        "total_tokens": 15783,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1489,
+        "price_snapshot": null,
+        "duration_ms": 5841,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2eabc193-0032-45b4-9ae5-e248074e06d1",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792771129-oSKlY5xWIzEelJ9qBqVe",
+        "input_tokens": 556,
+        "output_tokens": 55,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 611,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 116,
+        "price_snapshot": null,
+        "duration_ms": 1136,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "78c266af-6117-458a-8503-15c7925f24ff",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792771130-knElxg5TjrwrkaCz0YOa",
+        "input_tokens": 545,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 578,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 102,
+        "price_snapshot": null,
+        "duration_ms": 1215,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a5e30f52-d536-4e6a-a5d5-c92ae9dec9c9",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792771131-m8U8blpBbIp6uZbUmW8D",
+        "input_tokens": 5306,
+        "output_tokens": 315,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5621,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 591,
+        "price_snapshot": null,
+        "duration_ms": 3577,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "83ddc506-edd5-4227-bb1c-3acf00c7b06a",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792771135-aqqceDhMyzVz8VsEUzLr",
+        "input_tokens": 2133,
+        "output_tokens": 325,
+        "cache_read_tokens": 2048,
+        "cache_write_tokens": 0,
+        "total_tokens": 2458,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 361,
+        "price_snapshot": null,
+        "duration_ms": 4067,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "80a708b5-c48d-4509-bd6d-cf6bb9ca8b12"
+}

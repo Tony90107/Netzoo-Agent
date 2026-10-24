@@ -39,6 +39,21 @@ REVIEW: dict[str, tuple[str, str]] = {
     # P2b (a): the same reason, now on the setting row set apart from the named run, plus the true ALT
     "hb-h2main-J41-1": ("right", "the parquet reason (the gold) on the '.parquet file' row; BONOBO runs with its own"),
     "hb-h1-H18-1": ("right", "the lambda_inter reason (the gold) on its own row and on the question row; DRAGON runs"),
+    # P5 r1 fix (3): a near miss ("W does not give it") is no longer said; the row keeps its other reasons or says layer 2
+    "hb-h4main-M34-1": ("right", "the no-LIONESS-OTTER reason (the gold) stays; the per-sample OTTER near miss is gone"),
+    "hb-h2main-J04-1": ("right", "as M34"),
+    "hb-h2main-J33-1": ("true_not_main", "the LIONESS-PANDA sample minimum stays; the OTTER near miss is gone"),
+    "cj-g4o1-C47-1": ("right", "the verified predictive-model reason (registry-wide) replaces the unrelated PANDA near miss"),
+    "cj-g4o1-C57-1": ("right", "COBRA's genes-vs-samples reason (the gold) stays; the unrelated PANDA near miss is gone"),
+    "cj-g4o2-C57-1": ("right", "as g4o1"),
+    "cj-p4b-C27-1": ("right", "the user's 'no mutation calls' reason (the gold) stays; the SAMBAR near miss is gone"),
+    **{session: ("true_not_main", "the DESeq2 line stays; the COBRA near miss is gone")
+       for session in ("cj-p1-C46-1", "cj-p4b-C46-1", "cj-p4c-C46-1", "cj-p5r-C46-1")},
+    **{session: ("layer_two", "the near miss was the only reason; the row says layer 2")
+       for session in ("cj-g4o1-C07-1", "cj-g4o2-C07-1", "cj-g4o1-C46-1", "cj-g4o2-C46-1", "hb-h4main-M29-1",
+                       "hb-h2main-J08-1", "hb-h1-H12-1", "hb-h1-H20-1", "hb-h3main-L08-1", "hb-h3main-L32-1",
+                       "hb-h3main-L42-1", "cj-g4o1-C27-1", "cj-g4o2-C27-1", "cj-p0-C27-1", "cj-p2-C27-1", "cj-p3-C27-1",
+                       "cj-p4c-C27-1", "cj-p5-C27-1", "cj-p5r-C27-1")},
 }
 
 

@@ -1,0 +1,30 @@
+Traceback (most recent call last):
+  File "<string>", line 14, in <module>
+  File "<frozen runpy>", line 286, in run_path
+  File "<frozen runpy>", line 98, in _run_module_code
+  File "<frozen runpy>", line 88, in _run_code
+  File "scripts/netzoo_agent.py", line 150, in <module>
+    raise SystemExit(cli.main())
+                     ^^^^^^^^^^
+  File "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-h6-final/scripts/netzoo_agent_core/cli/main.py", line 12, in main
+    return run_cli(parse_args())
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-h6-final/scripts/netzoo_agent_core/cli/loop.py", line 49, in run_cli
+    return run_conversation(args, runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-h6-final/scripts/netzoo_agent_core/cli/conversation.py", line 89, in run_conversation
+    action = machine.next_action()
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-h6-final/scripts/netzoo_agent_core/engine/machine.py", line 194, in next_action
+    self._recheck(task, state.pending_plan.decision["action"])  # M2: a24b K02
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-h6-final/scripts/netzoo_agent_core/engine/machine.py", line 686, in _recheck
+    state.pending_continuation = WorkflowContinuation(action=action, task=routing_window(task), recheck=True)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/chenzhonghan/.local/lib/python3.12/site-packages/pydantic/main.py", line 250, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for WorkflowContinuation
+action
+  Input should be 'inspect_inputs', 'inspect_condor_inputs', 'format_expression', 'convert_expression', 'run_panda', 'run_puma', 'run_lioness_panda', 'run_lioness_puma', 'run_lioness_coexpression', 'run_condor', 'run_cobra', 'run_sambar', 'run_dragon', 'run_lioness_dragon', 'run_otter', 'run_giraffe' or 'run_bonobo' [type=literal_error, input_value='no_tool', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error

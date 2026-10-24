@@ -84,8 +84,10 @@ def stated(item: CheckedRequirement, check=None) -> CheckedRequirement | None:
     if (item.limits or item.violations) and not limits:
         return None
     sentences = getattr(check, "claim_sentences", None) or {}
+    # P5 r1 (h7 S04): a near miss ("W does not give it") rests on the model's reading of which result was asked, and
+    # no near-miss entry names a claim code could verify, so only a registry-wide reason with its verified claim stays.
     not_by = [key for key in item.not_by
-              if entry(key).kind != "registry_wide" or _about(item.quote, sentences.get(entry(key).claim) or ())]
+              if entry(key).kind == "registry_wide" and _about(item.quote, sentences.get(entry(key).claim) or ())]
     return item.model_copy(update={"limits": limits, "violations": [], "not_by": not_by})
 
 
