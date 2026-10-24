@@ -1,0 +1,1243 @@
+[
+ {
+  "key": "0aa489c154827e2b",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-goal",
+   "why": "Vague 'systems-level view' credited to dragon.two_layer_network and 'Where should we start?' read as a result; results_given DO partial instead of CLARIFY.",
+   "confidence": "high"
+  },
+  "evidence": {
+   "key": "0aa489c154827e2b",
+   "session": "cj-p1-C23-1",
+   "turn": "t1",
+   "item": "C23",
+   "set": "core",
+   "gold": "CLARIFY",
+   "call": "DO",
+   "partial": true,
+   "error": "MA",
+   "request": "We generated quite a lot of omics on a pig model of septic shock: whole-blood transcriptome, plasma proteome and a few hundred metabolites, sampled at baseline and at 24 hours. I'd like a systems-level view of what is going on in these animals. Where should we start?",
+   "gold_detail": {
+    "class": "vague",
+    "workflows": [
+     "DRAGON",
+     "LIONESS-DRAGON",
+     "PANDA",
+     "LIONESS-PANDA",
+     "COBRA"
+    ],
+    "reason": "In-scope multi-omic data, but 'systems-level view' does not name a result, a pair of layers or a comparison.",
+    "evidence": "workflows/dragon.yaml: 'consumes exactly two paired sample-by-feature continuous omics tables'; workflows/lioness-dragon.yaml: 'granularities: [sample_specific]'; workflows/panda.yaml: 'artifact_type: regulatory_network'",
+    "deciding_fact": "",
+    "missing_core": "Which result (multi-omic network for which two layers, regulatory network, per-animal networks, baseline vs 24 h comparison) and what question it should answer."
+   },
+   "reading": {
+    "action": "no_tool",
+    "matched_actions": [
+     "run_dragon"
+    ],
+    "capability_match_status": "exact",
+    "requirements": [
+     {
+      "kind": "result",
+      "quote": "I'd like a systems-level view of what is going on in these animals.",
+      "status": "available",
+      "credited": [
+       "dragon.two_layer_network (DRAGON)"
+      ]
+     },
+     {
+      "kind": "result",
+      "quote": "Where should we start?",
+      "status": "not_available"
+     },
+     {
+      "kind": "context",
+      "quote": "whole-blood transcriptome, plasma proteome and a few hundred metabolites",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "sampled at baseline and at 24 hours",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [],
+    "unchecked": [],
+    "check_flags": {},
+    "core_basis": "results_given",
+    "core_workflows": [
+     "DRAGON"
+    ],
+    "questions_asked": [],
+    "clarify_question": "",
+    "declined": [
+     "quote='Where should we start?' reasons=[] alternatives=[] line='\"Where should we start?\" -- I couldn\\'t match this to anything a registered NetZoo workflow produces or lets you set.'"
+    ]
+   }
+  }
+ },
+ {
+  "key": "ce7634d3a610b73d",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-fail",
+   "why": "check_flags provisional, run_held_unconfirmed -> UNCHECKED, although the reading had a needs_fact row with correct outcomes; code could arguably have asked.",
+   "confidence": "low"
+  },
+  "evidence": {
+   "key": "ce7634d3a610b73d",
+   "session": "cj-p4b-C43-1",
+   "turn": "t1",
+   "item": "C43",
+   "set": "core",
+   "gold": "ASK",
+   "call": "UNCHECKED",
+   "partial": false,
+   "error": "UNCHECKED",
+   "request": "Run LIONESS-PANDA on expr_ra_synovium.tsv with motif_hs.txt and ppi_hs.txt to get a TF-to-gene network per column. I'm not sure which export this file is: the per-patient matrix (24 patients) or the version where a student averaged the patients into two columns, RA and control.",
+   "gold_detail": {
+    "class": "ask",
+    "workflows": [
+     "LIONESS-PANDA"
+    ],
+    "reason": "LIONESS-PANDA needs at least three samples; which export the file is decides support.",
+    "evidence": "workflows/lioness-panda.yaml: 'Require at least three expression samples before execution.'",
+    "deciding_fact": "",
+    "missing_core": ""
+   },
+   "reading": {
+    "action": "no_tool",
+    "matched_actions": [],
+    "capability_match_status": "ambiguous",
+    "requirements": [
+     {
+      "kind": "result",
+      "quote": "get a TF-to-gene network per column",
+      "status": "available",
+      "credited": [
+       "lioness_panda.per_sample_networks (LIONESS-PANDA)"
+      ],
+      "method": {
+       "named": "LIONESS-PANDA",
+       "named_quote": "Run LIONESS-PANDA"
+      }
+     },
+     {
+      "kind": "result",
+      "quote": "the per-patient matrix (24 patients) or the version where a student averaged the patients into two columns, RA and control",
+      "status": "needs_fact",
+      "credited": [
+       "lioness_panda.per_sample_networks (LIONESS-PANDA)"
+      ],
+      "unknown_quote": "the per-patient matrix (24 patients) or the version where a student averaged the patients into two columns, RA and control",
+      "depends_on": "choice",
+      "outcomes": {
+       "the per-patient matrix (24 patients)": [
+        "lioness_panda.per_sample_networks (LIONESS-PANDA)"
+       ],
+       "the version where a student averaged the patients into two columns, RA and control": []
+      }
+     },
+     {
+      "kind": "context",
+      "quote": "expr_ra_synovium.tsv",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "motif_hs.txt",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "ppi_hs.txt",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [],
+    "unchecked": [],
+    "check_flags": {
+     "provisional": true
+    },
+    "core_basis": "run_held_unconfirmed",
+    "core_workflows": [
+     "LIONESS-PANDA"
+    ],
+    "questions_asked": [],
+    "clarify_question": "",
+    "declined": []
+   }
+  }
+ },
+ {
+  "key": "a9039641b0763ef8",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-unc",
+   "why": "Methylation encoding doubt (beta vs binarized) absent from reading: no unknowns, no unknown_quote, no context row -> DO instead of ASK.",
+   "confidence": "high"
+  },
+  "evidence": {
+   "key": "a9039641b0763ef8",
+   "session": "cj-p0-C42-1",
+   "turn": "t1",
+   "item": "C42",
+   "set": "core",
+   "gold": "ASK",
+   "call": "DO",
+   "partial": false,
+   "error": "MA",
+   "request": "Run DRAGON on expr_cll_layer.csv and methyl_cll_layer.csv (same 110 patient IDs in rows, no missing cells). One thing I'm unsure about: the methylation file is either the continuous beta values or the binarized methylated/unmethylated calls (0/1) that another group derived, and both versions were saved under that name.",
+   "gold_detail": {
+    "class": "ask",
+    "workflows": [
+     "DRAGON"
+    ],
+    "reason": "DRAGON accepts only continuous measurements; the methylation encoding decides support.",
+    "evidence": "workflows/dragon.yaml: 'Values must be finite continuous numeric measurements.'; 'accepted_input_modalities: [multi_omic_continuous]'",
+    "deciding_fact": "",
+    "missing_core": ""
+   },
+   "reading": {
+    "action": "run_dragon",
+    "matched_actions": [
+     "run_dragon"
+    ],
+    "capability_match_status": "exact",
+    "requirements": [
+     {
+      "kind": "result",
+      "quote": "Run DRAGON on expr_cll_layer.csv and methyl_cll_layer.csv",
+      "status": "available",
+      "credited": [
+       "dragon.two_layer_network (DRAGON)",
+       "dragon.edge_pvalues (DRAGON)",
+       "dragon.group_comparison (DRAGON)"
+      ],
+      "method": {
+       "named": "DRAGON",
+       "named_quote": "DRAGON"
+      }
+     },
+     {
+      "kind": "context",
+      "quote": "expr_cll_layer.csv and methyl_cll_layer.csv",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "same 110 patient IDs in rows",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "no missing cells",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [],
+    "unchecked": [],
+    "check_flags": {},
+    "core_basis": "run",
+    "core_workflows": [
+     "DRAGON"
+    ],
+    "questions_asked": [],
+    "clarify_question": "",
+    "declined": []
+   }
+  }
+ },
+ {
+  "key": "869b1210f9ed137a",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-unc",
+   "why": "Expression-vs-mutation uncertainty about tumour_profiles_v2.tsv only in context rows; unknowns empty, no unknown_quote, questions_asked empty.",
+   "confidence": "high"
+  },
+  "evidence": {
+   "key": "869b1210f9ed137a",
+   "session": "cj-p0-C20-1",
+   "turn": "t1",
+   "item": "C20",
+   "set": "core",
+   "gold": "ASK",
+   "call": "DO",
+   "partial": false,
+   "error": "MA",
+   "request": "Run PANDA on tumour_profiles_v2.tsv with motif_hs.txt and ppi_hs.txt. Heads up: our lab saved two genes-by-tumours matrices under similar names, one with log2 expression and one with binary somatic-mutation calls, and I'm not sure which one this is.",
+   "gold_detail": {
+    "class": "ask",
+    "workflows": [
+     "PANDA"
+    ],
+    "reason": "PANDA takes expression and lists a mutation matrix as incompatible; the file's content decides support.",
+    "evidence": "workflows/panda.yaml: 'accepted_input_modalities: [gene_expression, coexpression]'; 'incompatible_input_artifacts: [mutation_matrix]'",
+    "deciding_fact": "",
+    "missing_core": ""
+   },
+   "reading": {
+    "action": "run_panda",
+    "matched_actions": [
+     "run_panda"
+    ],
+    "capability_match_status": "exact",
+    "requirements": [
+     {
+      "kind": "result",
+      "quote": "Run PANDA on tumour_profiles_v2.tsv with motif_hs.txt and ppi_hs.txt.",
+      "status": "available",
+      "credited": [
+       "panda.tf_gene_network (PANDA)",
+       "panda.targeting_scores (PANDA)",
+       "panda.condition_comparison (PANDA)"
+      ],
+      "method": {
+       "named": "PANDA",
+       "named_quote": "PANDA"
+      }
+     },
+     {
+      "kind": "context",
+      "quote": "tumour_profiles_v2.tsv",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "motif_hs.txt",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "ppi_hs.txt",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "two genes-by-tumours matrices under similar names",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "one with log2 expression",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "one with binary somatic-mutation calls",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "I'm not sure which one this is.",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [],
+    "unchecked": [],
+    "check_flags": {},
+    "core_basis": "run",
+    "core_workflows": [
+     "PANDA"
+    ],
+    "questions_asked": [],
+    "clarify_question": "",
+    "declined": []
+   }
+  }
+ },
+ {
+  "key": "e9115742148bcaf4",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-goal",
+   "why": "Vague 'how genes are connected' credited to specific network capabilities (requirements[0].credited), core_basis results_given instead of CLARIFY.",
+   "confidence": "high"
+  },
+  "evidence": {
+   "key": "e9115742148bcaf4",
+   "session": "cj-p3-C53-1",
+   "turn": "t1",
+   "item": "C53",
+   "set": "core",
+   "gold": "CLARIFY",
+   "call": "DO",
+   "partial": false,
+   "error": "MA",
+   "request": "Could you help me see how genes are connected in my sorghum heat-stress experiment?",
+   "gold_detail": {
+    "class": "vague",
+    "workflows": [
+     "LIONESS-COEXPRESSION",
+     "BONOBO",
+     "PANDA",
+     "OTTER",
+     "COBRA"
+    ],
+    "reason": "'How genes are connected' fits co-expression or regulatory networks, pooled or per sample, with no stated comparison.",
+    "evidence": "workflows/lioness-coexpression.yaml: 'artifact_type: coexpression_network'; workflows/panda.yaml: 'artifact_type: regulatory_network'",
+    "deciding_fact": "",
+    "missing_core": "Which connections (gene-gene co-expression vs TF-to-gene regulation), aggregate vs per-sample, stress vs control comparison, and which data/priors exist."
+   },
+   "reading": {
+    "action": "no_tool",
+    "matched_actions": [],
+    "capability_match_status": "ambiguous",
+    "requirements": [
+     {
+      "kind": "result",
+      "quote": "see how genes are connected",
+      "status": "available",
+      "credited": [
+       "lioness_coexpression.per_sample_networks (LIONESS-COEXPRESSION)"
+      ]
+     },
+     {
+      "kind": "context",
+      "quote": "my sorghum heat-stress experiment",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [],
+    "unchecked": [],
+    "check_flags": {},
+    "core_basis": "results_given",
+    "core_workflows": [
+     "LIONESS-COEXPRESSION"
+    ],
+    "questions_asked": [],
+    "clarify_question": "",
+    "declined": []
+   }
+  }
+ },
+ {
+  "key": "24c0bcf88990ee49",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-goal",
+   "why": "Vague request ('don't know what kind of network') read as concrete: requirement 'a network analysis' typed result not_available -> full_gap DECLINE instead of CLARIFY.",
+   "confidence": "high"
+  },
+  "evidence": {
+   "key": "24c0bcf88990ee49",
+   "session": "cj-p3-C24-1",
+   "turn": "t1",
+   "item": "C24",
+   "set": "core",
+   "gold": "CLARIFY",
+   "call": "DECLINE",
+   "partial": false,
+   "error": "MA",
+   "request": "Reviewers asked for 'a network analysis' of our placenta study. We have mRNA-seq and small-RNA-seq from 45 preeclampsia and control placentas. Honestly I don't know what kind of network they expect or what it's supposed to show. The two groups are roughly balanced and both libraries come from the same placentas; can you set something up that would satisfy them?",
+   "gold_detail": {
+    "class": "vague",
+    "workflows": [
+     "PUMA",
+     "LIONESS-PUMA",
+     "DRAGON",
+     "PANDA",
+     "LIONESS-COEXPRESSION"
+    ],
+    "reason": "Data are in scope, but the user says they do not know what network or conclusion is wanted.",
+    "evidence": "workflows/puma.yaml: 'regulator_types: [tf, mirna]'; workflows/dragon.yaml: 'artifact_type: multi_omic_network'; workflows/lioness-puma.yaml: 'granularities: [aggregate, sample_specific]'",
+    "deciding_fact": "",
+    "missing_core": "Which network (miRNA/TF regulatory, mRNA-miRNA association, co-expression), aggregate or per-placenta, and what it should show about preeclampsia vs control."
+   },
+   "reading": {
+    "action": "no_tool",
+    "matched_actions": [],
+    "capability_match_status": "unsupported",
+    "requirements": [
+     {
+      "kind": "result",
+      "quote": "'a network analysis'",
+      "status": "not_available"
+     },
+     {
+      "kind": "result",
+      "quote": "can you set something up that would satisfy them?",
+      "status": "not_available"
+     },
+     {
+      "kind": "context",
+      "quote": "mRNA-seq and small-RNA-seq",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "45 preeclampsia and control placentas",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "The two groups are roughly balanced",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "both libraries come from the same placentas",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [],
+    "unchecked": [],
+    "check_flags": {
+     "full_gap": true
+    },
+    "core_basis": "full_gap",
+    "core_workflows": [],
+    "questions_asked": [],
+    "clarify_question": "",
+    "declined": [
+     "quote=\"'a network analysis'\" reasons=[] alternatives=[] line='\"\\'a network analysis\\'\" -- I couldn\\'t match this to anything a registered NetZoo workflow produces or lets you set.'",
+     "quote='can you set something up that would satisfy them?' reasons=[] alternatives=[] line='\"can you set something up that would satisfy them?\" -- I couldn\\'t match this to anything a registered NetZoo workflow produces or lets you set.'"
+    ]
+   }
+  }
+ },
+ {
+  "key": "c5b405ac3c124700",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-goal",
+   "why": "No result named, but vague request not judged goal-unclear; fact agent asked a result question (LIONESS sample-specific?) as a deciding fact instead of CLARIFY.",
+   "confidence": "low"
+  },
+  "evidence": {
+   "key": "c5b405ac3c124700",
+   "session": "cj-g4o2-C41-1",
+   "turn": "t1",
+   "item": "C41",
+   "set": "core",
+   "gold": "CLARIFY",
+   "call": "ASK",
+   "partial": false,
+   "error": "wrong question kind",
+   "request": "My PI told me to 'do the NetZoo thing, PANDA or LIONESS or something' on our zebrafish fin-regeneration RNA-seq before lab meeting. Which one should I run?",
+   "gold_detail": {
+    "class": "vague",
+    "workflows": [
+     "PANDA",
+     "LIONESS-PANDA",
+     "LIONESS-COEXPRESSION",
+     "OTTER",
+     "GIRAFFE",
+     "BONOBO"
+    ],
+    "reason": "Expression data is in scope, but nothing says which result is wanted or whether zebrafish motif/PPI priors exist, so any choice is a guess.",
+    "evidence": "workflows/panda.yaml: 'granularities: [aggregate]'; workflows/lioness-panda.yaml: 'granularities: [aggregate, sample_specific]'; workflows/lioness-coexpression.yaml: 'artifact_type: coexpression_network'",
+    "deciding_fact": "",
+    "missing_core": "Which result: one aggregate network, per-sample networks, or a comparison across regeneration stages; TF-gene regulation or co-expression; and whether motif and PPI priors are available."
+   },
+   "reading": {
+    "action": "no_tool",
+    "matched_actions": [],
+    "capability_match_status": "ambiguous",
+    "requirements": [
+     {
+      "kind": "context",
+      "quote": "our zebrafish fin-regeneration RNA-seq",
+      "status": "not_checked"
+     },
+     {
+      "kind": "about_methods",
+      "quote": "'do the NetZoo thing, PANDA or LIONESS or something'",
+      "status": "not_checked"
+     },
+     {
+      "kind": "about_methods",
+      "quote": "Which one should I run?",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [],
+    "unchecked": [],
+    "check_flags": {},
+    "core_basis": "fact_agent",
+    "core_workflows": [
+     "LIONESS-PANDA",
+     "PANDA"
+    ],
+    "questions_asked": [
+     {
+      "question": "Do you want to infer sample-specific networks using LIONESS?",
+      "about": "agent",
+      "user_quote": "PANDA or LIONESS"
+     }
+    ],
+    "clarify_question": "",
+    "declined": []
+   }
+  }
+ },
+ {
+  "key": "e7d6050515375073",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-goal",
+   "why": "Concrete DRAGON request read as about_methods only (no result row) -> no_result_read CLARIFY, although samples_matched unknown was flagged.",
+   "confidence": "high"
+  },
+  "evidence": {
+   "key": "e7d6050515375073",
+   "session": "cj-p4c-C48-1",
+   "turn": "t1",
+   "item": "C48",
+   "set": "core",
+   "gold": "ASK",
+   "call": "CLARIFY",
+   "partial": false,
+   "error": "wrong question kind",
+   "request": "Is DRAGON able to link fecal metabolomics with colon-biopsy transcriptomics for our IBS study? Both tables are complete and continuous, but the metabolomics came from the 2023 recruitment wave and the biopsies may have been taken from a different group of volunteers; I'm still waiting to hear from the clinic whether they're the same 58 people.",
+   "gold_detail": {
+    "class": "ask",
+    "workflows": [
+     "DRAGON"
+    ],
+    "reason": "DRAGON requires two paired tables measured on exactly the same samples; whether the cohorts are the same people decides support.",
+    "evidence": "workflows/dragon.yaml: 'DRAGON consumes exactly two paired sample-by-feature continuous omics tables'; 'Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven.'",
+    "deciding_fact": "",
+    "missing_core": ""
+   },
+   "reading": {
+    "action": "no_tool",
+    "matched_actions": [],
+    "capability_match_status": "ambiguous",
+    "requirements": [
+     {
+      "kind": "about_methods",
+      "quote": "Is DRAGON able to link fecal metabolomics with colon-biopsy transcriptomics for our IBS study?",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "Both tables are complete and continuous",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "the metabolomics came from the 2023 recruitment wave",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "the biopsies may have been taken from a different group of volunteers",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "I'm still waiting to hear from the clinic whether they're the same 58 people",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [
+     [
+      "samples_matched",
+      "I'm still waiting to hear from the clinic whether they're the same 58 people."
+     ]
+    ],
+    "unchecked": [],
+    "check_flags": {},
+    "core_basis": "no_result_read",
+    "core_workflows": [],
+    "questions_asked": [],
+    "clarify_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+    "declined": []
+   }
+  }
+ },
+ {
+  "key": "973c0206f2f8cb77",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-unc",
+   "why": "User's per-group vs per-donor doubt not flagged: no unknowns, 'a network for each AD and control' left as context, only PANDA credited -> DO.",
+   "confidence": "high"
+  },
+  "evidence": {
+   "key": "973c0206f2f8cb77",
+   "session": "cj-p0-C11-1",
+   "turn": "t1",
+   "item": "C11",
+   "set": "core",
+   "gold": "ASK",
+   "call": "DO",
+   "partial": false,
+   "error": "MA",
+   "request": "Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt. The analysis plan just says 'a network for each AD and control', and I can't tell if that means one network per diagnostic group or one network per donor; the person who wrote it is on leave until next month.",
+   "gold_detail": {
+    "class": "ask",
+    "workflows": [
+     "LIONESS-PANDA"
+    ],
+    "reason": "Per-donor and per-group networks are made by different workflows; the reading decides which.",
+    "evidence": "workflows/lioness-panda.yaml: 'granularities: [aggregate, sample_specific]'; workflows/panda.yaml: 'granularities: [aggregate]'",
+    "deciding_fact": "",
+    "missing_core": ""
+   },
+   "reading": {
+    "action": "run_panda",
+    "matched_actions": [
+     "run_panda"
+    ],
+    "capability_match_status": "exact",
+    "requirements": [
+     {
+      "kind": "result",
+      "quote": "Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt.",
+      "status": "available",
+      "credited": [
+       "panda.tf_gene_network (PANDA)"
+      ]
+     },
+     {
+      "kind": "context",
+      "quote": "expr_alzheimer.tsv (88 donors: 44 AD, 44 controls)",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "motifs_hg38.txt",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "ppi_tf.txt",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "a network for each AD and control",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [],
+    "unchecked": [],
+    "check_flags": {},
+    "core_basis": "run",
+    "core_workflows": [
+     "PANDA"
+    ],
+    "questions_asked": [],
+    "clarify_question": "",
+    "declined": []
+   }
+  }
+ },
+ {
+  "key": "p5r2:S31",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-type",
+   "why": "check result 'subtype 85 patients into 2 to 5 groups' not_available, uncredited; reply_opening cites overlapping memberships, so exclusive SAMBAR subtypes were typed as overlapping.",
+   "confidence": "low"
+  },
+  "evidence": {
+   "id": "p5r2:S31",
+   "round": "p5r2",
+   "system": "E2",
+   "item": "S31",
+   "part": "single",
+   "outcome": "refused_without_asking",
+   "scored": {},
+   "gold": {
+    "id": "S31",
+    "class": "ask",
+    "form": "goal",
+    "group": "S31",
+    "prompt": "We'd like to subtype 85 colorectal cancer patients into 2 to 5 groups based on pathway-level mutation scores. We have a patient-by-gene matrix of variant counts from whole-exome sequencing, a gene-length table, a cancer-gene list and a Reactome GMT.",
+    "expected_call": "ASK",
+    "also_acceptable": [],
+    "workflows": [
+     "SAMBAR"
+    ],
+    "reason": "Everything else fits SAMBAR (four inputs, kmax 5 <= 85), but SAMBAR is defined for somatic mutations and the request never says whether the exome variants are somatic or germline; no file check or default settles that.",
+    "evidence": "sambar.yaml: \"description: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\"; sambar.yaml: \"accepted_input_modalities: [somatic_mutation]\"",
+    "deciding_fact": "Whether the variant counts are somatic (tumour vs matched normal) or germline: somatic -> DO with SAMBAR; germline -> DECLINE, SAMBAR takes somatic mutations only.",
+    "missing_core": "",
+    "uncertainty": "silent",
+    "file_checkable": false
+   },
+   "turns": [
+    {
+     "turn": "t1",
+     "sent": "prompt",
+     "exit": 0,
+     "call": "DECLINE",
+     "basis": "full_gap",
+     "core_workflows": [],
+     "questions_asked": [],
+     "clarify_question": null,
+     "reply_opening": "What I understood you are asking for:\n1. \"We'd like to subtype 85 colorectal cancer patients into 2 to 5 groups based on pathway-level mutation scores.\" -- not available here: no registered workflow produces this. Registered grouping puts each item in exactly one group (CONDOR: one community per regulator or gene; SAMBAR: one subtype per sample); none returns overlapping memberships.\n\nNo registered workflow produces this, so none is offered as the way to get it.\n\nNo files were inspected and no analysis ran.",
+     "check": {
+      "requirements": [
+       {
+        "kind": "result",
+        "quote": "We'd like to subtype 85 colorectal cancer patients into 2 to 5 groups based on pathway-level mutation scores.",
+        "status": "not_available"
+       },
+       {
+        "kind": "context",
+        "quote": "a patient-by-gene matrix of variant counts from whole-exome sequencing",
+        "status": "not_checked"
+       },
+       {
+        "kind": "context",
+        "quote": "a gene-length table",
+        "status": "not_checked"
+       },
+       {
+        "kind": "context",
+        "quote": "a cancer-gene list",
+        "status": "not_checked"
+       },
+       {
+        "kind": "context",
+        "quote": "a Reactome GMT",
+        "status": "not_checked"
+       },
+       {
+        "kind": "context",
+        "quote": "We have a patient-by-gene matrix of variant counts from whole-exome sequencing, a gene-length table, a cancer-gene list and a Reactome GMT.",
+        "status": "not_checked"
+       }
+      ],
+      "unknowns": [],
+      "unchecked": [],
+      "flags": {
+       "full_gap": true
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "key": "9c0c7d9b486a6f47",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-fail",
+   "why": "check_flags provisional, core_basis check_unconfirmed -> UNCHECKED, although the row limit 'needs at least 3 samples; the request has 2' was read.",
+   "confidence": "low"
+  },
+  "evidence": {
+   "key": "9c0c7d9b486a6f47",
+   "session": "hb-h1-H11-1",
+   "turn": "t1",
+   "item": "H11",
+   "set": "h1",
+   "gold": "DECLINE",
+   "call": "UNCHECKED",
+   "partial": false,
+   "error": "UNCHECKED",
+   "request": "Time to run LIONESS-PANDA: twins_expr.tsv holds our two monozygotic twin samples (two columns), with motif_hs.txt and ppi_hs.txt as priors. Aggregate network to twins_agg.txt, per-sample networks to lioness_twins/, started today if possible.",
+   "gold_detail": {
+    "class": "dont",
+    "workflows": [
+     "LIONESS-PANDA"
+    ],
+    "reason": "LIONESS-PANDA requires at least three expression samples and the file has two.",
+    "evidence": "hb-h1-H11-1 routing.capability_check_failed + routing.capability_check_provisional -> core.decision UNCHECKED check_unconfirmed; the row limit 'LIONESS-PANDA needs at least 3 samples; the request has 2' was read",
+    "deciding_fact": "",
+    "missing_core": ""
+   },
+   "reading": {
+    "action": "no_tool",
+    "matched_actions": [],
+    "capability_match_status": "ambiguous",
+    "requirements": [
+     {
+      "kind": "context",
+      "quote": "twins_expr.tsv holds our two monozygotic twin samples (two columns)",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "motif_hs.txt and ppi_hs.txt as priors",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "Aggregate network to twins_agg.txt",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "per-sample networks to lioness_twins/",
+      "status": "not_checked"
+     },
+     {
+      "kind": "result",
+      "quote": "two monozygotic twin samples",
+      "status": "not_available",
+      "limits": [
+       "LIONESS-PANDA needs at least 3 samples; the request has 2"
+      ],
+      "method": {
+       "named": "LIONESS-PANDA",
+       "named_quote": "LIONESS-PANDA"
+      }
+     }
+    ],
+    "unknowns": [],
+    "unchecked": [],
+    "check_flags": {
+     "provisional": true
+    },
+    "core_basis": "check_unconfirmed",
+    "core_workflows": [
+     "DRAGON",
+     "LIONESS-DRAGON"
+    ],
+    "questions_asked": [],
+    "clarify_question": "",
+    "declined": []
+   }
+  }
+ },
+ {
+  "key": "235b1f508d18d868",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-unc",
+   "why": "unknowns typed value_type/mutation_origin, not the file's modality (PANDA refuses mutation_matrix); PANDA row lacks unknown_quote/depends_on, questions_asked empty.",
+   "confidence": "low"
+  },
+  "evidence": {
+   "key": "235b1f508d18d868",
+   "session": "cj-p1-C20-1",
+   "turn": "t1",
+   "item": "C20",
+   "set": "core",
+   "gold": "ASK",
+   "call": "DO",
+   "partial": false,
+   "error": "MA",
+   "request": "Run PANDA on tumour_profiles_v2.tsv with motif_hs.txt and ppi_hs.txt. Heads up: our lab saved two genes-by-tumours matrices under similar names, one with log2 expression and one with binary somatic-mutation calls, and I'm not sure which one this is.",
+   "gold_detail": {
+    "class": "ask",
+    "workflows": [
+     "PANDA"
+    ],
+    "reason": "PANDA takes expression and lists a mutation matrix as incompatible; the file's content decides support.",
+    "evidence": "workflows/panda.yaml: 'accepted_input_modalities: [gene_expression, coexpression]'; 'incompatible_input_artifacts: [mutation_matrix]'",
+    "deciding_fact": "",
+    "missing_core": ""
+   },
+   "reading": {
+    "action": "run_panda",
+    "matched_actions": [
+     "run_panda"
+    ],
+    "capability_match_status": "exact",
+    "requirements": [
+     {
+      "kind": "result",
+      "quote": "Run PANDA on tumour_profiles_v2.tsv with motif_hs.txt and ppi_hs.txt.",
+      "status": "available",
+      "credited": [
+       "panda.tf_gene_network (PANDA)"
+      ],
+      "method": {
+       "named": "PANDA",
+       "named_quote": "PANDA"
+      }
+     },
+     {
+      "kind": "context",
+      "quote": "tumour_profiles_v2.tsv",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "motif_hs.txt",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "ppi_hs.txt",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "two genes-by-tumours matrices",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "log2 expression",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "binary somatic-mutation calls",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "under similar names",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [
+     [
+      "value_type",
+      "I'm not sure which one this is."
+     ],
+     [
+      "mutation_origin",
+      "I'm not sure which one this is."
+     ]
+    ],
+    "unchecked": [],
+    "check_flags": {},
+    "core_basis": "run",
+    "core_workflows": [
+     "PANDA"
+    ],
+    "questions_asked": [],
+    "clarify_question": "",
+    "declined": []
+   }
+  }
+ },
+ {
+  "key": "p5r2:S28",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-link",
+   "why": "check credits 'one co-expression network per embryo with a p-value on every edge' to LIONESS-COEXPRESSION, not BONOBO, the only workflow writing per-edge p-values.",
+   "confidence": "high"
+  },
+  "evidence": {
+   "id": "p5r2:S28",
+   "round": "p5r2",
+   "system": "E2",
+   "item": "S28",
+   "part": "single",
+   "outcome": "wrong_workflow",
+   "scored": {},
+   "gold": {
+    "id": "S28",
+    "class": "dont",
+    "form": "goal",
+    "group": "S28",
+    "prompt": "From log2-transformed, gene-centred expression of nine individually profiled zebrafish embryos, I want one co-expression network per embryo with a p-value on every edge. From the same data I also want a directed network showing which genes causally drive the others.",
+    "expected_call": "PARTIAL",
+    "also_acceptable": [],
+    "workflows": [
+     "BONOBO"
+    ],
+    "reason": "Doable: BONOBO per-sample co-expression with matching p-value matrices (sparsify with save_pvals) on >= 3 log-transformed, centred samples. Refused: a directed causal gene network, which BONOBO says it does not produce and the registry says no workflow can show.",
+    "evidence": "bonobo.yaml: \"upstream retains the full co-expression matrix for each selected sample and writes a matching p-value matrix\"; bonobo.yaml: \"network, GRN, TF-gene regulation, or causal network.\"; workflow_registry.py: \"None of the registered workflows can show that one thing causes another\"",
+    "deciding_fact": "",
+    "missing_core": "",
+    "uncertainty": "none",
+    "file_checkable": false
+   },
+   "turns": [
+    {
+     "turn": "t1",
+     "sent": "prompt",
+     "exit": 0,
+     "call": "PARTIAL",
+     "basis": "results_given",
+     "core_workflows": [
+      "LIONESS-COEXPRESSION"
+     ],
+     "questions_asked": [],
+     "clarify_question": null,
+     "reply_opening": "What I understood you are asking for:\n1. \"one co-expression network per embryo with a p-value on every edge\" -- available from LIONESS-COEXPRESSION.\n2. \"a directed network showing which genes causally drive the others\" -- not available here: no registered workflow produces this. Every registered workflow estimates associations or model coefficients from observational data.\n\nAbout \"I also want a directed network showing which genes causally drive the others.\": None of the registered workflows can show that one thing causes another: they estimate associations or model coefficients from the expression data, so the networks can describe what differs or changes but not show why.\n\nThere are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data.\n\nFor “one co-expression network per embryo with a p-value on every edge”:\n\n**BONOBO**. BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable.\n\nYou would need expression matrix. The analysis would provide inferred gene-to-gene associations; p-value matrix paired with a sample-specific gene-gene co-expression result.\n\nFor “a directed network showing which genes causally drive the others”:\n\n**LIONESS-PANDA**. LIONESS represents the cohort network through s",
+     "check": {
+      "requirements": [
+       {
+        "kind": "result",
+        "quote": "one co-expression network per embryo with a p-value on every edge",
+        "status": "available",
+        "credited": [
+         "lioness_coexpression.per_sample_networks (LIONESS-COEXPRESSION)"
+        ]
+       },
+       {
+        "kind": "result",
+        "quote": "a directed network showing which genes causally drive the others",
+        "status": "not_available",
+        "near_miss": [
+         "causal_proof (None)"
+        ]
+       },
+       {
+        "kind": "context",
+        "quote": "log2-transformed, gene-centred expression of nine individually profiled zebrafish embryos",
+        "status": "not_checked"
+       }
+      ],
+      "unknowns": [],
+      "unchecked": [],
+      "flags": {}
+     }
+    }
+   ]
+  }
+ },
+ {
+  "key": "41ac9b4a59704856",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-goal",
+   "why": "OTTER run-with-settings request read as about_methods plus context only; no result row, core_basis no_result_read gives CLARIFY.",
+   "confidence": "high"
+  },
+  "evidence": {
+   "key": "41ac9b4a59704856",
+   "session": "cj-p2-C51-1",
+   "turn": "t1",
+   "item": "C51",
+   "set": "core",
+   "gold": "DO",
+   "call": "CLARIFY",
+   "partial": false,
+   "error": "extra questions",
+   "request": "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list? Inputs would be expression for 60 breast tumours (header row, gene IDs in the first column), a TF-by-gene seed edge list, and a TF-TF PPI edge list whose TFs are exactly the seed's TFs.",
+   "gold_detail": {
+    "class": "do",
+    "workflows": [
+     "OTTER"
+    ],
+    "reason": "Every requested setting is a declared OTTER control with a legal value (computing=cpu, precision=single, iterations=150 >= 1, eta=1e-4 >= 0, output_format=edge_list); expression has a header and >= 2 sample columns; PPI TF set equals the seed TF set.",
+    "evidence": "workflows/otter.yaml: 'name: computing ... allowed_values: [cpu, gpu]'; 'name: precision ... allowed_values: [single, double]'; 'name: iterations ... minimum: 1'; 'name: eta ... minimum: 0'; 'name: output_format ... allowed_values: [matrix, edge_list]'; 'expression_file must have a header, a unique gene-ID first column, and at least two unique sample columns.'; 'ppi_file must be a TF-TF edge list. Its identifier set must equal the TF identifier set in motif_file'",
+    "deciding_fact": "",
+    "missing_core": ""
+   },
+   "reading": {
+    "action": "no_tool",
+    "matched_actions": [],
+    "capability_match_status": "ambiguous",
+    "requirements": [
+     {
+      "kind": "about_methods",
+      "quote": "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list?",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "Inputs would be expression for 60 breast tumours (header row, gene IDs in the first column), a TF-by-gene seed edge list, and a TF-TF PPI edge list whose TFs are exactly the seed's TFs.",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [],
+    "unchecked": [],
+    "check_flags": {},
+    "core_basis": "no_result_read",
+    "core_workflows": [],
+    "questions_asked": [],
+    "clarify_question": "Which of these results do you want, or what question should the analysis answer?",
+    "declined": []
+   }
+  }
+ },
+ {
+  "key": "24ffca7f1abce6a0",
+  "label": {
+   "layer": "reading",
+   "subtype": "R-fail",
+   "why": "core_basis routing_failed -> UNCHECKED; reading also took only lam 3.5 and left the 0.35/3.5 doubt unflagged.",
+   "confidence": "high"
+  },
+  "evidence": {
+   "key": "24ffca7f1abce6a0",
+   "session": "hb-h4main-M44-1",
+   "turn": "t1",
+   "item": "M44",
+   "set": "h4main",
+   "gold": "ASK",
+   "call": "UNCHECKED",
+   "partial": false,
+   "error": "UNCHECKED",
+   "request": "Please run OTTER today on expr_heart.tsv, motif_seed.tsv and ppi_tf.tsv, writing otter_heart.tsv. My notes from the methods meeting say lam = 0.35, but the slide we presented says lam = 3.5, and I don't know which one the group intended. Everything else can stay at defaults.",
+   "gold_detail": {
+    "class": "ask",
+    "workflows": [
+     "OTTER"
+    ],
+    "reason": "lam must lie in [0, 1], so 0.35 runs and 3.5 does not, and the user gives both values.",
+    "evidence": "hb-h4main-M44-1 core.decision basis=fact_agent",
+    "deciding_fact": "Whether lam is 0.35 (inside [0, 1]) or 3.5 (outside the allowed range).",
+    "missing_core": ""
+   },
+   "reading": {
+    "action": "no_tool",
+    "matched_actions": [],
+    "capability_match_status": "ambiguous",
+    "requirements": [
+     {
+      "kind": "result",
+      "quote": "Please run OTTER today on expr_heart.tsv, motif_seed.tsv and ppi_tf.tsv, writing otter_heart.tsv.",
+      "status": "not_available",
+      "limits": [
+       "OTTER's lam must be between 0 and 1; \"3.5\" is not"
+      ],
+      "method": {
+       "named": "OTTER",
+       "named_quote": "OTTER",
+       "settings": [
+        {
+         "name": "OTTER.lam",
+         "quote": "lam",
+         "value": "3.5",
+         "span": [
+          136,
+          139
+         ],
+         "at": 186
+        }
+       ]
+      }
+     },
+     {
+      "kind": "context",
+      "quote": "expr_heart.tsv",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "motif_seed.tsv",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "ppi_tf.tsv",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "writing otter_heart.tsv",
+      "status": "not_checked"
+     },
+     {
+      "kind": "about_methods",
+      "quote": "My notes from the methods meeting say lam = 0.35, but the slide we presented says lam = 3.5, and I don't know which one the group intended.",
+      "status": "not_checked"
+     },
+     {
+      "kind": "context",
+      "quote": "Everything else can stay at defaults.",
+      "status": "not_checked"
+     }
+    ],
+    "unknowns": [],
+    "unchecked": [],
+    "check_flags": {},
+    "core_basis": "routing_failed",
+    "core_workflows": [],
+    "questions_asked": [],
+    "clarify_question": "",
+    "declined": []
+   }
+  }
+ }
+]
