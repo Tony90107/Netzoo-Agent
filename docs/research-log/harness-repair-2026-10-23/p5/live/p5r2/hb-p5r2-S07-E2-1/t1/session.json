@@ -1,0 +1,697 @@
+{
+  "version": 1,
+  "session_id": "hb-p5r2-S07-E2-1",
+  "profile_id": "hb-p5r2-S07-E2-1",
+  "auto_generated": false,
+  "created_at": 1792814133.9335182,
+  "updated_at": 1792814133.933583,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Run LIONESS-PANDA now using cobra_out/adjusted_coexpression.tsv as the input together with motif_hs.tsv and ppi_hs.tsv, so I get batch-adjusted TF-to-gene networks for each of our 75 patients."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I get batch-adjusted TF-to-gene networks for each of our 75 patients.\" -- available from LIONESS-PANDA.\n2. \"Run LIONESS-PANDA now using cobra_out/adjusted_coexpression.tsv as the input together with motif_hs.tsv and ppi_hs.tsv, so\" -- available from LIONESS-PANDA.\n\nNo tool was executed because the Planner requires additional input.\n\nInput preflight failed, so the Work Plan is not ready:\n\n- PANDA/PUMA inputs: error: expression file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-harness-live/cobra_out/adjusted_coexpression.tsv\n- PANDA/PUMA inputs: error: motif file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-harness-live/motif_hs.tsv\n- PANDA/PUMA inputs: error: PPI file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-harness-live/ppi_hs.tsv\n\nPlease provide corrected files or fix the file contents, then I will re-check them."
+    }
+  ],
+  "plan": {
+    "workflow": "LIONESS-PANDA",
+    "objective": "The request explicitly instructs to run LIONESS-PANDA with the specified input files.",
+    "decision": {
+      "action": "run_lioness_panda",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "run_analysis",
+      "confidence": 1.0,
+      "reason": "The request explicitly instructs to run LIONESS-PANDA with the specified input files.",
+      "candidate_actions": [
+        "run_lioness_panda",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_panda",
+        "run_lioness_panda"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Run LIONESS-PANDA now using cobra_out/adjusted_coexpression.tsv as the input together with motif_hs.tsv and ppi_hs.tsv.",
+              "rationale": "The user requests to run LIONESS-PANDA, which involves inferring a regulatory network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "batch-adjusted TF-to-gene networks for each of our 75 patients.",
+              "rationale": "The user specifies that they want TF-to-gene networks, which corresponds to a regulatory network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "for each of our 75 patients.",
+              "rationale": "The user specifies that they want networks for each of the 75 patients, indicating sample-specific results."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_lioness_panda"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "operation_authorization": {
+        "requested": [
+          "run"
+        ],
+        "forbidden": [],
+        "explain_only": null,
+        "preview_requested": false,
+        "blocked_action": null
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I get batch-adjusted TF-to-gene networks for each of our 75 patients.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_panda.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PANDA",
+              "named_quote": "Run LIONESS-PANDA now",
+              "samples": 75,
+              "samples_quote": "each of our 75 patients"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@168-191"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "Run LIONESS-PANDA now using cobra_out/adjusted_coexpression.tsv as the input together with motif_hs.tsv and ppi_hs.tsv, so",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_panda.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PANDA",
+              "named_quote": "Run LIONESS-PANDA now",
+              "samples": 75,
+              "samples_quote": "75 patients"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@168-191"
+            ],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I get batch-adjusted TF-to-gene networks for each of our 75 patients.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "Run LIONESS-PANDA now"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@168-191",
+            "property": "sample_count",
+            "name": "",
+            "value": "75",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "each of our 75 patients",
+            "span": [
+              168,
+              191
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "each of our 75 patients",
+                "span": [
+                  168,
+                  191
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "each of our 75 patients",
+                "span": [
+                  168,
+                  191
+                ],
+                "result": "I get batch-adjusted TF-to-gene networks for each of our 75 patients.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "75 patients",
+                "span": [
+                  180,
+                  191
+                ],
+                "result": "Run LIONESS-PANDA now using cobra_out/adjusted_coexpression.tsv as the input together with motif_hs.tsv and ppi_hs.tsv, so",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "execution_requested": true,
+      "run_verdict": {
+        "action": "run_lioness_panda",
+        "verdict": "agrees",
+        "request_sha256": "bcbfd3b5aa95cd5533864dcc7ca1c40570d0da5392e0e2fcf6e1cdf44be112cb",
+        "held": false,
+        "named": true,
+        "credited": [
+          "run_lioness_panda"
+        ],
+        "results": [
+          {
+            "quote": "I get batch-adjusted TF-to-gene networks for each of our 75 patients.",
+            "status": "available",
+            "credited": [
+              "run_lioness_panda"
+            ]
+          },
+          {
+            "quote": "Run LIONESS-PANDA now using cobra_out/adjusted_coexpression.tsv as the input together with motif_hs.tsv and ppi_hs.tsv, so",
+            "status": "available",
+            "credited": [
+              "run_lioness_panda"
+            ]
+          }
+        ],
+        "unchecked": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "LIONESS-PANDA"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": true,
+        "basis": "run",
+        "evidence": {
+          "action": "run_lioness_panda",
+          "match_status": "exact",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I get batch-adjusted TF-to-gene networks for each of our 75 patients."
+          ],
+          "run_verdict": {
+            "verdict": "agrees",
+            "held": false
+          },
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PANDA",
+          "PANDA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Run LIONESS-PANDA now using cobra_out/adjusted_coexpression.tsv as the input together with motif_hs.tsv and ppi_hs.tsv",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "An aggregate COBRA adjusted co-expression artifact is not a direct LIONESS handoff; sample-specific COBRA adjustment would need to be recomputed inside each leave-one-out construction.",
+              "question": "Do you have at least three expression samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "so I get batch-adjusted TF-to-gene networks for each of our 75 patients",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "When a patient or sample identifier is supplied, produce sample-specific networks for all available samples, select the requested sample afterward, and keep it separate from the aggregate network.",
+              "question": "Do you want sample-specific networks for each patient?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "batch-adjusted TF-to-gene networks for each of our 75 patients"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": "cobra_out/adjusted_coexpression.tsv",
+      "design_file": null,
+      "motif_file": "motif_hs.tsv",
+      "ppi_file": "ppi_hs.tsv",
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": "outputs/sessions/hb-p5r2-S07-E2-1/adjusted_co-panda-aggregate.tsv",
+      "lioness_output": "outputs/sessions/hb-p5r2-S07-E2-1/adjusted_co-lioness-panda.tsv",
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [
+      {
+        "field": "expression_file",
+        "status": "discovered",
+        "value": "cobra_out/adjusted_coexpression.tsv",
+        "reason": "Role inferred from the filename and awaiting content compatibility confirmation.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "motif_file",
+        "status": "discovered",
+        "value": "motif_hs.tsv",
+        "reason": "Role inferred from the filename and awaiting content compatibility confirmation.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "ppi_file",
+        "status": "discovered",
+        "value": "ppi_hs.tsv",
+        "reason": "Role inferred from the filename and awaiting content compatibility confirmation.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "output_file",
+        "status": "defaulted",
+        "value": "outputs/sessions/hb-p5r2-S07-E2-1/adjusted_co-panda-aggregate.tsv",
+        "reason": "The output location is reversible and does not overwrite an input, so the Planner used the project default.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "lioness_output",
+        "status": "defaulted",
+        "value": "outputs/sessions/hb-p5r2-S07-E2-1/adjusted_co-lioness-panda.tsv",
+        "reason": "The output location is reversible and does not overwrite an input, so the Planner used the project default.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      }
+    ],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "needs_input",
+    "question": "Input preflight failed, so the Work Plan is not ready:\n\n- PANDA/PUMA inputs: error: expression file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-harness-live/cobra_out/adjusted_coexpression.tsv\n- PANDA/PUMA inputs: error: motif file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-harness-live/motif_hs.tsv\n- PANDA/PUMA inputs: error: PPI file does not exist: /Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-harness-live/ppi_hs.tsv\n\nPlease provide corrected files or fix the file contents, then I will re-check them.",
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [
+      "Validated workflow specification LIONESS-PANDA under project policy cf89ad9eddd6.",
+      "Require at least three expression samples before execution.",
+      "Keep aggregate and sample-specific outputs distinct from every input.",
+      "For sample k, LIONESS uses the all-sample PANDA network and the PANDA network recomputed after removing k: N_k = n * N_all - (n - 1) * N_without_k.",
+      "An aggregate COBRA adjusted co-expression artifact is not a direct LIONESS handoff; sample-specific COBRA adjustment would need to be recomputed inside each leave-one-out construction.",
+      "When a patient or sample identifier is supplied, produce sample-specific networks for all available samples, select the requested sample afterward, and keep it separate from the aggregate network."
+    ],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 31258,
+    "output_tokens": 1664,
+    "total_tokens": 32922,
+    "calls": [
+      {
+        "call_id": "39331759-ef22-46a2-9823-087298f69ea2",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814111-02g7ZRYVB8n4krygZYXI",
+        "input_tokens": 5329,
+        "output_tokens": 392,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5721,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 670,
+        "price_snapshot": null,
+        "duration_ms": 5236,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "a2372a7f-7a3c-417c-9762-2fb611a791d6",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814117-LxjX0MftIQkoPZsDknGr",
+        "input_tokens": 6168,
+        "output_tokens": 342,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6510,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 833,
+        "price_snapshot": null,
+        "duration_ms": 3964,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "558ea85b-a360-4ce9-8ca8-2ec0b352e51e",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 622,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 655,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 113,
+        "price_snapshot": {
+          "snapshot_id": "21a46249-163a-57ed-b270-f4a7b8f826c1",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-24T03:50:51.853654Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1213,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "c15dc279-354e-40c9-9694-0625d9c1c2be",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792814122-Wc4eLeecRvIFs6RDbm39",
+        "input_tokens": 12037,
+        "output_tokens": 399,
+        "cache_read_tokens": 11776,
+        "cache_write_tokens": 0,
+        "total_tokens": 12436,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1162,
+        "price_snapshot": null,
+        "duration_ms": 4578,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "99a2fb05-b6c2-47e9-84be-c0c72e437e66",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814126-uRRP2d0Nu8ZDOuYNHGVq",
+        "input_tokens": 552,
+        "output_tokens": 37,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 589,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 105,
+        "price_snapshot": null,
+        "duration_ms": 1161,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "77cde2b0-14e5-4bf6-803a-b56d5eb31e1d",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792814128-LVEp03Zj6b2rWmTzv526",
+        "input_tokens": 5331,
+        "output_tokens": 189,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5520,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 529,
+        "price_snapshot": null,
+        "duration_ms": 2813,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ddc787de-945e-48a7-9e3f-6654a9489da0",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814130-CGT9UUA2jA55jMNRHEB3",
+        "input_tokens": 1219,
+        "output_tokens": 272,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1491,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 346,
+        "price_snapshot": null,
+        "duration_ms": 3199,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "4ef3688f-624a-478c-a9e6-29360d016a7c",
+  "task_state": null
+}

@@ -1,0 +1,22 @@
+● Classifying requested outcome…
+● Matching registered workflows…
+✓ Matched workflows — PANDA, LIONESS-PANDA, OTTER, GIRAFFE
+● Preparing next step…
+What I understood you are asking for:
+1. "I'd like an OTTER network for our 40 rice root samples, using the expression matrix, a motif seed prior and a TF-TF PPI with matching TF IDs." -- available from OTTER.
+2. "Set lam to 0.2 and add an L1 sparsity penalty of 0.05 so that most edges shrink to zero." -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.
+
+I can map this to more than one compatible network result:
+
+**TF-only regulatory network**
+- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.
+- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.
+
+**TF-only signed regulatory-effect network**
+- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.
+
+Should the result be aggregate or sample-specific?
+
+Your request does not say what the network should connect; the options above assume regulator-to-target associations. Every option above also needs a TF-motif prior and a protein-interaction prior. If you meant gene-to-gene associations, **BONOBO** and **LIONESS-COEXPRESSION** need only the input you named.
+
+No files were inspected and no analysis ran.

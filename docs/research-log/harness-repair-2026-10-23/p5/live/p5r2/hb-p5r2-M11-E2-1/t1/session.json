@@ -1,0 +1,678 @@
+{
+  "version": 1,
+  "session_id": "hb-p5r2-M11-E2-1",
+  "profile_id": "hb-p5r2-M11-E2-1",
+  "auto_generated": false,
+  "created_at": 1792814198.477534,
+  "updated_at": 1792814198.47759,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can BONOBO give me one co-expression network per biopsy for our horse muscle study? The matrix is log2-transformed and gene-centred, but I don't know yet whether two or three of the biopsies passed QC."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 2 or 3?\n  You wrote: \"I don't know yet whether two or three of the biopsies passed QC\".\n  - 2: no registered workflow can do this as asked\n  - 3: BONOBO can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "BONOBO",
+    "objective": "No verifiable downstream workflow is registered for BONOBO's sample-specific gene-gene co-expression output. The registered regulatory consumers accept aggregate co-expression inputs, not this BONOBO artifact; no consumer is invented and no execution is permitted.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "give me one co-expression network per biopsy",
+              "rationale": "The user is asking for the generation of co-expression networks from the biopsy data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "give me one co-expression network per biopsy",
+              "rationale": "The user is asking for the generation of co-expression networks from the biopsy data."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "give me one co-expression network per biopsy",
+              "rationale": "The user specifies that they want one co-expression network per biopsy, indicating a sample-specific granularity."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "workflow_name",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these is right: 2 or 3?",
+      "addressed_concerns": [
+        {
+          "action": "run_bonobo",
+          "concern": "downstream_use",
+          "text_span": "I don't know yet whether two or three of the biopsies passed QC."
+        }
+      ],
+      "stated_hypotheses": [
+        {
+          "axis": "unclear_goal",
+          "basis": "run_lioness_coexpression",
+          "text_span": "one co-expression network per biopsy",
+          "target_artifact": "coexpression_network",
+          "target_granularity": "sample_specific"
+        },
+        {
+          "axis": "unclear_goal",
+          "basis": "run_bonobo",
+          "text_span": "one co-expression network per biopsy",
+          "target_artifact": "coexpression_network",
+          "target_granularity": "sample_specific"
+        },
+        {
+          "axis": "unclear_goal",
+          "basis": "unsupported",
+          "text_span": "two or three of the biopsies passed QC",
+          "target_artifact": "unknown",
+          "target_granularity": "unknown"
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Can BONOBO give me one co-expression network per biopsy for our horse muscle study?",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "bonobo.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "3": [
+                "bonobo.per_sample_networks"
+              ]
+            },
+            "unknown_quote": "I don't know yet whether two or three of the biopsies passed QC.",
+            "file_checked": null,
+            "method": {
+              "named": "BONOBO",
+              "named_quote": "BONOBO"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": true,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@137-201:candidates"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "The matrix is log2-transformed and gene-centred",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {
+          "I don't know yet whether two or three of the biopsies passed QC.": {
+            "kind": "choices",
+            "values": [
+              2,
+              3
+            ],
+            "kept_without_scope": true
+          }
+        },
+        "unknown_scopes": {},
+        "unknowns": [
+          [
+            "sample_count",
+            "I don't know yet whether two or three of the biopsies passed QC."
+          ]
+        ],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Can BONOBO give me one co-expression network per biopsy for our horse muscle study?",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I don't know yet whether two or three of the biopsies passed QC."
+        ],
+        "stated_quotes": [
+          "BONOBO"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@137-201:candidates",
+            "property": "sample_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "2",
+              "3"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "I don't know yet whether two or three of the biopsies passed QC.",
+            "span": [
+              137,
+              201
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "unknown_facts",
+                "quote": "I don't know yet whether two or three of the biopsies passed QC.",
+                "span": [
+                  137,
+                  201
+                ],
+                "result": "",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": [
+          {
+            "property": "sample_count",
+            "name": "",
+            "result": "",
+            "used": [
+              "sample_count@137-201:candidates"
+            ],
+            "set_aside": [],
+            "reason": "empty_scope_kept"
+          }
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "BONOBO"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which of these is right: 2 or 3?",
+            "user_quote": "I don't know yet whether two or three of the biopsies passed QC.",
+            "workflows": [
+              "BONOBO"
+            ],
+            "contract_quote": "",
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "3": [
+                "BONOBO"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": true,
+            "notes": {},
+            "fact_key": "count:sample_count@137-201"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "count_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Can BONOBO give me one co-expression network per biopsy for our horse muscle study?"
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "obligations": [
+            {
+              "fact_key": "count:sample_count@137-201",
+              "source": "count",
+              "question": "Which of these is right: 2 or 3?",
+              "user_quote": "I don't know yet whether two or three of the biopsies passed QC.",
+              "workflows": [
+                "BONOBO"
+              ],
+              "status": "asked",
+              "asked_as": ""
+            },
+            {
+              "fact_key": "agent:BONOBO@137-201",
+              "source": "agent",
+              "question": "Do you have at least three biopsies that passed QC?",
+              "user_quote": "I don't know yet whether two or three of the biopsies passed QC.",
+              "workflows": [
+                "BONOBO"
+              ],
+              "status": "asked",
+              "asked_as": "count:sample_count@137-201"
+            }
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "BONOBO",
+          "LIONESS-COEXPRESSION"
+        ],
+        "accepted": [
+          {
+            "question": "Do you have at least three biopsies that passed QC?",
+            "user_quote": "I don't know yet whether two or three of the biopsies passed QC.",
+            "workflows": [
+              "BONOBO"
+            ],
+            "contract_quote": "Expression data must be numeric, finite, complete, gene-by-sample, and have at least three total samples so each leave-one-out background has at least two samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:BONOBO@137-201"
+          }
+        ],
+        "queued": [],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "needs_input",
+    "question": "No verifiable downstream workflow is registered for BONOBO's sample-specific gene-gene co-expression output. The registered regulatory consumers accept aggregate co-expression inputs, not this BONOBO artifact; no consumer is invented and no execution is permitted.",
+    "workflow_handoff": {
+      "producer_action": "run_bonobo",
+      "producer_workflow": "BONOBO",
+      "source_artifact_type": "coexpression_network",
+      "source_granularity": "sample_specific",
+      "produced_artifacts": [
+        "coexpression_network",
+        "pvalue_matrix"
+      ],
+      "source_artifact_paths": [],
+      "artifact_paths": {},
+      "sample_ids": [],
+      "gene_ids": [],
+      "consumer_action": null,
+      "consumer_workflow": null,
+      "consumer_input_field": null,
+      "required_prior_inputs": [],
+      "status": "blocked_no_consumer",
+      "reason": "No verifiable downstream workflow is registered for BONOBO's sample-specific gene-gene co-expression output. The registered regulatory consumers accept aggregate co-expression inputs, not this BONOBO artifact; no consumer is invented and no execution is permitted."
+    },
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 29938,
+    "output_tokens": 994,
+    "total_tokens": 30932,
+    "calls": [
+      {
+        "call_id": "cbc552c8-971a-4d0b-b24a-6d97852fdaa3",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814182-ziHsCVN06zqQX4f8VwuQ",
+        "input_tokens": 5324,
+        "output_tokens": 128,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5452,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 511,
+        "price_snapshot": null,
+        "duration_ms": 2571,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "42a167d8-2e6c-4c07-a1a7-b2489151f659",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814184-WJGip9ZU9fNLhzSUQZXd",
+        "input_tokens": 4666,
+        "output_tokens": 86,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 4752,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 540,
+        "price_snapshot": null,
+        "duration_ms": 1666,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "61a28b35-72ff-4303-a85c-98c065453c30",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 630,
+        "output_tokens": 46,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 676,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 122,
+        "price_snapshot": {
+          "snapshot_id": "21a46249-163a-57ed-b270-f4a7b8f826c1",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-24T03:50:51.853654Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1196,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "cf01919d-ce9b-4347-84e6-890e12e6d8d9",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814187-U4flkP5u5bAQ4me0RS3B",
+        "input_tokens": 1663,
+        "output_tokens": 127,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1790,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 326,
+        "price_snapshot": null,
+        "duration_ms": 1931,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2e0ce63c-ab5b-44ba-94ab-352f054bb36a",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792814189-fRX5k6nAocbC5EILlUzU",
+        "input_tokens": 15199,
+        "output_tokens": 439,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15638,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1487,
+        "price_snapshot": null,
+        "duration_ms": 5456,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7d839e61-729a-4ab9-8cf1-5653e2329899",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814195-26nRCoteHlSvEwd1nPwD",
+        "input_tokens": 547,
+        "output_tokens": 46,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 593,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 110,
+        "price_snapshot": null,
+        "duration_ms": 1341,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d6b933c4-5e75-41ac-a840-be6a148ffbae",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814196-4obvk0EEcfWtwxUIxSPa",
+        "input_tokens": 1909,
+        "output_tokens": 122,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2031,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 360,
+        "price_snapshot": null,
+        "duration_ms": 1991,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "072115ab-6457-40d4-89e7-84fd9b5e5fd3",
+  "task_state": {
+    "version": 1,
+    "task_id": "09ffe892",
+    "revision": 1,
+    "goal": "Can BONOBO give me one co-expression network per biopsy for our horse muscle study? The matrix is log2-transformed and gene-centred, but I don't know yet whether two or three of the biopsies passed QC.",
+    "pending": [
+      {
+        "question_id": "count:sample_count:3d4f32c52d",
+        "source": "count",
+        "what": "sample_count",
+        "question": "Which of these is right: 2 or 3?",
+        "user_quote": "I don't know yet whether two or three of the biopsies passed QC.",
+        "workflows": [
+          "BONOBO"
+        ],
+        "options": {
+          "2": [],
+          "3": [
+            "BONOBO"
+          ]
+        },
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

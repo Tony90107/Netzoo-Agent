@@ -1,0 +1,607 @@
+{
+  "version": 1,
+  "session_id": "hb-p5r2-M10-E2-1",
+  "profile_id": "hb-p5r2-M10-E2-1",
+  "auto_generated": false,
+  "created_at": 1792814374.889726,
+  "updated_at": 1792814374.889786,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Build a partial-correlation network linking 300 serum proteins to 120 lipid species for our 95 volunteers. The proteomics and lipidomics were run by two different labs, and I'm not sure whether the two tables actually cover the same people."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Build a partial-correlation network linking 300 serum proteins to 120 lipid species for our 95 volunteers.\" -- available from DRAGON.\n\nSelected path: **DRAGON**.\n\n**DRAGON** — Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.\n\nRequired workflow inputs:\n\n- `omics_layer_1`: DRAGON omics layer 1\n- `omics_layer_2`: DRAGON omics layer 2\n\nOutputs:\n\n- `multi_omic_network`: Inferred associations between omics features.\n\nWorkflow-specific scientific notes:\n\n- DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.\n- DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.\n- The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited DRAGON for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "unknown",
+      "confidence": 0.0,
+      "reason": "The capability check credited DRAGON for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [],
+      "recommended_actions": [
+        "run_dragon"
+      ],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_dragon"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "none",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Build a partial-correlation network linking 300 serum proteins to 120 lipid species for our 95 volunteers.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "dragon.two_layer_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 95,
+              "samples_quote": "for our 95 volunteers",
+              "features": 420,
+              "feature_counts": 2,
+              "feature_items": [
+                [
+                  36,
+                  62,
+                  300
+                ],
+                [
+                  63,
+                  83,
+                  120
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@84-105",
+              "feature_count@36-62",
+              "feature_count@63-83",
+              "feature_count=feature_count@36-62+feature_count@63-83"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "The proteomics and lipidomics were run by two different labs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Build a partial-correlation network linking 300 serum proteins to 120 lipid species for our 95 volunteers.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "Build a partial-correlation network linking 300 serum proteins to 120 lipid species for our 95 volunteers."
+        ],
+        "facts": [
+          {
+            "id": "sample_count@84-105",
+            "property": "sample_count",
+            "name": "",
+            "value": "95",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "for our 95 volunteers",
+            "span": [
+              84,
+              105
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "for our 95 volunteers",
+                "span": [
+                  84,
+                  105
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "for our 95 volunteers",
+                "span": [
+                  84,
+                  105
+                ],
+                "result": "Build a partial-correlation network linking 300 serum proteins to 120 lipid species for our 95 volunteers.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@36-62",
+            "property": "feature_count",
+            "name": "",
+            "value": "300",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "linking 300 serum proteins",
+            "span": [
+              36,
+              62
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "linking 300 serum proteins",
+                "span": [
+                  36,
+                  62
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "linking 300 serum proteins",
+                "span": [
+                  36,
+                  62
+                ],
+                "result": "Build a partial-correlation network linking 300 serum proteins to 120 lipid species for our 95 volunteers.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@63-83",
+            "property": "feature_count",
+            "name": "",
+            "value": "120",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "to 120 lipid species",
+            "span": [
+              63,
+              83
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "to 120 lipid species",
+                "span": [
+                  63,
+                  83
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "to 120 lipid species",
+                "span": [
+                  63,
+                  83
+                ],
+                "result": "Build a partial-correlation network linking 300 serum proteins to 120 lipid species for our 95 volunteers.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count=feature_count@36-62+feature_count@63-83",
+            "property": "feature_count",
+            "name": "",
+            "value": "420",
+            "values": [],
+            "state": "stated",
+            "origin": "derived",
+            "quote": "",
+            "span": [],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "linking 300 serum proteins",
+                "span": [
+                  36,
+                  62
+                ],
+                "result": "",
+                "role": "operand"
+              },
+              {
+                "reader": "request",
+                "quote": "to 120 lipid species",
+                "span": [
+                  63,
+                  83
+                ],
+                "result": "",
+                "role": "operand"
+              }
+            ],
+            "derived_from": [
+              "feature_count@36-62",
+              "feature_count@63-83"
+            ],
+            "formula": "300 + 120",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "DRAGON"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": null,
+          "reason_code": "semantic_fallback",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Build a partial-correlation network linking 300 serum proteins to 120 lipid species for our 95 volunteers."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "DRAGON"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure whether the two tables actually cover the same people.",
+              "uncertainty": "said_unknown",
+              "workflow": "DRAGON",
+              "contract_quote": "Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven.",
+              "question": "Do both tables cover the same sample IDs?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure whether the two tables actually cover the same people.",
+              "uncertainty": "said_unknown",
+              "workflow": "DRAGON",
+              "contract_quote": "Require at least three samples in each layer before execution.",
+              "question": "Do you have at least three samples in each layer?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 30764,
+    "output_tokens": 1310,
+    "total_tokens": 32074,
+    "calls": [
+      {
+        "call_id": "d2062a0b-ae30-4c42-b41f-787673cccd0d",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814356-ZcxDgvojK2DhMJOZRab1",
+        "input_tokens": 1600,
+        "output_tokens": 39,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1639,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 263,
+        "price_snapshot": null,
+        "duration_ms": 1561,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e5f609a6-c2ce-403b-84e9-2126e2237537",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814358-2XVG0qZNnhwGWp5p4BEt",
+        "input_tokens": 5327,
+        "output_tokens": 324,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5651,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 629,
+        "price_snapshot": null,
+        "duration_ms": 4176,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "bf3a9842-28b4-45fa-ac59-dd68da08f955",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814362-fvBKDZooRhey52hsJE2R",
+        "input_tokens": 6619,
+        "output_tokens": 235,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 6854,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 769,
+        "price_snapshot": null,
+        "duration_ms": 2941,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "1eda8484-8723-4ff6-af73-4e8aaa284931",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1792814365-BLbiiWWkzY6EvEFfGpgk",
+        "input_tokens": 15205,
+        "output_tokens": 518,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15723,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1536,
+        "price_snapshot": null,
+        "duration_ms": 6351,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7f3fa154-ca2a-4764-abf3-c0ed06202815",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814371-peCcFxa6CLArck6RWTTo",
+        "input_tokens": 550,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 561,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 89,
+        "price_snapshot": null,
+        "duration_ms": 979,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "00053e45-d475-4873-ad8b-f6e93d0a9674",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1792814372-1bDmwaUDGVrOoKWXKytN",
+        "input_tokens": 1463,
+        "output_tokens": 183,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1646,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 329,
+        "price_snapshot": null,
+        "duration_ms": 2510,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "10d2cd05-3008-4de9-8b22-ac8a03ca4d14",
+  "task_state": null
+}

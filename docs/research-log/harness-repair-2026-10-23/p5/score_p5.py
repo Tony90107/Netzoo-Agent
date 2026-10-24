@@ -1,10 +1,12 @@
 """Harness repair P5 round 1 scoring (ROUND-P5.md section 5; declared before the run, no model calls).
 
-Usage: python3 score_p5.py facts      -> fact-sheet.json + fact-key.json (blind: every ASK turn 1 on an ask item or a
-                                         multi-turn item, systems and order hidden)
-       python3 score_p5.py replies    -> replies-p5r1.json (every final DECLINE / PARTIAL reply, split into statements,
-                                         for ROUND-19's frozen judge.py)
-       python3 score_p5.py score      -> score-p5r1.json and printed tables (uses facts-checked.json when present)
+Usage: python3 score_p5.py facts [TAG]     -> fact-sheet / fact-key (blind: every ASK turn 1 on an ask item or a
+                                              multi-turn item, systems and order hidden)
+       python3 score_p5.py replies [TAG]   -> replies-TAG.json (every final DECLINE / PARTIAL reply, split into
+                                              statements, for ROUND-19's frozen judge.py)
+       python3 score_p5.py score [TAG]     -> score-TAG.json and printed tables (uses the facts-checked labels)
+       python3 score_p5.py compare OLD:SYSTEM NEW:SYSTEM   -> per-item changes between two rounds' scored rows
+TAG defaults to p5r1 (round 1); round 2 is p5r2, system E2. Round 1's label files keep their names; others get -TAG.
 
 Calls: DO, PARTIAL (a DO whose core marks part not available), DECLINE, ASK, CLARIFY, UNCHECKED; NONE when a turn ran
 no graph call. Error families: FA = false_accept, partly_accept; FR = false_refusal, partial_refusal, over_refusal;
@@ -22,6 +24,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 TAG = "p5r1"
+SYSTEMS = ("A", "D", "E", "E2")
 ITEMS = HERE.parent / "h7" / "items.json"
 HARD = ["S02", "S05", "S13", "S28", "S29", "S30", "S31", "S32"]
 WAITING = ("ASK", "CLARIFY")
@@ -168,8 +171,8 @@ def facts():
         sid = f"F{index:03d}"
         key[sid] = f"{item_id}|{system}"
         sheet.append({"id": sid, "request": prompt, "deciding_fact": what, "questions_asked": questions})
-    (HERE / "fact-sheet.json").write_text(json.dumps(sheet, indent=1, ensure_ascii=False))
-    (HERE / "fact-key.json").write_text(json.dumps(key, indent=1))
+    (HERE / _named("fact-sheet")).write_text(json.dumps(sheet, indent=1, ensure_ascii=False))
+    (HERE / _named("fact-key")).write_text(json.dumps(key, indent=1))
     print(f"{len(sheet)} ASK turns on the blind fact sheet")
 
 
@@ -236,8 +239,8 @@ def wilson(k: int, n: int) -> str:
 
 def score():
     known, runs = items(), sessions()
-    labelled = json.loads((HERE / "facts-checked.json").read_text()) if (HERE / "facts-checked.json").exists() else {}
-    key = json.loads((HERE / "fact-key.json").read_text()) if (HERE / "fact-key.json").exists() else {}
+    labelled = json.loads((HERE / _named("facts-checked")).read_text()) if (HERE / _named("facts-checked")).exists() else {}
+    key = json.loads((HERE / _named("fact-key")).read_text()) if (HERE / _named("fact-key")).exists() else {}
     fact_ok = {key[sid]: value for sid, value in labelled.items() if sid in key}
     rows = []
     for (item_id, system), run in sorted(runs.items()):
@@ -254,7 +257,7 @@ def score():
                          "expected": item["expected_call"], "call": first["call"], "outcome": result,
                          "success": result == "correct", "hard": item_id in HARD})
     report = {"single": {}, "multi": {}, "paired": {}, "costs": {}}
-    for system in ("A", "D", "E"):
+    for system in SYSTEMS:
         mine = [r for r in rows if r["system"] == system and r["part"] == "single"]
         if mine:
             fam = Counter(FAMILY.get(r["outcome"], "other" if r["outcome"] != "correct" else "correct") for r in mine)
@@ -290,7 +293,7 @@ def score():
         breaks = sorted(i for i, s in by.items() if s.get(left) and not s.get(right) and len(s) == 2)
         report["paired"][f"{left}->{right} {part}"] = {"fixes": fixes, "breaks": breaks,
                                                        "sign_p": round(sign_test(len(fixes), len(breaks)), 3)}
-    for system in ("A", "D", "E"):
+    for system in SYSTEMS:
         calls, seconds, count = {}, [], 0
         for (item_id, sys_name), run in runs.items():
             if sys_name != system:
@@ -315,5 +318,32 @@ def score():
     print(json.dumps(report, indent=1))
 
 
+def _named(stem: str) -> str:
+    return f"{stem}.json" if TAG == "p5r1" else f"{stem}-{TAG}.json"
+
+
+def compare(old: str, new: str):
+    """Per item, round to round: which became right, which became wrong (scored rows of score-TAG.json)."""
+    (old_tag, old_system), (new_tag, new_system) = old.split(":"), new.split(":")
+    rows = {tag: {r["item"]: r for r in json.loads((HERE / f"score-{tag}.json").read_text())["rows"] if r["system"] == s}
+            for tag, s in ((old_tag, old_system), (new_tag, new_system))}
+    before, after = rows[old_tag], rows[new_tag]
+    shared = sorted(set(before) & set(after))
+    fixes = [i for i in shared if after[i]["success"] and not before[i]["success"]]
+    breaks = [i for i in shared if before[i]["success"] and not after[i]["success"]]
+    for part in ("single", "multi"):
+        mine = [i for i in shared if before[i]["part"] == part]
+        print(f"{part}: {old} {sum(before[i]['success'] for i in mine)}/{len(mine)} -> {new} "
+              f"{sum(after[i]['success'] for i in mine)}/{len(mine)}")
+    print(f"became right {fixes}; became wrong {breaks}; sign p = {sign_test(len(fixes), len(breaks)):.3f}")
+    for i in fixes + breaks:
+        b, a = before[i], after[i]
+        print(f"  {i}: {b.get('outcome', b.get('final'))} -> {a.get('outcome', a.get('final'))}")
+
+
 if __name__ == "__main__":
-    {"facts": facts, "replies": replies, "score": score}[sys.argv[1]]()
+    if sys.argv[1] == "compare":
+        compare(sys.argv[2], sys.argv[3])
+    else:
+        TAG = sys.argv[2] if len(sys.argv) > 2 else TAG
+        {"facts": facts, "replies": replies, "score": score}[sys.argv[1]]()
