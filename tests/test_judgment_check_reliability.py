@@ -90,7 +90,7 @@ def test_fact_check_permanent_provider_error_is_not_retried(policy):
 
 def test_fact_check_does_not_reopen_exhausted_usage(policy):
     llm = Answers({"facts": []})
-    usage = LLMUsage(budget_exhausted=True)
+    usage = LLMUsage(budget_tokens=60000, total_tokens=60000, budget_exhausted=True)  # A3: spent, not refused once
     checked, returned, _ = fact.request_fact_check(context(policy, llm), {}, TASK, decision(), usage, [])
     assert checked.status == "blocked" and checked.candidates == ["BONOBO"]
     assert returned is usage and llm.calls == 0
@@ -112,7 +112,7 @@ def test_fact_check_stops_retry_when_preflight_reservation_no_longer_fits(policy
 
 def test_capability_retry_cannot_reopen_usage_exhausted_by_first_attempt(policy, monkeypatch):
     def exhaust(usage, **kwargs):
-        usage.budget_exhausted = True
+        usage.total_tokens, usage.budget_exhausted = usage.budget_tokens, True  # A3: the first attempt spent the turn
         return usage
 
     monkeypatch.setattr(capability, "append_llm_usage", exhaust)

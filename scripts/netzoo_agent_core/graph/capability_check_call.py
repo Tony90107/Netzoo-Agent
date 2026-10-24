@@ -11,6 +11,7 @@ the budget or fails, nothing is checked and the turn is answered as before.
 from __future__ import annotations
 
 import os
+import re
 import time
 from dataclasses import is_dataclass, replace
 from types import SimpleNamespace
@@ -33,9 +34,9 @@ from ..contracts.strict_schema import expanded_enum_values
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 from .required_check_budget import check_output_reserve, retryable_check_error
 
-__all__ = ["capability_check_system", "build_capability_check_messages", "build_reread_messages",
+__all__ = ["same_model", "capability_check_system", "build_capability_check_messages", "build_reread_messages",
            "request_capability_reread", "request_capability_check", "request_condition_check",
-           "with_reading_allowance", "has_check_model", "request_second_opinion"]
+           "with_reading_allowance", "has_check_model", "request_second_opinion", "spent"]
 
 _INSTRUCTIONS = (
     "Return only the CapabilityCheckProposal for the user's request.\n\n"
@@ -302,7 +303,7 @@ def with_reading_allowance(context, usage=None):
     """The context with the check's allowance added to the turn budget (Logs 394, 403).
 
     The allowance tops up a turn whose routing left too little; it never reopens a
-    turn already marked spent (`usage.budget_exhausted`), which keeps its own budget.
+    turn already spent (`spent`), which keeps its own budget.
 
     Log 403: the calls that read the request after routing -- the check, its second
     opinion, the study purpose and the data facts -- share it. Traces of h8-h9, o10 and
@@ -314,12 +315,34 @@ def with_reading_allowance(context, usage=None):
     Recorded against the turn budget alone, the check's own use of its allowance marked the turn spent, and the study
     purpose and data facts after it lost the allowance they share (the larger M1 check made that more frequent).
     """
-    if usage is not None and usage.budget_exhausted:
+    if spent(usage):
         return context
     extra = int(os.environ.get("OPENROUTER_CAPABILITY_EXTRA_TOKENS", CHECK_EXTRA_TOKENS))
     budget = context.task_token_budget + extra
     return (replace(context, task_token_budget=budget) if is_dataclass(context)
             else SimpleNamespace(**{**vars(context), "task_token_budget": budget}))
+
+
+def spent(usage) -> bool:
+    """Harness repair A3: whether the turn's recorded calls reached the budget the last of them was given.
+
+    `usage.budget_exhausted` is also set when an optional call is refused at preflight -- a projection, not spending.
+    Live P5 M09 (5 turns, every system) lost its check or its fact check that way: a refused discriminator,
+    selection-conditions call or second opinion, with 7-17k tokens still left. The two required reads (the check, the
+    fact check) and their allowance look at what was spent: the flag `append_llm_usage` sets when the calls reached
+    their budget. Each call still passes its own preflight, so a turn's ceiling is unchanged.
+    """
+    return usage is not None and usage.budget_exhausted and usage.total_tokens >= usage.budget_tokens
+
+
+def same_model(a: str | None, b: str | None) -> bool:
+    """Harness repair B: one model under two names -- an alias and its dated snapshot ("openai/gpt-4o-mini",
+    "openai/gpt-4o-mini-2024-07-18"). A backup read by the same model is as good as the check's own read; Log 401
+    held backup reads when the own model was another, stronger one (nemotron)."""
+    def bare(name: str | None) -> str:
+        return re.sub(r"-\d{4}-\d{2}-\d{2}$", "", (name or "").strip().casefold())
+
+    return bool(bare(a)) and bare(a) == bare(b)
 
 
 def request_capability_check(
@@ -332,7 +355,8 @@ def request_capability_check(
     """The model's proposal for the request, its usage, and why it is missing.
 
     The status is "ok", "fallback" (the semantic model answered after the own model failed,
-    Log 401), "no_model" (nothing is configured to read it: tests, the harness),
+    Log 401; harness repair B: only when it is another model, or read the compact schema -- the same
+    model under another name is "ok"), "no_model" (nothing is configured to read it: tests, the harness),
     "blocked" (even the extra allowance is spent) or "failed". Called right after routing,
     before the advisory reads; verification waits for the study-purpose claims
     (`interpretation.capability_check.build_capability_check`). A reply the model sent
@@ -344,10 +368,12 @@ def request_capability_check(
     model, llm = _check_model(context)
     if llm is None:
         return None, usage, budget_warnings, "no_model"
+    primary, compacted = model, False
     fallback_llm = getattr(context, "study_purpose_llm", None)
     own = llm is not fallback_llm
-    if usage.budget_exhausted:
-        # The allowance tops up a turn whose routing left too little; it never reopens a spent turn.
+    if spent(usage):
+        # The allowance tops up a turn whose routing left too little; it never reopens a spent turn. A3: an optional
+        # call refused at preflight did not spend it.
         return None, usage, budget_warnings, "blocked"
     messages, count = build_capability_check_messages(user_task)
     version = schema_version()  # ROUND-04: reading shape 1 or 2 (NETZOO_CHECK_SCHEMA)
@@ -356,9 +382,9 @@ def request_capability_check(
     budget_context = reading = with_reading_allowance(context)
     for attempt in (1, 2):
         if llm is fallback_llm and expanded_enum_values(schema.model_json_schema()) > _ENUM_LIMIT:
-            schema = proposal_model(count, compact=True, version=version)
+            schema, compacted = proposal_model(count, compact=True, version=version), True
         input_text = _serialized_structured_input(messages, schema)
-        if usage.budget_exhausted:
+        if spent(usage):
             return None, usage, budget_warnings, "blocked"
         call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
         budget, budget_warnings = preflight_budget(
@@ -400,7 +426,8 @@ def request_capability_check(
             status=call_status, price_catalog=context.price_catalog,
         )
         if proposal is not None:
-            return proposal, usage, budget_warnings, ("fallback" if own and llm is fallback_llm else "ok")
+            backup = own and llm is fallback_llm and (compacted or not same_model(primary, model))
+            return proposal, usage, budget_warnings, ("fallback" if backup else "ok")
         fallback = getattr(context, "study_purpose_llm", None)
         if llm is not fallback and fallback is not None:
             model, llm = getattr(context, "semantic_model_name", None), fallback
