@@ -58,6 +58,10 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
                                                        budget_warnings)
     # ROUND-27 C1 (NETZOO_DATA_ITEMS): a DO whose workflows the user's stated data cannot feed asks to confirm.
     core, usage, budget_warnings = apply_data_items(context, state, core, user_task, usage, budget_warnings)
+    # ROUND-27 B1: a DO whose settings links were held (unsure, or adding a limit) asks to confirm each; never refuses.
+    from ..interpretation.settings_links import held_core
+
+    core = held_core(core, getattr(decision.capability_check, "held_settings", None) or [])
     # Harness repair P3: a third round of clarification is not asked (spec 7.2).
     from ..interpretation.task_answers import clarification_rounds
 

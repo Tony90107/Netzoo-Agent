@@ -703,6 +703,9 @@ class CapabilityCheck(BaseModel):
     (e.g. data_unit single_cells), applied to every ask they concern."""
     unknowns: list[list[str]] = Field(default_factory=list)
     """Verdict layer step 2: (dimension, the user's words) for each fact the user said they do not know."""
+    held_settings: list[dict[str, Any]] = Field(default_factory=list)
+    """ROUND-27 B1: settings the links read but did not merge (the user was unsure, or the merge added a limit); a DO
+    asks to confirm each (`settings_links.held_core`)."""
     gap_unconfirmed: bool = False
     """Log 403: a full gap the second opinion was owed but could not give (its budget spent, or the
     model failed), so, as for the backup model, the gap is reported unconfirmed and clears nothing

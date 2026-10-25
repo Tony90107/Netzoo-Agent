@@ -27,6 +27,7 @@ from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, record_event
 from .fact_check_call import apply_fact_check, fact_model
 from .goal_read_call import apply_goal_read
+from .settings_links_call import apply_settings_links
 from .settings_read_call import apply_settings_reads
 from .required_check_budget import required_fact_check_reserve
 from ..interpretation.ruled_out import without_ruled_out, without_unbuilt_network
@@ -46,6 +47,7 @@ from ..interpretation.checked_match import _USER_CHOSEN, checked_match, credited
 from ..routing.capability import validate_task_text
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 from ..interpretation.reread import merge_reread, reread_passages
+from ..interpretation.settings_links import merged_reading
 from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candidates
 from ..interpretation.capability_check import (
     apply_condition_answers, apply_redirect_answers, apply_second_opinion, blank_requirement_pairs,
@@ -491,19 +493,28 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     # ROUND-20: with their words, so a registry-wide reason is said only for a result the claim's sentence holds.
     claims = {claim: quote for claim, quote in (result.routing_state.get("study_purpose") or {}).get("claims") or ()}
     counted = bound_expression_samples(user_task)  # ROUND-07 (G3): a sample-count doubt the named file answers
+    # ROUND-26 2a / ROUND-27 B1 (NETZOO_SETTINGS_LINKS): the credited workflows' settings linked before the check is
+    # built; a link that would add a limit is held, never merged (`settings_links.guarded_links`).
+    proposal, links, unset, held, usage, warnings = apply_settings_links(
+        context, state, user_task, proposal, result.usage, result.budget_warnings,
+        lambda reading: build_capability_check(user_task, type(proposal).model_validate(reading), claims, counted)[0])
     check, rejected = build_capability_check(user_task, proposal, claims, counted)
+    if held:
+        check = check.model_copy(update={"held_settings": held})
     record_event(context, state, "routing.capability_checked", "classify", {
         "proposal": proposal.model_dump(), "rejected": rejected, "check": check.model_dump(),
     })
-    usage, warnings = result.usage, result.budget_warnings
     passages = [] if provisional else reread_passages(user_task, decision.model_copy(update={"capability_check": check}))
     if passages:
         # Log 406: words the check left unread -- no result in the whole request while routing offered
         # workflows, or a long unquoted stretch beside a quoted result -- are read once more, asks only.
         reread, usage, warnings = request_capability_reread(context, state, user_task, passages, usage, warnings)
         if reread is not None:
-            reread_check, unplaced = build_capability_check(
-                user_task, reread_as_proposal(reread, getattr(proposal, "conditions", None)), claims, counted)
+            again = reread_as_proposal(reread, getattr(proposal, "conditions", None))
+            if links:  # ROUND-26 2a: the links the request-level settings now hold replace the re-read's too
+                again = type(again).model_validate(merged_reading(user_task, again.model_dump(), links, unset,
+                                                                  add=False))
+            reread_check, unplaced = build_capability_check(user_task, again, claims, counted)
             check = merge_reread(user_task, check, reread_check, passages, unplaced)
         record_event(context, state, "routing.capability_reread", "classify", {
             "passages": passages, "reread": reread.model_dump() if reread is not None else None,
