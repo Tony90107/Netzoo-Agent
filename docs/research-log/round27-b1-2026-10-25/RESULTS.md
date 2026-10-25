@@ -37,7 +37,8 @@
 新 arm 多讀的設定大多是使用者沒提過的輸出格式和預設開關：
 - `DRAGON.output_format` 12 題；
 - `OTTER.output_format` 7 題；
-- SAMBAR 的 `cluster`、`gmt_msigdb`、`subset_cancer_genes` 共 11 處。
+- SAMBAR 的 `cluster`、`gmt_msigdb`、`subset_cancer_genes` 共 14 處。
+- 以上是只在新 arm 出現的 42 個多讀（逐題，未限定選項單位）中的分布。B-G2 的分母只計選項單位所在的題目，在那個範圍內多讀從 10 增加到 23。（2026-10-25 更正：初稿把 SAMBAR 寫成 11 處。）
 
 候選只剩 credit 的 workflow 之後，2a 最大的多讀來源（sample_names、別的 workflow 的設定）已經不見了，但 mini 仍然傾向把每個欄位都填上。
 
