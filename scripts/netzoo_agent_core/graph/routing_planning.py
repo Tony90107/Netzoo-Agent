@@ -17,6 +17,7 @@ from ..llm import latest_user_message, latest_user_task
 from ..planning import build_workflow_plan, render_plan
 from .context import _GraphContext, record_event
 from .contract_veto_call import apply_contract_veto
+from .data_items_call import apply_data_items
 from .hybrid_gate_call import apply_hybrid_gates
 from .operation_authority import with_operation_authority
 from .router_invocation import invoke_router
@@ -55,6 +56,8 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     # Hybrid spec 2026-10-19: the contract veto replaces the hard gates at the same hook (both off by default).
     core, usage, budget_warnings = apply_contract_veto(context, state, decision, core, user_task, usage,
                                                        budget_warnings)
+    # ROUND-27 C1 (NETZOO_DATA_ITEMS): a DO whose workflows the user's stated data cannot feed asks to confirm.
+    core, usage, budget_warnings = apply_data_items(context, state, core, user_task, usage, budget_warnings)
     # Harness repair P3: a third round of clarification is not asked (spec 7.2).
     from ..interpretation.task_answers import clarification_rounds
 

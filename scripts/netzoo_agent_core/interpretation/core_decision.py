@@ -209,7 +209,7 @@ def with_core(decision, core: CoreDecision):
             "hypothesis_actions": [], "alternative_actions": [],
             "reason": "A necessary fact check could not finish; no workflow is approved."})
     if core.kind == "ASK" and core.basis in ("fact_agent", "count_fact", "hybrid_requirement", "contract_veto_fact",
-                                            "setting_unresolved"):
+                                            "setting_unresolved", "data_item_fact"):
         asked = [fact.question for fact in core.facts]
         return decision.model_copy(update={
             "core": core, "action": "no_tool", "should_execute": False, "execution_requested": False,
