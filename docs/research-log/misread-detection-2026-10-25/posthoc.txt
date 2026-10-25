@@ -1,0 +1,86 @@
+1. X2, Q2, X2|Q2 and X5b by era (acting calls only)
+  before fact agent: 127 readings, 73 right, 43 targets on 32 items, 39 acting
+    X2     hits   7/43 on 6 items {'R-goal': 5, 'R-unc': 2}; false alarms 0/73
+    Q2     hits  18/43 on 14 items {'R-goal': 4, 'R-unc': 14}; false alarms 0/73
+    X2|Q2  hits  19/43 on 15 items {'R-goal': 5, 'R-unc': 14}; false alarms 0/73
+    X5b    hits   0/43 on 0 items {}; false alarms 0/73
+  fact-agent era: 630 readings, 541 right, 63 targets on 35 items, 43 acting
+    X2     hits  14/63 on 8 items {'R-goal': 10, 'R-unc': 3, 'R-link': 1}; false alarms 0/541
+    Q2     hits  14/63 on 10 items {'R-unc': 6, 'R-goal': 7, 'R-link': 1}; false alarms 1/541
+    X2|Q2  hits  18/63 on 11 items {'R-unc': 6, 'R-goal': 11, 'R-link': 1}; false alarms 1/541
+    X5b    hits  18/63 on 12 items {'R-cond': 4, 'R-goal': 12, 'R-link': 2}; false alarms 171/541
+  fact agent status on X2|Q2 hits: {'blocked': 3, 'absent': 27, 'checked': 6, 'failed': 1}
+  fact agent status on every acting target: {'blocked': 3, 'checked': 29, 'absent': 49, 'failed': 1}
+
+2. X2|Q2 simulated (X2 asks the goal first)
+  all labelled:    right 614->643  FA 15->15  FR 5->5  MA 64->27  wrong question kind 18->25  extra questions 11->12  UNCHECKED 30->30
+  fact-agent era:  right 541->553  FA 8->8  FR 4->4  MA 33->15  wrong question kind 15->20  extra questions 10->11  UNCHECKED 19->19
+  errors flagged 37 on items ['C09', 'C10', 'C11', 'C20', 'C21', 'C24', 'C26', 'C31', 'C34', 'C36', 'C37', 'C39', 'C41', 'C42', 'C43', 'C44', 'C45', 'C50', 'C54', 'C56', 'M01', 'M36']
+  by error {'MA': 37}; MA total 64
+
+3. gold kinds where the readings say the user is unsure or the goal is unclear (any call)
+  X2: 160 labelled readings; gold {'CLARIFY': 98, 'ASK': 62}; calls {'CLARIFY': 86, 'ASK': 45, 'DECLINE': 14, 'DO': 7, 'UNCHECKED': 8}
+  Q2: 200 labelled readings; gold {'ASK': 121, 'CLARIFY': 77, 'DECLINE': 2}; calls {'DO': 20, 'CLARIFY': 71, 'ASK': 84, 'UNCHECKED': 12, 'DECLINE': 13}
+  all labelled readings: gold {'ASK': 200, 'CLARIFY': 193, 'DECLINE': 173, 'DO': 191}
+  h7 sessions with X2 (any call): 24; expected {'ASK': 18, 'CLARIFY': 6}; acting [('p5r1:M05', 'DECLINE', 'R-unc'), ('p5r2:M05', 'DECLINE', 'R-unc')]
+
+4. M (post hoc): the closed-menu reading of the same core item asks, the check's call acts
+  first    both reads : hits 52/95 on 23 items {'R-goal': 39, 'R-unc': 13}; false alarms 29/444 on 3 items ['C04', 'C28', 'C58']
+  first    either read: hits 60/95 on 26 items {'R-cond': 2, 'R-goal': 39, 'R-unc': 18, 'R-link': 1}; false alarms 43/444 on 5 items ['C04', 'C14', 'C28', 'C55', 'C58']
+  focused  both reads : hits 56/95 on 26 items {'R-goal': 39, 'R-unc': 16, 'R-link': 1}; false alarms 29/444 on 3 items ['C04', 'C28', 'C58']
+  focused  either read: hits 62/95 on 28 items {'R-cond': 2, 'R-goal': 39, 'R-unc': 19, 'R-link': 2}; false alarms 43/444 on 5 items ['C04', 'C14', 'C28', 'C55', 'C58']
+  core acting targets 75: X2|Q2 35, M (focused, both) 56, M only {'R-goal': 23, 'R-unc': 1}, M or X2|Q2 59
+
+5. spot check (ROUND.md: seed 1025)
+  Q2 false alarm cj-p3-C27-1 gold DECLINE DECLINE/full_gap: "Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix? We don't have mutation calls for this cohort, only expression."
+  X5b false alarm hb-h3main-L15-1 gold DO DO/run
+      request "I'd like BONOBO on 12 bulk RNA-seq samples of human iPSC-derived cardiomyocytes. The matrix is log2(CPM+1), genes on rows with a header of sample IDs, and every gene has been mean-centered. Turn spars"
+      agent's words 'the matrix is log2(CPM+1), genes on rows with a header of sa'; 'sparsify on with bonobo_confidence 0.01'; 'write the per-sample matrices as .csv files'
+  X5b false alarm hb-h4main-M34-1 gold DECLINE DECLINE/full_gap
+      request 'Can you run LIONESS-OTTER on our 40 lupus patients? I want one OTTER-style TF-to-gene network per patient from the expression matrix, motif seed and PPI file, using the relaxed graph-matching objectiv'
+      agent's words 'I want one OTTER-style TF-to-gene network per patient from t'; 'Can you run LIONESS-OTTER on our 40 lupus patients?'; 'I want one OTTER-style TF-to-gene network per patient from t
+  X5b false alarm hb-h4main-M24-1 gold DO DO/results_given
+      request "Across 80 breast tumours I want to estimate how active each transcription factor is in each tumour, separately from the TF's own mRNA level, and also whether each TF tends to activate or repress its t"
+      agent's words 'how active each transcription factor is in each tumour, sepa'; 'whether each TF tends to activate or repress its target gene'
+  X5b false alarm hb-h3main-L13-1 gold DECLINE DECLINE/all_results_not_available
+      request 'Kick off LIONESS-DRAGON now on rna_2000.csv and prot_500.csv: 120 matched samples, 2,000 transcripts and 500 proteins, sample ID in the first column of both. Per-sample edges to lioness_dragon/edges.t'
+      agent's words "We have a big server, so memory isn't a concern."; '120 matched samples, 2,000 transcripts and 500 proteins'; 'sample ID in the first column of both'
+  X5b false alarm cj-p3-C04-1 gold DO DO/results_given
+      request "For each of our 25 diffuse large B-cell lymphoma patients I need that patient's own TF-to-gene regulatory network, built from the cohort's expression matrix together with a human motif prior and a TF "
+      agent's words "I need that patient's own TF-to-gene regulatory network, bui"; "I need that patient's own TF-to-gene regulatory network, bui"; "I need that patient's own TF-to-gene regulatory net
+  X5b false alarm hb-h3main-L29-1 gold DECLINE DECLINE/full_gap
+      request 'For each of 64 AML patients I want a network linking promoter methylation and gene expression that tells me which methylation changes causally drive the expression changes in that patient, so we can r'
+      agent's words 'which methylation changes causally drive the expression chan'
+  X5b false alarm cj-p5r-C38-1 gold DO DO/results_given
+      request 'Can GIRAFFE estimate an activity score for every transcription factor in each of our 30 psoriasis skin samples? I have the gene-by-sample expression table, a TF-by-gene motif prior and a TF-TF PPI mat'
+      agent's words 'Can GIRAFFE estimate an activity score for every transcripti'
+  X5b false alarm hb-h3main-L35-1 gold DO DO/results_given
+      request 'Please run CONDOR now on results/lung_panda_edges_thresholded.tsv. The file has source, target and weight columns, sources are TFs and targets are genes, and the weights were already thresholded so no'
+      agent's words 'the weights were already thresholded so none are negative'; 'sources are TFs and targets are genes'; 'Write everything to results/condor_lung/ and use lung_q90 as'
+  X5b false alarm cj-p3-C40-1 gold DO DO/run
+      request 'Run BONOBO on expr_ms_lesions.tsv (27 multiple sclerosis lesion samples; log2-transformed and centered per gene; gene IDs in the first column, sample IDs in the header), but only write networks for sa'
+      agent's words 'only write networks for samples MS_03, MS_11 and MS_19'; 'but only write networks for samples MS_03, MS_11 and MS_19'; 'Run BONOBO on expr_ms_lesions.tsv'
+  X5b false alarm cj-p2-C33-1 gold DECLINE DECLINE/all_results_not_available
+      request 'Can BONOBO run with sparsify on at a 0.01 confidence level and delta fixed at 0.5 for my 18 log-transformed, centered endometriosis samples?'
+      agent's words 'Can BONOBO run with sparsify on at a 0.01 confidence level a'; 'Can BONOBO run with sparsify on at a 0.01 confidence level a'
+  X5b false alarm cj-p4b-C58-1 gold DO DO/run
+      request "Run PANDA on expr_ipf.tsv with motif_hg38.tsv and ppi_hs.tsv, but use cobra_out/adjusted_coexpression.tsv (COBRA's adjusted gene-by-gene matrix, already checked to have the same gene IDs and order as "
+      agent's words 'use cobra_out/adjusted_coexpression.tsv as the co-expression'
+  X5b false alarm cj-p3-C13-1 gold DECLINE DECLINE/full_gap
+      request 'Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv with lam set to 1.5, so co-expression gets even more weight than PPI.'
+      agent's words 'so co-expression gets even more weight than PPI'
+  X5b false alarm hb-h1-H07-1 gold DO DO/results_given
+      request "In a cohort of 240 participants we measured 250 blood transcripts and 150 serum proteins on the same draws; the data are complete and continuous. What I'm after is an individual partial-correlation ne"
+      agent's words "What I'm after is an individual partial-correlation network "
+  X5b false alarm cj-p2-C16-1 gold DECLINE DECLINE/full_gap
+      request "From our 10x single-cell RNA-seq of differentiating iPSC-derived cardiomyocytes, I'd like to order the cells along a pseudotime trajectory and find the branch point where atrial and ventricular fates "
+      agent's words 'find the branch point where atrial and ventricular fates spl'; 'order the cells along a pseudotime trajectory'
+  X5b false alarm hb-h2main-J02-1 gold DECLINE DECLINE/all_results_not_available
+      request "Last time GIRAFFE on our 52 prostate samples didn't seem to converge, so this time please use a learning rate of 0.001, 500 iterations and a stronger weight on the PPI term. Same expression, motif and"
+      agent's words 'please use a learning rate of 0.001, 500 iterations and a st'
+
+6. readings a per-workflow read would cover (DO calls; X2|Q2 do not flag them)
+  replay errors 28 on 14 requests {('FA', 'R-cond'): 9, ('MA', 'R-goal'): 12, ('FA', 'R-link'): 5, ('FA', 'R-type'): 1, ('MA', 'R-unc'): 1}
+    items ['C01', 'C03', 'C14', 'C18', 'C23', 'C27', 'C30', 'C36', 'C47', 'C53', 'J15', 'M25', 'M46', 'M48']
+  h7 single errors 11: [('p5r1:S05', 'R-link'), ('p5r1:S07', 'R-cond'), ('p5r1:S08', 'R-link'), ('p5r1:S16', 'R-unc'), ('p5r1:S28', 'R-link'), ('p5r2:S05', 'R-link'), ('p5r2:S07', 'R-cond'), ('p5r2:S16', 'R-unc'), ('p5r2:S19', 'R-unc'), ('p5r2:S25', 'R-link'), ('p5r2:S28', 'R-link')]
+  controls: replay right DO 175 {'h4main': 12, 'h2main': 11, 'h1': 12, 'h3main': 13, 'core': 127} on 63 requests; h7 right single DO 13
