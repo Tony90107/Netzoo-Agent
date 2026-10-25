@@ -1,0 +1,2179 @@
+{
+ "set": "h10",
+ "labeller_note": "Read each item's id and prompt only, vocabulary.md, CONTENT-BRIEF 'What to label', workflow YAMLs and registry. Conventions: measured expression/omics/mutation data -> made_by outside; priors/files with no stated origin -> not_stated; data not yet in hand -> lacks; miRNA-target prior fills motif_file and the miRNA list fills mirna_file; open questions get no result unit; choices no workflow exposes go to notes.",
+ "items": [
+  {
+   "id": "Y01",
+   "results": [
+    {
+     "quote": "how those covariates shift co-expression among pathways",
+     "produces": [
+      "cobra.covariate_components"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "covariate share of co-expression"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "a pathway mutation score matrix for 180 endometrial tumors",
+     "slot": "expression_file",
+     "content": "other",
+     "made_by": "SAMBAR",
+     "certainty": "stated",
+     "why": "SAMBAR pathway scores, user wants it as COBRA's table"
+    },
+    {
+     "quote": "tumor grade and patient age",
+     "slot": "design_file",
+     "content": "sample_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": "covariates per patient"
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "how those covariates shift co-expression among pathways",
+     "quote": "a pathway mutation score matrix for 180 endometrial tumors",
+     "slot": "expression_file",
+     "why": "feed that matrix to COBRA"
+    }
+   ],
+   "notes": "input is pathway scores, not expression"
+  },
+  {
+   "id": "Y02",
+   "results": [
+    {
+     "quote": "how those covariates are associated with gene co-expression",
+     "produces": [
+      "cobra.covariate_components"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "covariate-associated co-expression"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "150 whole-blood samples with about 3,000 expressed genes",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "measured expression implied"
+    },
+    {
+     "quote": "age, smoking pack-years and sex coded as numbers for every sample",
+     "slot": "design_file",
+     "content": "sample_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": "numeric covariates"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y03",
+   "results": [
+    {
+     "quote": "a PANDA TF-to-gene network",
+     "produces": [
+      "panda.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "aggregate PANDA network"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "its adjusted gene-by-gene co-expression matrix",
+     "slot": "coexpression_file",
+     "content": "coexpression_matrix",
+     "made_by": "COBRA",
+     "certainty": "stated",
+     "why": "COBRA output"
+    },
+    {
+     "quote": "the original expression table",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "measured expression"
+    },
+    {
+     "quote": "motif",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": "motif file"
+    },
+    {
+     "quote": "PPI files",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": "PPI file"
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "a PANDA TF-to-gene network",
+     "quote": "its adjusted gene-by-gene co-expression matrix",
+     "slot": "coexpression_file",
+     "why": "uses that adjusted matrix"
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y04",
+   "results": [],
+   "settings": [],
+   "has": [
+    {
+     "quote": "RNA-seq from 80 liver biopsies",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "measured"
+    },
+    {
+     "quote": "JASPAR motif scans",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "JASPAR"
+    },
+    {
+     "quote": "a STRING interaction list",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "STRING"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "open-ended question about regulation; no specific result named"
+  },
+  {
+   "id": "Y05",
+   "results": [
+    {
+     "quote": "the list of differentially expressed genes between the two groups, with fold changes and adjusted p-values",
+     "produces": [],
+     "near_miss": [
+      "cobra.no_differential_expression"
+     ],
+     "registry_wide": [],
+     "why": "DE not given"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "12 treated and 12 control mouse livers",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "sequenced"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y06",
+   "results": [
+    {
+     "quote": "a separate co-expression network for each biopsy",
+     "produces": [
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "per-sample co-expression"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "a gene-by-gene Spearman correlation matrix computed across our 54 kidney transplant biopsies",
+     "slot": "coexpression_file",
+     "content": "coexpression_matrix",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "sequencing core"
+    }
+   ],
+   "lacks": [
+    {
+     "quote": "not the per-sample expression values",
+     "slot": "expression_file",
+     "why": "explicitly absent"
+    }
+   ],
+   "source": [
+    {
+     "result_quote": "a separate co-expression network for each biopsy",
+     "quote": "a gene-by-gene Spearman correlation matrix computed across our 54 kidney transplant biopsies",
+     "slot": "coexpression_file",
+     "why": "From that matrix"
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y07",
+   "results": [
+    {
+     "quote": "a separate gene co-expression network for each of 50 sepsis patients",
+     "produces": [
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "per-sample co-expression"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "The expression matrix",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "public GEO, DESeq2 VST"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "VST normalization stated; not unmistakably BONOBO log_transformed/centered declarations"
+  },
+  {
+   "id": "Y08",
+   "results": [
+    {
+     "quote": "LIONESS-DRAGON networks for each of 45 tumors",
+     "produces": [
+      "lioness_dragon.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "per-sample DRAGON"
+    }
+   ],
+   "settings": [
+    {
+     "quote": "pin the regularization strength for the RNA layer at 0.3",
+     "setting": "LIONESS-DRAGON.lambda1",
+     "value": "0.3",
+     "why": "layer-1 shrinkage manual"
+    },
+    {
+     "quote": "let the method choose it for the methylation layer",
+     "setting": "LIONESS-DRAGON.lambda2",
+     "value": "",
+     "why": "layer-2 estimated"
+    }
+   ],
+   "has": [
+    {
+     "quote": "matched RNA (400 genes)",
+     "slot": "omics_layer_1",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "measured"
+    },
+    {
+     "quote": "DNA methylation (250 CpGs) tables",
+     "slot": "omics_layer_2",
+     "content": "other_omics",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "methylation"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "mixed manual/estimated lambdas"
+  },
+  {
+   "id": "Y09",
+   "results": [
+    {
+     "quote": "an aggregate TF-gene network",
+     "produces": [
+      "otter.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "aggregate OTTER"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "a TF-gene motif prior",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a TF-TF interaction list",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "The third file from my labmate",
+     "slot": "expression_file",
+     "content": "not_stated",
+     "made_by": "outside",
+     "certainty": "unsure",
+     "why": "expression table or co-expression matrix"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y10",
+   "results": [
+    {
+     "quote": "per-donor co-expression networks from BONOBO",
+     "produces": [
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "log-transformed",
+     "setting": "BONOBO.log_transformed",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "centered",
+     "setting": "BONOBO.centered",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "Keep only edges that are significant at 5%",
+     "setting": "BONOBO.sparsify",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "Keep only edges that are significant at 5%",
+     "setting": "BONOBO.bonobo_confidence",
+     "value": "0.05",
+     "why": ""
+    },
+    {
+     "quote": "each donor's own profile to make up half of the covariance estimate",
+     "setting": "BONOBO.delta",
+     "value": "0.5",
+     "why": "sample weight in covariance"
+    }
+   ],
+   "has": [
+    {
+     "quote": "the data",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": "BONOBO expression data"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "delta 0.5 with sparsify exceeds the 1/3 limit"
+  },
+  {
+   "id": "Y11",
+   "results": [
+    {
+     "quote": "per-sample TF activity",
+     "produces": [
+      "giraffe.tf_activity"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    },
+    {
+     "quote": "the TF-gene regulation matrix",
+     "produces": [
+      "giraffe.signed_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "The expression table",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "ours, measured"
+    },
+    {
+     "quote": "the TF-gene prior",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "FIMO by postdoc"
+    },
+    {
+     "quote": "the TF interaction list",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "STRING"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y12",
+   "results": [
+    {
+     "quote": "one gene-gene co-expression network per animal with BONOBO",
+     "produces": [
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "already log2-transformed",
+     "setting": "BONOBO.log_transformed",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "every gene is mean-centered",
+     "setting": "BONOBO.centered",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "keep only the edges that hold up at a 1% significance level",
+     "setting": "BONOBO.sparsify",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "keep only the edges that hold up at a 1% significance level",
+     "setting": "BONOBO.bonobo_confidence",
+     "value": "0.01",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "The expression table",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "profiled samples"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y13",
+   "results": [],
+   "settings": [],
+   "has": [
+    {
+     "quote": "somatic mutation calls",
+     "slot": "mutation_file",
+     "content": "somatic_mutation",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "RNA-seq",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "vague network goal; no specific result"
+  },
+  {
+   "id": "Y14",
+   "results": [
+    {
+     "quote": "a TF-to-gene regulatory network for each patient",
+     "produces": [
+      "lioness_panda.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expression for 40 ovarian cancer patients",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "motif",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "PPI priors",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "'compare their regulatory wiring' is the purpose, not labelled as a result"
+  },
+  {
+   "id": "Y15",
+   "results": [
+    {
+     "quote": "these tumors split into subtypes",
+     "produces": [
+      "sambar.subtypes"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "from 2 up to 12 subtypes",
+     "setting": "SAMBAR.kmin",
+     "value": "2",
+     "why": ""
+    },
+    {
+     "quote": "from 2 up to 12 subtypes",
+     "setting": "SAMBAR.kmax",
+     "value": "12",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "somatic mutation profiles for only 9 cholangiocarcinoma samples",
+     "slot": "mutation_file",
+     "content": "somatic_mutation",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "the gene lengths",
+     "slot": "exon_size_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "cancer gene list",
+     "slot": "cancer_gene_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "pathway file",
+     "slot": "pathway_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "kmax 12 above 9 samples"
+  },
+  {
+   "id": "Y16",
+   "results": [
+    {
+     "quote": "detect communities in it",
+     "produces": [
+      "condor.communities"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "a PUMA network for 60 glioma samples",
+     "slot": "network_file",
+     "content": "regulator_gene_network",
+     "made_by": "PUMA",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "detect communities in it",
+     "quote": "a PUMA network for 60 glioma samples",
+     "slot": "network_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y17",
+   "results": [
+    {
+     "quote": "sample-specific TF-gene networks",
+     "produces": [
+      "lioness_panda.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expression",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "motif",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "PPI files",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "sample count 2 or 4 unknown"
+  },
+  {
+   "id": "Y18",
+   "results": [
+    {
+     "quote": "find its communities with CONDOR",
+     "produces": [
+      "condor.communities"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "an aggregate PANDA TF-to-gene network for 64 T-cell samples",
+     "slot": "network_file",
+     "content": "regulator_gene_network",
+     "made_by": "PANDA",
+     "certainty": "unsure",
+     "why": "weights raw or rescaled"
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "find its communities with CONDOR",
+     "quote": "an aggregate PANDA TF-to-gene network for 64 T-cell samples",
+     "slot": "network_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y19",
+   "results": [
+    {
+     "quote": "LIONESS-PUMA networks for each of 30 HIV-infected donors",
+     "produces": [
+      "lioness_puma.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expression",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a TF motif prior",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "PPI",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a miRNA-target prior",
+     "slot": "motif_file",
+     "content": "mirna_prior",
+     "made_by": "outside",
+     "certainty": "unsure",
+     "why": "TargetScan or miRanda"
+    },
+    {
+     "quote": "a one-per-line miRNA list",
+     "slot": "mirna_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": "identifier list"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y20",
+   "results": [
+    {
+     "quote": "LIONESS-DRAGON networks for 80 participants",
+     "produces": [
+      "lioness_dragon.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "our proteomics table of 500 proteins",
+     "slot": "omics_layer_1",
+     "content": "other_omics",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [
+    {
+     "quote": "a metabolomics table that the core will deliver next week",
+     "slot": "omics_layer_2",
+     "why": "not yet delivered"
+    }
+   ],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y21",
+   "results": [
+    {
+     "quote": "a separate co-expression network for each of the 42 sputum samples",
+     "produces": [
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "the file",
+     "slot": "expression_file",
+     "content": "not_stated",
+     "made_by": "outside",
+     "certainty": "unsure",
+     "why": "expression table or correlation matrix"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y22",
+   "results": [],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expression data from 30 Arabidopsis seedlings",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "open question, no result named"
+  },
+  {
+   "id": "Y23",
+   "results": [
+    {
+     "quote": "the cohort-wide network across both layers",
+     "produces": [
+      "dragon.two_layer_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "a long file with one line for each pair of features",
+     "setting": "DRAGON.output_format",
+     "value": "edge_list",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "proteomics (300 proteins)",
+     "slot": "omics_layer_1",
+     "content": "other_omics",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "metabolomics (120 metabolites) tables",
+     "slot": "omics_layer_2",
+     "content": "other_omics",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y24",
+   "results": [],
+   "settings": [],
+   "has": [
+    {
+     "quote": "paired lipidomics (180 lipids)",
+     "slot": "omics_layer_1",
+     "content": "other_omics",
+     "made_by": "outside",
+     "certainty": "unsure",
+     "why": "normalization unknown"
+    },
+    {
+     "quote": "transcriptomics (900 genes) tables",
+     "slot": "omics_layer_2",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "method-only request"
+  },
+  {
+   "id": "Y25",
+   "results": [
+    {
+     "quote": "split that network into communities",
+     "produces": [
+      "condor.communities"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "its partial-correlation matrix",
+     "slot": "network_file",
+     "content": "coexpression_matrix",
+     "made_by": "DRAGON",
+     "certainty": "stated",
+     "why": "partial-correlation matrix"
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "split that network into communities",
+     "quote": "its partial-correlation matrix",
+     "slot": "network_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y26",
+   "results": [
+    {
+     "quote": "find communities in the network stored in network_edges.csv",
+     "produces": [
+      "condor.communities"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "network_edges.csv",
+     "slot": "network_file",
+     "content": "not_stated",
+     "made_by": "not_stated",
+     "certainty": "unsure",
+     "why": "PANDA or DRAGON"
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "find communities in the network stored in network_edges.csv",
+     "quote": "network_edges.csv",
+     "slot": "network_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y27",
+   "results": [
+    {
+     "quote": "split the tumors into subtypes",
+     "produces": [
+      "sambar.subtypes"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "an MSigDB pathway file",
+     "setting": "SAMBAR.gmt_msigdb",
+     "value": "true",
+     "why": ""
+    },
+    {
+     "quote": "between 3 and 6 groups",
+     "setting": "SAMBAR.kmin",
+     "value": "3",
+     "why": ""
+    },
+    {
+     "quote": "between 3 and 6 groups",
+     "setting": "SAMBAR.kmax",
+     "value": "6",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "somatic mutation calls for 140 gastric tumors",
+     "slot": "mutation_file",
+     "content": "somatic_mutation",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "gene lengths",
+     "slot": "exon_size_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a cancer gene list",
+     "slot": "cancer_gene_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "an MSigDB pathway file",
+     "slot": "pathway_file",
+     "content": "gene_annotation",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y28",
+   "results": [
+    {
+     "quote": "one network per sample",
+     "produces": [
+      "lioness_dragon.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "the aggregate partial-correlation matrix it wrote",
+     "slot": "network_file",
+     "content": "coexpression_matrix",
+     "made_by": "DRAGON",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [
+    {
+     "quote": "the input tables are gone",
+     "slot": "omics_layer_1",
+     "why": ""
+    },
+    {
+     "quote": "the input tables are gone",
+     "slot": "omics_layer_2",
+     "why": ""
+    }
+   ],
+   "source": [
+    {
+     "result_quote": "one network per sample",
+     "quote": "the aggregate partial-correlation matrix it wrote",
+     "slot": "network_file",
+     "why": "turn that matrix into"
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y29",
+   "results": [
+    {
+     "quote": "an aggregate PANDA network",
+     "produces": [
+      "panda.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    },
+    {
+     "quote": "per-sample LIONESS-PANDA networks",
+     "produces": [
+      "lioness_panda.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "COBRA's adjusted co-expression matrix",
+     "slot": "coexpression_file",
+     "content": "coexpression_matrix",
+     "made_by": "COBRA",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "the original expression table",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "motif",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "PPI files",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "an aggregate PANDA network",
+     "quote": "COBRA's adjusted co-expression matrix",
+     "slot": "coexpression_file",
+     "why": ""
+    },
+    {
+     "result_quote": "per-sample LIONESS-PANDA networks",
+     "quote": "COBRA's adjusted co-expression matrix",
+     "slot": "coexpression_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y30",
+   "results": [
+    {
+     "quote": "communities of TFs and target genes",
+     "produces": [
+      "condor.communities"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "an aggregate PANDA network for Drosophila wing discs",
+     "slot": "network_file",
+     "content": "regulator_gene_network",
+     "made_by": "PANDA",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "communities of TFs and target genes",
+     "quote": "an aggregate PANDA network for Drosophila wing discs",
+     "slot": "network_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y31",
+   "results": [
+    {
+     "quote": "pathway-level mutation scores",
+     "produces": [
+      "sambar.subtypes"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    },
+    {
+     "quote": "patient subtypes",
+     "produces": [
+      "sambar.subtypes"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "MSigDB pathways",
+     "setting": "SAMBAR.gmt_msigdb",
+     "value": "true",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "somatic mutation matrix",
+     "slot": "mutation_file",
+     "content": "somatic_mutation",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "gene lengths",
+     "slot": "exon_size_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "cancer genes",
+     "slot": "cancer_gene_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "MSigDB pathways",
+     "slot": "pathway_file",
+     "content": "gene_annotation",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "matched RNA-seq",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "not part of question"
+    },
+    {
+     "quote": "CT imaging features",
+     "slot": "none",
+     "content": "other",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y32",
+   "results": [
+    {
+     "quote": "one co-expression network per patient line",
+     "produces": [
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "one RNA-seq library from each of two patient fibroblast lines",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "two samples only"
+  },
+  {
+   "id": "Y33",
+   "results": [
+    {
+     "quote": "modules in this data",
+     "produces": [
+      "condor.communities"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": "modules as communities"
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "plasma proteomics",
+     "slot": "omics_layer_1",
+     "content": "other_omics",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "whole-blood transcriptomics",
+     "slot": "omics_layer_2",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y34",
+   "results": [
+    {
+     "quote": "one TF-gene network per sample",
+     "produces": [
+      "lioness_panda.per_sample_networks"
+     ],
+     "near_miss": [
+      "otter.no_per_sample"
+     ],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "our expression table",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "motif prior",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "TF-TF PPI list",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y35",
+   "results": [
+    {
+     "quote": "a PANDA TF-gene network",
+     "produces": [
+      "panda.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "a precomputed co-expression matrix",
+     "slot": "coexpression_file",
+     "content": "coexpression_matrix",
+     "made_by": "not_stated",
+     "certainty": "unsure",
+     "why": "COBRA or BONOBO"
+    },
+    {
+     "quote": "the expression table",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "motif",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "PPI files",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "a PANDA TF-gene network",
+     "quote": "a precomputed co-expression matrix",
+     "slot": "coexpression_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y36",
+   "results": [
+    {
+     "quote": "an aggregate TF-to-gene network",
+     "produces": [
+      "otter.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "gene co-expression and the protein interactions to count equally, half and half",
+     "setting": "OTTER.lam",
+     "value": "0.5",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "the expression table",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a TF-gene motif prior",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a TF-TF interaction list",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y37",
+   "results": [
+    {
+     "quote": "the aggregate TF-gene network",
+     "produces": [
+      "panda.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "1,200-sample skeletal muscle expression matrix",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "motif",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "PPI priors",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "GPU request: PANDA exposes no computing setting"
+  },
+  {
+   "id": "Y38",
+   "results": [
+    {
+     "quote": "TF activities",
+     "produces": [
+      "giraffe.tf_activity"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    },
+    {
+     "quote": "the signed TF-gene effect matrix",
+     "produces": [
+      "giraffe.signed_regulation"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "the expression table",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a motif prior",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a PPI list",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "more iterations: GIRAFFE exposes no iteration setting"
+  },
+  {
+   "id": "Y39",
+   "results": [
+    {
+     "quote": "subtype 110 bladder tumors by pathway-level mutation scores",
+     "produces": [
+      "sambar.subtypes"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "gene lengths",
+     "slot": "exon_size_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a cancer gene list",
+     "slot": "cancer_gene_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "Reactome GMT sets",
+     "slot": "pathway_file",
+     "content": "gene_annotation",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "The table I inherited from a previous student",
+     "slot": "mutation_file",
+     "content": "not_stated",
+     "made_by": "outside",
+     "certainty": "unsure",
+     "why": "mutation counts or expression"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y40",
+   "results": [
+    {
+     "quote": "how age and BMI associate with co-expression",
+     "produces": [
+      "cobra.covariate_components"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "the final table",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "unsure",
+     "why": "gene panel undecided"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y41",
+   "results": [
+    {
+     "quote": "pathway-level mutation scores",
+     "produces": [
+      "sambar.subtypes"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    },
+    {
+     "quote": "patient subtypes",
+     "produces": [
+      "sambar.subtypes"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [
+    {
+     "quote": "don't scale each patient's scores by how many mutations that patient carries overall",
+     "setting": "SAMBAR.norm_patient",
+     "value": "false",
+     "why": ""
+    }
+   ],
+   "has": [
+    {
+     "quote": "whole-exome somatic mutation counts",
+     "slot": "mutation_file",
+     "content": "somatic_mutation",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "gene lengths",
+     "slot": "exon_size_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a cancer gene list",
+     "slot": "cancer_gene_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "pathway sets in a GMT file",
+     "slot": "pathway_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y42",
+   "results": [
+    {
+     "quote": "one aggregate TF-to-gene network",
+     "produces": [
+      "panda.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "RNA-seq for 85 Atlantic salmon gill samples",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a motif prior",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a PPI list",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "DNA methylation",
+     "slot": "none",
+     "content": "other_omics",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "analyzed separately"
+    },
+    {
+     "quote": "parasite load",
+     "slot": "none",
+     "content": "sample_annotation",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "analyzed separately"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y43",
+   "results": [
+    {
+     "quote": "a single network showing how both TFs and miRNAs regulate genes across the cohort",
+     "produces": [
+      "puma.regulator_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "expression for 120 kidney cortex samples",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "TF motif",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "PPI priors",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a miRNA-target prior",
+     "slot": "motif_file",
+     "content": "mirna_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a miRNA list",
+     "slot": "mirna_file",
+     "content": "gene_annotation",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": ""
+  },
+  {
+   "id": "Y44",
+   "results": [
+    {
+     "quote": "a network across our RNA-seq and the plasma metabolomics",
+     "produces": [
+      "dragon.two_layer_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "our RNA-seq",
+     "slot": "omics_layer_1",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [
+    {
+     "quote": "The metabolomics data come from the biobank next month",
+     "slot": "omics_layer_2",
+     "why": ""
+    }
+   ],
+   "source": [
+    {
+     "result_quote": "a network across our RNA-seq and the plasma metabolomics",
+     "quote": "our RNA-seq",
+     "slot": "omics_layer_1",
+     "why": ""
+    }
+   ],
+   "notes": "sample overlap unknown"
+  },
+  {
+   "id": "Y45",
+   "results": [
+    {
+     "quote": "an aggregate TF-to-gene network",
+     "produces": [
+      "panda.tf_gene_network",
+      "otter.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "a labeled, symmetric gene-by-gene co-expression matrix for 5,000 zebrafish genes",
+     "slot": "coexpression_file",
+     "content": "coexpression_matrix",
+     "made_by": "outside",
+     "certainty": "stated",
+     "why": "collaborator"
+    },
+    {
+     "quote": "a TF-gene motif prior",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "a TF-TF PPI list",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [
+    {
+     "quote": "I don't have the underlying expression table",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "source": [
+    {
+     "result_quote": "an aggregate TF-to-gene network",
+     "quote": "a labeled, symmetric gene-by-gene co-expression matrix for 5,000 zebrafish genes",
+     "slot": "coexpression_file",
+     "why": "With that matrix"
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y46",
+   "results": [
+    {
+     "quote": "a TF-gene network",
+     "produces": [
+      "panda.tf_gene_network"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "a folder of per-donor gene-gene co-expression matrices",
+     "slot": "coexpression_file",
+     "content": "coexpression_matrix",
+     "made_by": "BONOBO",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "motif",
+     "slot": "motif_file",
+     "content": "tf_gene_prior",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    },
+    {
+     "quote": "PPI priors",
+     "slot": "ppi_file",
+     "content": "protein_interactions",
+     "made_by": "not_stated",
+     "certainty": "stated",
+     "why": ""
+    }
+   ],
+   "lacks": [
+    {
+     "quote": "the original expression table was on a drive that failed",
+     "slot": "expression_file",
+     "why": ""
+    }
+   ],
+   "source": [
+    {
+     "result_quote": "a TF-gene network",
+     "quote": "a folder of per-donor gene-gene co-expression matrices",
+     "slot": "coexpression_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y47",
+   "results": [
+    {
+     "quote": "CONDOR communities computed per patient",
+     "produces": [
+      "condor.communities"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "a per-sample network as an edge list",
+     "slot": "network_file",
+     "content": "not_stated",
+     "made_by": "not_stated",
+     "certainty": "unsure",
+     "why": "LIONESS-PUMA or LIONESS-COEXPRESSION"
+    }
+   ],
+   "lacks": [],
+   "source": [
+    {
+     "result_quote": "CONDOR communities computed per patient",
+     "quote": "a per-sample network as an edge list",
+     "slot": "network_file",
+     "why": ""
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "Y48",
+   "results": [
+    {
+     "quote": "BONOBO co-expression networks for each of 24 tomato fruit samples",
+     "produces": [
+      "bonobo.per_sample_networks"
+     ],
+     "near_miss": [],
+     "registry_wide": [],
+     "why": ""
+    }
+   ],
+   "settings": [],
+   "has": [
+    {
+     "quote": "The expression file",
+     "slot": "expression_file",
+     "content": "expression",
+     "made_by": "outside",
+     "certainty": "unsure",
+     "why": "log/centered or raw TPM"
+    }
+   ],
+   "lacks": [],
+   "source": [],
+   "notes": "log/centered state uncertain, not declared"
+  }
+ ]
+}

@@ -1,0 +1,5501 @@
+{
+ "labeller_note": "Read every request prompt in content-batch.json in full (286 requests, 687 has units) plus the workflow YAML/registry for vocabulary only; labels judged from the whole request text, the earlier slot used only as a hint. Conventions: miRNA/small-RNA expression measurements (small-RNA-seq, miRNA qPCR/profiles) labelled expression; one-per-line miRNA ID lists labelled gene_annotation; exon lengths, cancer-gene lists and GMTs labelled gene_annotation; design/covariate/clinical/survival/responder tables labelled sample_annotation. Combined TF+miRNA prior files labelled tf_gene_prior (main piece) with the second piece noted in why. Per-sample measurement tables (expression, other omics, mutation calls) labelled made_by outside as measured data; priors, PPIs, annotation and design files labelled outside only when a public resource (STRING, JASPAR, TargetScan, MSigDB/KEGG, COSMIC, GTEx, TCGA, miRBase, 'downloaded') or another person/core is named, else not_stated; a NetZoo workflow is named only when the request says it produced the file (including filenames like panda_*_edges). Content not_stated when the words do not name the data kind (e.g. '36 pancreatic islet samples') or when the user gives alternatives across different content kinds (expression vs mutation, TF-gene vs co-expression network, mutation counts vs copy-number). certainty unsure when the user says they are not sure/do not remember/gives alternatives about what the data contains (including its transform, feature or sample count, somatic vs germline) or whether it comes from the same people; undecided future choices ('haven't decided') kept stated.",
+ "units": [
+  {
+   "id": "C02",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_twins.tsv\" with \"two sample columns\"; no source stated; measured per-sample data table"
+  },
+  {
+   "id": "C03",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq\" measured on tumours"
+  },
+  {
+   "id": "C03",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"DNA methylation M-values\""
+  },
+  {
+   "id": "C03",
+   "n": 2,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RPPA proteomics\""
+  },
+  {
+   "id": "C04",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"the cohort's expression matrix\" for patients"
+  },
+  {
+   "id": "C04",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a human motif prior\""
+  },
+  {
+   "id": "C04",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF PPI\""
+  },
+  {
+   "id": "C05",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"genes in rows, 40 donors in columns\"; \"I only have the expression\""
+  },
+  {
+   "id": "C06",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"the expression matrix\" across 60 HCC samples"
+  },
+  {
+   "id": "C06",
+   "n": 1,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a PPI among those regulators\""
+  },
+  {
+   "id": "C06",
+   "n": 2,
+   "content": "tf_gene_prior",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"regulator-to-target prior from a collaborator's project\"; \"not sure\" RBP vs TF lists"
+  },
+  {
+   "id": "C07",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"180 circulating miRNAs (normalized, continuous qPCR values)\" measured"
+  },
+  {
+   "id": "C07",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"45 plasma cytokines\" measured"
+  },
+  {
+   "id": "C11",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_alzheimer.tsv (88 donors...)\""
+  },
+  {
+   "id": "C11",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motifs_hg38.txt\" for TF network inference"
+  },
+  {
+   "id": "C11",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_tf.txt\""
+  },
+  {
+   "id": "C12",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_sle_monocytes.tsv\" filename only; measured per-sample data table"
+  },
+  {
+   "id": "C13",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_t2d_islets.tsv\" for OTTER; measured per-sample data table"
+  },
+  {
+   "id": "C13",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"seed_W.tsv\" OTTER seed W (TF-gene prior)"
+  },
+  {
+   "id": "C13",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_tf.tsv\""
+  },
+  {
+   "id": "C15",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression.tsv ... for 80 gliomas\""
+  },
+  {
+   "id": "C15",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"methylation.tsv ... for 80 gliomas\""
+  },
+  {
+   "id": "C15",
+   "n": 2,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"mutations.csv for 80 gliomas\""
+  },
+  {
+   "id": "C16",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"our 10x single-cell RNA-seq\""
+  },
+  {
+   "id": "C18",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"gene-by-sample RNA-seq for 64 biopsies\""
+  },
+  {
+   "id": "C19",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_mrna.tsv\" filename only; measured per-sample data table"
+  },
+  {
+   "id": "C19",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_mirna.tsv\" miRNA expression; filename only; measured per-sample data table"
+  },
+  {
+   "id": "C19",
+   "n": 2,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs.txt\""
+  },
+  {
+   "id": "C19",
+   "n": 3,
+   "content": "mirna_prior",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"targetscan_pairs.txt\" TargetScan public resource"
+  },
+  {
+   "id": "C20",
+   "n": 0,
+   "content": "not_stated",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"one with log2 expression and one with binary somatic-mutation calls, and I'm not sure which\""
+  },
+  {
+   "id": "C20",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs.txt\""
+  },
+  {
+   "id": "C20",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.txt\""
+  },
+  {
+   "id": "C21",
+   "n": 0,
+   "content": "not_stated",
+   "made_by": "not_stated",
+   "certainty": "unsure",
+   "why": "\"don't know whether it's the TF-to-gene regulatory network from his PANDA runs or the gene-gene co-expression network\""
+  },
+  {
+   "id": "C22",
+   "n": 0,
+   "content": "other",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"tumour_07.bam\" sequencing reads"
+  },
+  {
+   "id": "C22",
+   "n": 1,
+   "content": "other",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"normal_07.bam\" sequencing reads"
+  },
+  {
+   "id": "C23",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"whole-blood transcriptome\" generated"
+  },
+  {
+   "id": "C23",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"plasma proteome\""
+  },
+  {
+   "id": "C23",
+   "n": 2,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a few hundred metabolites\""
+  },
+  {
+   "id": "C24",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"mRNA-seq ... from 45 ... placentas\""
+  },
+  {
+   "id": "C24",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"small-RNA-seq\" from same placentas"
+  },
+  {
+   "id": "C25",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"the gene-by-sample expression matrix\"; measured per-sample data table"
+  },
+  {
+   "id": "C25",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF motif prior\""
+  },
+  {
+   "id": "C25",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF PPI\""
+  },
+  {
+   "id": "C25",
+   "n": 3,
+   "content": "mirna_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a miRNA-target prior\""
+  },
+  {
+   "id": "C25",
+   "n": 4,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a file listing the miRNAs, one ID per line\" (ID list)"
+  },
+  {
+   "id": "C26",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"somatic mutation calls ... for the same 90 bladder tumours\""
+  },
+  {
+   "id": "C26",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq\" for tumours"
+  },
+  {
+   "id": "C27",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"the RNA-seq expression matrix\""
+  },
+  {
+   "id": "C28",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"140 skeletal-muscle RNA-seq samples ... sequenced in three runs\""
+  },
+  {
+   "id": "C28",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"design table\" with covariate indicator columns"
+  },
+  {
+   "id": "C29",
+   "n": 0,
+   "content": "regulator_gene_network",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"aggregate TF-to-gene regulatory network ... edge list\"; producer not stated"
+  },
+  {
+   "id": "C30",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"mut_pilot.csv (mutation counts for 5 cholangiocarcinomas)\"; measured per-sample data table"
+  },
+  {
+   "id": "C30",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon_len.csv\""
+  },
+  {
+   "id": "C30",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"cancer_genes.txt\""
+  },
+  {
+   "id": "C30",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"hallmark.gmt\""
+  },
+  {
+   "id": "C31",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We have expression\" for 40 biopsies"
+  },
+  {
+   "id": "C31",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a motif prior\""
+  },
+  {
+   "id": "C31",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF PPI\""
+  },
+  {
+   "id": "C32",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"paired plasma proteomics\" tables"
+  },
+  {
+   "id": "C32",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"metabolomics tables\""
+  },
+  {
+   "id": "C33",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"18 log-transformed, centered endometriosis samples\""
+  },
+  {
+   "id": "C34",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"96 brain RNA-seq samples\""
+  },
+  {
+   "id": "C34",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"Batch is recorded per sample as numeric indicator columns\""
+  },
+  {
+   "id": "C35",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"non-negative mutation counts\" for tumours; measured per-sample data table"
+  },
+  {
+   "id": "C35",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon_lengths.csv\""
+  },
+  {
+   "id": "C35",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"cancer_genes.txt\""
+  },
+  {
+   "id": "C35",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"c2.cp.kegg.gmt (MSigDB format)\" KEGG/MSigDB public"
+  },
+  {
+   "id": "C36",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We have expression\" for 40 patients"
+  },
+  {
+   "id": "C36",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a motif prior\""
+  },
+  {
+   "id": "C36",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF PPI\""
+  },
+  {
+   "id": "C37",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"bulk transcriptomics\" for mouse model"
+  },
+  {
+   "id": "C37",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"proteomics\""
+  },
+  {
+   "id": "C37",
+   "n": 2,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"some ATAC-seq peaks\" (chromatin accessibility)"
+  },
+  {
+   "id": "C38",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"the gene-by-sample expression table\"; measured per-sample data table"
+  },
+  {
+   "id": "C38",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-by-gene motif prior\""
+  },
+  {
+   "id": "C38",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF PPI matrix\""
+  },
+  {
+   "id": "C39",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression for 24 testes\""
+  },
+  {
+   "id": "C39",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a motif prior\""
+  },
+  {
+   "id": "C39",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a PPI\""
+  },
+  {
+   "id": "C39",
+   "n": 3,
+   "content": "mirna_prior",
+   "made_by": "not_stated",
+   "certainty": "unsure",
+   "why": "\"small-RNA-to-target prior\"; \"could be miRNAs or piRNAs, and I genuinely don't know\""
+  },
+  {
+   "id": "C39",
+   "n": 4,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"our mouse testis small-RNA-seq\"; small RNAs \"could be miRNAs or piRNAs\""
+  },
+  {
+   "id": "C40",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"27 multiple sclerosis lesion samples; log2-transformed and centered per gene\""
+  },
+  {
+   "id": "C41",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"our zebrafish fin-regeneration RNA-seq\""
+  },
+  {
+   "id": "C42",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_cll_layer.csv\" with patient IDs; measured per-sample data table"
+  },
+  {
+   "id": "C42",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"either the continuous beta values or the binarized ... calls (0/1) that another group derived\""
+  },
+  {
+   "id": "C43",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"not sure which export ... per-patient matrix ... or ... a student averaged the patients\""
+  },
+  {
+   "id": "C43",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs.txt\""
+  },
+  {
+   "id": "C43",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.txt\""
+  },
+  {
+   "id": "C44",
+   "n": 0,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"seed_W_mm.tsv\" OTTER seed"
+  },
+  {
+   "id": "C44",
+   "n": 1,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_tf_mm.tsv\""
+  },
+  {
+   "id": "C44",
+   "n": 2,
+   "content": "coexpression_matrix",
+   "made_by": "not_stated",
+   "certainty": "unsure",
+   "why": "\"can't remember if ... full gene-by-gene correlation matrix ... or the edge-by-sample table from our earlier LIONESS co-expression run\""
+  },
+  {
+   "id": "C45",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"300 serum miRNAs\" measured"
+  },
+  {
+   "id": "C45",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"plasma proteomics panel\"; \"don't remember whether ... 200-protein ... or the 2,000-protein\""
+  },
+  {
+   "id": "C47",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"bulk expression ... for 400 ... patients\""
+  },
+  {
+   "id": "C47",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"clinical follow-up\""
+  },
+  {
+   "id": "C48",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"fecal metabolomics\" from recruitment wave"
+  },
+  {
+   "id": "C48",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"colon-biopsy transcriptomics\"; \"biopsies may have been taken from a different group of volunteers\""
+  },
+  {
+   "id": "C49",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"tumor_expr.tsv\"; measured per-sample data table"
+  },
+  {
+   "id": "C49",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motifs.txt\""
+  },
+  {
+   "id": "C49",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi.txt\""
+  },
+  {
+   "id": "C49",
+   "n": 3,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"clinical.tsv\""
+  },
+  {
+   "id": "C50",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"came from a collaborator and I can't tell whether the values were log-transformed\""
+  },
+  {
+   "id": "C51",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression for 60 breast tumours\""
+  },
+  {
+   "id": "C51",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-by-gene seed edge list\""
+  },
+  {
+   "id": "C51",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF PPI edge list\""
+  },
+  {
+   "id": "C52",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"6 rhesus macaque lymph node samples ... log2-transformed\""
+  },
+  {
+   "id": "C54",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"bulk RNA-seq from 150 ileal biopsies\""
+  },
+  {
+   "id": "C54",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"clinical data (disease activity, treatment, biopsy site)\""
+  },
+  {
+   "id": "C54",
+   "n": 2,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"matched serology\""
+  },
+  {
+   "id": "C55",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"48 mouse liver RNA-seq samples ... gene-by-sample expression matrix\""
+  },
+  {
+   "id": "C55",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a JASPAR-based motif prior\""
+  },
+  {
+   "id": "C55",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a mouse TF-TF PPI from STRING\""
+  },
+  {
+   "id": "C56",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"sequencing core sent\"; \"doesn't say whether ... tumour-only somatic mutations or germline variant calls\""
+  },
+  {
+   "id": "C56",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"gene lengths\" sent by sequencing core"
+  },
+  {
+   "id": "C56",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a cancer-gene list\" sent by core"
+  },
+  {
+   "id": "C56",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a KEGG GMT\" sent by core"
+  },
+  {
+   "id": "C57",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"48-gene NanoString inflammation panel\" run on patients"
+  },
+  {
+   "id": "C57",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"design table\" with hospital indicator columns"
+  },
+  {
+   "id": "C58",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_ipf.tsv\" expression file; measured per-sample data table"
+  },
+  {
+   "id": "C58",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hg38.tsv\""
+  },
+  {
+   "id": "C58",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.tsv\""
+  },
+  {
+   "id": "C58",
+   "n": 3,
+   "content": "coexpression_matrix",
+   "made_by": "COBRA",
+   "certainty": "stated",
+   "why": "\"COBRA's adjusted gene-by-gene matrix\""
+  },
+  {
+   "id": "C59",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_cll.tsv (36 CLL patients)\""
+  },
+  {
+   "id": "C59",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_cll.txt\""
+  },
+  {
+   "id": "C59",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_cll.txt\""
+  },
+  {
+   "id": "C59",
+   "n": 3,
+   "content": "mirna_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"mir_targets.txt\" with miRNA IDs in first column"
+  },
+  {
+   "id": "C59",
+   "n": 4,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"mir_list.txt (one miRNA ID per line)\""
+  },
+  {
+   "id": "C60",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"counts_week0.tsv ... from our vaccine trial\""
+  },
+  {
+   "id": "C60",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"counts_week4.tsv ... from our vaccine trial\""
+  },
+  {
+   "id": "C60",
+   "n": 2,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"counts_week12.tsv ... from our vaccine trial\""
+  },
+  {
+   "id": "H01",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"somatic mutations ... for 300 head-and-neck tumours\""
+  },
+  {
+   "id": "H01",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression for 300 ... tumours\""
+  },
+  {
+   "id": "H02",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"gene-by-sample expression\"; measured per-sample data table"
+  },
+  {
+   "id": "H02",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF motif prior\""
+  },
+  {
+   "id": "H02",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a PPI file\""
+  },
+  {
+   "id": "H02",
+   "n": 3,
+   "content": "mirna_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a miRNA-target prior\""
+  },
+  {
+   "id": "H02",
+   "n": 4,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"the miRNA list with one ID per line\""
+  },
+  {
+   "id": "H03",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"plasma metabolomics (412 features)\""
+  },
+  {
+   "id": "H03",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"VST-transformed RNA-seq (2,000 genes)\""
+  },
+  {
+   "id": "H04",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"counts_norm.tsv ... from our 64 colon samples\""
+  },
+  {
+   "id": "H04",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_prior.tsv\""
+  },
+  {
+   "id": "H04",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"ppi_string.tsv\" (STRING)"
+  },
+  {
+   "id": "H05",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"rna_layer.csv (same 72 patients)\""
+  },
+  {
+   "id": "H05",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"protein_layer.csv (same 72 patients)\""
+  },
+  {
+   "id": "H06",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"log-normalised gene-by-sample expression\" across 140 tumours"
+  },
+  {
+   "id": "H06",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-by-gene motif matrix\""
+  },
+  {
+   "id": "H06",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF protein interaction matrix\""
+  },
+  {
+   "id": "H07",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"we measured 250 blood transcripts\""
+  },
+  {
+   "id": "H07",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"we measured ... 150 serum proteins\""
+  },
+  {
+   "id": "H08",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq ... on 60 lung adenocarcinomas\""
+  },
+  {
+   "id": "H08",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"proteomics on 60 lung adenocarcinomas\""
+  },
+  {
+   "id": "H09",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"hnscc_expr.tsv (52 tumours)\""
+  },
+  {
+   "id": "H09",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"hs_motif.tsv\""
+  },
+  {
+   "id": "H09",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"hs_ppi.tsv\""
+  },
+  {
+   "id": "H10",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression matrix is gene-by-sample ... log2-transformed\" for hippocampus samples"
+  },
+  {
+   "id": "H11",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"twins_expr.tsv holds our two monozygotic twin samples\""
+  },
+  {
+   "id": "H11",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs.txt ... as priors\""
+  },
+  {
+   "id": "H11",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.txt as priors\""
+  },
+  {
+   "id": "H12",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"their RNA-seq expression\""
+  },
+  {
+   "id": "H13",
+   "n": 0,
+   "content": "not_stated",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"a collaborator emailed me\"; \"no idea whether it's a TF-to-gene regulatory network or a gene-gene co-expression network\""
+  },
+  {
+   "id": "H14",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"matched liver transcriptomics ... in 80 mice\""
+  },
+  {
+   "id": "H14",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"metabolomics in 80 mice\""
+  },
+  {
+   "id": "H15",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"zebrafish fin RNA-seq\"; \"don't know yet whether we'll have one sample or two\""
+  },
+  {
+   "id": "H15",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a motif seed\""
+  },
+  {
+   "id": "H15",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF PPI edge list\""
+  },
+  {
+   "id": "H16",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"230 glioblastoma RNA-seq samples ... sequenced in two batches\""
+  },
+  {
+   "id": "H16",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"The design sheet codes both covariates\""
+  },
+  {
+   "id": "H18",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"methylation block\" of matched tumours"
+  },
+  {
+   "id": "H18",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression block\" of matched tumours"
+  },
+  {
+   "id": "H19",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"about 36 RNA-seq samples\""
+  },
+  {
+   "id": "H19",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif ... priors\""
+  },
+  {
+   "id": "H19",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"protein-interaction priors\""
+  },
+  {
+   "id": "H20",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"matched DNA methylation\" in biobank tumours"
+  },
+  {
+   "id": "H20",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA expression\""
+  },
+  {
+   "id": "H20",
+   "n": 2,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"proteomics\""
+  },
+  {
+   "id": "H21",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_brain.tsv (it has a header row)\"; \"this same expression table\"; measured per-sample data table"
+  },
+  {
+   "id": "H21",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs.tsv\""
+  },
+  {
+   "id": "H21",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.tsv\""
+  },
+  {
+   "id": "H21",
+   "n": 3,
+   "content": "coexpression_matrix",
+   "made_by": "COBRA",
+   "certainty": "stated",
+   "why": "\"the labeled gene-by-gene matrix COBRA wrote\""
+  },
+  {
+   "id": "H22",
+   "n": 0,
+   "content": "coexpression_matrix",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"symmetric 9,800 x 9,800 gene co-expression matrix computed from it\"; method not stated"
+  },
+  {
+   "id": "H22",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-by-gene motif seed\""
+  },
+  {
+   "id": "H22",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF PPI edge list\""
+  },
+  {
+   "id": "H23",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"The sequencing core never said whether the values are log-transformed or centred\""
+  },
+  {
+   "id": "H24",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"40 breast tumour RNA-seq samples\""
+  },
+  {
+   "id": "H25",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"came from an old lab pipeline and I can't tell whether those are somatic calls or germline variants\""
+  },
+  {
+   "id": "H25",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon_lengths.csv\""
+  },
+  {
+   "id": "H25",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"cancer_genes.txt\""
+  },
+  {
+   "id": "H25",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"c2.cp.kegg.gmt\" (MSigDB KEGG)"
+  },
+  {
+   "id": "H26",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"bulk RNA-seq from 120 ... biopsies\""
+  },
+  {
+   "id": "H27",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"rnaseq_tpm.tsv (genes by 48 samples)\"; measured per-sample data table"
+  },
+  {
+   "id": "H28",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"900 plasma transcripts ... measured\""
+  },
+  {
+   "id": "H28",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"600 metabolites measured\""
+  },
+  {
+   "id": "H29",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"somatic mutations\"; \"either 5 or 9 tumours passed sequencing QC\""
+  },
+  {
+   "id": "H30",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"liver proteomics\"; \"can't tell ... whether the proteomics came from the same 40 mice\""
+  },
+  {
+   "id": "H30",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"VST RNA-seq (3,000 genes)\""
+  },
+  {
+   "id": "H31",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"genes in rows ... values log-transformed and centred\"; measured per-sample data table"
+  },
+  {
+   "id": "H32",
+   "n": 0,
+   "content": "not_stated",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"my zebrafish fin-regeneration time course ... four replicates\"; data kind not named"
+  },
+  {
+   "id": "H33",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"sarcoma_somatic.csv (7 tumours, somatic mutation counts per gene)\"; measured per-sample data table"
+  },
+  {
+   "id": "H33",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon_len.csv\""
+  },
+  {
+   "id": "H33",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"cosmic_cgc.txt\" (COSMIC Cancer Gene Census)"
+  },
+  {
+   "id": "H33",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"kegg_msigdb.gmt\""
+  },
+  {
+   "id": "H34",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"My 12 liver samples are log-transformed and centred\"; measured per-sample data table"
+  },
+  {
+   "id": "H35",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"aml_expr.tsv (58 AML samples)\""
+  },
+  {
+   "id": "H35",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"aml_motif.tsv\""
+  },
+  {
+   "id": "H35",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"aml_ppi.tsv\""
+  },
+  {
+   "id": "H36",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"matched mRNA ... sequencing from a pilot study\"; \"unsure whether the pilot has three patients or only two\""
+  },
+  {
+   "id": "H36",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"small-RNA sequencing from a pilot study\"; \"unsure whether the pilot has three patients or only two\""
+  },
+  {
+   "id": "H36",
+   "n": 2,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"Motif ... priors\""
+  },
+  {
+   "id": "H36",
+   "n": 3,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI ... priors\""
+  },
+  {
+   "id": "H36",
+   "n": 4,
+   "content": "mirna_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"miRNA-target priors\""
+  },
+  {
+   "id": "H36",
+   "n": 5,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a one-per-line miRNA list\""
+  },
+  {
+   "id": "H37",
+   "n": 0,
+   "content": "regulator_gene_network",
+   "made_by": "PANDA",
+   "certainty": "stated",
+   "why": "\"our PANDA TF-to-gene network exported as source, target and weight\""
+  },
+  {
+   "id": "H38",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"blood transcriptomics ... 500 transcripts\""
+  },
+  {
+   "id": "H38",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"urine metabolomics\"; only feature count undecided"
+  },
+  {
+   "id": "H39",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression\"; measured per-sample data table"
+  },
+  {
+   "id": "H39",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a motif prior\""
+  },
+  {
+   "id": "H39",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a PPI file\""
+  },
+  {
+   "id": "H40",
+   "n": 0,
+   "content": "not_stated",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"75 AML samples\"; data kind not said"
+  },
+  {
+   "id": "H41",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"kidney_expr.tsv ... for our 70 kidney biopsies\""
+  },
+  {
+   "id": "H41",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif.tsv\""
+  },
+  {
+   "id": "H41",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi.tsv\""
+  },
+  {
+   "id": "H41",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"mirna_list.txt\" (miRNA list)"
+  },
+  {
+   "id": "H42",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"Proteomics ... measured on every animal\""
+  },
+  {
+   "id": "H42",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"metabolomics ... measured on every animal\""
+  },
+  {
+   "id": "H43",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"bulk RNA-seq, one sample per line\""
+  },
+  {
+   "id": "H43",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a human TF motif prior\""
+  },
+  {
+   "id": "H43",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a STRING-based PPI\""
+  },
+  {
+   "id": "H44",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"ovarian_expr.tsv\"; measured per-sample data table"
+  },
+  {
+   "id": "H44",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"batch_design.csv\""
+  },
+  {
+   "id": "H45",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"non-negative somatic mutation counts\"; measured per-sample data table"
+  },
+  {
+   "id": "H45",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon_sizes.csv\""
+  },
+  {
+   "id": "H45",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"cancer_genes.txt\""
+  },
+  {
+   "id": "H45",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"h.all.v2023.1.Hs.symbols.gmt\" (MSigDB hallmark)"
+  },
+  {
+   "id": "H46",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"mutation calls ... for roughly 500 patients\""
+  },
+  {
+   "id": "H46",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression for roughly 500 patients\""
+  },
+  {
+   "id": "H47",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"whether we're using the 250-gene targeted panel or the full ~20,000-gene RNA-seq\""
+  },
+  {
+   "id": "H48",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"custom 400-gene panel measured in 620 melanoma biopsies\""
+  },
+  {
+   "id": "H48",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"design.csv, which codes site and processing batch\""
+  },
+  {
+   "id": "J01",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"bulk RNA-seq\" five time points"
+  },
+  {
+   "id": "J02",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"Same expression ... files as before\"; measured per-sample data table"
+  },
+  {
+   "id": "J02",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif ... files\""
+  },
+  {
+   "id": "J02",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI files\""
+  },
+  {
+   "id": "J03",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_kidney.tsv (it has a header row)\"; measured per-sample data table"
+  },
+  {
+   "id": "J03",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_kidney.tsv\""
+  },
+  {
+   "id": "J03",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_kidney.tsv\""
+  },
+  {
+   "id": "J03",
+   "n": 3,
+   "content": "coexpression_matrix",
+   "made_by": "COBRA",
+   "certainty": "stated",
+   "why": "\"adjusted_coexpression.tsv from yesterday's COBRA run\""
+  },
+  {
+   "id": "J04",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression\" for 64 asthma airway samples"
+  },
+  {
+   "id": "J04",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a motif seed\""
+  },
+  {
+   "id": "J04",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF PPI\""
+  },
+  {
+   "id": "J05",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"hcc_expr.tsv ... for 33 liver tumours\""
+  },
+  {
+   "id": "J05",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"hcc_motif.tsv\""
+  },
+  {
+   "id": "J05",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"hcc_ppi.tsv\""
+  },
+  {
+   "id": "J05",
+   "n": 3,
+   "content": "not_stated",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"hcc_mirna.txt\" -- miRNA file but not whether list, prior or expression"
+  },
+  {
+   "id": "J06",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_pdac.tsv\"; measured per-sample data table"
+  },
+  {
+   "id": "J06",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs.tsv\""
+  },
+  {
+   "id": "J06",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.tsv\""
+  },
+  {
+   "id": "J07",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"pig muscle samples ... (log2 CPM, centered per gene)\"; \"three samples, unless the degraded one gets excluded\""
+  },
+  {
+   "id": "J08",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"transcriptomics ... from the same 75 patients\""
+  },
+  {
+   "id": "J08",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"proteomics\""
+  },
+  {
+   "id": "J08",
+   "n": 2,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"metabolomics\""
+  },
+  {
+   "id": "J09",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"liver_expr.tsv ... for our 44 donors\""
+  },
+  {
+   "id": "J09",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"liver_motif.tsv\""
+  },
+  {
+   "id": "J09",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"liver_ppi.tsv\""
+  },
+  {
+   "id": "J10",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"proteomics (310 proteins, log-intensities)\" from plasma donors"
+  },
+  {
+   "id": "J10",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"metabolomics (140 metabolites, log-abundances)\""
+  },
+  {
+   "id": "J11",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"rna_top400.csv (100 samples by the 400 most variable genes, log-CPM)\"; measured per-sample data table"
+  },
+  {
+   "id": "J11",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"meth_top200.csv (... 200 CpG M-values)\"; measured per-sample data table"
+  },
+  {
+   "id": "J12",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"the expression matrix\" for 50 lung adenocarcinoma samples"
+  },
+  {
+   "id": "J12",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a human motif prior\""
+  },
+  {
+   "id": "J12",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a STRING PPI file\""
+  },
+  {
+   "id": "J13",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression expr_ovarian.tsv (48 tumours, genes by samples)\"; measured per-sample data table"
+  },
+  {
+   "id": "J13",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_tf_mirna.tsv (TF motifs plus miRNA targets)\" -- covers TF and miRNA priors; main = TF motif"
+  },
+  {
+   "id": "J13",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"ppi_string.tsv\" (STRING)"
+  },
+  {
+   "id": "J13",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"mirna_ids.txt with one miRNA per line\""
+  },
+  {
+   "id": "J14",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"paired RNA ... profiles\"; \"can't remember whether we kept 450 or 4,500 genes\""
+  },
+  {
+   "id": "J14",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"miRNA profiles ... from the same placentas\" (miRNA expression)"
+  },
+  {
+   "id": "J16",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq from 36 mouse livers\""
+  },
+  {
+   "id": "J17",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"somatic mutation calls from 8 pancreatic tumours\"; measured per-sample data table"
+  },
+  {
+   "id": "J17",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a gene-length table\""
+  },
+  {
+   "id": "J17",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a cancer-gene list\""
+  },
+  {
+   "id": "J17",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a KEGG pathway GMT that is not in MSigDB format\""
+  },
+  {
+   "id": "J18",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"somatic mutation calls ... for the same 150 colorectal patients\""
+  },
+  {
+   "id": "J18",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq\""
+  },
+  {
+   "id": "J18",
+   "n": 2,
+   "content": "sample_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"survival data\""
+  },
+  {
+   "id": "J19",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"proteome (250 proteins)\" from 46 kidney tumours"
+  },
+  {
+   "id": "J19",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"phosphoproteome (150 sites)\""
+  },
+  {
+   "id": "J20",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"rna_all.csv (60 samples by 2,000 genes)\"; measured per-sample data table"
+  },
+  {
+   "id": "J20",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"prot_all.csv (the same 60 samples by 500 proteins)\"; measured per-sample data table"
+  },
+  {
+   "id": "J21",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_heart.tsv\"; measured per-sample data table"
+  },
+  {
+   "id": "J21",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_heart.tsv\""
+  },
+  {
+   "id": "J21",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_heart.tsv\""
+  },
+  {
+   "id": "J22",
+   "n": 0,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"gene lengths\""
+  },
+  {
+   "id": "J22",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a cancer-gene list\""
+  },
+  {
+   "id": "J22",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a KEGG GMT\""
+  },
+  {
+   "id": "J23",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"200 TCGA breast tumour RNA-seq profiles\" (consortium)"
+  },
+  {
+   "id": "J24",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"the expression matrix\"; measured per-sample data table"
+  },
+  {
+   "id": "J24",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a prior with TF motifs and miRNA target predictions\" -- covers TF and miRNA priors; main = TF motif"
+  },
+  {
+   "id": "J24",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a PPI file\""
+  },
+  {
+   "id": "J24",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a list of the miRNAs, one per line\""
+  },
+  {
+   "id": "J25",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_tpm.tsv (48 gut biopsies, genes by samples)\""
+  },
+  {
+   "id": "J25",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"batch_design.tsv (numeric batch and site columns)\""
+  },
+  {
+   "id": "J26",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We measured proteomics\""
+  },
+  {
+   "id": "J26",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We measured ... metabolomics\""
+  },
+  {
+   "id": "J27",
+   "n": 0,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"the design matrix is numeric\""
+  },
+  {
+   "id": "J27",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"filtered expression matrix has 600 genes, but the methods draft says 6,000, and I honestly don't know\"; measured per-sample data table"
+  },
+  {
+   "id": "J28",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"18,000 genes measured in 96 colon samples\""
+  },
+  {
+   "id": "J28",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"numeric design matrix (one-hot hospital, batch, age)\""
+  },
+  {
+   "id": "J29",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"rna_layer.csv (same 64 samples, continuous values)\"; measured per-sample data table"
+  },
+  {
+   "id": "J29",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"protein_layer.csv\"; measured per-sample data table"
+  },
+  {
+   "id": "J30",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"30 bulk RNA-seq samples of human skin (log2 CPM ...)\""
+  },
+  {
+   "id": "J31",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"matched liver RNA-seq ... on 70 mice\""
+  },
+  {
+   "id": "J31",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"metabolomics on 70 mice\""
+  },
+  {
+   "id": "J32",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression for 70 tumours\""
+  },
+  {
+   "id": "J32",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif ... files\""
+  },
+  {
+   "id": "J32",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI files\""
+  },
+  {
+   "id": "J33",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"two RNA-seq samples from one patient, tumour and matched normal\""
+  },
+  {
+   "id": "J34",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"old pipeline that made calls_30pts.csv ... unclear ... somatic mutations or germline variants\""
+  },
+  {
+   "id": "J34",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"gene_lengths.csv\""
+  },
+  {
+   "id": "J34",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"cancer_genes.txt\""
+  },
+  {
+   "id": "J34",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"kegg.gmt\""
+  },
+  {
+   "id": "J35",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"Our seven tumours are in mut_7tumours.csv\"; measured per-sample data table"
+  },
+  {
+   "id": "J35",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon_lengths.csv\""
+  },
+  {
+   "id": "J35",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"cancer_genes.txt\""
+  },
+  {
+   "id": "J35",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"c2.cp.v7.gmt\" (MSigDB C2)"
+  },
+  {
+   "id": "J36",
+   "n": 0,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"A collaborator sent the small-RNA list\"; \"nobody can tell me whether those small RNAs are miRNAs or piRNAs\""
+  },
+  {
+   "id": "J36",
+   "n": 1,
+   "content": "mirna_prior",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"collaborator sent ... target predictions\"; small RNAs may be \"miRNAs or piRNAs\""
+  },
+  {
+   "id": "J37",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_lc.tsv (12 lung samples, log-transformed and centered)\"; measured per-sample data table"
+  },
+  {
+   "id": "J38",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"24 bladder cancer RNA-seq samples\""
+  },
+  {
+   "id": "J38",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"batch information\""
+  },
+  {
+   "id": "J39",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a host transcriptome table (log CPM)\" for 58 stool samples"
+  },
+  {
+   "id": "J39",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"metabolite file may hold actual intensities or just 0/1 detected/not-detected calls\""
+  },
+  {
+   "id": "J40",
+   "n": 0,
+   "content": "regulator_gene_network",
+   "made_by": "PANDA",
+   "certainty": "stated",
+   "why": "\"thresholded from my PANDA lung network\""
+  },
+  {
+   "id": "J41",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"The expression is log-transformed and centered, with genes on rows\"; measured per-sample data table"
+  },
+  {
+   "id": "J42",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We profiled a targeted panel of 400 immune genes in 650 blood samples\""
+  },
+  {
+   "id": "J42",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"numeric design matrix with age, sex and batch\""
+  },
+  {
+   "id": "J43",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq expression\" for 120 breast tumours"
+  },
+  {
+   "id": "J43",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-gene motif prior\""
+  },
+  {
+   "id": "J43",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF PPI matrix\""
+  },
+  {
+   "id": "J44",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_pbmc.tsv\"; \"our 19,000-gene matrix\"; measured per-sample data table"
+  },
+  {
+   "id": "J44",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_pbmc.tsv\""
+  },
+  {
+   "id": "J44",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_pbmc.tsv\""
+  },
+  {
+   "id": "J45",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"three bulk RNA-seq samples of mouse retina\""
+  },
+  {
+   "id": "J45",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a mouse motif prior\""
+  },
+  {
+   "id": "J45",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a STRING PPI\""
+  },
+  {
+   "id": "J46",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_tpm_brain.tsv (genes by 40 cortex samples)\"; measured per-sample data table"
+  },
+  {
+   "id": "J47",
+   "n": 0,
+   "content": "coexpression_matrix",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"my precomputed gene-by-gene co-expression matrix\""
+  },
+  {
+   "id": "J47",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"the motif seed\""
+  },
+  {
+   "id": "J47",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"the TF-TF PPI\""
+  },
+  {
+   "id": "J48",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"either two or four libraries; the sequencing core still hasn't told me\""
+  },
+  {
+   "id": "J48",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"the zebrafish motif prior\""
+  },
+  {
+   "id": "J48",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI\""
+  },
+  {
+   "id": "L01",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"counts_pancreas.tsv ... 140 pancreatic tumor samples\""
+  },
+  {
+   "id": "L01",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"covariates.tsv\""
+  },
+  {
+   "id": "L02",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"plasma proteomics (1,100 proteins)\""
+  },
+  {
+   "id": "L02",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"untargeted metabolomics (640 metabolites)\""
+  },
+  {
+   "id": "L03",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_yeast.tsv\"; measured per-sample data table"
+  },
+  {
+   "id": "L03",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"seed_w.tsv\" OTTER seed"
+  },
+  {
+   "id": "L03",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_tf.tsv\""
+  },
+  {
+   "id": "L04",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_twins.tsv, which holds two samples, one from each twin\""
+  },
+  {
+   "id": "L04",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs.tsv\""
+  },
+  {
+   "id": "L04",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.tsv\""
+  },
+  {
+   "id": "L05",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"exome variant calls\"; \"don't know if these are tumor somatic calls or germline variants\""
+  },
+  {
+   "id": "L06",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_brca.tsv ... for 1,100 tumors\""
+  },
+  {
+   "id": "L06",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs.tsv\""
+  },
+  {
+   "id": "L06",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.tsv\""
+  },
+  {
+   "id": "L07",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"came from a collaborator as 'normalized values' ... can't tell whether it was log-transformed or centered\""
+  },
+  {
+   "id": "L08",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq\" from 210 tumors"
+  },
+  {
+   "id": "L08",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"DNA methylation\""
+  },
+  {
+   "id": "L08",
+   "n": 2,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"reverse-phase protein array data\""
+  },
+  {
+   "id": "L09",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"rna_top400.tsv (48 samples by the 400 most variable transcripts)\"; measured per-sample data table"
+  },
+  {
+   "id": "L09",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"meth_top150.tsv (... 150 CpG probes)\"; measured per-sample data table"
+  },
+  {
+   "id": "L10",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"matched RNA-seq (2,000 genes)\""
+  },
+  {
+   "id": "L10",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RPPA protein data (220 antibodies)\""
+  },
+  {
+   "id": "L11",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"gene-by-sample matrix\"; \"Either two or three pigs made it into the dataset\""
+  },
+  {
+   "id": "L12",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We measured transcriptomics\""
+  },
+  {
+   "id": "L12",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We measured ... lipidomics\""
+  },
+  {
+   "id": "L13",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"rna_2000.csv: ... 2,000 transcripts\"; measured per-sample data table"
+  },
+  {
+   "id": "L13",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"prot_500.csv: ... 500 proteins\"; measured per-sample data table"
+  },
+  {
+   "id": "L14",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"serum proteomics ... from the 2023 visit\""
+  },
+  {
+   "id": "L14",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"stool metabolomics\"; \"may be a different subset of patients\""
+  },
+  {
+   "id": "L15",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"12 bulk RNA-seq samples ... The matrix is log2(CPM+1)\""
+  },
+  {
+   "id": "L16",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"ov_mutations.csv ... for 300 ovarian tumors\""
+  },
+  {
+   "id": "L16",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon_sizes.csv\""
+  },
+  {
+   "id": "L16",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"cancer_genes.txt\""
+  },
+  {
+   "id": "L16",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"kegg.gmt\""
+  },
+  {
+   "id": "L16",
+   "n": 4,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"ov_expr.tsv for 300 ovarian tumors\""
+  },
+  {
+   "id": "L17",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"somatic mutation calls, a samples-by-genes 0/1 matrix\""
+  },
+  {
+   "id": "L17",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a human motif prior\""
+  },
+  {
+   "id": "L17",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF protein-interaction network\""
+  },
+  {
+   "id": "L18",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"transcripts.tsv\"; \"either the top 300 variable genes or all 1,500 ... no idea which version she uploaded\""
+  },
+  {
+   "id": "L18",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"metabolites.tsv (100 metabolites)\""
+  },
+  {
+   "id": "L19",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We just received matched RNA-seq\""
+  },
+  {
+   "id": "L19",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"methylation array data\""
+  },
+  {
+   "id": "L20",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_ucec.tsv (genes by samples)\" for 25 tumors"
+  },
+  {
+   "id": "L20",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_prior.tsv (TF and miRNA target edges ...)\" -- covers TF and miRNA priors; main = TF motif"
+  },
+  {
+   "id": "L20",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_prior.tsv\""
+  },
+  {
+   "id": "L20",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"mirna_ids.txt with one miRNA ID per line\""
+  },
+  {
+   "id": "L21",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"44 psoriasis skin biopsies (expression ...)\""
+  },
+  {
+   "id": "L21",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif prior\""
+  },
+  {
+   "id": "L21",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI\""
+  },
+  {
+   "id": "L22",
+   "n": 0,
+   "content": "not_stated",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"my student made\"; \"not sure whether it's the TF-to-gene network or the gene-gene correlation edges\""
+  },
+  {
+   "id": "L24",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq from 90 colorectal tumors and their matched normal mucosa\""
+  },
+  {
+   "id": "L25",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We profiled mRNA\""
+  },
+  {
+   "id": "L25",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We profiled ... small RNA\" (small-RNA expression)"
+  },
+  {
+   "id": "L25",
+   "n": 2,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"the usual motif ... priors\""
+  },
+  {
+   "id": "L25",
+   "n": 3,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI ... priors\""
+  },
+  {
+   "id": "L25",
+   "n": 4,
+   "content": "mirna_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"miRNA priors\""
+  },
+  {
+   "id": "L26",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a gene-by-sample RNA-seq matrix\" for 74 tumors"
+  },
+  {
+   "id": "L26",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a human TF motif prior\""
+  },
+  {
+   "id": "L26",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a STRING-derived TF PPI file\""
+  },
+  {
+   "id": "L27",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"gtex_liver_expr.txt (genes by 226 samples)\" (GTEx)"
+  },
+  {
+   "id": "L27",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs_tf.txt\""
+  },
+  {
+   "id": "L27",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"ppi_hs_string.txt\" (STRING)"
+  },
+  {
+   "id": "L28",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"16 log-transformed, gene-centered expression profiles from sorted human microglia\""
+  },
+  {
+   "id": "L30",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"somatic mutation counts (samples by genes)\" for organoids"
+  },
+  {
+   "id": "L30",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"an exon-length CSV\""
+  },
+  {
+   "id": "L30",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a tab-delimited cancer-gene list\""
+  },
+  {
+   "id": "L30",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"the MSigDB KEGG GMT\""
+  },
+  {
+   "id": "L31",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"Our bulk RNA-seq covers 18,500 genes in 240 lung biopsies\""
+  },
+  {
+   "id": "L31",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"The design table has one row per sample ID, batch coded 0/1 and pack-years\""
+  },
+  {
+   "id": "L32",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"95 glioblastoma RNA-seq samples\""
+  },
+  {
+   "id": "L32",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a motif seed\""
+  },
+  {
+   "id": "L32",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a PPI file\""
+  },
+  {
+   "id": "L33",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"lung_expr.tsv (240 samples, genes as rows)\""
+  },
+  {
+   "id": "L34",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"The expression matrix\" for 58 tonsil B-cell samples"
+  },
+  {
+   "id": "L34",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a motif prior\""
+  },
+  {
+   "id": "L34",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF PPI matrix\""
+  },
+  {
+   "id": "L35",
+   "n": 0,
+   "content": "regulator_gene_network",
+   "made_by": "PANDA",
+   "certainty": "stated",
+   "why": "\"lung_panda_edges_thresholded.tsv ... sources are TFs and targets are genes\""
+  },
+  {
+   "id": "L37",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"my 50 GTEx liver samples ... the expression matrix\""
+  },
+  {
+   "id": "L37",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a motif prior\""
+  },
+  {
+   "id": "L37",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a PPI network\""
+  },
+  {
+   "id": "L38",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"Expression is already log2-transformed ...\" for 30 mouse retina samples"
+  },
+  {
+   "id": "L39",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"The mutation file holds either 6 or 10 tumors; I can't remember\"; measured per-sample data table"
+  },
+  {
+   "id": "L39",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon_len.csv\""
+  },
+  {
+   "id": "L39",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"cancer_genes.txt\""
+  },
+  {
+   "id": "L39",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"c2.cp.kegg.gmt\" (MSigDB)"
+  },
+  {
+   "id": "L40",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"targeted panel: I think around 400 genes, but ... might be fewer than 350, and I haven't looked\""
+  },
+  {
+   "id": "L40",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"design.tsv (sample IDs plus numeric batch and age)\""
+  },
+  {
+   "id": "L41",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"bulk RNA-seq from 30 sorghum leaves\""
+  },
+  {
+   "id": "L41",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a motif prior\""
+  },
+  {
+   "id": "L41",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF PPI matrix\""
+  },
+  {
+   "id": "L42",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq expression (TPM)\""
+  },
+  {
+   "id": "L43",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"rhesus macaque lymph node RNA-seq\"; \"don't know whether two or four of the libraries passed QC\""
+  },
+  {
+   "id": "L43",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"The motif prior\""
+  },
+  {
+   "id": "L43",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI\""
+  },
+  {
+   "id": "L44",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a NanoString panel of 150 genes measured in 400 patients\""
+  },
+  {
+   "id": "L44",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"design_panel.tsv ... numeric columns for site and age\""
+  },
+  {
+   "id": "L46",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"maize root expression from 32 samples\""
+  },
+  {
+   "id": "L46",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-by-gene seed prior\""
+  },
+  {
+   "id": "L46",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF interaction edge list\""
+  },
+  {
+   "id": "L47",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"whole-exome somatic mutation calls for 200 melanomas\""
+  },
+  {
+   "id": "L48",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"brain_rnaseq_counts.tsv (genes as rows, 96 samples)\""
+  },
+  {
+   "id": "M01",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"rna_85.csv (85 samples x 300 genes)\"; measured per-sample data table"
+  },
+  {
+   "id": "M01",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"cpg_85.csv\"; \"can't remember whether ... filtered 300-probe version or the unfiltered 5,000-probe export\"; measured per-sample data table"
+  },
+  {
+   "id": "M02",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"somatic mutation calls ... for the same 150 endometrial tumours\""
+  },
+  {
+   "id": "M02",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq\""
+  },
+  {
+   "id": "M03",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"zebrafish fin-regeneration RNA-seq\"; \"one, possibly two, as failed\""
+  },
+  {
+   "id": "M04",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"counts_synovium_140.tsv\" for 140 patients"
+  },
+  {
+   "id": "M04",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"covariates_140.csv (batch, age, sex and disease activity score)\""
+  },
+  {
+   "id": "M05",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"Expression\" for 36 islet samples"
+  },
+  {
+   "id": "M05",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif prior\""
+  },
+  {
+   "id": "M05",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI\""
+  },
+  {
+   "id": "M06",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"a mutation matrix our core facility produced\"; \"don't know whether their calls are somatic ... or germline\""
+  },
+  {
+   "id": "M07",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a 400-gene targeted panel across 520 samples\""
+  },
+  {
+   "id": "M07",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"design_520.csv has an intercept plus smoker (0/1) and batch (0/1)\""
+  },
+  {
+   "id": "M08",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"2,500 CpG methylation features ... measured on the same donors\""
+  },
+  {
+   "id": "M08",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"1,500 transcripts ... measured\""
+  },
+  {
+   "id": "M09",
+   "n": 0,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a numeric design table keyed by sample ID\""
+  },
+  {
+   "id": "M09",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"the expression table my analyst exported\"; \"don't know whether ... full 19,000-gene transcriptome or the 500-gene filtered panel\""
+  },
+  {
+   "id": "M10",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq ... on the same 50 mice\""
+  },
+  {
+   "id": "M10",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"ATAC-seq\""
+  },
+  {
+   "id": "M10",
+   "n": 2,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"proteomics\""
+  },
+  {
+   "id": "M10",
+   "n": 3,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"metabolomics\""
+  },
+  {
+   "id": "M11",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"liver fibrosis RNA-seq ... 88 patients\""
+  },
+  {
+   "id": "M11",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"fibrosis stage recorded for each\""
+  },
+  {
+   "id": "M12",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"liver_log2_centered.tsv (gene rows, 14 donor columns, log2-transformed)\"; measured per-sample data table"
+  },
+  {
+   "id": "M13",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"paired proteomics ... from the same 48 ovarian tumours\""
+  },
+  {
+   "id": "M13",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"phosphoproteomics tables\""
+  },
+  {
+   "id": "M14",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"pilot_expr.tsv with exactly three mouse retina samples\""
+  },
+  {
+   "id": "M14",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_mm10.txt\""
+  },
+  {
+   "id": "M14",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_mm10.txt\""
+  },
+  {
+   "id": "M15",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"pbmc_bulk_60donors.tsv\" -- bulk PBMC data from 60 donors; measured per-sample data table"
+  },
+  {
+   "id": "M16",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"The gene-by-sample table is already log2-transformed\" for 5 biopsies"
+  },
+  {
+   "id": "M17",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"vst_counts.tsv (18,000 genes by 210 samples)\"; measured per-sample data table"
+  },
+  {
+   "id": "M17",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"design.csv ... intercept, disease status (0/1) and two 0/1 dummy columns\""
+  },
+  {
+   "id": "M18",
+   "n": 0,
+   "content": "regulator_gene_network",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a control and a disease TF-gene network written as one edge table\""
+  },
+  {
+   "id": "M19",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a somatic mutation matrix (samples by genes, non-negative mutation counts)\"; measured per-sample data table"
+  },
+  {
+   "id": "M19",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon lengths\""
+  },
+  {
+   "id": "M19",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a cancer-gene list\""
+  },
+  {
+   "id": "M19",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"an MSigDB-format GMT\""
+  },
+  {
+   "id": "M20",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"pre-treatment RNA-seq\" from 140 patients"
+  },
+  {
+   "id": "M20",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"responder labels\""
+  },
+  {
+   "id": "M21",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"kidney_expr.tsv (gene-by-sample, 52 biopsies)\""
+  },
+  {
+   "id": "M21",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"prior_tf_mir.txt (TF motif plus miRNA-target edges)\" -- covers TF and miRNA priors; main = TF motif"
+  },
+  {
+   "id": "M21",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_tf.txt\""
+  },
+  {
+   "id": "M21",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"mirna_ids.txt, which lists one miRNA per line\""
+  },
+  {
+   "id": "M22",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"collaborator's note says ... log2-transformed and gene-centered, but the file header calls it raw_TPM\""
+  },
+  {
+   "id": "M23",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"metab_110.csv (110 samples x 250 metabolites)\"; measured per-sample data table"
+  },
+  {
+   "id": "M23",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"rna_110.csv (... 350 genes)\"; measured per-sample data table"
+  },
+  {
+   "id": "M24",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"gene-by-sample expression\" for 80 breast tumours"
+  },
+  {
+   "id": "M24",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-by-gene motif prior\""
+  },
+  {
+   "id": "M24",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF protein interaction matrix\""
+  },
+  {
+   "id": "M25",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"mut_pilot.csv (6 tumours x 900 genes, non-negative counts)\"; measured per-sample data table"
+  },
+  {
+   "id": "M25",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon_sizes.csv\""
+  },
+  {
+   "id": "M25",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"cancer_genes.txt\""
+  },
+  {
+   "id": "M25",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"h.all.v2023.gmt\" (MSigDB hallmark)"
+  },
+  {
+   "id": "M26",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"plasma proteomics\"; \"may come from a different study cohort ... can't confirm\""
+  },
+  {
+   "id": "M26",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"whole-blood RNA-seq for our 40 participants\""
+  },
+  {
+   "id": "M27",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"bulk RNA-seq\" for 30 biopsies"
+  },
+  {
+   "id": "M27",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif ... files left over from a previous project\""
+  },
+  {
+   "id": "M27",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI files left over from a previous project\""
+  },
+  {
+   "id": "M28",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"primary tumour RNA-seq ... for 200 ... patients\""
+  },
+  {
+   "id": "M28",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"overall survival\""
+  },
+  {
+   "id": "M28",
+   "n": 2,
+   "content": "tf_gene_prior",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"we downloaded human motif ... priors\""
+  },
+  {
+   "id": "M28",
+   "n": 3,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"we downloaded ... PPI priors\""
+  },
+  {
+   "id": "M29",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We profiled 70 patients with RNA-seq\""
+  },
+  {
+   "id": "M29",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"DNA methylation arrays\""
+  },
+  {
+   "id": "M29",
+   "n": 2,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"plasma metabolomics\""
+  },
+  {
+   "id": "M30",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"120 AML bone-marrow RNA-seq samples\""
+  },
+  {
+   "id": "M30",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif ... priors\""
+  },
+  {
+   "id": "M30",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI priors\""
+  },
+  {
+   "id": "M31",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"64 mouse liver RNA-seq samples\""
+  },
+  {
+   "id": "M31",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"The motif seed\""
+  },
+  {
+   "id": "M31",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"the TF-TF PPI edge list\""
+  },
+  {
+   "id": "M32",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"matched DNA methylation ... from 60 colon biopsies\""
+  },
+  {
+   "id": "M32",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq from 60 colon biopsies\""
+  },
+  {
+   "id": "M33",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq at six time points from four donors\""
+  },
+  {
+   "id": "M33",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"human motif ... priors\""
+  },
+  {
+   "id": "M33",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI priors\""
+  },
+  {
+   "id": "M34",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"the expression matrix\" for 40 lupus patients"
+  },
+  {
+   "id": "M34",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif seed\""
+  },
+  {
+   "id": "M34",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI file\""
+  },
+  {
+   "id": "M35",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"bulk RNA-seq\" for 85 tumours"
+  },
+  {
+   "id": "M35",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif ... priors\""
+  },
+  {
+   "id": "M35",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI ... priors\""
+  },
+  {
+   "id": "M35",
+   "n": 3,
+   "content": "mirna_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"miRNA-target priors\""
+  },
+  {
+   "id": "M36",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"islet_expr.tsv (48 columns)\"; \"student says ... individual FACS-sorted beta cells, while the sample sheet lists them as 48 bulk islet preparations\""
+  },
+  {
+   "id": "M36",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"prior_tf_mir.txt\" -- TF+miRNA prior by name; main = TF motif"
+  },
+  {
+   "id": "M36",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi.txt\""
+  },
+  {
+   "id": "M36",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"mir_ids.txt\" (miRNA ID list)"
+  },
+  {
+   "id": "M37",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"leaf RNA-seq at four time points with six plants each\""
+  },
+  {
+   "id": "M38",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"mut_hnscc.csv\"; \"either 8 or 15 tumours, and I'm not sure which version\"; measured per-sample data table"
+  },
+  {
+   "id": "M38",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon_size.csv\""
+  },
+  {
+   "id": "M38",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"cancer_genes.txt\""
+  },
+  {
+   "id": "M38",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"kegg.gmt\""
+  },
+  {
+   "id": "M39",
+   "n": 0,
+   "content": "not_stated",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"30 ALS and 30 control spinal cord samples\"; data kind not named"
+  },
+  {
+   "id": "M40",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"rna_layer.tsv (54 matched samples)\"; measured per-sample data table"
+  },
+  {
+   "id": "M40",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"mirna_layer.tsv\" (miRNA expression layer); measured per-sample data table"
+  },
+  {
+   "id": "M41",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"bulk RNA-seq for all 90\""
+  },
+  {
+   "id": "M41",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a combined TF motif and miRNA-target prior\" -- covers both; main = TF motif"
+  },
+  {
+   "id": "M41",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF interaction file\""
+  },
+  {
+   "id": "M41",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a one-per-line list of the miRNAs\""
+  },
+  {
+   "id": "M42",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_brca_160.tsv\"; measured per-sample data table"
+  },
+  {
+   "id": "M42",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hg38.txt\""
+  },
+  {
+   "id": "M42",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"ppi_string_hs.txt\" (STRING)"
+  },
+  {
+   "id": "M43",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"left-ventricle RNA-seq from 24 failing and 24 non-failing hearts\""
+  },
+  {
+   "id": "M44",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_heart.tsv\"; measured per-sample data table"
+  },
+  {
+   "id": "M44",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_seed.tsv\""
+  },
+  {
+   "id": "M44",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_tf.tsv\""
+  },
+  {
+   "id": "M45",
+   "n": 0,
+   "content": "regulator_gene_network",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a cohort-wide TF-to-gene network saved as a source, target, weight edge list\""
+  },
+  {
+   "id": "M46",
+   "n": 0,
+   "content": "coexpression_matrix",
+   "made_by": "COBRA",
+   "certainty": "stated",
+   "why": "\"COBRA already gave us adjusted_coexpression.tsv\""
+  },
+  {
+   "id": "M46",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"The motif ... priors ... we used before\""
+  },
+  {
+   "id": "M46",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI priors\""
+  },
+  {
+   "id": "M47",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"Expression\" for 12 hypoxia and 12 normoxia HUVEC samples"
+  },
+  {
+   "id": "M47",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif and PPI data\" -- quote covers motif and PPI; main = motif"
+  },
+  {
+   "id": "M47",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI data are prepared\""
+  },
+  {
+   "id": "M48",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"kidney_expr_64.tsv ... for 64 biopsies\""
+  },
+  {
+   "id": "M48",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"tf_motif.txt\""
+  },
+  {
+   "id": "M48",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"tf_ppi.txt\""
+  },
+  {
+   "id": "M48",
+   "n": 3,
+   "content": "mirna_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"mirna_prior.txt\""
+  },
+  {
+   "id": "M48",
+   "n": 4,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"mirna_ids.txt\""
+  },
+  {
+   "id": "Q01",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"CSF proteomics on 64 people\""
+  },
+  {
+   "id": "Q01",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"blood RNA-seq\"; \"don't know whether the RNA-seq was done on those same 64 participants\""
+  },
+  {
+   "id": "Q02",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_lung_tpm.tsv (genes in rows, 75 samples)\"; measured per-sample data table"
+  },
+  {
+   "id": "Q02",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs_tf.txt\""
+  },
+  {
+   "id": "Q02",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"ppi_string_hs.txt\" (STRING)"
+  },
+  {
+   "id": "Q03",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"normalized RNA-seq\" for 40 biopsies"
+  },
+  {
+   "id": "Q03",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"age and ejection fraction for each patient\""
+  },
+  {
+   "id": "Q04",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"uveal_mutations.csv (12 tumors)\"; measured per-sample data table"
+  },
+  {
+   "id": "Q04",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon_lengths.csv\""
+  },
+  {
+   "id": "Q04",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"cancer_genes.txt\""
+  },
+  {
+   "id": "Q04",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"c2_pathways.gmt\""
+  },
+  {
+   "id": "Q05",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"the RNA-seq matrix\" for 94 tumors"
+  },
+  {
+   "id": "Q05",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"prior file with TF motif edges plus TargetScan miRNA-target pairs\" -- covers both; main = TF motif"
+  },
+  {
+   "id": "Q05",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"a STRING PPI\""
+  },
+  {
+   "id": "Q05",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a one-per-line list of the miRNAs\""
+  },
+  {
+   "id": "Q06",
+   "n": 0,
+   "content": "regulator_gene_network",
+   "made_by": "PANDA",
+   "certainty": "unsure",
+   "why": "\"that PANDA result\"; \"can't remember whether ... full TF-by-gene matrix or ... edge list\""
+  },
+  {
+   "id": "Q07",
+   "n": 0,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"maize TF motif ... files\""
+  },
+  {
+   "id": "Q07",
+   "n": 1,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI files\""
+  },
+  {
+   "id": "Q08",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We just finished RNA-seq on 64 Arabidopsis rosettes\""
+  },
+  {
+   "id": "Q08",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"an Arabidopsis TF-binding prior\""
+  },
+  {
+   "id": "Q08",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a protein interaction list\""
+  },
+  {
+   "id": "Q09",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"18 placenta samples (already log2-transformed and mean-centered per gene)\""
+  },
+  {
+   "id": "Q10",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"For 48 kidney transplant biopsies I have expression\""
+  },
+  {
+   "id": "Q10",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-gene motif prior\""
+  },
+  {
+   "id": "Q10",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-TF PPI matrix\""
+  },
+  {
+   "id": "Q11",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"proteome_layer.csv from our 48 sepsis patients\""
+  },
+  {
+   "id": "Q11",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"transcriptome_layer.csv from our 48 sepsis patients\""
+  },
+  {
+   "id": "Q12",
+   "n": 0,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"smoking (coded 0/1) and age\""
+  },
+  {
+   "id": "Q12",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"our 400 airway brushings\"; \"gene co-expression ... 150 inflammation genes on our panel or the 2,000 most variable genes\" (undecided, not unsure)"
+  },
+  {
+   "id": "Q13",
+   "n": 0,
+   "content": "regulator_gene_network",
+   "made_by": "PANDA",
+   "certainty": "stated",
+   "why": "\"panda_psoriasis_edges.csv (... TFs in source, genes in target)\""
+  },
+  {
+   "id": "Q14",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"plasma metabolites (100) ... measured\""
+  },
+  {
+   "id": "Q14",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"proteins ... measured\"; count undecided, not unsure"
+  },
+  {
+   "id": "Q15",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"the somatic mutation matrix (samples by genes, 0/1 calls)\""
+  },
+  {
+   "id": "Q15",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"standard human motif ... priors\""
+  },
+  {
+   "id": "Q15",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"standard ... PPI priors\""
+  },
+  {
+   "id": "Q16",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq from 120 prostate tumors\""
+  },
+  {
+   "id": "Q16",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"human motif ... files\""
+  },
+  {
+   "id": "Q16",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI files\""
+  },
+  {
+   "id": "Q17",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"core facility says ... mean-centered ... don't know whether the values were log-transformed ... or are just normalized counts\""
+  },
+  {
+   "id": "Q18",
+   "n": 0,
+   "content": "regulator_gene_network",
+   "made_by": "DRAGON",
+   "certainty": "stated",
+   "why": "\"the edge list DRAGON produced ... (microbial abundances against metabolites)\" -- two-sided edges"
+  },
+  {
+   "id": "Q19",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"180 colon tumors were sequenced ... 15,000 genes per sample\""
+  },
+  {
+   "id": "Q19",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"numeric design table (center indicator columns and age)\""
+  },
+  {
+   "id": "Q20",
+   "n": 0,
+   "content": "regulator_gene_network",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a TF-to-gene network edge list from an earlier macaque study\""
+  },
+  {
+   "id": "Q20",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression data for 30 macaque tissues\""
+  },
+  {
+   "id": "Q21",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"plasma proteomics (412 proteins)\""
+  },
+  {
+   "id": "Q21",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"metabolomics (230 metabolites)\""
+  },
+  {
+   "id": "Q22",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"stomach_expr.tsv ... our 77 gastric cancer samples\""
+  },
+  {
+   "id": "Q22",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"tf_mirna_prior.tsv\" -- TF+miRNA prior by name; main = TF"
+  },
+  {
+   "id": "Q22",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi.tsv\""
+  },
+  {
+   "id": "Q22",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"mirna_ids.txt\" (miRNA ID list)"
+  },
+  {
+   "id": "Q23",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"their blood RNA-seq\""
+  },
+  {
+   "id": "Q23",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"human motif ... priors\""
+  },
+  {
+   "id": "Q23",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI priors\""
+  },
+  {
+   "id": "Q24",
+   "n": 0,
+   "content": "not_stated",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"my two HepG2 samples, one control and one HNF4A knockdown\"; data kind not named"
+  },
+  {
+   "id": "Q24",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"human motif ... priors we already have\""
+  },
+  {
+   "id": "Q24",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI priors\""
+  },
+  {
+   "id": "Q25",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_alz.tsv\"; measured per-sample data table"
+  },
+  {
+   "id": "Q25",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"regulator_prior.tsv (TF motif edges plus miRNA-target pairs)\" -- covers both; main = TF motif"
+  },
+  {
+   "id": "Q25",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.tsv\""
+  },
+  {
+   "id": "Q25",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"pulled the miRNA list straight from miRBase, so I don't know whether every miRNA ... shows up ... in the prior\""
+  },
+  {
+   "id": "Q26",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"somatic mutation counts for 210 bladder tumors\""
+  },
+  {
+   "id": "Q26",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a gene exon-length table\""
+  },
+  {
+   "id": "Q26",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"our list of cancer genes\""
+  },
+  {
+   "id": "Q26",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"an MSigDB pathway GMT\""
+  },
+  {
+   "id": "Q27",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"2,000 transcripts ... measured\""
+  },
+  {
+   "id": "Q27",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"1,500 proteins measured\""
+  },
+  {
+   "id": "Q28",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"matched miRNA ... profiles from 60 ... patients\" (miRNA expression)"
+  },
+  {
+   "id": "Q28",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"mRNA profiles\""
+  },
+  {
+   "id": "Q29",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"skcm_expr.tsv (genes by samples with a header, 120 melanomas)\""
+  },
+  {
+   "id": "Q29",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_prior.tsv\""
+  },
+  {
+   "id": "Q29",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"tf_ppi.tsv\""
+  },
+  {
+   "id": "Q30",
+   "n": 0,
+   "content": "not_stated",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"our rare-disease fibroblast study\"; \"don't know if we'll have two usable samples or three\""
+  },
+  {
+   "id": "Q31",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"cytokine_panel.tsv (48 genes measured in 300 donors)\""
+  },
+  {
+   "id": "Q31",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"design_donors.tsv, which has age and sex as numeric columns\""
+  },
+  {
+   "id": "Q32",
+   "n": 0,
+   "content": "somatic_mutation",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"somatic mutation calls ... for the same 150 medulloblastomas\""
+  },
+  {
+   "id": "Q32",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq\""
+  },
+  {
+   "id": "Q33",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"transcriptomics ... from the same 120 blood donors\""
+  },
+  {
+   "id": "Q33",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"proteomics\""
+  },
+  {
+   "id": "Q33",
+   "n": 2,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"metabolomics\""
+  },
+  {
+   "id": "Q34",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"The expression matrix is genes by samples\" for 60 hippocampus samples"
+  },
+  {
+   "id": "Q35",
+   "n": 0,
+   "content": "not_stated",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"not sure whether the values ... are somatic mutation counts or copy-number log2 ratios\""
+  },
+  {
+   "id": "Q35",
+   "n": 1,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"exon lengths\""
+  },
+  {
+   "id": "Q35",
+   "n": 2,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a cancer gene list\""
+  },
+  {
+   "id": "Q35",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a GMT file\""
+  },
+  {
+   "id": "Q36",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expr_hnsc.tsv (520 head and neck tumors)\""
+  },
+  {
+   "id": "Q36",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs.tsv\""
+  },
+  {
+   "id": "Q36",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.tsv\""
+  },
+  {
+   "id": "Q37",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"glioma_expr.tsv (52 patients)\""
+  },
+  {
+   "id": "Q37",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"tf_mirna_prior.tsv\" -- TF+miRNA prior; main = TF"
+  },
+  {
+   "id": "Q37",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.tsv\""
+  },
+  {
+   "id": "Q37",
+   "n": 3,
+   "content": "gene_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"mirna_ids.txt (the prior's miRNAs, one per line)\""
+  },
+  {
+   "id": "Q38",
+   "n": 0,
+   "content": "not_stated",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"36 pancreatic islet samples\"; data kind not named"
+  },
+  {
+   "id": "Q39",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We have RNA-seq\" for 85 lesions"
+  },
+  {
+   "id": "Q39",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"TF motif ... priors\""
+  },
+  {
+   "id": "Q39",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI priors\""
+  },
+  {
+   "id": "Q39",
+   "n": 3,
+   "content": "mirna_prior",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"TargetScan predictions for our small-RNA panel\""
+  },
+  {
+   "id": "Q40",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"mouse_retina_counts.tsv\""
+  },
+  {
+   "id": "Q40",
+   "n": 1,
+   "content": "sample_annotation",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"covariates_retina.tsv (age, sex and strain coded as numbers)\""
+  },
+  {
+   "id": "Q41",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"pdac_expr.tsv (88 patients)\""
+  },
+  {
+   "id": "Q41",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_pdac.tsv\""
+  },
+  {
+   "id": "Q41",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"tf_ppi.tsv\""
+  },
+  {
+   "id": "Q42",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"14 muscle biopsies (log2-transformed, mean-centered per gene)\""
+  },
+  {
+   "id": "Q43",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"aorta_expr.tsv (45 samples, header included)\""
+  },
+  {
+   "id": "Q43",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_aorta.tsv\""
+  },
+  {
+   "id": "Q43",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "outside",
+   "certainty": "unsure",
+   "why": "\"I downloaded the PPI separately\"; \"not sure whether it covers exactly the same TFs\""
+  },
+  {
+   "id": "Q44",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"RNA-seq from 26 thyroid nodules\""
+  },
+  {
+   "id": "Q44",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"the usual human motif ... files\""
+  },
+  {
+   "id": "Q44",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"PPI files\""
+  },
+  {
+   "id": "Q45",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"We measured DNA methylation at 300 CpG sites (M-values)\""
+  },
+  {
+   "id": "Q45",
+   "n": 1,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"expression of 400 genes\""
+  },
+  {
+   "id": "Q46",
+   "n": 0,
+   "content": "coexpression_matrix",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"a hospital-adjusted gene-by-gene co-expression matrix\"; producer not named"
+  },
+  {
+   "id": "Q47",
+   "n": 0,
+   "content": "expression",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"ra_synovium_expr.tsv (34 patients)\""
+  },
+  {
+   "id": "Q47",
+   "n": 1,
+   "content": "tf_gene_prior",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"motif_hs.tsv\""
+  },
+  {
+   "id": "Q47",
+   "n": 2,
+   "content": "protein_interactions",
+   "made_by": "not_stated",
+   "certainty": "stated",
+   "why": "\"ppi_hs.tsv\""
+  },
+  {
+   "id": "Q48",
+   "n": 0,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"Our lab collected plasma proteomics\""
+  },
+  {
+   "id": "Q48",
+   "n": 1,
+   "content": "other_omics",
+   "made_by": "outside",
+   "certainty": "stated",
+   "why": "\"lipidomics\""
+  }
+ ]
+}
