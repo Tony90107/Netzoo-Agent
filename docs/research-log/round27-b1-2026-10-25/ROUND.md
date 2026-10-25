@@ -39,7 +39,9 @@
 **兩個 arm：**
 - 舊 arm：現行程式，不加連結。
 - 新 arm：連結經過第 1 節的檢查後併入，沒併入的連結在 DO 時變成提問。
-- 兩個 arm 都載入同一批 R22-B 設定讀取快取：`input-constraints-2026-10-21/settings-reads.json`，以及 2a 補問的 `r22b-reads.json`（從 `f7da8cbe` 複製）。
+- 兩個 arm 都載入同一批 R22-B 設定讀取快取：`input-constraints-2026-10-21/settings-reads.json`。
+  - 宣告修正（寫程式之前，`654e22b0` 之後）：原本還要載入 2a 補問的 `r22b-reads.json`，但那份檔案從未 commit，磁碟上也找不到，所以不用。
+  - 快取裡沒有的 R22-B 讀取，兩個 arm 都當成沒有。
 - 兩個 arm 都套用 P2 的金標重標。
 
 **欄位計分：** 用 2a 的 `score` 與 `field-gold-2026-10-22/linking.py`。
