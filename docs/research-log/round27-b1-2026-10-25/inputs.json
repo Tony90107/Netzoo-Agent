@@ -1,0 +1,1163 @@
+[
+ {
+  "task": "Queue a LIONESS-DRAGON job on rna_85.csv (85 samples x 300 genes) and cpg_85.csv for the same 85 samples, aggregate matrix to ldr/all.tsv and the per-sample table to ldr/edges.tsv. I can't remember whether cpg_85.csv is the filtered 300-probe version or the unfiltered 5,000-probe export.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "SAMBAR pathway-based subtypes are what we want for 210 tumours, from a mutation matrix our core facility produced. I honestly don't know whether their calls are somatic (tumour versus matched normal) or germline variants; the README doesn't say and the analyst has left.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "For every one of our 60 donors I want that donor's own partial-correlation network linking 2,500 CpG methylation features with 1,500 transcripts, from two complete tables measured on the same donors. Please keep all 4,000 features; we explicitly do not want any filtering.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Please execute BONOBO on liver_log2_centered.tsv immediately (gene rows, 14 donor columns, log2-transformed and gene-centered). Sparsify at a 0.05 confidence level and fix delta at 0.4 rather than estimating it. HDF5 output into bonobo_liver/.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Our paired proteomics and phosphoproteomics tables from the same 48 ovarian tumours should go through DRAGON. Rows are tumour IDs, columns are proteins or phosphosites, and there are no missing values. I want manual shrinkage, lambda1 = 0 for the proteome layer and lambda2 = 1 for the phosphoproteome layer, with the edge_list output. One network for the whole cohort is what I'm after.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Go ahead and start a run on pbmc_bulk_60donors.tsv and write the outputs to out/pbmc/. I just want to see something network-like before Thursday's lab meeting; there's no particular question yet.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Can you set up BONOBO for 5 endometrial biopsies? The gene-by-sample table is already log2-transformed and mean-centered per gene. I need one co-expression network per biopsy plus a p-value for every edge, so turn on sparsify and save_pvals to keep the full matrices; I'll threshold at 0.01 myself afterwards. CSV files, please.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "We want SAMBAR subtypes for 120 lung adenocarcinomas from a somatic mutation matrix (samples by genes, non-negative mutation counts), with exon lengths, a cancer-gene list and an MSigDB-format GMT. Try between 3 and 8 subtypes, use average linkage, and switch off the per-patient mutation-burden normalization. The distance can stay at its default.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "BONOBO is the plan for 7 placenta samples, one co-expression network per sample. Our collaborator's note says the matrix is log2-transformed and gene-centered, but the file header calls it raw_TPM, and I have no way to tell which statement is true.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Launch LIONESS-DRAGON with metab_110.csv (110 samples x 250 metabolites) and rna_110.csv (the same 110 sample IDs x 350 genes); both are complete numeric tables with no constant columns. Let it estimate both shrinkage values itself. Aggregate matrix to ld/all_samples.tsv, per-sample edge table to ld/per_sample.tsv. Leave everything else at defaults and start it now.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Set SAMBAR going on mut_pilot.csv (6 tumours x 900 genes, non-negative counts), exon_sizes.csv, cancer_genes.txt and h.all.v2023.gmt, trying anywhere from 2 to 8 subtypes. Results go to sambar_pilot/ and the job can begin straight away.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Please use DRAGON to relate plasma proteomics to whole-blood RNA-seq for our 40 participants. Both tables label rows P01 to P40, but I've just learned the proteomics may come from a different study cohort that reused the same participant codes, and I can't confirm whether they are the same people.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "We have primary tumour RNA-seq and overall survival for 200 pancreatic cancer patients, and we downloaded human motif and PPI priors that we have not used yet. What kind of network analysis would make sense here?",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "We need an OTTER network for our 64 mouse liver RNA-seq samples, pooled into one cohort-wide TF-to-gene network. The motif seed and the TF-TF PPI edge list use the same TF identifiers. Set lam to 1 so the fit relies entirely on co-expression rather than the PPI, with gamma 0.6 and 150 iterations, and write the edge_list format so I can pass it to community detection later.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Time to run SAMBAR: mut_hnscc.csv, exon_size.csv, cancer_genes.txt and kegg.gmt, trying 2 to 10 subtypes, output to sambar_hnscc/. After the purity filter the matrix has either 8 or 15 tumours, and I'm not sure which version of the file I exported.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "We want TF-to-gene networks for 30 ALS and 30 control spinal cord samples, one per group, with the sequencing-center effect removed first. I'm not sure whether every ALS sample went to center A and every control to center B; the old tracking sheet is lost.",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Kick off DRAGON on rna_layer.tsv and mirna_layer.tsv (54 matched samples, identical IDs in both). Set lambda1 to 0.3 by hand but let lambda2 be estimated from the data. Matrix output to dragon/rna_mirna.tsv, please.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Please run OTTER today on expr_heart.tsv, motif_seed.tsv and ppi_tf.tsv, writing otter_heart.tsv. My notes from the methods meeting say lam = 0.35, but the slide we presented says lam = 3.5, and I don't know which one the group intended. Everything else can stay at defaults.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Two separate TF-to-gene regulatory networks are needed: one from the 12 hypoxia and one from the 12 normoxia HUVEC samples, both built on the same genes and the same motif and PPI priors, so I can compare each transcription factor's targeting between the conditions. Expression, motif and PPI data are prepared.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Kick off PANDA with expr_kidney.tsv (it has a header row, so with_header on), motif_kidney.tsv and ppi_kidney.tsv, and use cobra_out/adjusted_coexpression.tsv from yesterday's COBRA run as the co-expression input instead of plain Pearson. Save the network as panda_kidney_adjusted.txt now.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Here are expr_pdac.tsv, motif_hs.tsv and ppi_hs.tsv. Run PANDA or GIRAFFE on them now, whichever; I just need something to show at lab meeting on Thursday.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Each of my pig muscle samples should get its own gene-gene co-expression network (log2 CPM, centered per gene). We have three samples, unless the degraded one gets excluded, in which case only two. I won't know until Monday.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "I'd like DRAGON on two tables from the same 85 plasma donors: proteomics (310 proteins, log-intensities) and metabolomics (140 metabolites, log-abundances), samples as rows and features as columns. Please fix lambda1 at 0 and lambda2 at 1 rather than estimating them, and give me the edge_list output so I can sort the cross-layer partial correlations.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "PANDA or OTTER: which one should I use for my 50 lung adenocarcinoma samples? I have the expression matrix, a human motif prior and a STRING PPI file ready to go.",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ]
+ },
+ {
+  "task": "LIONESS-DRAGON for 40 paired RNA and miRNA profiles from the same placentas would be ideal. The miRNA layer has 300 features, but I can't remember whether we kept 450 or 4,500 genes in the RNA layer after filtering.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Please set up SAMBAR for somatic mutation calls from 8 pancreatic tumours, with a gene-length table, a cancer-gene list and a KEGG pathway GMT that is not in MSigDB format, so turn gmt_msigdb off. Try kmin 3 up to kmax 8, and keep the normalization by each patient's mutation burden.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "We have paired proteome (250 proteins) and phosphoproteome (150 sites) tables from 46 kidney tumours and want a partial-correlation network linking the two layers. The aims page says one network for the whole cohort, the grant narrative says one per tumour, and I can't tell which my PI meant.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Launch LIONESS-DRAGON on rna_all.csv (60 samples by 2,000 genes) and prot_all.csv (the same 60 samples by 500 proteins). Estimate the lambdas automatically, write the all-sample matrix to agg_dragon.tsv and the per-sample table to per_sample_edges.tsv, and start it right away.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Execute OTTER on expr_heart.tsv, motif_heart.tsv and ppi_heart.tsv right now and save otter_heart.tsv. My notebook says lam should be 1.5, or maybe 0.15; the decimal point is smudged and I can't check with my supervisor today.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "We want to group tumours into 2 to 6 subtypes based on pathway-level somatic mutation scores, with gene lengths, a cancer-gene list and a KEGG GMT in hand. Pathology review is still deciding how many tumours qualify: it will end up as 5 or 9.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Please launch something on expr_tpm.tsv (48 gut biopsies, genes by samples) and batch_design.tsv (numeric batch and site columns). Not sure yet what I'm after, maybe something co-expression related? Whatever you think fits.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "I need a separate gene-gene co-expression network for each of 30 bulk RNA-seq samples of human skin (log2 CPM, centered per gene, genes on rows). There are no covariates to adjust and no transcription factors involved, just one co-expression network per sample.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "I've put calls_30pts.csv, gene_lengths.csv, cancer_genes.txt and kegg.gmt in data/; start SAMBAR into sambar_30/ now. No one documented the old pipeline that made calls_30pts.csv, so it's unclear to me whether it holds somatic mutations or germline variants.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Our seven tumours are in mut_7tumours.csv. Together with exon_lengths.csv, cancer_genes.txt and c2.cp.v7.gmt, please execute SAMBAR now into sambar_out/ with kmin 2 and kmax 10, so we see a wide range of subtype numbers.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "BONOBO run please, right away: expr_lc.tsv (12 lung samples, log-transformed and centered), sparsify on at confidence 0.05, .h5 output in bonobo_lc/. Set delta to 0.5, or was it 0.2? I can't remember what my postdoc suggested.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Our downstream pipeline only reads parquet, so BONOBO should write each per-sample co-expression matrix for our 22 lung fibroblast samples as a .parquet file. The expression is log-transformed and centered, with genes on rows.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Time to rerun OTTER: expr_pbmc.tsv, motif_pbmc.tsv and ppi_pbmc.tsv, output otter_pbmc.tsv as an edge list. This time set computing to gpu and precision to single, because the CPU run took far too long on our 19,000-gene matrix. Start it now.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Could you set up OTTER for an aggregate TF-gene network of human cardiomyocytes, using my precomputed gene-by-gene co-expression matrix instead of an expression table, plus the motif seed and the TF-TF PPI? Settings: lam = 1, gamma = 0, 150 iterations, single precision on CPU, matrix output.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Please start LIONESS-DRAGON now with layer 1 = rna_top400.csv (100 samples by the 400 most variable genes, log-CPM) and layer 2 = meth_top200.csv (the same 100 sample IDs by 200 CpG M-values). Leave lambda1 and lambda2 empty so they're estimated, and write dragon_all.tsv and lioness_dragon_samples.tsv.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "I have RNA-seq from 36 mouse livers, half on a high-fat diet and half on chow. What kind of network analysis should I be doing with this?",
+  "workflows": [
+   "PANDA",
+   "OTTER",
+   "DRAGON",
+   "LIONESS-DRAGON",
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "We have paired proteome (250 proteins) and phosphoproteome (150 sites) tables from 46 kidney tumours and want a partial-correlation network linking the two layers. The aims page says one network for the whole cohort, the grant narrative says one per tumour, and I can't tell which my PI meant.",
+  "workflows": [
+   "DRAGON",
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Our nutrition study has plasma metabolomics (412 features) and VST-transformed RNA-seq (2,000 genes) from the same 96 participants, with no missing values. I'd like DRAGON to fit the two-layer partial-correlation network with lambda1 fixed at 0 and lambda2 fixed at 1 - we are deliberately testing the extremes - and return the result as an edge list.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Do the multi-omic analysis on rna_layer.csv and protein_layer.csv (same 72 patients) right away. There's no specific output in my head - just see what the two layers say together.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "In a cohort of 240 participants we measured 250 blood transcripts and 150 serum proteins on the same draws; the data are complete and continuous. What I'm after is an individual partial-correlation network for every participant linking features within and across the two layers, so I can compare them between smokers and non-smokers.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "I'm planning to use OTTER for an aggregate TF-to-gene network from zebrafish fin RNA-seq, with a motif seed and a TF-TF PPI edge list. Honestly, I don't know yet whether we'll have one sample or two - the second library is being re-sequenced after a failed run.",
+  "workflows": [
+   "OTTER",
+   "PANDA"
+  ]
+ },
+ {
+  "task": "With DRAGON, I'd like three separately tuned penalties on our 110 matched colorectal tumours: lambda1 for the methylation block, lambda2 for the expression block, and a lambda_inter of 0.2 controlling only the cross-layer methylation-expression edges. Can you set it up that way?",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Start PANDA with expr_brain.tsv (it has a header row), motif_hs.tsv and ppi_hs.tsv, but supply cobra_brain/adjusted_coexpression.tsv as the co-expression input instead of plain Pearson. That file is the labeled gene-by-gene matrix COBRA wrote from this same expression table. Save the network to panda_brain_adjusted.txt.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "I lost the original expression table but kept a labeled, symmetric 9,800 x 9,800 gene co-expression matrix computed from it. My plan is for OTTER to build the aggregate TF-to-gene network from that matrix, a TF-by-gene motif seed over the same genes, and a TF-TF PPI edge list whose TFs match the seed, using lam 0.5, 150 iterations and edge-list output.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Please run BONOBO on core_expr.tsv (genes by 16 samples, header present) and write .h5 files to bonobo_runs/. The sequencing core never said whether the values are log-transformed or centred, and I don't know either.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Run SAMBAR on brca_variant_matrix.csv (310 patients by genes), exon_lengths.csv, cancer_genes.txt and c2.cp.kegg.gmt to get mutation-based subtypes. The matrix came from an old lab pipeline and I can't tell whether those are somatic calls or germline variants.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Each of our 30 patients needs an individual partial-correlation network spanning 900 plasma transcripts and 600 metabolites measured from the same blood draws. The data are complete and continuous, and I want every within- and cross-layer pair kept.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "I want SAMBAR to subtype our cholangiocarcinoma cohort from somatic mutations, trying between 2 and 6 subtypes. The catch: either 5 or 9 tumours passed sequencing QC, and I'm still waiting on the core's report to know which.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "I'd like DRAGON on liver proteomics (1,100 proteins) and VST RNA-seq (3,000 genes) from our diet study. What I can't tell you is whether the proteomics came from the same 40 mice as the RNA-seq; the core may have used a separate cohort fed the same diets.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Run BONOBO now on /data/pbmc/expr_log2_centered.tsv - genes in rows, a header with 18 sample IDs, values log-transformed and centred. Use sparsify with bonobo_confidence 0.01, turn save_pvals on, set delta to 0.3, and write .csv files to /data/pbmc/bonobo_out/.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "My 12 liver samples are log-transformed and centred, with a labelled header. For BONOBO, please sparsify at confidence 0.05 and fix delta at 0.4 so each sample carries a little more weight in its own covariance estimate. HDF5 output is fine.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "We have blood transcriptomics and urine metabolomics from the same visits for 45 kidney-transplant recipients, and I'd like one partial-correlation network per recipient across both layers. We'll keep 500 transcripts; whether we keep only the 300 annotated metabolites or all 1,800 detected features hasn't been decided, and I can't say which yet.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Go ahead with SAMBAR on uterine_somatic.csv (6 tumours by about 19,000 genes, non-negative somatic mutation counts), exon_sizes.csv, cancer_genes.txt and h.all.v2023.1.Hs.symbols.gmt. Cluster with kmin 2 and kmax 6 - yes, kmax equals our tumour count - and put everything in sambar_uterine/.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "We have RNA-seq from 110 kidney samples, TF motifs and a PPI network. We want one TF-gene regulatory network for the whole cohort.",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ]
+ },
+ {
+  "task": "We have plasma proteomics (1,100 proteins) and untargeted metabolomics (640 metabolites) from the same 85 participants, both as sample-by-feature CSV files with identical sample IDs. Please set up DRAGON with lambda1 = 0 and lambda2 = 1, so the protein layer gets no shrinkage and the metabolite layer gets full shrinkage, and write the network as an edge list instead of a matrix.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Fire off an OTTER run with expr_yeast.tsv, seed_w.tsv and ppi_tf.tsv, output to otter/yeast_W.txt. For lam, my lab notebook says 0.35 but the methods draft says 3.5, and I can't tell which one we actually used before. Everything else can stay at the defaults.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "We have exome variant calls for 85 pediatric sarcomas as a samples-by-genes count table, and I'd like to group the patients into subtypes from pathway-level mutation scores. One problem: I don't know if these are tumor somatic calls or germline variants, because the pipeline output just says 'variants'.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Is BONOBO OK for my 14 Drosophila wing-disc samples? I need one co-expression network per sample. The matrix came from a collaborator as 'normalized values', and I can't tell whether it was log-transformed or centered; the README doesn't say either way.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Start the per-sample run now with rna_top400.tsv (48 samples by the 400 most variable transcripts) and meth_top150.tsv (the same 48 sample IDs by 150 CpG probes), both with a header and sample IDs in the first column. I want one partial-correlation network per patient spanning both layers; cohort matrix to out/all.tsv and the per-sample table to out/per_sample.tsv.",
+  "workflows": [
+   "LIONESS-DRAGON",
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "I'd like a separate gene co-expression network for each pig in our liver transplant study. Either two or three pigs made it into the dataset (the third library may have failed and nobody has checked yet). Expression is a gene-by-sample matrix with sample IDs in the header.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "We measured transcriptomics and lipidomics on the same 52 mouse livers (chow versus high-fat diet). I want partial-correlation networks connecting transcripts and lipids, but I'm unsure whether my PI expects a single network for the whole cohort or one network per mouse.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Kick off LIONESS-DRAGON now on rna_2000.csv and prot_500.csv: 120 matched samples, 2,000 transcripts and 500 proteins, sample ID in the first column of both. Per-sample edges to lioness_dragon/edges.tsv and the cohort matrix to lioness_dragon/all.tsv. We have a big server, so memory isn't a concern.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "I want DRAGON on serum proteomics and stool metabolomics from our IBD study, 60 profiles in each table. I'm not sure the two tables cover the same people, though: the proteomics came from the 2023 visit and the metabolomics may be a different subset of patients.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "I'd like BONOBO on 12 bulk RNA-seq samples of human iPSC-derived cardiomyocytes. The matrix is log2(CPM+1), genes on rows with a header of sample IDs, and every gene has been mean-centered. Turn sparsify on with bonobo_confidence 0.01, also save the p-value matrices, set delta to 0.3, and write the per-sample matrices as .csv files.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "I need the per-sample DRAGON networks run today on 60 matched samples: transcripts.tsv and metabolites.tsv (100 metabolites), outputs to ld_out/. For the transcript layer my co-author kept either the top 300 variable genes or all 1,500 that passed filtering, and I have no idea which version she uploaded.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Run PANDA now on data/gtex_liver_expr.txt (genes by 226 samples; the first row is a header with sample IDs), data/motif_hs_tf.txt and data/ppi_hs_string.txt. Save the network to results/liver/panda_liver.txt; that folder already exists, so there's no need to make a new one.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Set up BONOBO for 16 log-transformed, gene-centered expression profiles from sorted human microglia: sparsify at bonobo_confidence 0.05, delta fixed at 0.5 so each sample weighs as much as its background, and .h5 output. Genes are on rows and sample IDs form the header.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Our pilot has nine patient-derived colorectal cancer organoids with somatic mutation counts (samples by genes), plus an exon-length CSV, a tab-delimited cancer-gene list and the MSigDB KEGG GMT. Can SAMBAR try every subtype number from 3 up to 9 clusters? Use average linkage and keep the default normalization by each patient's mutation burden.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "I need a separate gene-gene co-expression network for each of 30 mouse retina samples (15 wild-type, 15 rd10). Expression is already log2-transformed and centered per gene, with genes on rows and sample IDs in the header. No transcription factors or priors are involved, just per-sample co-expression.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Could you run SAMBAR straight away on mut_hnscc.csv, exon_len.csv, cancer_genes.txt and c2.cp.kegg.gmt with kmin 2 and kmax 8, output to sambar_hnscc/? The mutation file holds either 6 or 10 tumors; I can't remember whether the pilot or the full batch got exported.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "For maize root expression from 32 samples, with a TF-by-gene seed prior and a TF-TF interaction edge list covering the same TFs, please configure OTTER with lam = 0.9, gamma = 0, 150 iterations and single precision on the CPU. Export the network as an edge list, since we plan to pass it to CONDOR afterwards.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "We measured 180 circulating miRNAs (normalized, continuous qPCR values) and 45 plasma cytokines in the same 64 sepsis patients; both tables have samples in rows, identical patient IDs and no missing values. What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers, so I can compare survivors with non-survivors patient by patient afterwards.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt. The analysis plan just says 'a network for each AD and control', and I can't tell if that means one network per diagnostic group or one network per donor; the person who wrote it is on leave until next month.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Can SAMBAR subtype our 160 pediatric medulloblastomas? The sequencing core sent a samples-by-genes variant-count matrix along with gene lengths, a cancer-gene list and a KEGG GMT, but their README doesn't say whether the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "We'd like a separate miRNA-protein partial-correlation network for each of our 50 heart-failure patients, from 300 serum miRNAs and a plasma proteomics panel measured on the same patients (complete, continuous, matching IDs). The catch: I don't remember whether the proteomics we got back is the 200-protein targeted panel or the 2,000-protein discovery panel, and the files are still on the CRO's server.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Previous NetZoo goal: We'd like a separate miRNA-protein partial-correlation network for each of our 50 heart-failure patients, from 300 serum miRNAs and a plasma proteomics panel measured on the same patients (complete, continuous, matching IDs). The catch: I don't remember whether the proteomics we got back is the 200-protein targeted panel or the 2,000-protein discovery panel, and the files are still on the CRO's server.\nUser follow-up: It's the 2,000-protein discovery panel.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Previous NetZoo goal: We have paired proteome (250 proteins) and phosphoproteome (150 sites) tables from 46 kidney tumours and want a partial-correlation network linking the two layers. The aims page says one network for the whole cohort, the grant narrative says one per tumour, and I can't tell which my PI meant.\nUser follow-up: One per sample, please.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Previous NetZoo goal: We have paired proteome (250 proteins) and phosphoproteome (150 sites) tables from 46 kidney tumours and want a partial-correlation network linking the two layers. The aims page says one network for the whole cohort, the grant narrative says one per tumour, and I can't tell which my PI meant.\nUser follow-up: My PI confirmed: a separate network for each tumour.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Previous NetZoo goal: SAMBAR pathway-based subtypes are what we want for 210 tumours, from a mutation matrix our core facility produced. I honestly don't know whether their calls are somatic (tumour versus matched normal) or germline variants; the README doesn't say and the analyst has left.\nUser follow-up: yes",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Forget that request. New question: build one PANDA TF-to-gene network for our liver RNA-seq; we have expression, a motif prior and a PPI.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "I have CSF proteomics on 64 people from our Parkinson's cohort and blood RNA-seq from the same study, and I'd like one partial-correlation network linking the proteins and the transcripts. I honestly don't know whether the RNA-seq was done on those same 64 participants or on a separate recruitment wave.",
+  "workflows": [
+   "DRAGON",
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "I have CSF proteomics on 64 people from our Parkinson's cohort and blood RNA-seq from the same study, and I'd like one partial-correlation network linking the proteins and the transcripts. I honestly don't know whether the RNA-seq was done on those same 64 participants or on a separate recruitment wave.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Run PANDA now on expr_lung_tpm.tsv (genes in rows, 75 samples in columns, first row is a header) with motif_hs_tf.txt and ppi_string_hs.txt, and write the network to out/lung_panda.txt.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Run SAMBAR on uveal_mutations.csv (12 tumors) with exon_lengths.csv, cancer_genes.txt and c2_pathways.gmt, and try anywhere from 2 up to 15 subtypes. Put the output in sambar_uveal/.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "I want BONOBO networks for our 18 placenta samples (already log2-transformed and mean-centered per gene) with sparsify switched on at a confidence of 0.01. Please fix delta at 0.5 instead of letting it be estimated.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "For each of 50 liver-disease patients I want a separate partial-correlation network spanning their plasma metabolites (100) and proteins, both measured in the same 50 people. Depending on how strict our QC filter is we'll keep either 500 or 1,500 proteins, and I haven't decided which.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "For each of 50 liver-disease patients I want a separate partial-correlation network spanning their plasma metabolites (100) and proteins, both measured in the same 50 people. Depending on how strict our QC filter is we'll keep either 500 or 1,500 proteins, and I haven't decided which.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Can I get a TF-to-gene regulatory network out of the somatic mutation matrix (samples by genes, 0/1 calls) for our 200 lung adenocarcinomas, using standard human motif and PPI priors? We don't have expression data for these tumors.",
+  "workflows": [
+   "PANDA",
+   "OTTER",
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Can BONOBO give me per-sample co-expression networks for our 22 adipose biopsies? The core facility says the matrix is mean-centered per gene, but I don't know whether the values were log-transformed before centering or are just normalized counts.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Please use DRAGON on our paired plasma proteomics (412 proteins) and metabolomics (230 metabolites) from the same 85 participants; both tables are complete, log-scaled, with samples in rows. Set lambda1 to 0.3 and lambda2 to 0.6, and give me the result as an edge list.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "I have somatic mutation counts for 210 bladder tumors (samples by genes), a gene exon-length table, our list of cancer genes and an MSigDB pathway GMT. I'd like to split the tumors into somewhere between 2 and 5 subtypes based on how their pathways are mutated.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "I need a separate two-layer partial-correlation network for each of 150 patients, combining 2,000 transcripts and 1,500 proteins measured in all of them.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "We'd like pathway-based subtypes for 85 soft-tissue sarcomas from our gene panel table (samples by genes), and we also have exon lengths, a cancer gene list and a GMT file. I'm not sure whether the values in that table are somatic mutation counts or copy-number log2 ratios, which go negative.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "I want a regulator-to-target network for each of our 85 endometriosis lesions. We have RNA-seq, TF motif and PPI priors, and TargetScan predictions for our small-RNA panel, but we haven't decided whether to bring those miRNAs in as regulators or stick to transcription factors only.",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Run LIONESS-OTTER on pdac_expr.tsv (88 patients) with motif_pdac.tsv and tf_ppi.tsv so I get one OTTER network per patient.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "With BONOBO, I'd like per-sample co-expression networks for 14 muscle biopsies (log2-transformed, mean-centered per gene). Please keep the full matrices and save a p-value matrix for every sample so I can threshold them myself later.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Launch OTTER on aorta_expr.tsv (45 samples, header included), motif_aorta.tsv and string_tf_ppi.tsv. I downloaded the PPI separately, so I'm not sure whether it covers exactly the same TFs as the motif file or a bigger set.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "We'd like to try OTTER or maybe GIRAFFE on RNA-seq from 26 thyroid nodules, using the usual human motif and PPI files. We just need something network-based to show at lab meeting.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "We measured DNA methylation at 300 CpG sites (M-values) and expression of 400 genes in the same 40 esophageal adenocarcinomas, with no missing values. I'd like a separate partial-correlation network for each tumor linking the CpGs and the genes.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Run PANDA on ra_synovium_expr.tsv (34 patients) with motif_hs.tsv and ppi_hs.tsv. Actually, I'm not sure whether my analysis needs one network for the whole cohort or a separate network for each patient.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Start LIONESS-DRAGON on rna_top120.csv (120 genes) and metab_80.csv (80 metabolites) for our 36 children with asthma; both files use the same sample IDs. I want one network per child.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "I want BONOBO on 15 log-transformed, centred alveolar macrophage samples with sparsify turned on at 0.05 confidence. Please set delta to 0.4 for every sample.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Can DRAGON link our plasma proteomics to the muscle RNA-seq from the 40 participants in our exercise study? I'm not sure whether the proteomics was run on those same 40 people or on the separate recruitment wave.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "I want one regulatory network for our 60 endometriosis samples, using the regulator-target prior my collaborator compiled plus a PPI file. I don't actually know whether her regulator list is only transcription factors or also includes microRNAs.",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Run SAMBAR now on mut_matrix.csv, exon_lengths.csv, cancer_genes.txt and kegg.gmt with kmin 2 and kmax 8. I'm not sure whether mut_matrix.csv holds just the 6 melanomas that passed QC or all 12 we sequenced.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Please use DRAGON on matched liver RNA-seq (1,500 genes) and serum metabolomics (210 metabolites) from the same 64 high-fat-diet mice. Set lambda1 to 0.2 and lambda2 to 0.4, and give me the edge list rather than the matrix.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "I'd like BONOBO networks for each of our 11 psoriasis skin biopsies from expr_log2tpm.tsv. It's definitely log2 TPM, but I can't remember whether I mean-centred each gene afterwards.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "For each of our 40 patients I want their own network linking 500 blood transcripts to plasma metabolites. The metabolomics core sent a table that is either the 300 annotated metabolites or the full 3,000-feature untargeted set, and I haven't checked which.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "I want a TF-to-gene network for our 55 asthma airway brushings from the expression matrix, motif and PPI files, plus a co-expression matrix a postdoc left behind. I can't tell whether that matrix is the batch-adjusted one COBRA produced for the whole cohort or a single patient's matrix from her BONOBO run.",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ]
+ },
+ {
+  "task": "I want a single partial-correlation network connecting RNA-seq, DNA methylation and proteomics features measured on the same 70 kidney tumours, with all three layers fitted together in one model.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "For LIONESS-DRAGON on our 45 paired transcriptome and proteome samples (300 genes, 150 proteins), please fix lambda1 at 0.3 for the transcript layer but let it estimate the protein-layer shrinkage by itself.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Run OTTER now with expression expr_kidney.tsv, seed prior motif_prior.tsv and TF interaction file tf_ppi.tsv. Use lam 0.1, gamma 0.5 and 100 iterations, and write an edge list to otter_kidney_edges.tsv.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Could you build a PANDA network for our liver biopsy RNA-seq from 48 NAFLD patients? The gene-by-sample TPM table has a header row, and we'll use the CIS-BP motif prior and the STRING PPI. One TF-to-gene network for the whole cohort is all I need.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "We want BONOBO networks for our 9 patient-derived colon organoids. The matrix is log2-transformed and every gene is mean-centred. Please sparsify at a 0.01 confidence level, keep the p-value matrices, use delta 0.25, and write the outputs as CSV.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Cluster our 180 breast tumours into molecular subtypes straight from the RNA-seq expression matrix. We don't have mutation calls for them.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Run SAMBAR on mutations_ucec.csv (248 endometrial tumours in rows, genes in columns, non-negative mutation counts) with exon_lengths.csv, cancer_genes.txt and c2.cp.kegg.gmt (MSigDB format), all sharing the same gene symbols, and cluster the tumours into between 2 and 6 subtypes.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "We want LIONESS-DRAGON partial-correlation networks for each of 31 matched patients. One continuous table has 360 RNA genes; the paired continuous proteomics table is either the 180-protein panel or the 1,800-protein panel, and I cannot tell which export we received. The patient IDs match in both tables. Can we make the patient-specific networks?",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Will DRAGON take my paired plasma proteomics and metabolomics tables (both with a header, the same 85 participant IDs in the first column, samples in rows, complete continuous values with no NAs) and write the partial-correlation network as an edge list rather than a matrix?",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv; I have no expression file, only that co-expression file. I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix for the cohort or the edge-by-sample table from our earlier LIONESS co-expression run.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "I want to understand the gene regulation in my endometrial cancer samples better.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv with lam set to 1.5, so co-expression gets even more weight than PPI.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "I want a transcript-metabolite partial-correlation network for 75 NAFLD liver biopsies in which the transcript layer's shrinkage is fixed at 0.3, as in our previous paper, while the metabolite layer's shrinkage is estimated from the data.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Run PANDA on tumour_profiles_v2.tsv with motif_hs.txt and ppi_hs.txt. Heads up: our lab saved two genes-by-tumours matrices under similar names, one with log2 expression and one with binary somatic-mutation calls, and I'm not sure which one this is.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Run BONOBO on expr_ms_lesions.tsv (27 multiple sclerosis lesion samples; log2-transformed and centered per gene; gene IDs in the first column, sample IDs in the header), but only write networks for samples MS_03, MS_11 and MS_19, saved as .csv files.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Run DRAGON on expr_cll_layer.csv and methyl_cll_layer.csv (same 110 patient IDs in rows, no missing cells). One thing I'm unsure about: the methylation file is either the continuous beta values or the binarized methylated/unmethylated calls (0/1) that another group derived, and both versions were saved under that name.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Is DRAGON able to link fecal metabolomics with colon-biopsy transcriptomics for our IBS study? Both tables are complete and continuous, but the metabolomics came from the 2023 recruitment wave and the biopsies may have been taken from a different group of volunteers; I'm still waiting to hear from the clinic whether they're the same 58 people.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Can BONOBO build a co-expression network for each of my 6 rhesus macaque lymph node samples? The data are log2-transformed and centered per gene, with genes in rows and sample IDs in the header, and I'd like the per-sample matrices saved as HDF5 and computed in double precision.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Could you help me see how genes are connected in my sorghum heat-stress experiment?",
+  "workflows": [
+   "PANDA",
+   "OTTER",
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Can PANDA build a single TF-to-gene regulatory network for our whole cohort of 48 mouse liver RNA-seq samples? I have the gene-by-sample expression matrix, a JASPAR-based motif prior and a mouse TF-TF PPI from STRING, all using the same gene symbols.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Run PANDA on expr_ipf.tsv with motif_hg38.tsv and ppi_hs.tsv, but use cobra_out/adjusted_coexpression.tsv (COBRA's adjusted gene-by-gene matrix, already checked to have the same gene IDs and order as the expression file) as the co-expression input instead of PANDA's own Pearson correlation.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "I need a gene co-expression network for each of our 9 periodontitis gingival biopsies, with a p-value for every edge so I can filter them per sample. The matrix (genes in rows, sample IDs in the header) has been mean-centered per gene, but it came from a collaborator and I can't tell whether the values were log-transformed before centering.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Could you help me see how genes are connected in my sorghum heat-stress experiment?",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt. The analysis plan just says 'a network for each AD and control', and I can't tell if that means one network per diagnostic group or one network per donor; the person who wrote it is on leave until next month.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Can I add an L1 (lasso) sparsity penalty to OTTER's objective so that the TF-gene network it returns for my 45 bovine mammary gland samples is sparse, with most edges exactly zero?",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "We generated quite a lot of omics on a pig model of septic shock: whole-blood transcriptome, plasma proteome and a few hundred metabolites, sampled at baseline and at 24 hours. I'd like a systems-level view of what is going on in these animals. Where should we start?",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Can PANDA build a single TF-to-gene regulatory network for our whole cohort of 48 mouse liver RNA-seq samples? I have the gene-by-sample expression matrix, a JASPAR-based motif prior and a mouse TF-TF PPI from STRING, all using the same gene symbols.",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix? We don't have mutation calls for this cohort, only expression.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "I'd like a network of how about 150 regulators control their target genes across 60 hepatocellular carcinoma samples. I have the expression matrix, a PPI among those regulators, and a regulator-to-target prior from a collaborator's project, but that project studied both RNA-binding proteins and transcription factors, and I'm not sure which of the two lists I was given.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt. The analysis plan just says 'a network for each AD and control', and I can't tell if that means one network per diagnostic group or one network per donor; the person who wrote it is on leave until next month.",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ]
+ },
+ {
+  "task": "We have somatic mutation calls and RNA-seq for the same 90 bladder tumours. Is SAMBAR the right thing to run, or one of the network methods like PANDA? I'm open to whatever gives the most interesting result.",
+  "workflows": [
+   "SAMBAR",
+   "PANDA"
+  ]
+ },
+ {
+  "task": "I'd like a network of how about 150 regulators control their target genes across 60 hepatocellular carcinoma samples. I have the expression matrix, a PPI among those regulators, and a regulator-to-target prior from a collaborator's project, but that project studied both RNA-binding proteins and transcription factors, and I'm not sure which of the two lists I was given.",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Reviewers asked for 'a network analysis' of our placenta study. We have mRNA-seq and small-RNA-seq from 45 preeclampsia and control placentas. Honestly I don't know what kind of network they expect or what it's supposed to show. The two groups are roughly balanced and both libraries come from the same placentas; can you set something up that would satisfy them?",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Please run the network analysis on expr_sle_monocytes.tsv and send me the results.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Reviewers asked for 'a network analysis' of our placenta study. We have mRNA-seq and small-RNA-seq from 45 preeclampsia and control placentas. Honestly I don't know what kind of network they expect or what it's supposed to show. The two groups are roughly balanced and both libraries come from the same placentas; can you set something up that would satisfy them?",
+  "workflows": [
+   "PANDA",
+   "OTTER",
+   "DRAGON",
+   "LIONESS-DRAGON",
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Can we run BONOBO for 12 log-centered expression samples?",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Previous NetZoo goal: Can we run BONOBO for 12 log-centered expression samples?\nUser follow-up: Correction: only two total samples survived QC. Run BONOBO with exactly those two samples; do not add background data.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Plan aggregate OTTER on CPU from our valid priors and expression.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "DRAGON should combine our RNA and protein tables with valid paired continuous measurements.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Previous NetZoo goal: DRAGON should combine our RNA and protein tables with valid paired continuous measurements.\nUser follow-up: Add a separately modeled metabolite layer. I now require one DRAGON model with three separate layers and no merging.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "I asked OTTER to run on a GPU with the validated motif, PPI and expression files.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Previous NetZoo goal: I asked OTTER to run on a GPU with the validated motif, PPI and expression files.\nUser follow-up: CPU is now approved. Run aggregate OTTER on CPU in double precision, using the same validated inputs.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Previous NetZoo goal: SAMBAR was to try kmax=10, but there are only six mutation samples.\nUser follow-up: Change to kmin=2 and kmax=4. Please run SAMBAR clustering on the six samples with the four already validated input files.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Can PANDA infer our population TF-gene network and also give a TF-by-sample activity matrix from the same native output?",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Can SAMBAR produce pathway mutation scores from valid inputs and directly emit a motif-compatible prior for PANDA?",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Our consortium is writing two deliverable descriptions for a project on metabolite and transcript measurements. Both assays were collected from the same independent participants, have unique sample and feature identifiers, and contain complete continuous numeric values. One analyst is responsible for the statistical graph and another is preparing a mechanistic story for the proposal. Please assess the two deliverables separately so that a feasible computational output is not confused with a stronger interpretation of that output. We are only asking about the tools that are already registered in this agent, without adding a new causal-discovery package. Run DRAGON on two valid continuous paired layers, output conditional associations, and certify every retained edge as a causal effect.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "I have not supplied any files yet. Please prepare to run SAMBAR pathway scoring, and promise it will also infer directed miRNA regulation from the mutation table.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "請用 COBRA 調整後的共表現矩陣接 OTTER，會重新驗證基因順序；另請 OTTER 在內部自動補值所有缺失數據。",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Run SAMBAR on our 12-sample valid mutation inputs with cluster=false for scores only, and still write clustering assignments for k=3 as part of that exact run.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "For the eight validated expression samples, can BONOBO compute Bayesian sample-specific co-expression, while the same run emits a TF-by-sample activity matrix?",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Run LIONESS-DRAGON with two paired samples only; I require a per-sample network for each and will not add samples.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Run LIONESS-DRAGON with 100 samples and 1000 total features, keeping every pair for every sample in one run.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Our group is preparing a methods section for a greenhouse experiment comparing several orchid accessions under gradual water restriction. The immediate deliverable is a single network representing the full cohort, which will later be discussed at a lab meeting. We have already separated the sample annotations from the expression measurements and verified that the accession names are not being used as gene identifiers. I am asking about the registered analysis capability here; I am not asking you to perform a new biological experiment, search for reference files, or interpret condition differences at this stage. Can PANDA make one cohort-wide TF-to-gene network for our orchid drought study using expression, motif edges and a matching TF interaction prior?",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Our group is preparing a methods section for a greenhouse experiment comparing several orchid accessions under gradual water restriction. The immediate deliverable is a single network representing the full cohort, which will later be discussed at a lab meeting. We have already separated the sample annotations from the expression measurements and verified that the accession names are not being used as gene identifiers. I am asking about the registered analysis capability here; I am not asking you to perform a new biological experiment, search for reference files, or interpret condition differences at this stage. Can PANDA make one cohort-wide TF-to-gene network for our orchid drought study using expression, motif edges and a matching TF interaction prior?",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Can SAMBAR return pathway mutation scores without assigning tumor clusters? Our sarcoma mutation CSV, positive exon lengths, single-line cancer gene list and GMT have overlapping genes; set cluster=false.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "This request belongs to a longitudinal nutrition project, but the current export contains only one selected visit from each participant. We deliberately selected complete cases so that every participant appears once in each assay and no visit-level averaging is necessary. The statistician has signed off on the continuous measurements and the identifier reconciliation. Please keep the interpretation at the level of conditional association across the selected subjects. The output is intended for a colleague who prefers a long table to a square matrix and will do the plotting independently after the computation has finished. Run DRAGON on serum_metabolites.tsv and serum_proteins.tsv. Both contain finite continuous sample-by-feature data from the same 30 people with unique identifiers. Use lambda1=0.2, lambda2=0.6 and edge_list output to serum_graph.tsv.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Our paired chromatin and RNA measurements are continuous and validated for nine samples. Does LIONESS-DRAGON output a source/target table with one network-value column for each sample, alongside the aggregate matrix?",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Run OTTER with seed.tsv, tf_edges.tsv and expression.tsv, all validated with exactly matching IDs. Use CPU, double precision, 75 iterations, lam=0.1, gamma=0.4, eta=0.00001 and save an edge list to otter_edges.tsv.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Run BONOBO on centered_log.tsv: a validated, labeled, log-transformed and centered gene-by-sample matrix with seven samples. Select sample IDs H2 and H5, save CSV networks, and leave sparsify=false.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "請用 SAMBAR 算胃癌的途徑突變分數。現在只有 mutation.csv；exon-length CSV、癌症基因清單和 GMT 還沒提供。",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "For a frog regeneration study, can BONOBO save full per-sample co-expression matrices and matching approximate p-value matrices together by using sparsify=true and save_pvals=true?",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Please run BONOBO on a validated log-centered 20-sample expression file, with sparsify=true, save_pvals=false and confidence=0.01. I want already-thresholded sample networks and do not need saved p-value files.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "請跑 DRAGON：兩個連續數值表的樣本 ID 集合完全相同，只是第二個表的列順序不同。先依第一個表的 ID 重排第二個表，再輸出整體條件相關網路。",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Run LIONESS-DRAGON for ten paired samples with 12 total features and fixed lambda1=0.25, lambda2=0.3. Save aggregate_pc.tsv and per_sample_edges.tsv. All features are finite, continuous and variable.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "My neuroblastoma cohort has 15 mutation samples. Can SAMBAR try 2 through 5 clusters using Euclidean distance and average linkage, with patient mutation-burden normalization disabled?",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Use PANDA message passing for our pollen expression study. I have a valid expression table with a sample header plus compatible motif and PPI files. Please run with with_header=true and save pollen_network.tsv.",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "task": "Run BONOBO on lunar.tsv for our lunar-cycle algae experiment. The expression table has a header and numeric values, but I do not know whether the upstream export was log-transformed and centered. Please establish that before proceeding.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Run DRAGON on the two stellar-radiation cell-culture tables. Their shapes and headers are correct, but it is unknown whether the sample ID sets match exactly.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "Run LIONESS-DRAGON on two valid-format layers for the mosquito diapause study. They may contain two or ten paired samples; that count is not yet known.",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "task": "Run OTTER for the conifer seed study using our validated expression, seed and PPI files. The grant requires a particular device, but I have not checked whether CPU is allowed or GPU is mandatory.",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "task": "Can SAMBAR subtype the leukemia panel into up to seven groups? The number of mutation samples is either five or fifteen; the final inclusion list is pending.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Run SAMBAR using the provided four reference/data files. I do not yet know whether their gene identifier sets share any gene across all four files.",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "task": "Run BONOBO with sparsify=true using the fixed delta in our protocol. The protocol owner must confirm whether delta is 0.2 or 0.5; do not substitute another value.",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "task": "Run DRAGON with lambda1=0.45. My collaborator is checking whether a lambda2 value was also fixed by the protocol or must remain absent; preserve that decision.",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "task": "能用 DRAGON 分析這兩份新生兒資料嗎？一份是連續數值；另一份是否含缺失值還沒確認，而且本研究禁止補值或刪除觀測。",
+  "workflows": [
+   "DRAGON"
+  ]
+ }
+]
