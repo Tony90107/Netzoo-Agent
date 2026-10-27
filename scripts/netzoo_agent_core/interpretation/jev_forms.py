@@ -16,7 +16,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 __all__ = ["ANSWER_VALUES", "BIND", "FORM_DIMENSIONS", "NEUTRAL", "QUESTIONS", "THRESHOLD", "answer_question",
-           "answer_state", "answer_value", "bind_form_answers", "doubted", "forms_doubts", "limiting_forms", "state_text"]
+           "answer_state", "answer_value", "bind_form_answers", "doubted", "forms_doubts", "limiting_forms",
+           "permissive_network", "state_text"]
 
 # Frozen with the stability check (jev-forms-2026-10-27/forms_q.py); never reworded after a run.
 QUESTIONS = {
@@ -87,6 +88,17 @@ def limiting_forms(attrs: dict, credited) -> list[tuple[str, tuple[str, ...]]]:
     return found
 
 
+def permissive_network(attrs: dict, credited) -> tuple[str, ...]:
+    """jev-permissive-2026-10-28: the options meaning a permissive typed input_network is what the user said, or ().
+
+    Only when the typed value is none / not_stated / missing and a credited entry takes one network kind: those kinds,
+    `none` and `not_stated`. A doubted read (at most THRESHOLD on them) makes the network a question, never a refusal."""
+    if attrs.get("input_network") not in (None, "none", "not_stated"):
+        return ()
+    takes = sorted({entry.input_network for entry in credited if entry.input_network is not None})
+    return (*takes, "none", "not_stated") if takes else ()
+
+
 def doubted(read: dict, options: tuple[str, ...]) -> bool:
     """Whether a read (Jev's answer, or {"error": ...}) puts at most THRESHOLD on the ruling-out options."""
     if "error" in read or not read.get("probabilities"):
@@ -97,7 +109,8 @@ def doubted(read: dict, options: tuple[str, ...]) -> bool:
 def forms_doubts(task, result, attrs, read, credited, applicable, doubted_forms, reader, overlap_reader, fitting):
     """ROUND.md: the waits and unsaid form reasons Jev's reads add to one result row, as (applicable, doubted_forms).
 
-    A credited row refused by its typed attributes: each limiting one Jev doubts (with group_membership when the overlap
+    A credited row that fits while its typed input_network is permissive (jev-permissive-2026-10-28): when Jev doubts
+    that reading, the network becomes a wait. A credited row refused by its typed attributes: each limiting one Jev doubts (with group_membership when the overlap
     read doubts it too) is fitted at its neutral value; when the credits then fit, each doubted one becomes a wait.
     Round 2: when something else still blocks them (another typed attribute, the method checks), a doubted form is only
     not said as the reason. A row credited to nothing: a doubted time_model or spatial is only not said. Nothing else
@@ -107,9 +120,13 @@ def forms_doubts(task, result, attrs, read, credited, applicable, doubted_forms,
     if not credited:
         found = [attr for attr, options in limiting_forms(attrs, []) if reader(task, result, attr, options)]
         return applicable, [*doubted_forms, *found]
-    if read and fitting(read, SimpleNamespace(**attrs)):
-        return applicable, doubted_forms  # not refused by its forms
     known = sheet_entries()
+    if read and fitting(read, SimpleNamespace(**attrs)):  # not refused by its forms
+        options = permissive_network(attrs, [known[k] for k in read])
+        waits = [about for about, quote, _domain in applicable if quote == result]
+        if options and "input_network" not in waits and reader(task, result, "input_network", options):
+            return [*applicable, ("input_network", result, None)], doubted_forms
+        return applicable, doubted_forms
     found = [attr for attr, options in limiting_forms(attrs, [known[k] for k in read] if read else credited)
              if reader(task, result, attr, options)]
     waits = [about for about, quote, _domain in applicable if quote == result]
