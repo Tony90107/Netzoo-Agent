@@ -148,3 +148,10 @@ def test_no_key_fails_inside_the_future(monkeypatch):
 def test_the_registry_lists_every_workflow():
     text = jev_guard_call.registry_text()
     assert sum(line.startswith("- ") for line in text.splitlines()) == 13 and "LIONESS-DRAGON" in text
+
+
+def test_an_unreachable_jev_fails_inside_the_future(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "x")
+    monkeypatch.setenv("NETZOO_JEV_URL", "http://127.0.0.1:9/decisions")
+    with pytest.raises(OSError):
+        jev_guard_call._read(TASK)
