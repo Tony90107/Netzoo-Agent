@@ -219,7 +219,7 @@ def test_the_pending_question_keeps_the_contract_line():
 
     core = {"kind": "ASK", "facts": [{"question": "q", "user_quote": "u", "workflows": ["PANDA"],
                                       "depends_on": "jev:input_exists", "contract_quote": "PANDA consumes ..."}]}
-    assert _pending(core)[0].labels == {"contract": "PANDA consumes ..."}
+    assert _pending(core)[0].labels == {"contract": "PANDA consumes ...", "workflow": "PANDA"}
     core["facts"][0]["depends_on"] = "jev:count"
     core["facts"][0]["contract_quote"] = ""
     assert _pending(core)[0].labels == {}
@@ -375,3 +375,48 @@ def test_a_confirm_is_only_on_a_do_and_never_repeated():
         core = do(kind, "x")
         assert jev_guard_call.conditioned_core(core, typed)[0] is core
     assert jev_guard_call.conditioned_core(do(), typed, {"s"})[1] == "already_asked"
+
+
+
+# j4 S32 (jd1 live): the decline after a confirmed data fact read 'about "". the workflow's contract:
+# "SAMBAR incompatible_input_artifacts: expression_matrix"'.
+
+def test_typed_fields_are_said_as_plain_sentences_and_prose_stays_quoted():
+    from netzoo_agent_core.interpretation.ask_facts import contract_clause
+
+    assert contract_clause("SAMBAR", "SAMBAR incompatible_input_artifacts: expression_matrix") \
+        == "SAMBAR's contract lists expression_matrix among the inputs it cannot take"
+    assert contract_clause("CONDOR", "CONDOR input_artifacts: regulatory_network") \
+        == "CONDOR's contract takes only regulatory_network as input"
+    line = "An aggregate COBRA adjusted co-expression artifact is not a direct LIONESS handoff"
+    assert contract_clause("LIONESS-PANDA", line) == f'LIONESS-PANDA\'s contract: "{line}"'
+
+
+def test_an_unplaced_confirm_and_its_decline_name_the_workflow_and_quote_nothing_empty():
+    from netzoo_agent_core.contracts.task_state import TaskState
+    from netzoo_agent_core.engine.task_updates import _pending, bind_answers
+    from netzoo_agent_core.interpretation.ask_facts import ask_reply
+
+    typed = {"unplaced": "SAMBAR incompatible_input_artifacts: expression_matrix", "workflow": "SAMBAR",
+             "data": ["expression_matrix", 1.0]}
+    asked, _ = jev_guard_call.conditioned_core(do().model_copy(update={"workflows": ["SAMBAR"]}), typed)
+    assert "lists expression_matrix among the inputs it cannot take" in ask_reply(asked)
+    assert "incompatible_input_artifacts" not in ask_reply(asked)
+    [pending] = _pending(asked.model_dump(mode="json"))
+    state = TaskState.model_validate({"task_id": "t", "goal": "g", "pending": [pending.model_dump()]})
+    state, bound, _ = bind_answers(state, "Yes, it's TPM expression from RNA-seq.")
+    found = jev_guard_call.condition_answer(state.model_dump(mode="json"))
+    after, _ = jev_guard_call.answered_core(do(), found, found["answer_quote"], {"answer": "fails", "confidence": 1})
+    line = after.declined[0].line
+    assert line == ('You answered "Yes, it\'s TPM expression from RNA-seq.". SAMBAR\'s contract lists '
+                    'expression_matrix among the inputs it cannot take. So SAMBAR cannot do this as you asked.')
+    assert 'about ""' not in line and "the workflow" not in line
+
+
+def test_a_placed_confirm_still_quotes_the_users_sentence_in_its_decline():
+    question = {"user_quote": "We only have the mutation matrix.", "workflows": ["PANDA"],
+                "labels": {"contract": "PANDA incompatible_input_artifacts: mutation_matrix", "workflow": "PANDA"}}
+    after, _ = jev_guard_call.answered_core(do(), question, "Yes.", {"answer": "fails", "confidence": 1.0})
+    assert after.declined[0].line == ('You answered "Yes." about "We only have the mutation matrix". PANDA\'s contract '
+                                      'lists mutation_matrix among the inputs it cannot take. So PANDA cannot do this '
+                                      'as you asked.')

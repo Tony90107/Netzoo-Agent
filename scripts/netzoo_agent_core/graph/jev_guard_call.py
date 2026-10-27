@@ -482,9 +482,13 @@ def answered_core(core: CoreDecision, question: dict, answer: str, judged: dict)
         return core, "answer_not_on_do"
     if judged["answer"] != "fails" or judged["confidence"] < THRESHOLD:
         return core, f"answer_{judged['answer']}"
-    workflow = (question.get("workflows") or ["the workflow"])[0]
-    line = (f'You answered "{answer.strip()}" about "{question.get("user_quote", "").rstrip(". ")}". '
-            f'{workflow}\'s contract: "{question["labels"]["contract"].rstrip(". ")}". '
+    from ..interpretation.ask_facts import contract_clause
+
+    labels = question.get("labels") or {}
+    workflow = labels.get("workflow") or (question.get("workflows") or ["the workflow"])[0]  # a bound fact has no list
+    quote = question.get("user_quote", "").rstrip(". ")
+    about = f' about "{quote}"' if quote else ""  # an unplaced confirm quotes no user sentence
+    line = (f'You answered "{answer.strip()}"{about}. {contract_clause(workflow, labels["contract"])}. '
             f"So {workflow} cannot do this as you asked.")
     evidence = {**core.evidence, "jev_answer": {"kind_before": core.kind, "basis_before": core.basis, **judged}}
     return CoreDecision(kind="DECLINE", basis="jev_answer", evidence=evidence,
