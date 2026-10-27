@@ -97,27 +97,32 @@ def forms_doubts(task, result, attrs, read, credited, applicable, doubted_forms,
     """ROUND.md: the waits and unsaid form reasons Jev's reads add to one result row, as (applicable, doubted_forms).
 
     A credited row refused by its typed attributes: each limiting one Jev doubts (with group_membership when the overlap
-    read doubts it too) is fitted at its neutral value; when the credits then fit, each doubted one becomes a wait. A
-    row credited to nothing: a doubted time_model or spatial is only not said as the reason. Nothing else changes.
-    `read`: the credits left after the method checks; `fitting`: the check's `_fitting`."""
+    read doubts it too) is fitted at its neutral value; when the credits then fit, each doubted one becomes a wait.
+    Round 2: when something else still blocks them (another typed attribute, the method checks), a doubted form is only
+    not said as the reason. A row credited to nothing: a doubted time_model or spatial is only not said. Nothing else
+    changes. `read`: the credits left after the method checks; `fitting`: the check's `_fitting`."""
     from ..capability_sheet import sheet_entries
 
     if not credited:
         found = [attr for attr, options in limiting_forms(attrs, []) if reader(task, result, attr, options)]
         return applicable, [*doubted_forms, *found]
-    if not read or fitting(read, SimpleNamespace(**attrs)):
-        return applicable, doubted_forms  # nothing left after the method checks, or not refused by its forms
+    if read and fitting(read, SimpleNamespace(**attrs)):
+        return applicable, doubted_forms  # not refused by its forms
     known = sheet_entries()
-    found = [attr for attr, options in limiting_forms(attrs, [known[k] for k in read])
+    found = [attr for attr, options in limiting_forms(attrs, [known[k] for k in read] if read else credited)
              if reader(task, result, attr, options)]
-    if not found:
-        return applicable, doubted_forms
     waits = [about for about, quote, _domain in applicable if quote == result]
     if (attrs.get("group_membership") == "several_groups" and "group_membership" not in waits
             and overlap_reader is not None and overlap_reader(task, result)):
         found.append("group_membership")
-    neutral = {**attrs, **{attr: NEUTRAL.get(attr, "not_stated") for attr in [*found, *waits]}}
-    if not fitting(read, SimpleNamespace(**neutral)):
+    if not found:
         return applicable, doubted_forms
-    added = [(attr, result, None) for attr in found if attr not in waits]
-    return [*applicable, *added], [*doubted_forms, *(attr for attr in found if attr != "group_membership")]
+    neutral = {**attrs, **{attr: NEUTRAL.get(attr, "not_stated") for attr in [*found, *waits]}}
+    if read and fitting(read, SimpleNamespace(**neutral)):
+        added = [(attr, result, None) for attr in found if attr not in waits]
+        return [*applicable, *added], [*doubted_forms, *(attr for attr in found if attr != "group_membership")]
+    return applicable, [*doubted_forms, *(attr for attr in found if attr in _FORM_REASON_ATTRS)]
+
+
+_FORM_REASON_ATTRS = ("time_model", "spatial", "group_membership")
+"""The forms whose reason `stated_reasons._form_reasons` says; input_network has none."""
