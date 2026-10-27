@@ -20,7 +20,7 @@ from pathlib import Path
 
 import yaml
 
-from ..contracts.core_decision import CoreDecision, FactQuestion
+from ..contracts.core_decision import CoreDecision, DeclinedPart, FactQuestion
 from .context import record_event
 
 __all__ = ["ABOUT_LINES", "KIND_CRITERIA", "apply_jev_guard", "guarded_core", "jev_mode", "request_sentences",
@@ -146,6 +146,63 @@ def start_jev(task: str) -> Future | None:
     return None if jev_mode() == "off" else _POOL.submit(_read, task)
 
 
+CONTRACT_INSTRUCTIONS = (
+    "The user is unsure of the fact in the quoted sentence. Pick the line of the workflow contracts that states what "
+    "that fact must be for the workflow to do the request. Pick none when no line does."
+)
+ANSWER_INSTRUCTIONS = (
+    "The assistant asked the user to settle the uncertain point in their sentence. Given the contract line and the "
+    "user's answer, decide whether the answer means their data meets what the contract line requires."
+)
+ANSWER_CRITERIA = {
+    "meets": "The answer says the fact is as the contract line needs: the workflow can take it.",
+    "fails": "The answer says the fact is not as the contract line needs: the input is missing, is of another kind, "
+             "or is ruled out by the line.",
+    "unclear": "The answer does not settle the point: it restates the request, hedges, or answers something else.",
+}
+
+
+@lru_cache(maxsize=32)
+def contract_lines(workflows: tuple[str, ...]) -> tuple[tuple[str, str], ...]:
+    """(workflow, line) for each sentence of the workflows' handoff contracts and each input check, verbatim."""
+    found = []
+    for path in sorted(WORKFLOWS.glob("*.yaml")):
+        spec = yaml.safe_load(path.read_text())
+        if spec["workflow"] not in workflows:
+            continue
+        handoff = " ".join(((spec.get("output_capability") or {}).get("handoff_contract") or "").split())
+        found += [(spec["workflow"], line) for line in re.split(r"(?<=\.)\s+", handoff) if len(line) >= 20]
+        found += [(spec["workflow"], check["text"].strip()) for check in spec.get("input_checks") or []
+                  if check.get("text")]
+    return tuple(dict.fromkeys(found))
+
+
+def pick_contract(task: str, sentence: str, workflows) -> dict:
+    """The contract line the unsure sentence depends on (None when Jev picks none or is unsure)."""
+    lines = contract_lines(tuple(workflows))
+    if not lines:
+        return {"contract": None}
+    options = {f"c{i}": f"{name}: {line}" for i, (name, line) in enumerate(lines, 1)} | {"none": "no line states it"}
+    state = f"User request:\n{task}\n\nThe sentence the user is unsure about:\n{sentence}"
+    out = _decide(state, {"contract": {"type": "choice", "instructions": CONTRACT_INSTRUCTIONS, "criteria": options}})
+    answer = out["answers"]["contract"]
+    index = None if answer["choice"] == "none" else int(answer["choice"][1:]) - 1
+    picked = lines[index] if index is not None and answer["confidence"] >= THRESHOLD else None
+    return {"contract": picked[1] if picked else None, "contract_workflow": picked[0] if picked else None,
+            "contract_confidence": answer["confidence"], "cost": (out.get("usage") or {}).get("cost", 0)}
+
+
+def judge_answer(contract: str, sentence: str, question: str, answer: str) -> dict:
+    """Jev's reading of the user's answer against the contract line: meets, fails or unclear, with its confidence."""
+    state = (f"Contract line:\n{contract}\n\nThe user's uncertain sentence:\n{sentence}\n\n"
+             f"The assistant's question:\n{question}\n\nThe user's answer:\n{answer}")
+    out = _decide(state, {"answer": {"type": "choice", "instructions": ANSWER_INSTRUCTIONS,
+                                     "criteria": ANSWER_CRITERIA}})
+    judged = out["answers"]["answer"]
+    return {"answer": judged["choice"], "confidence": judged["confidence"],
+            "cost": (out.get("usage") or {}).get("cost", 0)}
+
+
 def asked_sentences(task_state) -> set[str]:
     """The sentences a Jev question already asked in this task (pending or answered): arm A J20/J48 asked one again
     after the user answered it, since an option-free answer is never bound."""
@@ -182,11 +239,53 @@ def guarded_core(core: CoreDecision, read: dict, clarify, asked: set[str] = froz
                         evidence=evidence), "ask"
 
 
+def asked_contract_question(task_state) -> dict | None:
+    """The Jev question this task asked with a contract line, still waiting for its answer (ANSWERS.md)."""
+    for item in (task_state or {}).get("pending") or []:
+        if (str(item.get("what", "")).startswith("jev:") and item.get("status", "asked") == "asked"
+                and (item.get("labels") or {}).get("contract")):
+            return item
+    return None
+
+
+def answered_core(core: CoreDecision, question: dict, answer: str, judged: dict) -> tuple[CoreDecision, str]:
+    """ANSWERS.md: the user's answer fails the contract line the question quoted -> DECLINE of the asked workflow,
+    its reason the two verbatim quotes. Only on a DO; anything else, or `meets` / `unclear`, leaves the call."""
+    if core.kind != "DO":
+        return core, "answer_not_on_do"
+    if judged["answer"] != "fails" or judged["confidence"] < THRESHOLD:
+        return core, f"answer_{judged['answer']}"
+    workflow = (question.get("workflows") or ["the workflow"])[0]
+    line = (f'You answered "{answer.strip()}" about "{question.get("user_quote", "").rstrip(". ")}". '
+            f'{workflow}\'s contract: "{question["labels"]["contract"].rstrip(". ")}". '
+            f"So {workflow} cannot do this as you asked.")
+    evidence = {**core.evidence, "jev_answer": {"kind_before": core.kind, "basis_before": core.basis, **judged}}
+    return CoreDecision(kind="DECLINE", basis="jev_answer", evidence=evidence,
+                        declined=[DeclinedPart(quote=answer.strip(), reasons=[line], line=line)]), "declined"
+
+
 def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str, pending: Future | None):
     """The call after the guard (shadow: the call as it came, with what the guard would have done recorded)."""
     mode = jev_mode()
     if mode == "off" or pending is None:
         return core
+    question = asked_contract_question(state.get("task_state"))
+    if question is not None:  # the answer turn: Jev reads the answer against the line the question quoted
+        from ..llm import latest_user_message
+
+        answer = latest_user_message(state.get("messages") or [])
+        try:
+            judged = judge_answer(question["labels"]["contract"], question.get("user_quote", ""),
+                                  question.get("question", ""), answer)
+        except Exception as exc:  # noqa: BLE001 -- the call as it came, and says so
+            judged = {"answer": f"not_run:{type(exc).__name__}", "confidence": 0.0}
+        after, action = answered_core(core, question, answer, judged)
+        record_event(context, state, "core.jev_answer", "classify", {
+            "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
+            "would_have": {"kind": after.kind, "basis": after.basis}, "judged": judged,
+            "contract": question["labels"]["contract"]})
+        if after is not core:
+            return after if mode == "on" else core
     try:
         read = pending.result(timeout=TIMEOUT * 3)
     except Exception as exc:  # noqa: BLE001 -- any failure leaves the call as it came, and says so
@@ -200,6 +299,16 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
         return _clarify_need(decision, decision.capability_check, task=user_task)
 
     after, action = guarded_core(core, read, clarify, asked_sentences(state.get("task_state")))
+    if action == "ask" and after.workflows:  # ANSWERS.md: the contract line the unsure sentence depends on
+        try:
+            pick = pick_contract(user_task, after.facts[0].user_quote, after.workflows)
+        except Exception as exc:  # noqa: BLE001 -- asked without a line, as before
+            pick = {"contract": None, "error": type(exc).__name__}
+        read = {**read, **{f"pick_{key}": value for key, value in pick.items()}}
+        if pick.get("contract"):
+            named = [pick["contract_workflow"], *(w for w in after.workflows if w != pick["contract_workflow"])]
+            fact = after.facts[0].model_copy(update={"contract_quote": pick["contract"], "workflows": named})
+            after = after.model_copy(update={"facts": [fact], "workflows": named})
     record_event(context, state, "core.jev_guard", "classify", {
         "status": "checked", "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
         "would_have": {"kind": after.kind, "basis": after.basis, "workflows": after.workflows},
