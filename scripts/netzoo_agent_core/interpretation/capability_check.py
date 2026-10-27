@@ -19,6 +19,7 @@ The reply always opens with what was understood, so a misreading is visible.
 from __future__ import annotations
 
 import re
+from types import SimpleNamespace
 
 from ..capability_sheet import data_units, entry, result_forms, sheet_entries
 from .needed_facts import (
@@ -495,6 +496,13 @@ def build_capability_check(
                                                          if known.get(k) and known[k].kind == "produces")))[0]
         fit_attrs = {name: getattr(items[0], name) for name in (*_TYPED, "samples_matched") if hasattr(items[0], name)}
         fit_attrs["_method"] = method
+        if (fit_attrs.get("group_membership") == "several_groups" and read
+                and _fitting(read, SimpleNamespace(**{**fit_attrs, "group_membership": "not_stated"}))):
+            # jev-overlap-2026-10-27: refused by the overlap form alone; Jev's read of the words may make it a question.
+            from .jev_overlap import overlap_doubted
+
+            if overlap_doubted(task, result):
+                applicable = [*applicable, ("group_membership", result, None)]
         if applicable:
             possible, analyses = resolve_unknowns(_fitting, read, fit_attrs, applicable)
             update = fact_update(possible, analyses, _status, unknown_domains)

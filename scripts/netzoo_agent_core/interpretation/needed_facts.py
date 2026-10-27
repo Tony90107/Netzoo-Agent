@@ -57,6 +57,12 @@ DIMENSIONS = {
     "scale": ("whether you want one result for all samples or one per sample",
               "Do you want one result for all your samples together, or one per sample?",
               (("whole_cohort", "one for all samples"), ("per_sample", "one per sample"))),
+    # jev-overlap-2026-10-27: asked only when Jev finds no overlap in the words of a result typed several_groups.
+    # The two labels share no word, so a reply naming one binds in code (`task_updates.bind_answers`).
+    "group_membership": ("whether one item may belong to several groups at once",
+                         "Should each gene, regulator or sample belong to one group only (one group each), or may one "
+                         "belong to several groups at once?",
+                         (("one_group", "one group each"), ("several_groups", "several groups at once"))),
 }
 
 
@@ -170,6 +176,9 @@ def fact_line(item) -> str:
                 f'does not say whether you have one: if you do, {_workflows(item.outcomes.get("has", []))}; if not, '
                 f'{item.outcome_notes.get("none", "")}.')
     about, _question, values = DIMENSIONS[item.depends_on]
+    if item.depends_on == "group_membership":  # jev-overlap: the user said nothing either way, never "not known"
+        answers = "; ".join(f"if {label}: {_workflows(item.outcomes.get(value, []))}" for value, label in values)
+        return f'"{item.quote}" -- the request does not say {about}: {answers}.'
     if item.depends_on == "omics_layers":
         values = [(value, f"{value} layers") for value in item.outcomes]
     if item.depends_on == "sample_count":
@@ -234,7 +243,8 @@ def resolve_unknowns(fitting, keys: list[str], attrs: dict, unknowns: list[tuple
     neutral = dict(attrs)
     permissive = {"data_unit": "not_stated", "input_network": "none", "samples_matched": "not_stated",
                   "sample_alignment": "not_stated", "omics_layers": 0, "scale": "unstated",
-                  "mutation_origin": "not_stated", "value_type": "not_stated", "mirna_driver": "not_stated"}
+                  "mutation_origin": "not_stated", "value_type": "not_stated", "mirna_driver": "not_stated",
+                  "group_membership": "not_stated"}
     for about, _quote, _domain in unknowns:
         if about in permissive:
             neutral[about] = permissive[about]
