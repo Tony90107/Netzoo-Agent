@@ -1,0 +1,1211 @@
+[
+ {
+  "set": "replay",
+  "id": "hb-h4main-M01-1",
+  "request": "Queue a LIONESS-DRAGON job on rna_85.csv (85 samples x 300 genes) and cpg_85.csv for the same 85 samples, aggregate matrix to ldr/all.tsv and the per-sample table to ldr/edges.tsv. I can't remember whether cpg_85.csv is the filtered 300-probe version or the unfiltered 5,000-probe export.",
+  "gold": "ASK",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M13-1",
+  "request": "Our paired proteomics and phosphoproteomics tables from the same 48 ovarian tumours should go through DRAGON. Rows are tumour IDs, columns are proteins or phosphosites, and there are no missing values. I want manual shrinkage, lambda1 = 0 for the proteome layer and lambda2 = 1 for the phosphoproteome layer, with the edge_list output. One network for the whole cohort is what I'm after.",
+  "gold": "DO",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M14-1",
+  "request": "Run LIONESS-PANDA now: the expression file is pilot_expr.tsv with exactly three mouse retina samples, plus motif_mm10.txt and ppi_mm10.txt. Save the aggregate PANDA network to out/panda_all.txt and the per-sample networks to out/lioness_samples.txt. Three samples is all we will ever have from this pilot, so please don't wait for more.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M16-1",
+  "request": "Can you set up BONOBO for 5 endometrial biopsies? The gene-by-sample table is already log2-transformed and mean-centered per gene. I need one co-expression network per biopsy plus a p-value for every edge, so turn on sparsify and save_pvals to keep the full matrices; I'll threshold at 0.01 myself afterwards. CSV files, please.",
+  "gold": "DO",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M17-1",
+  "request": "Start COBRA right away on vst_counts.tsv (18,000 genes by 210 samples) with design.csv, whose rows are exactly those 210 sample IDs and whose numeric columns are an intercept, disease status (0/1) and two 0/1 dummy columns for the three recruiting sites. Disease is what we study; site should be adjusted for. Write everything to /scratch/cobra_run1/.",
+  "gold": "DO",
+  "workflows": [
+   "COBRA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M19-1",
+  "request": "We want SAMBAR subtypes for 120 lung adenocarcinomas from a somatic mutation matrix (samples by genes, non-negative mutation counts), with exon lengths, a cancer-gene list and an MSigDB-format GMT. Try between 3 and 8 subtypes, use average linkage, and switch off the per-patient mutation-burden normalization. The distance can stay at its default.",
+  "gold": "DO",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M21-1",
+  "request": "Go ahead and run PUMA with kidney_expr.tsv (gene-by-sample, 52 biopsies), prior_tf_mir.txt (TF motif plus miRNA-target edges), ppi_tf.txt, and mirna_ids.txt, which lists one miRNA per line, every one of them present in the prior's first column. Output goes to results/puma_kidney.txt. A single network for all 52 biopsies is fine.",
+  "gold": "DO",
+  "workflows": [
+   "PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M23-1",
+  "request": "Launch LIONESS-DRAGON with metab_110.csv (110 samples x 250 metabolites) and rna_110.csv (the same 110 sample IDs x 350 genes); both are complete numeric tables with no constant columns. Let it estimate both shrinkage values itself. Aggregate matrix to ld/all_samples.tsv, per-sample edge table to ld/per_sample.tsv. Leave everything else at defaults and start it now.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M24-1",
+  "request": "Across 80 breast tumours I want to estimate how active each transcription factor is in each tumour, separately from the TF's own mRNA level, and also whether each TF tends to activate or repress its target genes. The gene-by-sample expression, a TF-by-gene motif prior and a TF-TF protein interaction matrix with matching identifiers are ready.",
+  "gold": "DO",
+  "workflows": [
+   "GIRAFFE"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M25-1",
+  "request": "Set SAMBAR going on mut_pilot.csv (6 tumours x 900 genes, non-negative counts), exon_sizes.csv, cancer_genes.txt and h.all.v2023.gmt, trying anywhere from 2 to 8 subtypes. Results go to sambar_pilot/ and the job can begin straight away.",
+  "gold": "DECLINE",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M31-1",
+  "request": "We need an OTTER network for our 64 mouse liver RNA-seq samples, pooled into one cohort-wide TF-to-gene network. The motif seed and the TF-TF PPI edge list use the same TF identifiers. Set lam to 1 so the fit relies entirely on co-expression rather than the PPI, with gamma 0.6 and 150 iterations, and write the edge_list format so I can pass it to community detection later.",
+  "gold": "DO",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M36-1",
+  "request": "Fire off LIONESS-PUMA on islet_expr.tsv (48 columns), prior_tf_mir.txt, ppi.txt and mir_ids.txt now; aggregate to lp/aggregate.txt and per-sample networks to lp/samples.txt. One snag: my student says the 48 columns are individual FACS-sorted beta cells, while the sample sheet lists them as 48 bulk islet preparations from different donors.",
+  "gold": "ASK",
+  "workflows": [
+   "LIONESS-PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M41-1",
+  "request": "For each of our 90 glioma patients, the goal is that patient's own regulatory network in which both transcription factors and microRNAs regulate target genes. We have bulk RNA-seq for all 90, a combined TF motif and miRNA-target prior, a TF interaction file, and a one-per-line list of the miRNAs that appear in the prior.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M45-1",
+  "request": "I already have a cohort-wide TF-to-gene network saved as a source, target, weight edge list; weights were thresholded so all are non-negative, and TF and gene IDs never overlap. What I want now are communities in which groups of TFs and groups of genes cluster together, with separate TF-side and gene-side memberships.",
+  "gold": "DO",
+  "workflows": [
+   "CONDOR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M46-1",
+  "request": "COBRA already gave us adjusted_coexpression.tsv with the sequencing batch removed across our 75 patients. Next, feed that adjusted matrix into LIONESS-PANDA as its co-expression input, so that every patient-specific TF-gene network comes out batch-corrected. The motif and PPI priors are the same ones we used before.",
+  "gold": "DECLINE",
+  "workflows": [
+   "LIONESS-PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M47-1",
+  "request": "Two separate TF-to-gene regulatory networks are needed: one from the 12 hypoxia and one from the 12 normoxia HUVEC samples, both built on the same genes and the same motif and PPI priors, so I can compare each transcription factor's targeting between the conditions. Expression, motif and PPI data are prepared.",
+  "gold": "DO",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h4main-M48-1",
+  "request": "I've uploaded kidney_expr_64.tsv, tf_motif.txt, tf_ppi.txt, mirna_prior.txt and mirna_ids.txt for 64 biopsies. Please launch the standard NetZoo analysis on them now, with all output going to /data/runs/kidney/.",
+  "gold": "CLARIFY",
+  "workflows": [
+   "PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J10-1",
+  "request": "I'd like DRAGON on two tables from the same 85 plasma donors: proteomics (310 proteins, log-intensities) and metabolomics (140 metabolites, log-abundances), samples as rows and features as columns. Please fix lambda1 at 0 and lambda2 at 1 rather than estimating them, and give me the edge_list output so I can sort the cross-layer partial correlations.",
+  "gold": "DO",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J11-1",
+  "request": "Please start LIONESS-DRAGON now with layer 1 = rna_top400.csv (100 samples by the 400 most variable genes, log-CPM) and layer 2 = meth_top200.csv (the same 100 sample IDs by 200 CpG M-values). Leave lambda1 and lambda2 empty so they're estimated, and write dragon_all.tsv and lioness_dragon_samples.tsv.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J15-1",
+  "request": "For 55 endometrial tumours I want each miRNA's activity level in every tumour, estimated apart from the miRNA's own expression; the same idea as transcription factor activity, but with miRNAs as the regulators.",
+  "gold": "DECLINE",
+  "workflows": [
+   "LIONESS-PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J24-1",
+  "request": "For 40 glioblastoma samples I want one cohort-wide regulatory network in which both transcription factors and miRNAs regulate their target genes. I have the expression matrix, a prior with TF motifs and miRNA target predictions, a PPI file and a list of the miRNAs, one per line. Per-sample networks aren't needed.",
+  "gold": "DO",
+  "workflows": [
+   "PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J28-1",
+  "request": "We have 18,000 genes measured in 96 colon samples from three hospitals and two sequencing batches, with a numeric design matrix (one-hot hospital, batch, age) keyed by the same sample IDs. I want to see how much of the gene co-expression is associated with hospital and batch, and get an adjusted co-expression matrix out of it.",
+  "gold": "DO",
+  "workflows": [
+   "COBRA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J30-1",
+  "request": "I need a separate gene-gene co-expression network for each of 30 bulk RNA-seq samples of human skin (log2 CPM, centered per gene, genes on rows). There are no covariates to adjust and no transcription factors involved, just one co-expression network per sample.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-COEXPRESSION",
+   "BONOBO"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J32-1",
+  "request": "Is GIRAFFE worth trying on my melanoma data? I have expression for 70 tumours plus motif and PPI files. I'm hoping something interesting falls out of it.",
+  "gold": "CLARIFY",
+  "workflows": [
+   "PANDA",
+   "PUMA",
+   "LIONESS-PANDA",
+   "LIONESS-PUMA",
+   "OTTER",
+   "GIRAFFE"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J40-1",
+  "request": "Run CONDOR now on results/panda_lung_edges.tsv: columns source, target and weight, thresholded from my PANDA lung network so all weights are non-negative. Write everything into /data/projects/lung/condor_results/ and use lung_v1 as the prefix.",
+  "gold": "DO",
+  "workflows": [
+   "CONDOR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J43-1",
+  "request": "Across 120 breast tumours I need, for each transcription factor, its activity level in every tumour separately from its own mRNA level, and also whether it activates or represses each target gene. I have RNA-seq expression, a TF-gene motif prior and a TF-TF PPI matrix with matching identifiers.",
+  "gold": "DO",
+  "workflows": [
+   "GIRAFFE"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J44-1",
+  "request": "Time to rerun OTTER: expr_pbmc.tsv, motif_pbmc.tsv and ppi_pbmc.tsv, output otter_pbmc.tsv as an edge list. This time set computing to gpu and precision to single, because the CPU run took far too long on our 19,000-gene matrix. Start it now.",
+  "gold": "DECLINE",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J45-1",
+  "request": "We only have three bulk RNA-seq samples of mouse retina (P7, P14 and adult), plus a mouse motif prior and a STRING PPI. I know it's a tiny set, but I'd like LIONESS-PANDA to give each of the three samples its own TF-to-gene network, kept separate from the aggregate one.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h2main-J47-1",
+  "request": "Could you set up OTTER for an aggregate TF-gene network of human cardiomyocytes, using my precomputed gene-by-gene co-expression matrix instead of an expression table, plus the motif seed and the TF-TF PPI? Settings: lam = 1, gamma = 0, 150 iterations, single precision on CPU, matrix output.",
+  "gold": "DO",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H02-1",
+  "request": "Please use PUMA for our 85 clear-cell renal carcinomas: I want one cohort-wide network in which both transcription factors and miRNAs regulate target genes. Inputs are ready - gene-by-sample expression, a TF motif prior, a PPI file, a miRNA-target prior, and the miRNA list with one ID per line, every one of which appears in the prior's first column.",
+  "gold": "DO",
+  "workflows": [
+   "PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H03-1",
+  "request": "Our nutrition study has plasma metabolomics (412 features) and VST-transformed RNA-seq (2,000 genes) from the same 96 participants, with no missing values. I'd like DRAGON to fit the two-layer partial-correlation network with lambda1 fixed at 0 and lambda2 fixed at 1 - we are deliberately testing the extremes - and return the result as an edge list.",
+  "gold": "DO",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H06-1",
+  "request": "Across 140 breast tumours I need an estimate of how active each transcription factor is in every tumour, independent of the TF's own transcript level, together with signed TF-gene effects that separate activation from repression. I have log-normalised gene-by-sample expression, a TF-by-gene motif matrix and a TF-TF protein interaction matrix, all with matching identifiers.",
+  "gold": "DO",
+  "workflows": [
+   "GIRAFFE"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H07-1",
+  "request": "In a cohort of 240 participants we measured 250 blood transcripts and 150 serum proteins on the same draws; the data are complete and continuous. What I'm after is an individual partial-correlation network for every participant linking features within and across the two layers, so I can compare them between smokers and non-smokers.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H10-1",
+  "request": "I want a separate gene-gene co-expression network for each of 24 mouse hippocampus samples (12 stressed, 12 control) so I can compare per-sample gene degree between the groups. The expression matrix is gene-by-sample with a header row of sample IDs, already log2-transformed and mean-centred per gene. There are no covariates to adjust for.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-COEXPRESSION"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H16-1",
+  "request": "Our 230 glioblastoma RNA-seq samples (about 18,000 genes) were collected at four hospitals and sequenced in two batches. The aim is to quantify how much of the gene-gene co-expression is associated with hospital and with batch, and to get an adjusted co-expression matrix out of it. The design sheet codes both covariates numerically, keyed by the same sample IDs as the expression columns.",
+  "gold": "DO",
+  "workflows": [
+   "COBRA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H18-1",
+  "request": "With DRAGON, I'd like three separately tuned penalties on our 110 matched colorectal tumours: lambda1 for the methylation block, lambda2 for the expression block, and a lambda_inter of 0.2 controlling only the cross-layer methylation-expression edges. Can you set it up that way?",
+  "gold": "DECLINE",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H22-1",
+  "request": "I lost the original expression table but kept a labeled, symmetric 9,800 x 9,800 gene co-expression matrix computed from it. My plan is for OTTER to build the aggregate TF-to-gene network from that matrix, a TF-by-gene motif seed over the same genes, and a TF-TF PPI edge list whose TFs match the seed, using lam 0.5, 150 iterations and edge-list output.",
+  "gold": "DO",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H31-1",
+  "request": "Run BONOBO now on /data/pbmc/expr_log2_centered.tsv - genes in rows, a header with 18 sample IDs, values log-transformed and centred. Use sparsify with bonobo_confidence 0.01, turn save_pvals on, set delta to 0.3, and write .csv files to /data/pbmc/bonobo_out/.",
+  "gold": "DO",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H40-1",
+  "request": "I'd like GIRAFFE run on 75 AML samples with a custom learning rate of 0.001, 5,000 iterations and a heavier weight on the PPI term in the loss - with the defaults it seemed to stop before the TF activities stabilised.",
+  "gold": "DECLINE",
+  "workflows": [
+   "GIRAFFE"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H43-1",
+  "request": "We only have three patient-derived organoid lines (bulk RNA-seq, one sample per line), plus a human TF motif prior and a STRING-based PPI. We need LIONESS-PANDA to give each line its own TF-to-gene network alongside the overall one. Three is all this biobank will ever provide.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h1-H45-1",
+  "request": "Go ahead with SAMBAR on uterine_somatic.csv (6 tumours by about 19,000 genes, non-negative somatic mutation counts), exon_sizes.csv, cancer_genes.txt and h.all.v2023.1.Hs.symbols.gmt. Cluster with kmin 2 and kmax 6 - yes, kmax equals our tumour count - and put everything in sambar_uterine/.",
+  "gold": "DO",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L02-1",
+  "request": "We have plasma proteomics (1,100 proteins) and untargeted metabolomics (640 metabolites) from the same 85 participants, both as sample-by-feature CSV files with identical sample IDs. Please set up DRAGON with lambda1 = 0 and lambda2 = 1, so the protein layer gets no shrinkage and the metabolite layer gets full shrinkage, and write the network as an edge list instead of a matrix.",
+  "gold": "DO",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L09-1",
+  "request": "Start the per-sample run now with rna_top400.tsv (48 samples by the 400 most variable transcripts) and meth_top150.tsv (the same 48 sample IDs by 150 CpG probes), both with a header and sample IDs in the first column. I want one partial-correlation network per patient spanning both layers; cohort matrix to out/all.tsv and the per-sample table to out/per_sample.tsv.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-DRAGON",
+   "DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L15-1",
+  "request": "I'd like BONOBO on 12 bulk RNA-seq samples of human iPSC-derived cardiomyocytes. The matrix is log2(CPM+1), genes on rows with a header of sample IDs, and every gene has been mean-centered. Turn sparsify on with bonobo_confidence 0.01, also save the p-value matrices, set delta to 0.3, and write the per-sample matrices as .csv files.",
+  "gold": "DO",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L20-1",
+  "request": "Go ahead and run it now: TF-plus-miRNA networks for each of our 25 endometrial tumors, from expr_ucec.tsv (genes by samples), motif_prior.tsv (TF and miRNA target edges, regulator in column one), ppi_prior.tsv, and mirna_ids.txt with one miRNA ID per line. Aggregate network to out/puma_all.txt, per-sample networks to out/lioness/.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L21-1",
+  "request": "Please run GIRAFFE on our 44 psoriasis skin biopsies (expression, motif prior and PPI are ready), but change the optimizer: learning rate 0.0005, 5,000 iterations, and a heavier weight on the PPI term of the loss. The defaults gave us nearly flat TF activities last time.",
+  "gold": "DECLINE",
+  "workflows": [
+   "GIRAFFE"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L26-1",
+  "request": "We want a TF-to-gene regulatory network for each one of our 74 high-grade serous ovarian tumors, so that later we can relate each TF's targeting in a tumor to platinum response. Inputs are a gene-by-sample RNA-seq matrix, a human TF motif prior and a STRING-derived TF PPI file; we have no miRNA data at all.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L27-1",
+  "request": "Run PANDA now on data/gtex_liver_expr.txt (genes by 226 samples; the first row is a header with sample IDs), data/motif_hs_tf.txt and data/ppi_hs_string.txt. Save the network to results/liver/panda_liver.txt; that folder already exists, so there's no need to make a new one.",
+  "gold": "DO",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L30-1",
+  "request": "Our pilot has nine patient-derived colorectal cancer organoids with somatic mutation counts (samples by genes), plus an exon-length CSV, a tab-delimited cancer-gene list and the MSigDB KEGG GMT. Can SAMBAR try every subtype number from 3 up to 9 clusters? Use average linkage and keep the default normalization by each patient's mutation burden.",
+  "gold": "DO",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L31-1",
+  "request": "Our bulk RNA-seq covers 18,500 genes in 240 lung biopsies sequenced in two batches. I'd like to see how gene-gene co-expression is associated with sequencing batch and with smoking pack-years, and to keep a labeled adjusted co-expression matrix for later network work. The design table has one row per sample ID, batch coded 0/1 and pack-years as a number.",
+  "gold": "DO",
+  "workflows": [
+   "COBRA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L34-1",
+  "request": "Across 58 human tonsil B-cell samples, I want an activity value for every transcription factor in every sample that isn't simply the TF's own mRNA level, and I also want to know whether each TF activates or represses each of its targets. The expression matrix, a motif prior and a TF-TF PPI matrix with matching IDs are ready.",
+  "gold": "DO",
+  "workflows": [
+   "GIRAFFE"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L35-1",
+  "request": "Please run CONDOR now on results/lung_panda_edges_thresholded.tsv. The file has source, target and weight columns, sources are TFs and targets are genes, and the weights were already thresholded so none are negative. Write everything to results/condor_lung/ and use lung_q90 as the file prefix.",
+  "gold": "DO",
+  "workflows": [
+   "CONDOR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L38-1",
+  "request": "I need a separate gene-gene co-expression network for each of 30 mouse retina samples (15 wild-type, 15 rd10). Expression is already log2-transformed and centered per gene, with genes on rows and sample IDs in the header. No transcription factors or priors are involved, just per-sample co-expression.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-COEXPRESSION",
+   "BONOBO"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "hb-h3main-L46-1",
+  "request": "For maize root expression from 32 samples, with a TF-by-gene seed prior and a TF-TF interaction edge list covering the same TFs, please configure OTTER with lam = 0.9, gamma = 0, 150 iterations and single precision on the CPU. Export the network as an edge list, since we plan to pass it to CONDOR afterwards.",
+  "gold": "DO",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C04-1",
+  "request": "For each of our 25 diffuse large B-cell lymphoma patients I need that patient's own TF-to-gene regulatory network, built from the cohort's expression matrix together with a human motif prior and a TF PPI, so I can later compare each TF's targeting between responders and non-responders.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C07-1",
+  "request": "We measured 180 circulating miRNAs (normalized, continuous qPCR values) and 45 plasma cytokines in the same 64 sepsis patients; both tables have samples in rows, identical patient IDs and no missing values. What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers, so I can compare survivors with non-survivors",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-DRAGON",
+   "SAMBAR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C14-1",
+  "request": "Can I add an L1 (lasso) sparsity penalty to OTTER's objective so that the TF-gene network it returns for my 45 bovine mammary gland samples is sparse, with most edges exactly zero?",
+  "gold": "DECLINE",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C25-1",
+  "request": "I'd like one regulatory network for my 70 colorectal tumours in which both transcription factors and microRNAs act as regulators of their target genes. I have the gene-by-sample expression matrix, a TF motif prior, a TF-TF PPI, a miRNA-target prior and a file listing the miRNAs, one ID per line, all of which appear in the prior. Nothing per-patient is needed; a single cohort-level network is what ",
+  "gold": "DO",
+  "workflows": [
+   "PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C28-1",
+  "request": "Our 140 skeletal-muscle RNA-seq samples (about 18,000 genes after filtering) were sequenced in three runs and come from donors of both sexes. I'd like to see how much of each gene pair's co-expression is associated with sequencing run versus sex, and get an adjusted gene-by-gene co-expression matrix out of it for later network work. Both covariates are already coded as numeric indicator columns in",
+  "gold": "DO",
+  "workflows": [
+   "COBRA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C29-1",
+  "request": "I already have an aggregate TF-to-gene regulatory network for glioblastoma, exported as an edge list with source, target and weight columns; TF and gene IDs don't overlap and the weights were thresholded to be non-negative. Now I want to split it into communities of TFs and their target genes, with the TF-side and gene-side memberships reported separately.",
+  "gold": "DO",
+  "workflows": [
+   "CONDOR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C32-1",
+  "request": "Will DRAGON take my paired plasma proteomics and metabolomics tables (both with a header, the same 85 participant IDs in the first column, samples in rows, complete continuous values with no NAs) and write the partial-correlation network as an edge list rather than a matrix?",
+  "gold": "DO",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C35-1",
+  "request": "Run SAMBAR on mutations_ucec.csv (248 endometrial tumours in rows, genes in columns, non-negative mutation counts) with exon_lengths.csv, cancer_genes.txt and c2.cp.kegg.gmt (MSigDB format), all sharing the same gene symbols, and cluster the tumours into between 2 and 6 subtypes.",
+  "gold": "DO",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C37-1",
+  "request": "I've been reading about DRAGON, OTTER and GIRAFFE and they all sound powerful. Our lab has bulk transcriptomics, proteomics and some ATAC-seq peaks for a mouse model of pulmonary fibrosis, roughly 30 animals across three time points. Which of these should we apply, and what would we actually learn from each? We haven't settled on a specific hypothesis yet, and our PI wants something to show at the",
+  "gold": "CLARIFY",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C38-1",
+  "request": "Can GIRAFFE estimate an activity score for every transcription factor in each of our 30 psoriasis skin samples? I have the gene-by-sample expression table, a TF-by-gene motif prior and a TF-TF PPI matrix with matching identifiers.",
+  "gold": "DO",
+  "workflows": [
+   "GIRAFFE"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C40-1",
+  "request": "Run BONOBO on expr_ms_lesions.tsv (27 multiple sclerosis lesion samples; log2-transformed and centered per gene; gene IDs in the first column, sample IDs in the header), but only write networks for samples MS_03, MS_11 and MS_19, saved as .csv files.",
+  "gold": "DO",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C51-1",
+  "request": "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list? Inputs would be expression for 60 breast tumours (header row, gene IDs in the first column), a TF-by-gene seed edge list, and a TF-TF PPI edge list whose TFs are exactly the seed's TFs.",
+  "gold": "DO",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C53-1",
+  "request": "Could you help me see how genes are connected in my sorghum heat-stress experiment?",
+  "gold": "CLARIFY",
+  "workflows": [
+   "PANDA",
+   "LIONESS-PANDA",
+   "OTTER",
+   "LIONESS-COEXPRESSION",
+   "BONOBO"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C55-1",
+  "request": "Can PANDA build a single TF-to-gene regulatory network for our whole cohort of 48 mouse liver RNA-seq samples? I have the gene-by-sample expression matrix, a JASPAR-based motif prior and a mouse TF-TF PPI from STRING, all using the same gene symbols.",
+  "gold": "DO",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C58-1",
+  "request": "Run PANDA on expr_ipf.tsv with motif_hg38.tsv and ppi_hs.tsv, but use cobra_out/adjusted_coexpression.tsv (COBRA's adjusted gene-by-gene matrix, already checked to have the same gene IDs and order as the expression file) as the co-expression input instead of PANDA's own Pearson correlation.",
+  "gold": "DO",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o1-C59-1",
+  "request": "Please run LIONESS-PUMA on expr_cll.tsv (36 CLL patients), motif_cll.txt, ppi_cll.txt, mir_targets.txt and mir_list.txt (one miRNA ID per line, every one present in the first column of mir_targets.txt) to get a TF/miRNA-to-gene network for every patient.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o2-C26-1",
+  "request": "We have somatic mutation calls and RNA-seq for the same 90 bladder tumours. Is SAMBAR the right thing to run, or one of the network methods like PANDA? I'm open to whatever gives the most interesting result.",
+  "gold": "CLARIFY",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o2-C52-1",
+  "request": "Can BONOBO build a co-expression network for each of my 6 rhesus macaque lymph node samples? The data are log2-transformed and centered per gene, with genes in rows and sample IDs in the header, and I'd like the per-sample matrices saved as HDF5 and computed in double precision.",
+  "gold": "DO",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-g4o2-C53-1",
+  "request": "Could you help me see how genes are connected in my sorghum heat-stress experiment?",
+  "gold": "CLARIFY",
+  "workflows": [
+   "LIONESS-COEXPRESSION",
+   "BONOBO"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C07-1",
+  "request": "We measured 180 circulating miRNAs (normalized, continuous qPCR values) and 45 plasma cytokines in the same 64 sepsis patients; both tables have samples in rows, identical patient IDs and no missing values. What I want is a separate network for every patient that links miRNAs and cytokines through partial correlations, within and across the two layers, so I can compare survivors with non-survivors",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C11-1",
+  "request": "Run the TF network inference on expr_alzheimer.tsv (88 donors: 44 AD, 44 controls), motifs_hg38.txt and ppi_tf.txt. The analysis plan just says 'a network for each AD and control', and I can't tell if that means one network per diagnostic group or one network per donor; the person who wrote it is on leave until next month.",
+  "gold": "ASK",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C18-1",
+  "request": "Run CONDOR directly on expr_kidney_fibrosis.tsv (gene-by-sample RNA-seq for 64 biopsies) to get gene communities. I don't have any motif or PPI files, just this expression table.",
+  "gold": "DECLINE",
+  "workflows": [
+   "CONDOR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C20-1",
+  "request": "Run PANDA on tumour_profiles_v2.tsv with motif_hs.txt and ppi_hs.txt. Heads up: our lab saved two genes-by-tumours matrices under similar names, one with log2 expression and one with binary somatic-mutation calls, and I'm not sure which one this is.",
+  "gold": "ASK",
+  "workflows": [
+   "PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C23-1",
+  "request": "We generated quite a lot of omics on a pig model of septic shock: whole-blood transcriptome, plasma proteome and a few hundred metabolites, sampled at baseline and at 24 hours. I'd like a systems-level view of what is going on in these animals. Where should we start?",
+  "gold": "CLARIFY",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C31-1",
+  "request": "Can GIRAFFE give us signed TF-to-gene effects, activation versus repression, for our 40 atopic dermatitis skin biopsies? We have expression, a motif prior and a TF PPI. My supervisor's notes say we need those signed effects for each biopsy separately, but the grant text says one set of signed effects for the whole cohort, and I'm not sure which she actually wants.",
+  "gold": "ASK",
+  "workflows": [
+   "GIRAFFE"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C36-1",
+  "request": "For each of our 40 kidney cancer patients I need one number per transcription factor that captures that TF's regulatory strength in that patient, so we can relate it to survival. We have expression, a motif prior and a TF-TF PPI. I'm honestly not sure whether 'regulatory strength' here should mean how strongly the TF is wired to its targets or how active the TF is; my PI used both phrasings.",
+  "gold": "ASK",
+  "workflows": [
+   "LIONESS-PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C42-1",
+  "request": "Run DRAGON on expr_cll_layer.csv and methyl_cll_layer.csv (same 110 patient IDs in rows, no missing cells). One thing I'm unsure about: the methylation file is either the continuous beta values or the binarized methylated/unmethylated calls (0/1) that another group derived, and both versions were saved under that name.",
+  "gold": "ASK",
+  "workflows": [
+   "DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C43-1",
+  "request": "Run LIONESS-PANDA on expr_ra_synovium.tsv with motif_hs.txt and ppi_hs.txt to get a TF-to-gene network per column. I'm not sure which export this file is: the per-patient matrix (24 patients) or the version where a student averaged the patients into two columns, RA and control.",
+  "gold": "ASK",
+  "workflows": [
+   "LIONESS-PANDA",
+   "PANDA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C45-1",
+  "request": "We'd like a separate miRNA-protein partial-correlation network for each of our 50 heart-failure patients, from 300 serum miRNAs and a plasma proteomics panel measured on the same patients (complete, continuous, matching IDs). The catch: I don't remember whether the proteomics we got back is the 200-protein targeted panel or the 2,000-protein discovery panel, and the files are still on the CRO's se",
+  "gold": "ASK",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C47-1",
+  "request": "Using bulk expression and clinical follow-up for 400 lung adenocarcinoma patients, I need a model that predicts each new patient's overall-survival risk, something like a penalized Cox model that outputs a risk score, which I can then lock and apply to an external validation cohort of 150 patients from another hospital without refitting. Ideally the score would also show which genes drive the risk",
+  "gold": "DECLINE",
+  "workflows": [
+   "LIONESS-PANDA",
+   "LIONESS-PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C50-1",
+  "request": "I need a gene co-expression network for each of our 9 periodontitis gingival biopsies, with a p-value for every edge so I can filter them per sample. The matrix (genes in rows, sample IDs in the header) has been mean-centered per gene, but it came from a collaborator and I can't tell whether the values were log-transformed before centering.",
+  "gold": "ASK",
+  "workflows": [
+   "BONOBO"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p0-C59-1",
+  "request": "Please run LIONESS-PUMA on expr_cll.tsv (36 CLL patients), motif_cll.txt, ppi_cll.txt, mir_targets.txt and mir_list.txt (one miRNA ID per line, every one present in the first column of mir_targets.txt) to get a TF/miRNA-to-gene network for every patient.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-PUMA",
+   "PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p1-C27-1",
+  "request": "Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix? We don't have mutation calls for this cohort, only expression.",
+  "gold": "DECLINE",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p1-C30-1",
+  "request": "Run SAMBAR on mut_pilot.csv (mutation counts for 5 cholangiocarcinomas) with exon_len.csv, cancer_genes.txt and hallmark.gmt, testing every subtype number from 2 through 8.",
+  "gold": "DECLINE",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p1-C36-1",
+  "request": "For each of our 40 kidney cancer patients I need one number per transcription factor that captures that TF's regulatory strength in that patient, so we can relate it to survival. We have expression, a motif prior and a TF-TF PPI. I'm honestly not sure whether 'regulatory strength' here should mean how strongly the TF is wired to its targets or how active the TF is; my PI used both phrasings.",
+  "gold": "ASK",
+  "workflows": [
+   "LIONESS-PANDA",
+   "GIRAFFE"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p1-C39-1",
+  "request": "Can PUMA model the small RNAs from our mouse testis small-RNA-seq as regulators alongside the TFs? I have expression for 24 testes, a motif prior, a PPI and a small-RNA-to-target prior, but the annotation isn't finished: the small RNAs we picked could be miRNAs or piRNAs, and I genuinely don't know which yet.",
+  "gold": "ASK",
+  "workflows": [
+   "PUMA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p1-C44-1",
+  "request": "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv; I have no expression file, only that co-expression file. I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix for the cohort or the edge-by-sample table from our earlier LIONESS co-expression run.",
+  "gold": "ASK",
+  "workflows": [
+   "OTTER"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p1-C53-1",
+  "request": "Could you help me see how genes are connected in my sorghum heat-stress experiment?",
+  "gold": "CLARIFY",
+  "workflows": [
+   "LIONESS-COEXPRESSION"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p1-C56-1",
+  "request": "Can SAMBAR subtype our 160 pediatric medulloblastomas? The sequencing core sent a samples-by-genes variant-count matrix along with gene lengths, a cancer-gene list and a KEGG GMT, but their README doesn't say whether the counts are tumour-only somatic mutations or germline variant calls, and I can't tell from the file itself.",
+  "gold": "ASK",
+  "workflows": [
+   "SAMBAR"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p4c-C51-1",
+  "request": "Is OTTER able to run on CPU in single precision with 150 iterations and a step size (eta) of 1e-4, writing the result as an edge list? Inputs would be expression for 60 breast tumours (header row, gene IDs in the first column), a TF-by-gene seed edge list, and a TF-TF PPI edge list whose TFs are exactly the seed's TFs.",
+  "gold": "DO",
+  "workflows": [
+   "PANDA",
+   "PUMA",
+   "LIONESS-PANDA",
+   "LIONESS-PUMA",
+   "LIONESS-COEXPRESSION",
+   "COBRA",
+   "DRAGON",
+   "LIONESS-DRAGON",
+   "OTTER",
+   "GIRAFFE",
+   "BONOBO"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p5-C34-1",
+  "request": "Our 96 brain RNA-seq samples (about 20,000 genes) were processed in four extraction batches and I want the batch effect removed. Depending on who you ask in the lab, that means a batch-corrected expression matrix to hand to other people, or batch-adjusted gene co-expression to build the regulatory network on, and I'm not sure which one I'm supposed to deliver. Batch is recorded per sample as numer",
+  "gold": "ASK",
+  "workflows": [
+   "COBRA"
+  ]
+ },
+ {
+  "set": "replay",
+  "id": "cj-p5smoke-C05-1",
+  "request": "Run LIONESS co-expression on expr_pbmc_vaccine.tsv (genes in rows, 40 donors in columns, header with donor IDs) and give me the aggregate network plus one co-expression network per donor. I only have the expression, no motif or PPI files.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-COEXPRESSION"
+  ]
+ },
+ {
+  "set": "j1",
+  "id": "J01",
+  "request": "Would you group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups? I have somatic mutation calls, exon lengths, a cancer gene list and an MSigDB GMT file.",
+  "gold": "DO",
+  "workflows": [
+   "SAMBAR"
+  ],
+  "group": "K1",
+  "dragon": false
+ },
+ {
+  "set": "j1",
+  "id": "J02",
+  "request": "Could you build a DRAGON network between our RNA-seq (5,000 genes) and proteomics (800 proteins) for 64 breast tumors? Both tables are continuous, complete, and use the same tumor IDs.",
+  "gold": "DO",
+  "workflows": [
+   "DRAGON"
+  ],
+  "group": "K1",
+  "dragon": true
+ },
+ {
+  "set": "j1",
+  "id": "J04",
+  "request": "I want an aggregate PANDA network for 70 retinal samples; I have the expression table and a motif prior. I can't remember whether our bioinformatician ever put together the PPI file for these TFs.",
+  "gold": "ASK",
+  "workflows": [
+   "PANDA"
+  ],
+  "group": "U",
+  "dragon": false
+ },
+ {
+  "set": "j1",
+  "id": "J05",
+  "request": "I want one network of partial correlations connecting metabolite levels to gene expression across all 48 of our mouse livers. Both measurements come from the same animals and are continuous with no missing values. I'm not sure yet which journal we'll send this to.",
+  "gold": "DO",
+  "workflows": [
+   "DRAGON"
+  ],
+  "group": "K1",
+  "dragon": true
+ },
+ {
+  "set": "j1",
+  "id": "J07",
+  "request": "Could you run OTTER on our 35 thyroid samples with lam = 0.1, gamma = 0.5 and 100 iterations on CPU, writing an edge list? I have the expression matrix, motif prior and a TF-TF PPI edge list.",
+  "gold": "DO",
+  "workflows": [
+   "OTTER"
+  ],
+  "group": "K1",
+  "dragon": false
+ },
+ {
+  "set": "j1",
+  "id": "J11",
+  "request": "Run DRAGON between RNA-seq from our 60 Boston patients and plasma metabolomics from a different set of 55 patients recruited in Chicago. I'm not sure whether the Chicago team will want co-authorship.",
+  "gold": "DECLINE",
+  "workflows": [
+   "DRAGON"
+  ],
+  "group": "K2",
+  "dragon": true
+ },
+ {
+  "set": "j1",
+  "id": "J20",
+  "request": "Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples? I have the motif and PPI files ready. I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month.",
+  "gold": "ASK",
+  "workflows": [
+   "LIONESS-PANDA"
+  ],
+  "group": "U",
+  "dragon": false
+ },
+ {
+  "set": "j1",
+  "id": "J21",
+  "request": "Please run BONOBO on 40 log-transformed, gene-centered liver samples with sparsify on and a confidence level of 0.01, saving the matrices as .csv. Our lab used BONOBO's thresholded networks in a previous paper.",
+  "gold": "DO",
+  "workflows": [
+   "BONOBO"
+  ],
+  "group": "K1",
+  "dragon": false
+ },
+ {
+  "set": "j1",
+  "id": "J22",
+  "request": "Would it be possible to infer one TF-to-gene regulatory network across all 120 of our lung samples? I have the expression matrix, a motif prior and a PPI file with matching identifiers.",
+  "gold": "DO",
+  "workflows": [
+   "PANDA",
+   "OTTER"
+  ],
+  "group": "K1",
+  "dragon": false
+ },
+ {
+  "set": "j1",
+  "id": "J23",
+  "request": "Please run GIRAFFE on 30 Arabidopsis seedlings to get both the TF-to-gene regulation matrix and the TF activity per sample; I have expression, a motif prior and a TF PPI file. I'm not sure whether this will be a main or a supplementary figure.",
+  "gold": "DO",
+  "workflows": [
+   "GIRAFFE"
+  ],
+  "group": "K1",
+  "dragon": false
+ },
+ {
+  "set": "j1",
+  "id": "J24",
+  "request": "I want sample-specific co-expression networks with LIONESS built from our binary somatic mutation matrix for 100 tumors. Would that be possible?",
+  "gold": "DECLINE",
+  "workflows": [
+   "LIONESS-COEXPRESSION"
+  ],
+  "group": "K2",
+  "dragon": false
+ },
+ {
+  "set": "j1",
+  "id": "J27",
+  "request": "Please run LIONESS-DRAGON on 300 miRNAs and 700 genes measured in the same 36 patients, giving one network per patient. Roughly how long should I expect it to take?",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-DRAGON"
+  ],
+  "group": "K1",
+  "dragon": true
+ },
+ {
+  "set": "j1",
+  "id": "J28",
+  "request": "Run DRAGON on 2,000 CpG methylation features and 1,500 genes from the same 90 colon samples, with lambda1 = 0.2 and lambda2 = 0.6, and write the result as an edge list. We did something similar on an older cohort two years ago.",
+  "gold": "DO",
+  "workflows": [
+   "DRAGON"
+  ],
+  "group": "K1",
+  "dragon": true
+ },
+ {
+  "set": "j1",
+  "id": "J30",
+  "request": "I'd like a DRAGON network between ATAC-seq peak accessibility scores and RNA-seq expression from the same 40 T-cell samples; both are continuous. I don't know yet whether my co-advisor will want the figure in blue or green.",
+  "gold": "DO",
+  "workflows": [
+   "DRAGON"
+  ],
+  "group": "K1",
+  "dragon": true
+ },
+ {
+  "set": "j1",
+  "id": "J32",
+  "request": "I want a separate TF-to-gene network for each of our 22 sepsis patients, built from their expression together with a motif prior and a PPI file. I'm not sure which colleague will end up reviewing the figures.",
+  "gold": "DO",
+  "workflows": [
+   "LIONESS-PANDA"
+  ],
+  "group": "K1",
+  "dragon": false
+ },
+ {
+  "set": "j1",
+  "id": "J46",
+  "request": "Please run OTTER to get an aggregate TF-to-gene network for our 45 lung samples; I have the motif prior and the TF-TF PPI edge list. For the co-expression side I want to reuse a file I saved earlier. I can't remember whether that file is one gene-by-gene co-expression matrix over all samples or the folder of per-sample BONOBO matrices.",
+  "gold": "ASK",
+  "workflows": [
+   "OTTER"
+  ],
+  "group": "U",
+  "dragon": false
+ },
+ {
+  "set": "j1",
+  "id": "J48",
+  "request": "I want CONDOR to find communities of TFs and genes from our liver PANDA analysis. There are two similarly named files in the project folder. One of them is the PANDA output saved as a source, target, weight edge list, and the other is the expression table we fed into PANDA, and I'm not sure which one I copied over.",
+  "gold": "ASK",
+  "workflows": [
+   "CONDOR"
+  ],
+  "group": "U",
+  "dragon": false
+ },
+ {
+  "set": "h10",
+  "id": "W07",
+  "request": "We'd like a single network of partial correlations connecting transcript levels and protein abundances measured on the same 36 kidney biopsies, roughly 900 transcripts and 400 proteins, all continuous and complete. One network for the whole cohort is what we need. Roughly how long would that take to compute?",
+  "gold": "DO",
+  "workflows": [
+   "DRAGON"
+  ],
+  "group": "K1",
+  "dragon": true
+ },
+ {
+  "set": "h10",
+  "id": "W09",
+  "request": "Please run CONDOR on the PANDA network we built for 61 kidney samples. I exported it as a source, target, weight edge list, with TFs as sources, genes as targets, and only non-negative weights after thresholding. I don't know yet which colleague will interpret the communities.",
+  "gold": "DO",
+  "workflows": [
+   "CONDOR"
+  ],
+  "group": "K1",
+  "dragon": false
+ },
+ {
+  "set": "h10",
+  "id": "W10",
+  "request": "Run OTTER on our 52 rice leaf samples, using the expression matrix (with a header and gene IDs in the first column), our TF motif seed and the TF-TF PPI edge list, with lam set to 0.1, 100 iterations and edge-list output. How long does a run like that usually take?",
+  "gold": "DO",
+  "workflows": [
+   "OTTER"
+  ],
+  "group": "K1",
+  "dragon": false
+ },
+ {
+  "set": "h10",
+  "id": "W18",
+  "request": "Please cluster our 200 IBD colon biopsies into patient subgroups directly from their gene expression profiles. We have the normalized expression matrix for all of them. Would you be able to have that done before our Friday meeting?",
+  "gold": "DECLINE",
+  "workflows": [
+   "SAMBAR"
+  ],
+  "group": "K2",
+  "dragon": false
+ },
+ {
+  "set": "h10",
+  "id": "W20",
+  "request": "Run BONOBO on our 20 placenta samples (log-transformed, centered, labelled header) with sparsify on at confidence 0.01 and delta fixed at 0.5. How long would that take for about 15,000 genes?",
+  "gold": "DECLINE",
+  "workflows": [
+   "BONOBO"
+  ],
+  "group": "K2",
+  "dragon": false
+ },
+ {
+  "set": "h9",
+  "id": "Z03",
+  "request": "I'd like to understand the regulation and interactions going on in my 42 maize leaf samples, half drought-stressed and half well-watered. I have the expression matrix, a maize motif prior and a PPI file.",
+  "gold": "CLARIFY",
+  "workflows": [
+   "PANDA",
+   "PUMA",
+   "OTTER",
+   "GIRAFFE",
+   "DRAGON",
+   "LIONESS-DRAGON",
+   "LIONESS-PANDA",
+   "LIONESS-PUMA"
+  ],
+  "group": "V",
+  "dragon": false
+ },
+ {
+  "set": "h9",
+  "id": "Z13",
+  "request": "For the 60 thyroid samples collected at three hospitals, I want the part of gene-gene co-expression that is associated with hospital, separated from the rest. The expression matrix covers 12,000 genes, and our design table codes hospital as numeric 0/1 indicator columns, one row per sample ID from the expression matrix. We tried something like this two years ago with a home-made script that never got finished.",
+  "gold": "DO",
+  "workflows": [
+   "COBRA"
+  ],
+  "group": "K1",
+  "dragon": false
+ },
+ {
+  "set": "h9",
+  "id": "Z15",
+  "request": "Would it be possible to run PUMA on our 75 gastric cancer RNA-seq samples to get one regulatory network with both TFs and miRNAs as regulators? I have the gene-by-sample expression matrix, a motif prior whose first column includes the miRNAs, a PPI file, and a miRNA list with one ID per line.",
+  "gold": "DO",
+  "workflows": [
+   "PUMA"
+  ],
+  "group": "K1",
+  "dragon": false
+ },
+ {
+  "set": "h9",
+  "id": "Z21",
+  "request": "I want CONDOR communities, regulator and gene modules, from the network file my collaborator sent for our 66 Crohn's disease colon biopsies. She ran two different analyses on these samples, and I can't remember whether this file is the TF-to-gene edge list from her PANDA run or the edge list from her DRAGON run on expression and methylation.",
+  "gold": "ASK",
+  "workflows": [
+   "CONDOR"
+  ],
+  "group": "U",
+  "dragon": false
+ },
+ {
+  "set": "h9",
+  "id": "Z23",
+  "request": "Could you build a DRAGON network linking the plasma proteomics and metabolomics of the same 85 participants in our ageing cohort? Both tables are complete, continuous log-scaled values with participant IDs in the first column, 310 proteins and 140 metabolites. Please write it as an edge list and let DRAGON estimate the two shrinkage values itself.",
+  "gold": "DO",
+  "workflows": [
+   "DRAGON"
+  ],
+  "group": "K1",
+  "dragon": false
+ },
+ {
+  "set": "h9",
+  "id": "Z24",
+  "request": "Please run SAMBAR on the somatic mutation matrix from our 140 colorectal tumours, with the gene-length file, the cancer-gene list and the MSigDB pathway GMT file, trying between 2 and 6 subtypes. I'm not sure yet whether I'll show the subtypes at the department retreat or only at our lab meeting.",
+  "gold": "DO",
+  "workflows": [
+   "SAMBAR"
+  ],
+  "group": "K1",
+  "dragon": false
+ }
+]

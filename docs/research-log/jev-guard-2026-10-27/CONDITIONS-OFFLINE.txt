@@ -1,0 +1,67 @@
+124 DO calls {'ASK': 20, 'DO': 79, 'DECLINE': 16, 'CLARIFY': 9}; errors 0
+flagged 15: {'DECLINE': 4, 'DO': 7, 'CLARIFY': 2, 'ASK': 2}; violated but no sentence: 4
+DRAGON DO controls 6, flagged []
+C1 gold-DO flags 7/79 (<= 4), DRAGON 0 (<= 1): fail
+C2 gold-DECLINE flags 4/16 (>= 6): fail
+C3 fixes 8 >= 2 x 7: fail
+-> NOT PASSED
+
+[ASK] replay:cj-p1-C39-1 ['PUMA']
+   line: PUMA: Require one miRNA identifier per line and require every miRNA in prior column one.
+   sentence: I have expression for 24 testes, a motif prior, a PPI and a small-RNA-to-target prior, but the annotation isn't finished: the small RNAs we picked could be miRNAs or piRNAs, and I genuinely don't know
+[ASK] replay:cj-p1-C44-1 ['OTTER']
+   line: OTTER: expression_file must have a header, a unique gene-ID first column, and at least two unique sample columns.
+   sentence: Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv; I have no expression file, only that co-expression file.
+[CLARIFY] replay:cj-p0-C23-1 ['DRAGON']
+   line: DRAGON: DRAGON consumes exactly two paired sample-by-feature continuous omics tables and produces one aggregate undirected multi-omic network.
+   sentence: We generated quite a lot of omics on a pig model of septic shock: whole-blood transcriptome, plasma proteome and a few hundred metabolites, sampled at baseline and at 24 hours.
+[CLARIFY] h9:Z03 ['PANDA', 'PUMA', 'OTTER', 'GIRAFFE', 'DRAGON', 'LIONESS-DRAGON', 'LIONESS-PANDA', 'LIONESS-PUMA']
+   line: DRAGON: DRAGON consumes exactly two paired sample-by-feature continuous omics tables and produces one aggregate undirected multi-omic network.
+   sentence: I have the expression matrix, a maize motif prior and a PPI file.
+[DECLINE] replay:hb-h4main-M46-1 ['LIONESS-PANDA']
+   line: LIONESS-PANDA: LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI priors to internally infer the aggregate PANDA network and derive sample-specific TF-to-gene networks.
+   sentence: Next, feed that adjusted matrix into LIONESS-PANDA as its co-expression input, so that every patient-specific TF-gene network comes out batch-corrected.
+[DECLINE] replay:cj-p1-C27-1 ['SAMBAR']
+   line: SAMBAR: SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length CSV, a tab-delimited cancer-gene list, and a GMT pathway file.
+   sentence: We don't have mutation calls for this cohort, only expression.
+[DECLINE] j1:J11 ['DRAGON']
+   line: DRAGON: Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven.
+   sentence: Run DRAGON between RNA-seq from our 60 Boston patients and plasma metabolomics from a different set of 55 patients recruited in Chicago.
+[DECLINE] j1:J24 ['LIONESS-COEXPRESSION']
+   line: LIONESS-COEXPRESSION: LIONESS-COEXPRESSION incompatible_input_artifacts: mutation_matrix
+   sentence: I want sample-specific co-expression networks with LIONESS built from our binary somatic mutation matrix for 100 tumors.
+[DO] replay:hb-h2main-J47-1 ['OTTER']
+   line: OTTER: expression_file must have a header, a unique gene-ID first column, and at least two unique sample columns.
+   sentence: Could you set up OTTER for an aggregate TF-gene network of human cardiomyocytes, using my precomputed gene-by-gene co-expression matrix instead of an expression table, plus the motif seed and the TF-T
+[DO] replay:hb-h1-H22-1 ['OTTER']
+   line: OTTER: expression_file must have a header, a unique gene-ID first column, and at least two unique sample columns.
+   sentence: I lost the original expression table but kept a labeled, symmetric 9,800 x 9,800 gene co-expression matrix computed from it.
+[DO] replay:hb-h3main-L09-1 ['LIONESS-DRAGON', 'DRAGON']
+   line: DRAGON: DRAGON consumes exactly two paired sample-by-feature continuous omics tables and produces one aggregate undirected multi-omic network.
+   sentence: I want one partial-correlation network per patient spanning both layers; cohort matrix to out/all.tsv and the per-sample table to out/per_sample.tsv.
+[DO] replay:hb-h3main-L46-1 ['OTTER']
+   line: OTTER: It must be a labeled symmetric square gene-by-gene matrix with exact row/column order.
+   sentence: Export the network as an edge list, since we plan to pass it to CONDOR afterwards.
+[DO] replay:cj-p4c-C51-1 ['PANDA', 'PUMA', 'LIONESS-PANDA', 'LIONESS-PUMA', 'LIONESS-COEXPRESSION', 'COBRA', 'DRAGON', 'LIONESS-DRAGON', 'OTTER', 'GIRAFFE', 'BONOBO']
+   line: DRAGON: DRAGON consumes exactly two paired sample-by-feature continuous omics tables and produces one aggregate undirected multi-omic network.
+   sentence: Inputs would be expression for 60 breast tumours (header row, gene IDs in the first column), a TF-by-gene seed edge list, and a TF-TF PPI edge list whose TFs are exactly the seed's TFs.
+[DO] j1:J32 ['LIONESS-PANDA']
+   line: LIONESS-PANDA: Require at least three expression samples before execution.
+   sentence: I want a separate TF-to-gene network for each of our 22 sepsis patients, built from their expression together with a motif prior and a PPI file.
+[DO] h10:W10 ['OTTER']
+   line: OTTER: It must be a labeled symmetric square gene-by-gene matrix with exact row/column order.
+   sentence: Run OTTER on our 52 rice leaf samples, using the expression matrix (with a header and gene IDs in the first column), our TF motif seed and the TF-TF PPI edge list, with lam set to 0.1, 100 iterations 
+
+unflagged gold DECLINE:
+   replay:hb-h4main-M25-1 ['SAMBAR'] unplaced=False lines=7
+   replay:hb-h2main-J15-1 ['LIONESS-PUMA'] unplaced=False lines=4
+   replay:hb-h2main-J44-1 ['OTTER'] unplaced=False lines=8
+   replay:hb-h1-H18-1 ['DRAGON'] unplaced=False lines=7
+   replay:hb-h1-H40-1 ['GIRAFFE'] unplaced=False lines=8
+   replay:hb-h3main-L21-1 ['GIRAFFE'] unplaced=False lines=8
+   replay:cj-g4o1-C14-1 ['OTTER'] unplaced=False lines=8
+   replay:cj-p0-C18-1 ['CONDOR'] unplaced=True lines=2
+   replay:cj-p0-C47-1 ['LIONESS-PANDA', 'LIONESS-PUMA'] unplaced=False lines=9
+   replay:cj-p1-C30-1 ['SAMBAR'] unplaced=False lines=7
+   h10:W18 ['SAMBAR'] unplaced=True lines=7
+   h10:W20 ['BONOBO'] unplaced=False lines=8

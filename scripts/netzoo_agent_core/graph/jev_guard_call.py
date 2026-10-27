@@ -203,6 +203,60 @@ def judge_answer(contract: str, sentence: str, question: str, answer: str) -> di
             "cost": (out.get("usage") or {}).get("cost", 0)}
 
 
+CONDITION_INSTRUCTIONS = (
+    "Does the user's request state a fact about their data, inputs, sizes or settings that this contract line of a "
+    "workflow rules out?"
+)
+CONDITION_CRITERIA = {
+    "violates": "The request states a fact (about the data, inputs, sizes or settings) that this line rules out.",
+    "meets": "The request states facts that satisfy this line.",
+    "not_stated": "The request says nothing this line decides, or only asks a question about it.",
+}
+BREAKING_INSTRUCTIONS = "Pick the sentence of the user's request that states the fact this contract line rules out."
+
+
+@lru_cache(maxsize=32)
+def condition_lines(workflows: tuple[str, ...]) -> tuple[tuple[str, str], ...]:
+    """CONDITIONS.md: (workflow, line) the request may break -- the contract lines and each incompatible input."""
+    found = list(contract_lines(workflows))
+    for path in sorted(WORKFLOWS.glob("*.yaml")):
+        spec = yaml.safe_load(path.read_text())
+        if spec["workflow"] in workflows:
+            found += [(spec["workflow"], f"{spec['workflow']} incompatible_input_artifacts: {artifact}")
+                      for artifact in (spec.get("output_capability") or {}).get("incompatible_input_artifacts") or []]
+    return tuple(dict.fromkeys(found))
+
+
+def check_conditions(task: str, workflows) -> dict:
+    """Jev's read of each condition line against the request, and -- for the first confidently violated one -- the
+    sentence that states the breaking fact. `violated` is None when nothing is."""
+    lines = condition_lines(tuple(workflows))
+    if not lines:
+        return {"violated": None, "lines": 0}
+    questions = {f"c{i}": {"type": "choice", "instructions": f"{CONDITION_INSTRUCTIONS}\nLine: {name}: {line}",
+                           "criteria": CONDITION_CRITERIA} for i, (name, line) in enumerate(lines, 1)}
+    out = _decide(f"User request:\n{task}", questions)
+    cost = (out.get("usage") or {}).get("cost", 0)
+    read = {key: (answer["choice"], answer["confidence"]) for key, answer in out["answers"].items()}
+    broken = sorted((key for key, (choice, conf) in read.items() if choice == "violates" and conf >= THRESHOLD),
+                    key=lambda key: -read[key][1])
+    result = {"violated": None, "lines": len(lines), "read": read, "cost": cost}
+    sentences = request_sentences(task)
+    if broken and sentences:
+        name, line = lines[int(broken[0][1:]) - 1]
+        options = {f"s{i}": text for i, text in enumerate(sentences, 1)} | {"none": "no sentence states it"}
+        picked = _decide(f"User request:\n{task}\n\nContract line:\n{name}: {line}", {"sentence": {
+            "type": "choice", "instructions": BREAKING_INSTRUCTIONS, "criteria": options}})
+        answer = picked["answers"]["sentence"]
+        result["cost"] = cost + (picked.get("usage") or {}).get("cost", 0)
+        if answer["choice"] != "none" and answer["confidence"] >= THRESHOLD:
+            result |= {"violated": line, "workflow": name, "sentence": options[answer["choice"]],
+                       "confidence": read[broken[0]][1], "sentence_confidence": answer["confidence"]}
+        else:
+            result |= {"unplaced": line, "sentence_confidence": answer["confidence"]}
+    return result
+
+
 def asked_sentences(task_state) -> set[str]:
     """The sentences a Jev question already asked in this task (pending or answered): arm A J20/J48 asked one again
     after the user answered it, since an option-free answer is never bound."""
