@@ -329,6 +329,59 @@ def check_typed_data(task: str, workflows) -> dict:
     return result
 
 
+RESULT_INSTRUCTIONS = (
+    "Which result does the user ask for? Each option is one registered workflow's result; pick the one whose result is "
+    "what the user wants to get, even if they do not name the workflow."
+)
+RESULT_NONE = {"none_registered": "the user asks for a concrete result that none of these workflows produce",
+               "not_named": "the user names no concrete result (only a topic, a purpose, or what they could do)"}
+
+
+@lru_cache(maxsize=1)
+def result_menu() -> dict[str, str]:
+    """RESULTS.md (steps 2/4): one option per workflow, generated from its contract's output capability."""
+    menu = {}
+    for path in sorted(WORKFLOWS.glob("*.yaml")):
+        spec = yaml.safe_load(path.read_text())
+        cap = spec.get("output_capability") or {}
+        regulators = f"; regulators {', '.join(cap['regulator_types'])}" if cap.get("regulator_types") else ""
+        menu[spec["workflow"]] = (f"{spec['description'].strip()} Result: {cap.get('artifact_type')} "
+                                  f"({', '.join(cap.get('granularities') or [])}{regulators}).")
+    return menu | RESULT_NONE
+
+
+def check_result(task: str) -> dict:
+    """Jev's pick of the registered result the request asks for (a workflow name, or one of RESULT_NONE)."""
+    out = _decide(f"User request:\n{task}", {"result": {"type": "choice", "instructions": RESULT_INSTRUCTIONS,
+                                                         "criteria": result_menu()}})
+    answer = out["answers"]["result"]
+    return {"result": answer["choice"], "confidence": answer["confidence"],
+            "cost": (out.get("usage") or {}).get("cost", 0)}
+
+
+def linked_already(task_state) -> bool:
+    """LINKS.md: a task asks its result confirm at most once."""
+    state = task_state or {}
+    return any(str(item.get("what", "")).startswith("jev_link:")
+               for key in ("pending", "facts") for item in state.get(key) or [])
+
+
+def linked_core(core: CoreDecision, pick: dict) -> tuple[CoreDecision, str]:
+    """LINKS.md step 4: a CLARIFY whose request Jev reads as one workflow's result -> ASK `jev_link`, a confirm of that
+    result in its contract's words. Anything else leaves the call."""
+    if core.kind != "CLARIFY":
+        return core, "not_clarify"
+    name = pick.get("result")
+    if name not in result_menu() or name in RESULT_NONE or pick.get("confidence", 0) < THRESHOLD:
+        return core, "no_pick"
+    description = next(yaml.safe_load(path.read_text())["description"].strip()
+                       for path in sorted(WORKFLOWS.glob("*.yaml")) if yaml.safe_load(path.read_text())["workflow"] == name)
+    fact = FactQuestion(question=f"Did you mean {name}'s result?", workflows=[name], contract_quote=description,
+                        depends_on=f"jev_link:{name}")
+    evidence = {**core.evidence, "jev_link": {"kind_before": core.kind, "basis_before": core.basis, **pick}}
+    return CoreDecision(kind="ASK", basis="jev_link", facts=[fact], workflows=[name], evidence=evidence), "link"
+
+
 def asked_sentences(task_state) -> set[str]:
     """The sentences a Jev question already asked in this task (pending or answered): arm A J20/J48 asked one again
     after the user answered it, since an option-free answer is never bound."""
@@ -412,6 +465,16 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
             "contract": question["labels"]["contract"]})
         if after is not core:
             return after if mode == "on" else core
+    if core.kind == "CLARIFY" and not linked_already(state.get("task_state")):  # LINKS.md step 4
+        try:
+            pick = check_result(user_task)
+        except Exception as exc:  # noqa: BLE001 -- the call as it came, and says so
+            pick = {"result": f"not_run:{type(exc).__name__}", "confidence": 0.0}
+        after, action = linked_core(core, pick)
+        record_event(context, state, "core.jev_link", "classify", {
+            "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
+            "would_have": {"kind": after.kind, "basis": after.basis, "workflows": after.workflows}, "pick": pick})
+        return after if mode == "on" else core
     try:
         read = pending.result(timeout=TIMEOUT * 3)
     except Exception as exc:  # noqa: BLE001 -- any failure leaves the call as it came, and says so

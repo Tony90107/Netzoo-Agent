@@ -45,7 +45,7 @@ def ask_result(state, reply) -> dict | None:
 
     core = TaskDecision.model_validate(state["decision"]).core
     if core is None or core.kind != "ASK" or core.basis not in ("fact_agent", "count_fact", "hybrid_requirement",
-                                                                "contract_veto_fact", "jev_fact"):
+                                                                "contract_veto_fact", "jev_fact", "jev_link"):
         return None
     return reply(ask_reply(core), ASK_KIND)
 
