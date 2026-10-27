@@ -1,0 +1,743 @@
+{
+  "version": 1,
+  "session_id": "hb-j4f-S24-1",
+  "profile_id": "hb-j4f-S24-1",
+  "auto_generated": false,
+  "created_at": 1793108807.95888,
+  "updated_at": 1793108807.9589179,
+  "messages": [
+    {
+      "role": "user",
+      "content": "To see which gene partnerships hold up in each of our 12 rheumatoid synovium biopsies, I want a gene-gene correlation map for every biopsy separately, with a significance value attached to each link. The expression matrix is log2-transformed and centered, with gene IDs as rows and biopsy names in the header."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I want a gene-gene correlation map for every biopsy separately, with a significance value attached to each link.\" -- available from LIONESS-COEXPRESSION.\n2. \"with a significance value attached to each link.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n\nBased on what you said — \"I want a gene-gene correlation map for every biopsy separately, with a significance value attached to each link.\" — **BONOBO** fits better: you asked for a p-value or confidence for each connection.\n\nYour question asks for a per-sample co-expression network. **BONOBO** fits that result and scale.\n\n**BONOBO** (recommend) — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable. Needs expression matrix. Produces inferred gene-to-gene associations; p-value matrix paired with a sample-specific gene-gene co-expression result (one result per sample).\n\nConditional assumptions to confirm:\n- The expression matrix is properly formatted as a gene-by-sample matrix.\n- The user has access to the necessary expression data for each biopsy.\n\nOther compatible option(s):\n- **LIONESS-COEXPRESSION** — preferred when: dozens of samples or more; no sample covariates need to be separated or adjusted; approach: derive each sample network from all-sample and leave-one-out networks.\n\nShould I use BONOBO, or does another listed option fit your study better?\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is for guidance on generating a gene-gene correlation map, which falls under the category of answer requests rather than execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request is for guidance on generating a gene-gene correlation map, which falls under the category of answer requests rather than execution.",
+      "candidate_actions": [
+        "run_lioness_coexpression",
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I want a gene-gene correlation map for every biopsy separately.",
+              "rationale": "The user wants to create a correlation map, which involves inferring relationships between genes."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "gene-gene correlation map",
+              "rationale": "The user specifies a gene-gene correlation map, which corresponds to a coexpression network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "for every biopsy separately",
+              "rationale": "The user requests separate maps for each biopsy, indicating sample-specific results."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "gene IDs as rows",
+              "rationale": "The user mentions gene IDs as rows, indicating that genes are the entities of interest."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "explicit",
+              "text_span": "biopsy names in the header",
+              "rationale": "The user specifies biopsy names in the header, indicating that samples are also part of the output."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user specifies an expression matrix as the current input for generating the correlation map."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_lioness_coexpression",
+        "run_bonobo"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Should I use BONOBO, or does another listed option fit your study better?",
+      "advisory_recommendation": {
+        "action": "run_bonobo",
+        "conditions": [
+          {
+            "axis": "selection_tag",
+            "value": "sparse_pvalue_coexpression",
+            "text_span": "I want a gene-gene correlation map for every biopsy separately, with a significance value attached to each link."
+          }
+        ],
+        "rationale": "BONOBO is designed to infer sample-specific gene-gene co-expression networks and provides matching p-value matrices, which directly addresses the user's need for significance values attached to each link in the correlation map for each biopsy. It operates on a gene-by-sample expression matrix, producing the required outputs for the user's analysis.",
+        "supporting_spans": [
+          "I want a gene-gene correlation map for every biopsy separately, with a significance value attached to each link."
+        ],
+        "assumptions": [
+          "The expression matrix is properly formatted as a gene-by-sample matrix.",
+          "The user has access to the necessary expression data for each biopsy."
+        ]
+      },
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want a gene-gene correlation map for every biopsy separately, with a significance value attached to each link.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_coexpression.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 12,
+              "samples_quote": "12 rheumatoid synovium biopsies"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@54-85"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "with a significance value attached to each link.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 12,
+              "samples_quote": "12 rheumatoid synovium biopsies"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@54-85"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "The expression matrix is log2-transformed and centered, with gene IDs as rows and biopsy names in the header.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want a gene-gene correlation map for every biopsy separately, with a significance value attached to each link.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@54-85",
+            "property": "sample_count",
+            "name": "",
+            "value": "12",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "12 rheumatoid synovium biopsies",
+            "span": [
+              54,
+              85
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "12 rheumatoid synovium biopsies",
+                "span": [
+                  54,
+                  85
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "12 rheumatoid synovium biopsies",
+                "span": [
+                  54,
+                  85
+                ],
+                "result": "I want a gene-gene correlation map for every biopsy separately, with a significance value attached to each link.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "12 rheumatoid synovium biopsies",
+                "span": [
+                  54,
+                  85
+                ],
+                "result": "with a significance value attached to each link.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "LIONESS-COEXPRESSION"
+        ],
+        "declined": [
+          {
+            "quote": "with a significance value attached to each link.",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"with a significance value attached to each link.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want a gene-gene correlation map for every biopsy separately, with a significance value attached to each link."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-COEXPRESSION",
+          "BONOBO"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want a gene-gene correlation map for every biopsy separately, with a significance value attached to each link.",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "BONOBO consumes a labelled gene-by-sample expression matrix and produces one gene-by-gene sample-specific co-expression matrix per selected sample, plus optional matching p-value matrices.",
+              "question": "Do you want to include significance values for each link in the correlation map?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "gene-gene correlation map for every biopsy separately with significance values"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "The expression matrix is log2-transformed and centered.",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "the agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression.",
+              "question": "Is the expression matrix log2-transformed and centered?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "The expression matrix is log2-transformed and centered.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-COEXPRESSION",
+              "contract_quote": "LIONESS co-expression consumes a gene-by-sample expression matrix and produces sample-specific co-expression networks.",
+              "question": "Is the expression matrix log2-transformed and centered?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "rows",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 39756,
+    "output_tokens": 2258,
+    "total_tokens": 42014,
+    "calls": [
+      {
+        "call_id": "ad583869-886b-4236-9142-16f2c076bb7a",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108768-17NIoeDOPbiiQdcWcNYw",
+        "input_tokens": 5343,
+        "output_tokens": 300,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5643,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 617,
+        "price_snapshot": null,
+        "duration_ms": 5144,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "20a3feaa-18c2-47fe-89ad-5f2009f20b4e",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108773-G52ro0rZmzyO5IpITrKZ",
+        "input_tokens": 5683,
+        "output_tokens": 170,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5853,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 657,
+        "price_snapshot": null,
+        "duration_ms": 3228,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "18ad018b-64d1-494f-a840-a8062334cd26",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108777-84GzgbfRgKN8gjPmn6GS",
+        "input_tokens": 1178,
+        "output_tokens": 282,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1460,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 346,
+        "price_snapshot": null,
+        "duration_ms": 3718,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ff0fd9b6-71e9-415f-b29f-2fb8c0d93c32",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 702,
+        "output_tokens": 48,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 750,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 134,
+        "price_snapshot": {
+          "snapshot_id": "9cdf0f1b-e0df-50dd-a7b6-84cd01c42b74",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T13:41:53.201601Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1126,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "ce9728b5-a00c-4e85-9ad7-79077fbb81e1",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108781-vU14zrAH91dvAdp0Ha19",
+        "input_tokens": 1682,
+        "output_tokens": 69,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1751,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 179,
+        "price_snapshot": null,
+        "duration_ms": 2125,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b3ea3fd4-408e-4c99-8a37-699d2c88a7b3",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108784-JEHKgPCLxGfVvzyy1Az1",
+        "input_tokens": 1782,
+        "output_tokens": 210,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1992,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 393,
+        "price_snapshot": null,
+        "duration_ms": 4011,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7dea7a70-5c60-4d6a-9f7a-a8a5f0628c57",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793108788-8BC0XEMo7pbkJd6jtMbB",
+        "input_tokens": 15237,
+        "output_tokens": 589,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15826,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1583,
+        "price_snapshot": null,
+        "duration_ms": 8603,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "71fe13e7-5ad3-4cc9-b618-fdea226a43d2",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108796-gw3QKHCuVyYKgcZ9fXGT",
+        "input_tokens": 566,
+        "output_tokens": 61,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 627,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 122,
+        "price_snapshot": null,
+        "duration_ms": 1570,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ccbe344c-92fb-49ca-ac3f-b67253a63b5a",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793108798-Ls1GhPs6Ci6HCusJZlnq",
+        "input_tokens": 5331,
+        "output_tokens": 181,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5512,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 524,
+        "price_snapshot": null,
+        "duration_ms": 3112,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f8ba62e4-eb2a-47c5-805a-90ca70ab51bd",
+        "role": "capability_condition_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793108801-zIcDsBl6Ldo1uabHsSbv",
+        "input_tokens": 324,
+        "output_tokens": 8,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 332,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 53,
+        "price_snapshot": null,
+        "duration_ms": 1049,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0a378f3f-9622-48ef-be6c-74ae9321deda",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108802-MqpWzu6I1yVPnOgxKySm",
+        "input_tokens": 1928,
+        "output_tokens": 340,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2268,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 493,
+        "price_snapshot": null,
+        "duration_ms": 5417,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "ce5289ad-f653-44c7-ba0b-49c9b1efac29",
+  "task_state": null
+}

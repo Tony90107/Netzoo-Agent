@@ -1,0 +1,694 @@
+{
+  "version": 1,
+  "session_id": "hb-j4f-S21-1",
+  "profile_id": "hb-j4f-S21-1",
+  "auto_generated": false,
+  "created_at": 1793108944.4706821,
+  "updated_at": 1793108944.4707148,
+  "messages": [
+    {
+      "role": "user",
+      "content": "From a collaborator we received only a precomputed gene-by-gene Pearson correlation matrix for 8,000 genes in human cardiomyocytes, not the sample-level expression table. Together with motif and PPI priors, could GIRAFFE use that correlation matrix to estimate signed TF-to-gene regulatory effects?"
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"could GIRAFFE use that correlation matrix to estimate signed TF-to-gene regulatory effects?\" -- available from GIRAFFE.\n2. \"Together with motif and PPI priors\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n\n**GIRAFFE** fits the result you describe if you have a motif prior and a PPI network.\n\nYour question asks for a cohort-level signed regulatory-effect network. **GIRAFFE** fits that result and scale.\n\n**GIRAFFE** — Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `motif_file`: motif/prior\n- `ppi_file`: PPI network\n\nOutputs:\n\n- `regulatory_network`: Inferred regulator-to-target associations.\n- `tf_activity_matrix`: Inferred transcription-factor-by-sample activity values.\n\nTF activity is how active a TF is in each sample, apart from its own mRNA level. If you mean how strongly each TF is wired to its targets in each sample, the out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the same inputs.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\n**What your data allows.** GIRAFFE also needs a motif prior and a PPI network. Do you also have a motif prior and a PPI network?\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_giraffe"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "signed_regulatory_effect_network",
+        "entity_types": [
+          "gene",
+          "tf"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "signed_regulatory_effect_network",
+            "entity_types": [
+              "gene",
+              "tf"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.8,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "signed_regulatory_effect_network",
+              "source": "explicit",
+              "text_span": "estimate signed TF-to-gene regulatory effects",
+              "rationale": "The user is asking about estimating signed TF-to-gene regulatory effects, which corresponds to a signed regulatory effect network."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_giraffe"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "unstated",
+        "priors_quote": "",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_giraffe",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "unstated",
+            "source": "model",
+            "quote": "",
+            "action": "ask"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "could GIRAFFE use that correlation matrix to estimate signed TF-to-gene regulatory effects?",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "giraffe.signed_regulation"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "GIRAFFE",
+              "named_quote": "GIRAFFE"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a precomputed gene-by-gene Pearson correlation matrix for 8,000 genes in human cardiomyocytes",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "not the sample-level expression table",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "Together with motif and PPI priors",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [
+              "panda.no_complexes",
+              "panda.no_sign",
+              "panda.no_motif_discovery",
+              "panda.no_dynamics",
+              "puma.no_lncrna_cerna",
+              "puma.no_mirna_expression_use",
+              "lioness.no_single_cell",
+              "lioness_panda.no_sign",
+              "lioness_panda.no_complexes",
+              "lioness_puma.no_single_cell",
+              "lioness_puma.no_lncrna_cerna",
+              "otter.no_per_sample",
+              "otter.no_global_optimum",
+              "otter.no_complexes",
+              "otter.no_sign",
+              "giraffe.no_protein_level",
+              "giraffe.no_per_sample_wiring",
+              "dragon.no_flux_or_pathway_activity",
+              "dragon.no_more_layers",
+              "lioness_dragon.no_pvalues",
+              "lioness_dragon.no_flux_or_pathway_activity",
+              "lioness_dragon.no_single_cell",
+              "coexpression.no_regulation",
+              "lioness_coexpression.no_single_cell",
+              "bonobo.no_regulation",
+              "bonobo.no_single_cell",
+              "cobra.no_differential_expression",
+              "cobra.no_pair_significance",
+              "condor.no_two_network_comparison",
+              "condor.no_variant_mapping",
+              "sambar.no_expression_subtypes",
+              "sambar.no_driver_calls"
+            ],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "GIRAFFE",
+              "named_quote": "GIRAFFE",
+              "samples": 8000,
+              "samples_quote": "8,000 genes"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@95-106"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "method_named",
+        "goal_quote": "could GIRAFFE use that correlation matrix to estimate signed TF-to-gene regulatory effects?",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "GIRAFFE"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@95-106",
+            "property": "sample_count",
+            "name": "",
+            "value": "8000",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "8,000 genes",
+            "span": [
+              95,
+              106
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "result",
+                "quote": "8,000 genes",
+                "span": [
+                  95,
+                  106
+                ],
+                "result": "Together with motif and PPI priors",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "GIRAFFE"
+        ],
+        "declined": [
+          {
+            "quote": "Together with motif and PPI priors",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"Together with motif and PPI priors\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "signed_regulatory_effect_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "result",
+              "not_available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "method_named",
+            "could GIRAFFE use that correlation matrix to estimate signed TF-to-gene regulatory effects?"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "could GIRAFFE use that correlation matrix to estimate signed TF-to-gene regulatory effects?",
+              "uncertainty": "said_unknown",
+              "workflow": "GIRAFFE",
+              "contract_quote": "Require at least two expression samples before execution.",
+              "question": "Do you have at least two expression samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "estimate signed TF-to-gene regulatory effects"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 35145,
+    "output_tokens": 1597,
+    "total_tokens": 36742,
+    "calls": [
+      {
+        "call_id": "003f6608-af87-4d28-9b8c-3c5a5a0619e8",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108915-ZKJXrVVLYjOWtXzWR2CQ",
+        "input_tokens": 5340,
+        "output_tokens": 273,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5613,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 600,
+        "price_snapshot": null,
+        "duration_ms": 4375,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "993129dd-e3cf-4ff7-b815-53dee1f39384",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108919-sov4OOraWcctbflZIIFL",
+        "input_tokens": 5791,
+        "output_tokens": 276,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6067,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 737,
+        "price_snapshot": null,
+        "duration_ms": 4010,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e4c2b315-92b4-486f-bc13-cf82015699d2",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 673,
+        "output_tokens": 52,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 725,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 132,
+        "price_snapshot": {
+          "snapshot_id": "9cdf0f1b-e0df-50dd-a7b6-84cd01c42b74",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T13:41:53.201601Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1270,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "fb26fb62-1db3-41d9-9a91-7f17d708a1bd",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108924-MvCcm6WiUBuzIvMe5zHP",
+        "input_tokens": 357,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 361,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 56,
+        "price_snapshot": null,
+        "duration_ms": 1225,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "59a28228-5b5d-4aef-9440-84bc6e568e43",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793108926-TfFsZ4J2BDvPYJRebdEE",
+        "input_tokens": 15231,
+        "output_tokens": 419,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15650,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1480,
+        "price_snapshot": null,
+        "duration_ms": 7461,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6fe9089e-cbee-49aa-8a11-371ca0356998",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108933-NeI7josdykavWZXqSuXW",
+        "input_tokens": 563,
+        "output_tokens": 30,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 593,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 102,
+        "price_snapshot": null,
+        "duration_ms": 1234,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9c0385ad-282a-4910-9bab-5c76063b564e",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108934-cf0Qjapl7TSb9iDS5ANo",
+        "input_tokens": 552,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 597,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 110,
+        "price_snapshot": null,
+        "duration_ms": 1355,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c659663c-b8d2-4de1-a47a-e790dbd4a8b1",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793108936-EWM9jf9500QSSHV0B2zO",
+        "input_tokens": 5317,
+        "output_tokens": 393,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5710,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 649,
+        "price_snapshot": null,
+        "duration_ms": 6243,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "47f10026-d19c-4c21-94b6-751f6d7b82dd",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108942-jLCQpC6otoV84iV7aIPz",
+        "input_tokens": 1321,
+        "output_tokens": 105,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1426,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 261,
+        "price_snapshot": null,
+        "duration_ms": 1849,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "0a6df4af-86d7-43a9-9a50-1dcf67ce9681",
+  "task_state": null
+}

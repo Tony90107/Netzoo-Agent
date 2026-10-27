@@ -1,0 +1,65 @@
+j4: 48 conversations in both arms (F 48, G 48)
+  F flags off: final right 36/48  FA 4  FR 6  MA 2  wrong question kind 0  extra questions 0  UNCHECKED 0
+    by group {'GT': '3/5', 'GO': '4/4', 'FT': '3/4', 'FD': '3/3', 'FSN': '2/2', 'FS': '2/2', 'FN': '1/4', 'FG': '2/2', 'T': '2/5', 'TC': '4/4', 'U': '4/6', 'N': '3/4', 'V': '3/3'}
+  G flags on: final right 38/48  FA 2  FR 3  MA 0  wrong question kind 0  extra questions 2  UNCHECKED 2
+    by group {'GT': '4/5', 'GO': '4/4', 'FT': '3/4', 'FD': '3/3', 'FSN': '2/2', 'FS': '2/2', 'FN': '2/4', 'FG': '1/2', 'T': '4/5', 'TC': '4/4', 'U': '5/6', 'N': '3/4', 'V': '1/3'}
+O1 G >= F + 4: 38 vs 36 -> fail
+O2 FA/FR/MA not up: [('FA', 4, 2), ('FR', 6, 3), ('MA', 2, 0)] -> PASS
+O3 Jev-made declines on non-DECLINE golds: none -> PASS
+O4 form reasons the item did not ask for: F ['S10', 'S12', 'S22', 'S27', 'S32', 'S39'] G [] -> PASS
+C1 controls (GO FD FS FG) end DECLINE, never asked a form question: bad ['S22'] of 11 -> fail
+C2 form traps wrong in F ['S02', 'S05', 'S12', 'S27', 'S39', 'S45']: right in G ['S02', 'S12', 'S39'], still waiting ['S05'] -> PASS
+S0 J-ask on gold-DO items: [] (<= 2) -> PASS
+S1 T DO calls ['S17', 'S21', 'S42'], confirmed ['S17', 'S21', 'S42']; TC confirmed [] -> PASS
+S4 V links [] (<= 1) -> PASS
+-> NOT PASSED: O1, C1
+
+id | group | gold | F t1 -> final [reasons] | G t1 -> final [reasons] | G Jev actions
+  S12 | GT | DO | CLARIFY/result_open -> DECLINE ['group_membership'] | DO/results_given -> DO/results_given  | 
+  S18 | GT | DO | DO/results_given -> DO  | DECLINE/full_gap -> DECLINE/full_gap  | group:doubted
+  S34 | GT | DO | DO/run -> DO  | DO/run -> DO/run  | 
+  S39 | GT | DO | CLARIFY/result_open -> DECLINE ['group_membership'] | ASK/needs_fact -> DO/results_given  | group:doubted group:doubted
+  S47 | GT | DO | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S31 | GO | DECLINE | DECLINE/full_gap -> DECLINE ['group_membership'] | DECLINE/full_gap -> DECLINE/full_gap ['group_membership'] | group:kept group:kept
+  S33 | GO | DECLINE | DECLINE/full_gap -> DECLINE ['group_membership'] | DECLINE/full_gap -> DECLINE/full_gap ['group_membership'] | group:kept group:kept
+  S41 | GO | DECLINE | DECLINE/full_gap -> DECLINE ['group_membership'] | DECLINE/full_gap -> DECLINE/full_gap ['group_membership'] | group:kept group:kept
+  S46 | GO | DECLINE | DECLINE/full_gap -> DECLINE ['group_membership'] | DECLINE/full_gap -> DECLINE/full_gap ['group_membership'] | group:kept group:kept
+  S16 | FT | DO | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S20 | FT | DO | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S45 | FT | DO | DECLINE/full_gap -> DECLINE  | DECLINE/full_gap -> DECLINE/full_gap  | 
+  S48 | FT | DO | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S19 | FD | DECLINE | DECLINE/full_gap -> DECLINE ['time_model'] | DECLINE/full_gap -> DECLINE/full_gap ['time_model'] | time_:kept
+  S29 | FD | DECLINE | DECLINE/full_gap -> DECLINE ['time_model'] | DECLINE/full_gap -> DECLINE/full_gap ['time_model'] | time_:kept
+  S40 | FD | DECLINE | DECLINE/full_gap -> DECLINE ['time_model'] | DECLINE/full_gap -> DECLINE/full_gap ['time_model'] | time_:kept
+  S08 | FSN | DO | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S09 | FSN | DO | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S04 | FS | DECLINE | DECLINE/full_gap -> DECLINE ['spatial'] | DECLINE/full_gap -> DECLINE/full_gap ['spatial'] | spati:kept
+  S06 | FS | DECLINE | DECLINE/full_gap -> DECLINE ['spatial'] | DECLINE/full_gap -> DECLINE/full_gap ['spatial'] | spati:kept
+  S02 | FN | DO | DECLINE/full_gap -> DECLINE  | ASK/needs_fact -> DO/results_given  | input:doubted
+  S05 | FN | DO | DECLINE/full_gap -> DECLINE  | ASK/needs_fact -> ASK/needs_fact  | input:doubted input:doubted input:doubted
+  S27 | FN | DO | DECLINE/full_gap -> DECLINE ['group_membership'] | DECLINE/full_gap -> DECLINE/full_gap  | group:doubted
+  S28 | FN | DO | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S22 | FG | DECLINE | DECLINE/full_gap -> DECLINE ['group_membership'] | DO/results_given -> DO/results_given  | 
+  S30 | FG | DECLINE | DECLINE/full_gap -> DECLINE  | DECLINE/full_gap -> DECLINE/full_gap  | input:kept
+  S07 | T | DECLINE | DECLINE/full_gap -> DECLINE  | DECLINE/full_gap -> DECLINE/full_gap  | 
+  S17 | T | DECLINE | DO/results_given -> DO  | ASK/jev_condition -> DECLINE/jev_answer  | jev_condition:ask jev_answer:declined
+  S21 | T | DECLINE | DO/results_given -> DO  | ASK/jev_condition -> DECLINE/jev_answer  | jev_condition:ask jev_answer:declined
+  S32 | T | DECLINE | CLARIFY/result_open -> DECLINE ['group_membership'] | CLARIFY/result_open -> none/  | group:doubted group:doubted group:doubted
+  S42 | T | DECLINE | DO/results_given -> DO  | ASK/jev_condition -> DECLINE/jev_answer  | jev_condition:ask jev_answer:declined
+  S01 | TC | DO | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S14 | TC | DO | ASK/fact_agent -> DO  | ASK/fact_agent -> DO/results_given  | 
+  S23 | TC | DO | DO/run -> DO  | DO/run -> DO/run  | 
+  S37 | TC | DO | DO/run -> DO  | DO/run -> DO/run  | 
+  S11 | U | DO | ASK/fact_agent -> DO  | ASK/fact_agent -> DO/results_given  | 
+  S13 | U | DO | ASK/fact_agent -> DO  | ASK/fact_agent -> DO/results_given  | 
+  S15 | U | DO | ASK/fact_agent -> DO  | ASK/fact_agent -> DO/results_given  | 
+  S26 | U | DECLINE | DO/results_given -> DO  | ASK/jev_fact -> DECLINE/full_gap  | jev_guard:ask
+  S35 | U | DECLINE | DO/results_given -> DO  | ASK/jev_fact -> UNCHECKED/check_unconfirmed  | jev_guard:ask jev_condition:ask
+  S44 | U | DECLINE | ASK/fact_agent -> DECLINE  | ASK/fact_agent -> DECLINE/full_gap  | 
+  S24 | N | DO | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S36 | N | DO | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S38 | N | DO | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S43 | N | DECLINE | DO/results_given -> DO  | DO/results_given -> DO/results_given  | 
+  S03 | V | DO | CLARIFY/goal_unclear -> DO  | CLARIFY/goal_unclear -> UNCHECKED/check_unconfirmed  | 
+  S10 | V | DECLINE | CLARIFY/goal_unclear -> DECLINE ['group_membership'] | CLARIFY/goal_unclear -> ASK/needs_fact  | group:doubted group:doubted
+  S25 | V | DO | CLARIFY/goal_unclear -> DO  | CLARIFY/goal_unclear -> DO/results_given  | 

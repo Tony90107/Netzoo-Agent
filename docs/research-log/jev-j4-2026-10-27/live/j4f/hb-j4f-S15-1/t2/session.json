@@ -1,0 +1,795 @@
+{
+  "version": 1,
+  "session_id": "hb-j4f-S15-1",
+  "profile_id": "hb-j4f-S15-1",
+  "auto_generated": false,
+  "created_at": 1793108994.905726,
+  "updated_at": 1793109027.100759,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We have plasma metabolomics for 200 metabolites and whole-blood RNA-seq from the same 60 participants, with identical sample IDs and no gaps. We'd like a gene-metabolite partial-correlation network for each participant with LIONESS-DRAGON. I'm not sure yet whether the expression layer will keep 300 or 800 genes after filtering."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Will you keep 300 genes after filtering?\n  You wrote: \"I'm not sure yet whether the expression layer will keep 300 or 800 genes after filtering\". LIONESS-DRAGON's contract: \"setting lambda1 (number; minimum 0; maximum 1): Shrinkage of omics layer 1 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it once on all samples; a manual value needs lambda1 and lambda2 together, both in [0, 1]\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: We have plasma metabolomics for 200 metabolites and whole-blood RNA-seq from the same 60 participants, with identical sample IDs and no gaps. We'd like a gene-metabolite partial-correlation network for each participant with LIONESS-DRAGON. I'm not sure yet whether the expression layer will keep 300 or 800 genes after filtering.\nUser follow-up: We'll keep 300 genes."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"a gene-metabolite partial-correlation network for each participant with LIONESS-DRAGON\" -- available from LIONESS-DRAGON.\n\nAssumptions behind this recommendation (not confirmed facts):\n\n- The user has access to the necessary tools and data for LIONESS-DRAGON analysis.\n- No scale was stated; DRAGON gives one result for the whole cohort; LIONESS-DRAGON gives one result per sample.\n\nSelected path: **LIONESS-DRAGON**.\n\nYour question asks for a multi-omic network. **LIONESS-DRAGON** fits that result.\n\n**LIONESS-DRAGON** — Infer one sample-specific two-layer multi-omic partial-correlation network per sample with LIONESS-DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.\n\nRequired workflow inputs:\n\n- `omics_layer_1`: DRAGON omics layer 1\n- `omics_layer_2`: DRAGON omics layer 2\n\nCost: LIONESS runs DRAGON once on all samples and once more without each sample, so N samples take N+1 DRAGON runs and give N network files. Plan the runtime and disk space, and filter edges before downstream statistics.\n\nOutputs:\n\n- `multi_omic_network`: Inferred associations between omics features.\n\nWorkflow-specific scientific notes:\n\n- LIONESS-DRAGON estimates DRAGON's two shrinkage values once on all samples, then derives each sample's network from the all-sample network and the network refitted without that sample.\n- Each sample's network is an undirected partial-correlation graph across both layers; like DRAGON's, it is an association graph, not a causal one.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited LIONESS-DRAGON for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The capability check credited LIONESS-DRAGON for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "run_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_lioness_dragon"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "multi_omic_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "multi_omic_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "We'd like a gene-metabolite partial-correlation network for each participant with LIONESS-DRAGON.",
+              "rationale": "The user wants to construct a network based on the provided data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "multi_omic_network",
+              "source": "explicit",
+              "text_span": "gene-metabolite partial-correlation network",
+              "rationale": "The requested output is a network that integrates gene and metabolite data."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user specified RNA-seq data as input for the analysis."
+            }
+          ],
+          "assumptions": [
+            "The user has access to the necessary tools and data for LIONESS-DRAGON analysis.",
+            "No scale was stated; DRAGON gives one result for the whole cohort; LIONESS-DRAGON gives one result per sample."
+          ]
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_lioness_dragon"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "a gene-metabolite partial-correlation network for each participant with LIONESS-DRAGON",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_dragon.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-DRAGON",
+              "named_quote": "LIONESS-DRAGON",
+              "samples": 60,
+              "samples_quote": "60 participants",
+              "features": 300,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  379,
+                  388,
+                  300
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@108-123",
+              "feature_count@379-388"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "plasma metabolomics for 200 metabolites",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "whole-blood RNA-seq from the same 60 participants",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "identical sample IDs and no gaps",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "a gene-metabolite partial-correlation network for each participant with LIONESS-DRAGON.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "LIONESS-DRAGON"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@108-123",
+            "property": "sample_count",
+            "name": "",
+            "value": "60",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "60 participants",
+            "span": [
+              108,
+              123
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "60 participants",
+                "span": [
+                  108,
+                  123
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "60 participants",
+                "span": [
+                  108,
+                  123
+                ],
+                "result": "a gene-metabolite partial-correlation network for each participant with LIONESS-DRAGON",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@54-69",
+            "property": "feature_count",
+            "name": "",
+            "value": "200",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "200 metabolites",
+            "span": [
+              54,
+              69
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "200 metabolites",
+                "span": [
+                  54,
+                  69
+                ],
+                "result": "",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@379-388",
+            "property": "feature_count",
+            "name": "",
+            "value": "300",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "300 genes",
+            "span": [
+              379,
+              388
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "300 genes",
+                "span": [
+                  379,
+                  388
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "300 genes",
+                "span": [
+                  379,
+                  388
+                ],
+                "result": "a gene-metabolite partial-correlation network for each participant with LIONESS-DRAGON",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count=feature_count@54-69+feature_count@379-388",
+            "property": "feature_count",
+            "name": "",
+            "value": "500",
+            "values": [],
+            "state": "stated",
+            "origin": "derived",
+            "quote": "",
+            "span": [],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "200 metabolites",
+                "span": [
+                  54,
+                  69
+                ],
+                "result": "",
+                "role": "operand"
+              },
+              {
+                "reader": "request",
+                "quote": "300 genes",
+                "span": [
+                  379,
+                  388
+                ],
+                "result": "",
+                "role": "operand"
+              }
+            ],
+            "derived_from": [
+              "feature_count@54-69",
+              "feature_count@379-388"
+            ],
+            "formula": "200 + 300",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": [
+          {
+            "property": "feature_count",
+            "name": "",
+            "result": "a gene-metabolite partial-correlation network for each participant with LIONESS-DRAGON",
+            "used": [
+              "feature_count@379-388"
+            ],
+            "set_aside": [
+              "feature_count@54-69",
+              "feature_count@379-388",
+              "feature_count=feature_count@54-69+feature_count@379-388"
+            ],
+            "reason": "result_own_value"
+          }
+        ]
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "LIONESS-DRAGON"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "multi_omic_network",
+          "reason_code": "registry_guidance_fallback",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "a gene-metabolite partial-correlation network for each participant with LIONESS-DRAGON."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-DRAGON",
+          "DRAGON"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure yet whether the expression layer will keep 300 or 800 genes after filtering.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-DRAGON",
+              "contract_quote": "setting lambda1 (number; minimum 0; maximum 1): Shrinkage of omics layer 1 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it once on all samples; a manual value needs lambda1 and lambda2 together, both in [0, 1].",
+              "question": "Will you keep 300 genes?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "300",
+                "800"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 45403,
+    "output_tokens": 1654,
+    "total_tokens": 47057,
+    "calls": [
+      {
+        "call_id": "7f8366ac-86a6-4945-a83d-eff27fc43b0b",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108997-ByBjApttABm9AglEiZtX",
+        "input_tokens": 890,
+        "output_tokens": 43,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 933,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 159,
+        "price_snapshot": null,
+        "duration_ms": 1802,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f275de95-67b6-4805-9a65-ce15e8af234f",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793108998-m2fPpDkoPGEhnVn4Sblp",
+        "input_tokens": 1638,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1654,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 255,
+        "price_snapshot": null,
+        "duration_ms": 2018,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8031d09f-d6a1-4cf2-ae4a-a4fc471688e8",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793109000-vvlEZr7sHgpohFlMN6oQ",
+        "input_tokens": 5365,
+        "output_tokens": 369,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5734,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 661,
+        "price_snapshot": null,
+        "duration_ms": 4944,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "e3b95212-ee8b-4d51-94c5-6d1144966399",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793109009-mZ54UtdCy8pJiEXsJWq3",
+        "input_tokens": 5598,
+        "output_tokens": 213,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5811,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 670,
+        "price_snapshot": null,
+        "duration_ms": 3329,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6a66e2a7-bf99-4a69-8db0-4b583d24b6bb",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793109005-4kkJEu2e2IoQlczcHyVp",
+        "input_tokens": 6869,
+        "output_tokens": 229,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 7098,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 870,
+        "price_snapshot": null,
+        "duration_ms": 7363,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a712f712-ae5c-4c3b-8ae8-046ad6895445",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 696,
+        "output_tokens": 61,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 757,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 141,
+        "price_snapshot": {
+          "snapshot_id": "9cdf0f1b-e0df-50dd-a7b6-84cd01c42b74",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T13:41:53.201601Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1366,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "f3cd56a2-2753-492a-85c2-9193353e3276",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793109014-FqZpI603X50vfekmBzuO",
+        "input_tokens": 21625,
+        "output_tokens": 503,
+        "cache_read_tokens": 21376,
+        "cache_write_tokens": 0,
+        "total_tokens": 22128,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1942,
+        "price_snapshot": null,
+        "duration_ms": 7991,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a208bfa6-bfc5-4217-adf7-2417c07aa545",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793109022-zGtYpNb5qgrGFG9AF8E7",
+        "input_tokens": 588,
+        "output_tokens": 55,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 643,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 121,
+        "price_snapshot": null,
+        "duration_ms": 1656,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "299c1306-c45d-4944-9252-5f8863f1b61c",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793109024-MlShA4SDZczvk01KVZKm",
+        "input_tokens": 2134,
+        "output_tokens": 165,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2299,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 419,
+        "price_snapshot": null,
+        "duration_ms": 2830,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "e393dbae-ca2e-4769-a599-f92f8d622550",
+  "task_state": {
+    "version": 1,
+    "task_id": "895b1a9f",
+    "revision": 2,
+    "goal": "We have plasma metabolomics for 200 metabolites and whole-blood RNA-seq from the same 60 participants, with identical sample IDs and no gaps. We'd like a gene-metabolite partial-correlation network for each participant with LIONESS-DRAGON. I'm not sure yet whether the expression layer will keep 300 or 800 genes after filtering.",
+    "pending": [],
+    "facts": [],
+    "rounds": 1,
+    "status": "closed",
+    "turns": 2
+  }
+}
