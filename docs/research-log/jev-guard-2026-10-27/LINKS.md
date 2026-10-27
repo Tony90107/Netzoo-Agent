@@ -53,3 +53,14 @@ step 3's answer judging, because a "no" must not decline. The answer re-enters t
 Live check: the j1/h10/h9 items whose recorded call was a non-gold CLARIFY (J38, J42, W03, W08, W11, W14, W16, W17,
 W23, W30, W34, Z12), guard on, turns 1-2 (restate reply), <= 12 sessions, about US$0.08. Reported: turn-1 jev_link asks,
 turn-2 calls against gold, any new error.
+
+## Live check (RESULTS-LINKS.txt, 12 sessions, US$0.07, code in COMMIT_L4)
+
+Only 4 of the 12 recorded non-gold CLARIFY calls were CLARIFY again live (mini read variance); 8 came out DO/DECLINE/ASK.
+- J42 (gold DO PUMA): CLARIFY → "Did you mean PUMA's result? PUMA's contract: ..." → after the restate, DO PUMA. Fixed.
+- W03 (gold DO LIONESS-COEXPRESSION): link → turn 2 DO LIONESS-COEXPRESSION. Fixed.
+- W30 (gold DECLINE LIONESS-DRAGON, over a value limit): link → turn 2 CLARIFY (result_open). Not fixed, no worse.
+- J38: the system asked itself this time (fact_agent); no link.
+- New errors: none; no gold-CLARIFY item was linked.
+
+Thin evidence (3 links); it supports keeping the step behind the guard flag, not a measured gain.
