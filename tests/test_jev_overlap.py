@@ -115,3 +115,32 @@ def test_a_reply_naming_an_option_binds_in_code_and_settles_the_row_next_turn(je
     state = state.model_copy(update={"facts": bound})
     settled = answered_check(check, state).results()[0]
     assert settled.status == "available" and settled.delivered_by == ["sambar.subtypes"]
+
+
+def _line(task, quote, monkeypatch, mode="on"):
+    from netzoo_agent_core.interpretation.capability_check import _status_line, build_capability_check
+
+    monkeypatch.setenv("NETZOO_JEV_OVERLAP", mode)
+    check, _ = build_capability_check(task, _proposal(quote, (), group_membership="several_groups",
+                                                      input_network="regulator_gene"))
+    [row] = check.results()
+    return row, _status_line(row, check=check)
+
+
+def test_round2_an_uncredited_grouping_jev_finds_unasked_never_says_the_overlap_reason(jev, monkeypatch):
+    """jo1 Q01: credited to nothing and typed several_groups, the decline said no workflow returns overlapping
+    memberships, a reason the user never gave; it now says what was checked (layer 2)."""
+    from netzoo_agent_core.interpretation.reason_layers import is_unmatched
+
+    task = ("I want to break a weighted list of which transcription factors control which genes into groups, where "
+            "each group holds factors and the genes they share.")
+    off, said = _line(task, task, monkeypatch, mode="off")
+    assert "overlapping memberships" in said and off.doubted_forms == []
+    row, said = _line(task, task, monkeypatch)
+    assert row.status == "not_available" and row.doubted_forms == ["group_membership"]
+    assert "overlapping memberships" not in said and is_unmatched(said)
+
+
+def test_round2_an_uncredited_real_overlap_request_keeps_its_reason(jev, monkeypatch):
+    row, said = _line(FUZZY, FUZZY, monkeypatch)
+    assert row.doubted_forms == [] and "overlapping memberships" in said

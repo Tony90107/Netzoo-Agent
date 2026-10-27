@@ -668,6 +668,9 @@ class CheckedRequirement(BaseModel):
     blocks: list[str] = Field(default_factory=list)
     """ROUND-17: the workflows this not-available row shows cannot run as asked (a setting set apart, a stated
     requirement they violate); every other row resting on them alone is held with it (`same_run.same_run_holds`)."""
+    doubted_forms: list[str] = Field(default_factory=list)
+    """jev-overlap ROUND-2: typed result forms Jev's read of the request's words did not confirm (`group_membership`);
+    their form reason is never said (`stated_reasons._form_reasons`). Nothing else about the row changes."""
 
 
 def full_gap(results: list[CheckedRequirement], unchecked: list[str]) -> bool:

@@ -503,6 +503,14 @@ def build_capability_check(
 
             if overlap_doubted(task, result):
                 applicable = [*applicable, ("group_membership", result, None)]
+        doubted_forms = []
+        if fit_attrs.get("group_membership") == "several_groups" and not any(
+                known.get(k) and known[k].kind == "produces" for item in items for k in item.delivered_by):
+            # ROUND-2: credited to nothing, so no question can be asked; the overlap reason is said only if Jev agrees.
+            from .jev_overlap import overlap_doubted
+
+            if overlap_doubted(task, result):
+                doubted_forms = ["group_membership"]
         if applicable:
             possible, analyses = resolve_unknowns(_fitting, read, fit_attrs, applicable)
             update = fact_update(possible, analyses, _status, unknown_domains)
@@ -518,7 +526,8 @@ def build_capability_check(
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
                                                delivered_by=delivered, not_by=not_by, attrs=attrs, blank=blank,
                                                asked_as=asked_as, method=method, limits=limits, instead=instead,
-                                               defaults=defaults, fact_ids=fact_ids, blocks=blocks, **waiting))
+                                               defaults=defaults, fact_ids=fact_ids, blocks=blocks,
+                                               doubted_forms=doubted_forms, **waiting))
     requirements += [item.model_copy(update={"fact_ids": record.ids_for(item.method)}) for item in apart.values()]
     spans += [found for item in apart.values() if (found := _span(task, item.quote)) is not None]
     choices, option_spans = _open_choices(task, proposal, conditions, place)
