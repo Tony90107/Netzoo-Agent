@@ -320,7 +320,7 @@ def check_typed_data(task: str, workflows) -> dict:
         if answer["choice"] != "none" and answer["confidence"] >= THRESHOLD:
             result |= {"violated": line, "workflow": name, "sentence": options[answer["choice"]]}
         else:
-            result |= {"unplaced": line}
+            result |= {"unplaced": line, "workflow": name}
     return result
 
 
@@ -354,20 +354,41 @@ def check_result(task: str) -> dict:
             "cost": (out.get("usage") or {}).get("cost", 0)}
 
 
-def conditioned_core(core: CoreDecision, typed: dict, asked: set[str] = frozenset()) -> tuple[CoreDecision, str]:
+def condition_question(typed: dict, line: str) -> str:
+    """FIXES.md A: the confirm for a violation no sentence states -- the typed fact itself, in the closed menu's words."""
+    if line == SAME_SAMPLE_LINE:
+        return ("Before I go ahead, please confirm: were the two data layers measured on different samples or "
+                "individuals? (yes or no)")
+    kind = (typed.get("data") or ("",))[0]
+    return f"Before I go ahead, please confirm: is the data you will use {DATA_CRITERIA.get(kind, kind)}? (yes or no)"
+
+
+def condition_asked(task_state) -> bool:
+    """FIXES.md A: a task asks its data confirm at most once."""
+    return any(item.get("what") == "jev:condition"
+               for key in ("pending", "facts") for item in (task_state or {}).get(key) or [])
+
+
+def conditioned_core(core: CoreDecision, typed: dict, asked: set[str] = frozenset(),
+                     already: bool = False) -> tuple[CoreDecision, str]:
     """PLAN-J2.md step 1'': a DO whose every workflow a typed contract field rules out for the user's stated data ->
-    ASK `jev_condition`, a confirm quoting the user's sentence and the field. The pending question keeps the field as
-    its contract line, so the reply is read by step 3 (a confident `fails` declines). Never a decline here."""
+    ASK `jev_condition`, a yes/no confirm quoting the field, and the user's sentence when Jev placed one (FIXES.md A:
+    asked without one too). The pending question keeps the field as its contract line; a bound "yes" declines on the
+    answer turn (FIXES.md B). Never a decline here."""
     if core.kind != "DO":
         return core, "not_do"
-    if not typed.get("violated") or not typed.get("sentence"):
+    line = typed.get("violated") or typed.get("unplaced")
+    if not line:
         return core, "no_violation"
-    if typed["sentence"] in asked:
+    sentence = typed.get("sentence", "") if typed.get("violated") else ""
+    if already or (sentence and sentence in asked):
         return core, "already_asked"
-    workflow = typed["workflow"]
-    fact = FactQuestion(question="Before I go ahead, could you confirm this about your data?",
-                        user_quote=typed["sentence"], workflows=[workflow, *(w for w in core.workflows if w != workflow)],
-                        contract_quote=typed["violated"], uncertainty="said_unknown", depends_on="jev:condition")
+    workflow = typed.get("workflow") or core.workflows[0]
+    question = ("Before I go ahead, could you confirm this about your data? (yes or no)" if sentence
+                else condition_question(typed, line))
+    fact = FactQuestion(question=question, user_quote=sentence,
+                        workflows=[workflow, *(w for w in core.workflows if w != workflow)],
+                        contract_quote=line, uncertainty="said_unknown", depends_on="jev:condition")
     evidence = {**core.evidence, "jev_condition": {"kind_before": core.kind, "basis_before": core.basis,
                                                    "data": typed.get("data"), "same_samples": typed.get("same_samples")}}
     return CoreDecision(kind="ASK", basis="jev_condition", facts=[fact], workflows=list(fact.workflows),
@@ -436,7 +457,19 @@ def guarded_core(core: CoreDecision, read: dict, clarify, asked: set[str] = froz
 def asked_contract_question(task_state) -> dict | None:
     """The Jev question this task asked with a contract line, still waiting for its answer (ANSWERS.md)."""
     for item in (task_state or {}).get("pending") or []:
-        if (str(item.get("what", "")).startswith("jev:") and item.get("status", "asked") == "asked"
+        if (str(item.get("what", "")).startswith("jev:") and item.get("what") != "jev:condition"  # FIXES.md B: in code
+                and item.get("status", "asked") == "asked"
+                and (item.get("labels") or {}).get("contract")):
+            return item
+    return None
+
+
+def condition_answer(task_state) -> dict | None:
+    """FIXES.md B: the data confirm's answer bound in code this turn (`bind_answers`: yes or no), else None."""
+    state = task_state or {}
+    for item in state.get("facts") or []:
+        if (item.get("what") == "jev:condition" and item.get("status", "known") == "known"
+                and item.get("value") in ("yes", "no") and item.get("turn") == state.get("turns")
                 and (item.get("labels") or {}).get("contract")):
             return item
     return None
@@ -463,6 +496,19 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
     mode = jev_mode()
     if mode == "off" or pending is None:
         return core
+    bound = condition_answer(state.get("task_state"))
+    if bound is not None:  # FIXES.md B: the data confirm's yes/no, bound in code this turn; no Jev read
+        if bound["value"] == "yes":
+            after, action = answered_core(core, bound, bound.get("answer_quote", ""),
+                                          {"answer": "fails", "confidence": 1.0, "by": "code"})
+        else:
+            after, action = core, f"answer_{bound['value']}"
+        record_event(context, state, "core.jev_answer", "classify", {
+            "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
+            "would_have": {"kind": after.kind, "basis": after.basis}, "judged": {"by": "code", "value": bound["value"]},
+            "contract": (bound.get("labels") or {}).get("contract", "")})
+        if after is not core:
+            return after if mode == "on" else core
     question = asked_contract_question(state.get("task_state"))
     if question is not None:  # the answer turn: Jev reads the answer against the line the question quoted
         from ..llm import latest_user_message
@@ -485,7 +531,8 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
             typed = check_typed_data(user_task, core.workflows)
         except Exception as exc:  # noqa: BLE001 -- the call as it came, and says so
             typed = {"violated": None, "error": type(exc).__name__}
-        after, action = conditioned_core(core, typed, asked_sentences(state.get("task_state")))
+        after, action = conditioned_core(core, typed, asked_sentences(state.get("task_state")),
+                                         condition_asked(state.get("task_state")))
         record_event(context, state, "core.jev_condition", "classify", {
             "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
             "would_have": {"kind": after.kind, "basis": after.basis}, "typed": typed})
