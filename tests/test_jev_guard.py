@@ -223,3 +223,44 @@ def test_the_pending_question_keeps_the_contract_line():
     core["facts"][0]["depends_on"] = "jev:count"
     core["facts"][0]["contract_quote"] = ""
     assert _pending(core)[0].labels == {}
+
+
+# LINKS.md step 4: a CLARIFY whose request names one workflow's result becomes a confirm of that result.
+
+def test_a_confident_result_pick_turns_a_clarify_into_a_confirm_in_contract_words():
+    from netzoo_agent_core.interpretation.ask_facts import ask_reply
+
+    core = do("CLARIFY", "goal_unclear")
+    after, action = jev_guard_call.linked_core(core, {"result": "PUMA", "confidence": 0.85})
+    assert (after.kind, after.basis, action) == ("ASK", "jev_link", "link")
+    text = (jev_guard_call.WORKFLOWS / "puma.yaml").read_text()
+    assert after.facts[0].contract_quote in text and "Did you mean PUMA's result?" in ask_reply(after)
+
+
+@pytest.mark.parametrize("pick", [{"result": "not_named", "confidence": 1.0}, {"result": "none_registered", "confidence": 1},
+                                  {"result": "PUMA", "confidence": 0.69}, {"result": "not_run:X", "confidence": 0}])
+def test_no_confident_workflow_pick_leaves_the_clarify(pick):
+    core = do("CLARIFY", "goal_unclear")
+    assert jev_guard_call.linked_core(core, pick)[0] is core
+
+
+def test_only_a_clarify_is_linked_and_only_once_per_task():
+    for kind in ("DO", "ASK", "DECLINE"):
+        core = do(kind, "x")
+        assert jev_guard_call.linked_core(core, {"result": "PUMA", "confidence": 1})[0] is core
+    assert jev_guard_call.linked_already({"pending": [{"what": "jev_link:PUMA"}]})
+    assert not jev_guard_call.linked_already({"pending": [{"what": "jev:count"}]}) and not jev_guard_call.linked_already(None)
+
+
+def test_a_link_question_is_never_judged_as_an_answer_to_a_contract_line():
+    from netzoo_agent_core.engine.task_updates import _pending
+
+    core = {"kind": "ASK", "facts": [{"question": "Did you mean PUMA's result?", "workflows": ["PUMA"],
+                                      "depends_on": "jev_link:PUMA", "contract_quote": "Infer ..."}]}
+    pending = _pending(core)[0].model_dump()
+    assert pending["labels"] == {} and jev_guard_call.asked_contract_question({"pending": [pending]}) is None
+
+
+def test_the_result_menu_is_generated_for_every_workflow():
+    menu = jev_guard_call.result_menu()
+    assert len(menu) == 15 and set(jev_guard_call.RESULT_NONE) <= set(menu) and "Result: " in menu["DRAGON"]

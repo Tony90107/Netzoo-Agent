@@ -1,8 +1,12 @@
-"""Step 1 offline data (CONDITIONS.md): every first-turn DO call with its workflows and gold, from the replay (757
-labelled readings), j1 arm S, h10 and h9 live sessions. Writes conditions-data.json. No model calls."""
+"""Offline data: first-turn calls of one kind with workflows, basis and gold, from the replay (757 labelled
+readings), j1 arm S, h10 and h9 live sessions. Step 1: DO (conditions-data.json); steps 2/4: DECLINE and CLARIFY
+(results-data.json). No model calls.
+
+Usage: python3 conditions_data.py [DO | DECLINE,CLARIFY]"""
 from __future__ import annotations
 
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -21,40 +25,42 @@ def core_of(folder: Path) -> dict:
 
 
 def main():
+    kinds = (sys.argv[1] if len(sys.argv) > 1 else "DO").split(",")
     rows = []
     signals = {r["key"]: r for r in json.loads((MISREAD / "signals-replay.json").read_text())}
     for key, r in json.loads((HERE / "replay-frozen.json").read_text()).items():
         s = signals.get(key)
-        if not s or not r.get("gold") or r["kind"] != "DO" or r["recorded"] != "DO":
+        if not s or not r.get("gold") or r["kind"] not in kinds or r["recorded"] != r["kind"]:
             continue
         core = core_of(Path(r["where"]))
-        if core.get("kind") == "DO" and core.get("workflows"):
+        if core.get("kind") in kinds and (core.get("workflows") or kinds != ["DO"]):
             rows.append({"set": "replay", "id": r["session"], "request": s["request"], "gold": r["gold"],
-                         "workflows": core["workflows"]})
+                         "workflows": core.get("workflows") or [], "kind": core["kind"], "basis": core.get("basis")})
     items = {i["id"]: i for i in json.loads((HERE / "j1/items.json").read_text())["single"]}
     for folder in sorted((HERE / "live/j1").glob("hb-j1-*-1")):
         core, item = core_of(folder / "t1"), items[folder.name.split("-")[2]]
-        if core.get("kind") == "DO" and core.get("workflows"):
-            rows.append({"set": "j1", "id": item["id"], "request": item["prompt"],
+        if core.get("kind") in kinds and (core.get("workflows") or kinds != ["DO"]):
+            rows.append({"kind": core["kind"], "basis": core.get("basis"), "set": "j1", "id": item["id"], "request": item["prompt"],
                          "gold": "DO" if item["expected_call"] == "PARTIAL" else item["expected_call"],
-                         "workflows": core["workflows"], "group": item["category"],
+                         "workflows": core.get("workflows") or [], "group": item["category"],
                          "dragon": bool(item.get("dragon_control"))})
     for tag in ("h10", "h9"):
         items = {i["id"]: i for i in json.loads((MISREAD / tag / "items.json").read_text())["single"]}
         for folder in sorted((MISREAD / "live" / tag).glob(f"hb-{tag}-*-1")):
             core, item = core_of(folder / "t1"), items[folder.name.split("-")[2]]
-            if core.get("kind") == "DO" and core.get("workflows"):
-                rows.append({"set": tag, "id": item["id"], "request": item["prompt"],
+            if core.get("kind") in kinds and (core.get("workflows") or kinds != ["DO"]):
+                rows.append({"kind": core["kind"], "basis": core.get("basis"), "set": tag, "id": item["id"], "request": item["prompt"],
                              "gold": "DO" if item["expected_call"] == "PARTIAL" else item["expected_call"],
-                             "workflows": core["workflows"], "group": item.get("category"),
+                             "workflows": core.get("workflows") or [], "group": item.get("category"),
                              "dragon": bool(item.get("dragon_control"))})
     unique = {}
     for r in rows:
         unique.setdefault((r["request"], tuple(r["workflows"])), r)
     out = list(unique.values())
-    (HERE / "conditions-data.json").write_text(json.dumps(out, indent=1, ensure_ascii=False))
+    (HERE / ("conditions-data.json" if kinds == ["DO"] else "results-data.json")).write_text(json.dumps(out, indent=1, ensure_ascii=False))
     print(len(rows), "DO calls,", len(out), "unique (request, workflows)")
-    print(Counter((r["set"], r["gold"]) for r in out))
+    print(Counter((r.get("kind", "DO"), r["gold"]) for r in out))
+    print(Counter((r.get("kind"), r.get("basis"), r["gold"]) for r in out))
 
 
 if __name__ == "__main__":
