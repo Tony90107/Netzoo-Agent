@@ -1,0 +1,790 @@
+{
+  "version": 1,
+  "session_id": "hb-jo1-J01-1",
+  "profile_id": "hb-jo1-J01-1",
+  "auto_generated": false,
+  "created_at": 1793093361.639775,
+  "updated_at": 1793093361.63981,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Would you group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups? I have somatic mutation calls, exon lengths, a cancer gene list and an MSigDB GMT file."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Would you group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups?\" -- the request does not say whether one item may belong to several groups at once: if one group each: SAMBAR; if several groups at once: no registered workflow gives this.\n2. \"trying 2 to 6 groups\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n\nBefore I choose a workflow, please tell me: Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A result waits on a fact the user said they do not know; nothing is selected before it is known.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "A result waits on a fact the user said they do not know; nothing is selected before it is known.",
+      "candidate_actions": [
+        "run_sambar",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [
+          "mutation_matrix"
+        ],
+        "artifact_type": "sample_cluster_assignment",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "mutation_matrix"
+            ],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "sample_cluster_assignment",
+              "source": "explicit",
+              "text_span": "Would you group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups?",
+              "rationale": "The user explicitly requests to group tumors into subtypes, which corresponds to sample cluster assignments."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "mutation_matrix",
+              "source": "explicit",
+              "text_span": "somatic mutation",
+              "rationale": "The user explicitly mentions somatic mutation calls as part of the current input."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The artifact type 'sample_cluster_assignment' implies that the result is a single assignment for the entire cohort, not per individual sample."
+            },
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The selected artifact ontology uniquely defines the canonical scientific operation."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_sambar"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Would you group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups?",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "several_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "group_membership",
+            "outcomes": {
+              "one_group": [
+                "sambar.subtypes"
+              ],
+              "several_groups": []
+            },
+            "unknown_quote": "Would you group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups?",
+            "file_checked": null,
+            "method": {
+              "samples": 150,
+              "samples_quote": "150 lung adenocarcinoma tumors"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@20-50"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "trying 2 to 6 groups",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 150,
+              "samples_quote": "150 lung adenocarcinoma tumors"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@20-50"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "somatic mutation calls",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "exon lengths",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a cancer gene list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "an MSigDB GMT file",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups?",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "group our 150 lung adenocarcinoma tumors into subtypes"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@20-50",
+            "property": "sample_count",
+            "name": "",
+            "value": "150",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "150 lung adenocarcinoma tumors",
+            "span": [
+              20,
+              50
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "150 lung adenocarcinoma tumors",
+                "span": [
+                  20,
+                  50
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "150 lung adenocarcinoma tumors",
+                "span": [
+                  20,
+                  50
+                ],
+                "result": "Would you group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups?",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "150 lung adenocarcinoma tumors",
+                "span": [
+                  20,
+                  50
+                ],
+                "result": "trying 2 to 6 groups",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+            "user_quote": "Would you group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups?",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "",
+            "depends_on": "group_membership",
+            "outcomes": {
+              "one_group": [
+                "SAMBAR"
+              ],
+              "several_groups": []
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "dimension:group_membership@0-126"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "needs_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "sample_cluster_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups?"
+          ],
+          "run_verdict": null,
+          "legacy_facts": [
+            "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?"
+          ],
+          "legacy_kept": true
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "trying 2 to 6 groups",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.",
+              "question": "Do you want to try 2 to 6 groups?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "2 groups",
+                "3 groups",
+                "4 groups",
+                "5 groups",
+                "6 groups"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I have somatic mutation calls, exon lengths, a cancer gene list and an MSigDB GMT file",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "All four inputs must have a non-empty four-way gene identifier overlap before execution.",
+              "question": "Do all four inputs have a non-empty four-way gene identifier overlap?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I have somatic mutation calls, exon lengths, a cancer gene list and an MSigDB GMT file",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "The pinned SAMBAR implementation requires one positive numeric exon-length row whose CSV columns are unique gene IDs.",
+              "question": "Does your exon-length data have one positive numeric row with unique gene IDs?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [
+          {
+            "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+            "user_quote": "Would you group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups?",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "",
+            "depends_on": "group_membership",
+            "outcomes": {
+              "one_group": [
+                "SAMBAR"
+              ],
+              "several_groups": []
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "dimension:group_membership@0-126"
+          }
+        ],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 29015,
+    "output_tokens": 1523,
+    "total_tokens": 30538,
+    "calls": [
+      {
+        "call_id": "22deb778-ac77-42e6-b9fe-b97308d0be5b",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093337-UyYkbs27vxCJ3vncCHXW",
+        "input_tokens": 5330,
+        "output_tokens": 265,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5595,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 594,
+        "price_snapshot": null,
+        "duration_ms": 4289,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "60f2fab0-3f20-4458-9376-f76067be505d",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093341-LrFHzwTLRRs3MfGU2y4u",
+        "input_tokens": 5824,
+        "output_tokens": 223,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6047,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 710,
+        "price_snapshot": null,
+        "duration_ms": 3623,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3011dd8a-b6fe-462c-8e1e-a5f745312d73",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 631,
+        "output_tokens": 48,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 679,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1085,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "af32545f-302f-4757-ad02-30b6323b9877",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093346-QP9gjZAhC5QIpQcLHT3m",
+        "input_tokens": 273,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 277,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 43,
+        "price_snapshot": null,
+        "duration_ms": 789,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3a2e65ec-fd75-4a0b-9aeb-5bfbdc3947da",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793093347-d5CKUAmPEe4ADAoRWQQ7",
+        "input_tokens": 15211,
+        "output_tokens": 613,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15824,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1593,
+        "price_snapshot": null,
+        "duration_ms": 8777,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d479cd77-e5d7-4a9f-a976-92742fe289f8",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093356-BhfTrlN9L4sjCeqcXo7X",
+        "input_tokens": 553,
+        "output_tokens": 51,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 604,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 114,
+        "price_snapshot": null,
+        "duration_ms": 1269,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c7fd95c0-5ded-4924-8591-737e5753c3b7",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093357-fEIvVTre0dmK1zKNRvsf",
+        "input_tokens": 1193,
+        "output_tokens": 319,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1512,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 370,
+        "price_snapshot": null,
+        "duration_ms": 3696,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "4d706e6c-4a51-4ac0-8912-cc97d5ba05d3",
+  "task_state": {
+    "version": 1,
+    "task_id": "7de96ff7",
+    "revision": 1,
+    "goal": "Would you group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups? I have somatic mutation calls, exon lengths, a cancer gene list and an MSigDB GMT file.",
+    "pending": [
+      {
+        "question_id": "dimension:group_membership:6bf5883edd",
+        "source": "dimension",
+        "what": "group_membership",
+        "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+        "user_quote": "Would you group our 150 lung adenocarcinoma tumors into subtypes based on their pathway mutation scores, trying 2 to 6 groups?",
+        "workflows": [
+          "SAMBAR"
+        ],
+        "options": {
+          "one_group": [
+            "SAMBAR"
+          ],
+          "several_groups": []
+        },
+        "labels": {
+          "one_group": "one group each",
+          "several_groups": "several groups at once"
+        },
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

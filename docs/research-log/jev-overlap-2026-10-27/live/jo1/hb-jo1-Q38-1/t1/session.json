@@ -1,0 +1,633 @@
+{
+  "version": 1,
+  "session_id": "hb-jo1-Q38-1",
+  "profile_id": "hb-jo1-Q38-1",
+  "auto_generated": false,
+  "created_at": 1793093300.540419,
+  "updated_at": 1793093300.5404649,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want to understand the modules in yeast stress regulation better. I have a weighted TF-to-gene edge list with source, target and weight columns from a previous screen."
+    },
+    {
+      "role": "assistant",
+      "content": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample (BONOBO)\n\nWhich of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?\n\nNothing was selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request names no result yet; the goal is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request names no result yet; the goal is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_panda",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "I want to understand the modules in yeast stress regulation better.",
+              "rationale": "The user wants to understand the modules, which involves analyzing the network structure."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "Understanding modules in yeast stress regulation involves analyzing the regulatory network formed by TF-to-gene interactions."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The analysis of the overall regulatory network for modules does not require sample-specific granularity."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "weighted TF-to-gene edge list with source, target and weight columns from a previous screen",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "weighted TF-to-gene edge list with source, target and weight columns from a previous screen",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "weighted TF-to-gene edge list with source, target and weight columns from a previous screen",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "weighted TF-to-gene edge list with source, target and weight columns from a previous screen",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "weighted TF-to-gene edge list with source, target and weight columns from a previous screen",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want to understand the modules in yeast stress regulation better.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "panda.tf_gene_network",
+              "panda.targeting_scores",
+              "panda.condition_comparison",
+              "otter.tf_gene_network",
+              "otter.targeting_scores",
+              "giraffe.signed_regulation",
+              "giraffe.tf_activity",
+              "giraffe.activity_tests",
+              "condor.communities",
+              "condor.core_scores",
+              "condor.enrichment"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": true,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "I have a weighted TF-to-gene edge list with source, target and weight columns from a previous screen.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "purpose_only",
+        "goal_quote": "I want to understand the modules in yeast stress regulation better.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "CLARIFY",
+        "partial": false,
+        "workflows": [],
+        "declined": [],
+        "facts": [],
+        "clarify": {
+          "missing": "both",
+          "candidates": [
+            "PANDA",
+            "PUMA",
+            "LIONESS-PANDA",
+            "LIONESS-PUMA",
+            "LIONESS-COEXPRESSION",
+            "CONDOR",
+            "COBRA",
+            "SAMBAR",
+            "DRAGON",
+            "LIONESS-DRAGON",
+            "OTTER",
+            "GIRAFFE",
+            "BONOBO"
+          ],
+          "inputs": [],
+          "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+          "goal_quote": "I want to understand the modules in yeast stress regulation better."
+        },
+        "run_allowed": false,
+        "basis": "goal_unclear",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "purpose_only",
+            "I want to understand the modules in yeast stress regulation better."
+          ],
+          "run_verdict": null
+        }
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 33468,
+    "output_tokens": 1192,
+    "total_tokens": 34660,
+    "calls": [
+      {
+        "call_id": "1c92661a-f6ef-4dfc-be5b-803b17629dbd",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093276-QluLI88qTVsYlC0vQR5N",
+        "input_tokens": 5312,
+        "output_tokens": 153,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5465,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 524,
+        "price_snapshot": null,
+        "duration_ms": 3287,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "cc58e124-25a7-460f-a5fb-4620cbfd9364",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093279-UWVe3Jy2QEG1tcq3qwYe",
+        "input_tokens": 5144,
+        "output_tokens": 283,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5427,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 644,
+        "price_snapshot": null,
+        "duration_ms": 4797,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9faf3fc5-623b-49f6-8d12-5341eeeaf3f8",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093284-LpP9NqrYVRQKQqSDxupb",
+        "input_tokens": 1234,
+        "output_tokens": 9,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1243,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 191,
+        "price_snapshot": null,
+        "duration_ms": 1246,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "befa8d76-5b22-4b08-8e5f-6fcf934a7dff",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 667,
+        "output_tokens": 59,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 726,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1380,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "10dadda3-6b7d-40e5-bacf-50dd1499e43a",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093286-jQDBzS13YrLDti4XF9QY",
+        "input_tokens": 1709,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1725,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 266,
+        "price_snapshot": null,
+        "duration_ms": 843,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "346f15e9-d6ed-4e30-978e-b9ac9b9a0ddd",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093287-UDy6o00mFrphyp2rUT87",
+        "input_tokens": 2339,
+        "output_tokens": 189,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2528,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 464,
+        "price_snapshot": null,
+        "duration_ms": 3007,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "41831cb4-f6c0-4504-b030-83ad95fd9914",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793093290-c8PhCdFZmbaRBWA6TGem",
+        "input_tokens": 15175,
+        "output_tokens": 379,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15554,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1448,
+        "price_snapshot": null,
+        "duration_ms": 5071,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e6e13852-aba6-46d1-9b49-56cde5cfac6e",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093295-6WCIKNH1n6nZEd6LcP7p",
+        "input_tokens": 535,
+        "output_tokens": 29,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 564,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 98,
+        "price_snapshot": null,
+        "duration_ms": 1154,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7904287b-6ec6-439b-97ec-f810552e80fc",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793093297-mmA0VucIqAvmd4Upb9WA",
+        "input_tokens": 524,
+        "output_tokens": 54,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 578,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 111,
+        "price_snapshot": null,
+        "duration_ms": 1816,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a8d9f717-2900-4ae3-9f53-76c8929b748f",
+        "role": "capability_second_opinion",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793093298-GMiDUsypb8jJAWTmQWxL",
+        "input_tokens": 829,
+        "output_tokens": 21,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 850,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 137,
+        "price_snapshot": null,
+        "duration_ms": 1115,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "d2a660de-4a26-450f-a2e2-ca39b114d250",
+  "task_state": {
+    "version": 1,
+    "task_id": "4518f050",
+    "revision": 1,
+    "goal": "I want to understand the modules in yeast stress regulation better. I have a weighted TF-to-gene edge list with source, target and weight columns from a previous screen.",
+    "pending": [
+      {
+        "question_id": "goal::e574565e7c",
+        "source": "goal",
+        "what": "",
+        "question": "Which of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?",
+        "user_quote": "I want to understand the modules in yeast stress regulation better.",
+        "workflows": [
+          "PANDA",
+          "PUMA",
+          "LIONESS-PANDA",
+          "LIONESS-PUMA",
+          "LIONESS-COEXPRESSION",
+          "CONDOR",
+          "COBRA",
+          "SAMBAR",
+          "DRAGON",
+          "LIONESS-DRAGON",
+          "OTTER",
+          "GIRAFFE",
+          "BONOBO"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

@@ -1,0 +1,43 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.02s)
+● Matching registered workflows…
+✓ Workflow — SAMBAR
+✓ Guidance prepared
+What I understood you are asking for:
+1. "Please run SAMBAR on our 150 lung adenocarcinoma tumors to get pathway mutation scores and subtypes, trying 2 to 5 clusters." -- available from SAMBAR.
+2. "pathway mutation scores and subtypes" -- available from SAMBAR.
+3. "I'm not sure yet whether I'll make the abstract deadline." -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.
+
+Selected path: **SAMBAR**.
+
+Your question asks for a cohort-level pathway mutation matrix. **SAMBAR** fits that result and scale.
+
+Why this recommendation:
+
+Pathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.
+
+**SAMBAR** — Subtype somatic-mutation samples through pathway mutation scores with SAMBAR. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.
+
+Required workflow inputs:
+
+- `mutation_file`: somatic mutation matrix
+- `exon_size_file`: gene/exon-size CSV
+- `cancer_gene_file`: cancer-gene list
+- `pathway_file`: GMT pathway file
+
+Outputs:
+
+- `gene_mutation_scores`: Sample-by-gene mutation scores, not pathway scores.
+- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.
+- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.
+- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.
+
+----------------------------------------
+Next step
+Enter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.
+Enter/back: start a new task | exit: close
+> 
