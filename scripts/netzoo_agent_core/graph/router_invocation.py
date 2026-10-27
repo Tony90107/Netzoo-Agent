@@ -508,6 +508,10 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         record_event(context, state, "routing.capability_reread", "classify", {
             "passages": passages, "reread": reread.model_dump() if reread is not None else None,
             "check": check.model_dump()})
+    from ..interpretation.jev_overlap import take_reads
+
+    if overlap_reads := take_reads(user_task):  # jev-overlap-2026-10-27: Jev's reads of a several_groups result
+        record_event(context, state, "core.jev_overlap", "classify", {"reads": overlap_reads})
     stated = [] if provisional else stated_requirements(user_task, proposal, check)
     own = [] if provisional else stated_requirements(user_task, proposal, check, own_sentence=True)
     pairs_to_check = condition_pairs(check, stated)
