@@ -146,8 +146,17 @@ def start_jev(task: str) -> Future | None:
     return None if jev_mode() == "off" else _POOL.submit(_read, task)
 
 
-def guarded_core(core: CoreDecision, read: dict, clarify) -> tuple[CoreDecision, str]:
-    """(the call after the guard, what it did). `clarify` builds the CLARIFY view when needed."""
+def asked_sentences(task_state) -> set[str]:
+    """The sentences a Jev question already asked in this task (pending or answered): arm A J20/J48 asked one again
+    after the user answered it, since an option-free answer is never bound."""
+    state = task_state or {}
+    return {item.get("user_quote", "") for key in ("pending", "facts") for item in state.get(key) or []
+            if str(item.get("what", "")).startswith("jev:")}
+
+
+def guarded_core(core: CoreDecision, read: dict, clarify, asked: set[str] = frozenset()) -> tuple[CoreDecision, str]:
+    """(the call after the guard, what it did). `clarify` builds the CLARIFY view when needed; `asked` holds the
+    sentences already asked in this task, never asked again."""
     if core.kind not in _KINDS:
         return core, "not_acting"
     if read["kind"] not in _QUESTIONS or read["confidence"] < THRESHOLD:
@@ -163,6 +172,8 @@ def guarded_core(core: CoreDecision, read: dict, clarify) -> tuple[CoreDecision,
     sentence = read.get("sentence")
     if not sentence or read.get("sentence_confidence", 0) < THRESHOLD:
         return core, "no_sentence"
+    if sentence in asked:
+        return core, "already_asked"
     question = (f"Before I go ahead, could you settle this point you mentioned? "
                 f"{ABOUT_LINES.get(read.get('about'), '')}").strip()
     fact = FactQuestion(question=question, user_quote=sentence, workflows=list(core.workflows),
@@ -188,7 +199,7 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
 
         return _clarify_need(decision, decision.capability_check, task=user_task)
 
-    after, action = guarded_core(core, read, clarify)
+    after, action = guarded_core(core, read, clarify, asked_sentences(state.get("task_state")))
     record_event(context, state, "core.jev_guard", "classify", {
         "status": "checked", "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
         "would_have": {"kind": after.kind, "basis": after.basis, "workflows": after.workflows},
