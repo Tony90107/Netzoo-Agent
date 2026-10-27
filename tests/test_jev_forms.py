@@ -143,3 +143,16 @@ def test_the_time_model_answer_binds_in_code():
     assert [item.value for item in bound] == ["not_dynamic"]
     settled = answered_check(check, state.model_copy(update={"facts": bound})).results()[0]
     assert settled.status == "available"
+
+
+def test_round2_a_doubted_form_with_another_blocker_is_not_said():
+    """jf1 R13 t2: time doubted, but the credits also fail needs_sign; the time reason the user never gave is not said."""
+    row, line, calls = _check(TIME, TIME, ("giraffe.tf_activity",), time_model="dynamic", needs_sign=True)
+    assert calls == ["time_model"] and row.status == "not_available" and row.doubted_forms == ["time_model"]
+    assert "from one time point to the next" not in line
+
+
+def test_round2_a_real_dynamic_request_with_another_blocker_keeps_its_reason():
+    row, line, _ = _check(LAGGED, LAGGED, ("giraffe.tf_activity",), said=USER_SAYS_IT, time_model="dynamic",
+                          needs_sign=True)
+    assert row.doubted_forms == [] and "from one time point to the next" in line
