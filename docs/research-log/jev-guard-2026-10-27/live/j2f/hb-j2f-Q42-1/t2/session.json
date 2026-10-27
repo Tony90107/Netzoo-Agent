@@ -1,0 +1,823 @@
+{
+  "version": 1,
+  "session_id": "hb-j2f-Q42-1",
+  "profile_id": "hb-j2f-Q42-1",
+  "auto_generated": false,
+  "created_at": 1793090524.349597,
+  "updated_at": 1793090564.392334,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want COBRA to show how gene co-expression relates to age and BMI in our 150 adipose samples. I have the gene-by-sample expression matrix and a design table with numeric age and BMI for every sample ID. I can't remember whether the filtered matrix kept 120 genes or 2,000 genes."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Does the filtered matrix have more than 150 genes?\n  You wrote: \"I can't remember whether the filtered matrix kept 120 genes or 2,000 genes\". COBRA's contract: \"Expression must be a labeled gene-by-sample matrix with more genes than samples\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: I want COBRA to show how gene co-expression relates to age and BMI in our 150 adipose samples. I have the gene-by-sample expression matrix and a design table with numeric age and BMI for every sample ID. I can't remember whether the filtered matrix kept 120 genes or 2,000 genes.\nUser follow-up: The filtered matrix kept 120 genes."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Did the filtered matrix keep more than 150 genes?\n  You wrote: \"I can't remember whether the filtered matrix kept 120 genes or 2,000 genes\". COBRA's contract: \"Expression must be a labeled gene-by-sample matrix with more genes than samples\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_lioness_coexpression",
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "coexpression",
+          "sample_specific"
+        ],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "coexpression",
+              "sample_specific"
+            ],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I want COBRA to show how gene co-expression relates to age and BMI in our 150 adipose samples.",
+              "rationale": "The user wants to analyze gene co-expression in relation to age and BMI."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "I have the gene-by-sample expression matrix.",
+              "rationale": "The user has provided a gene-by-sample expression matrix for the analysis."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The goal is to understand co-expression relationships among genes."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The analysis is focused on individual samples, as indicated by the mention of 150 adipose samples."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "coexpression",
+              "source": "explicit",
+              "text_span": "I want COBRA to show how gene co-expression relates to age and BMI in our 150 adipose samples.",
+              "rationale": "The user is interested in analyzing gene co-expression relationships."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "I want COBRA to show how gene co-expression relates to age and BMI in our 150 adipose samples.",
+              "rationale": "The analysis is focused on individual samples, as indicated by the mention of 150 adipose samples."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Did the filtered matrix keep more than 150 genes?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want COBRA to show how gene co-expression relates to age and BMI in our 150 adipose samples.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "I can't remember whether the filtered matrix kept 120 genes or 2,000 genes.",
+            "file_checked": null,
+            "method": {
+              "named": "COBRA",
+              "named_quote": "COBRA",
+              "samples_quote": "150 adipose samples",
+              "features": 120,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  318,
+                  353,
+                  120
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "feature_count@318-353"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "gene-by-sample expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "design table with numeric age and BMI for every sample ID",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_lioness_coexpression",
+          "run_bonobo"
+        ],
+        "conditions": {},
+        "unknown_domains": {
+          "I can't remember whether the filtered matrix kept 120 genes or 2,000 genes.": {
+            "kind": "choices",
+            "values": [
+              120,
+              2000
+            ],
+            "kept_without_scope": true
+          }
+        },
+        "unknown_scopes": {},
+        "unknowns": [
+          [
+            "sample_count",
+            "I can't remember whether the filtered matrix kept 120 genes or 2,000 genes."
+          ]
+        ],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want COBRA to show how gene co-expression relates to age and BMI in our 150 adipose samples.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I can't remember whether the filtered matrix kept 120 genes or 2,000 genes."
+        ],
+        "stated_quotes": [
+          "COBRA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@96-115",
+            "property": "sample_count",
+            "name": "",
+            "value": "150",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "150 adipose samples",
+            "span": [
+              96,
+              115
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "150 adipose samples",
+                "span": [
+                  96,
+                  115
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "150 adipose samples",
+                "span": [
+                  96,
+                  115
+                ],
+                "result": "I want COBRA to show how gene co-expression relates to age and BMI in our 150 adipose samples.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@318-353",
+            "property": "feature_count",
+            "name": "",
+            "value": "120",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "The filtered matrix kept 120 genes.",
+            "span": [
+              318,
+              353
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "The filtered matrix kept 120 genes.",
+                "span": [
+                  318,
+                  353
+                ],
+                "result": "",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@226-301:candidates",
+            "property": "sample_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "120",
+              "2000"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "I can't remember whether the filtered matrix kept 120 genes or 2,000 genes.",
+            "span": [
+              226,
+              301
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "unknown_facts",
+                "quote": "I can't remember whether the filtered matrix kept 120 genes or 2,000 genes.",
+                "span": [
+                  226,
+                  301
+                ],
+                "result": "",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": [
+          {
+            "property": "sample_count",
+            "name": "",
+            "result": "",
+            "used": [
+              "sample_count@226-301:candidates"
+            ],
+            "set_aside": [],
+            "reason": "empty_scope_kept"
+          },
+          {
+            "property": "sample_count",
+            "name": "",
+            "result": "I want COBRA to show how gene co-expression relates to age and BMI in our 150 adipose samples.",
+            "used": [],
+            "set_aside": [
+              "sample_count@96-115"
+            ],
+            "reason": "unsure_candidates"
+          }
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Did the filtered matrix keep more than 150 genes?",
+            "user_quote": "I can't remember whether the filtered matrix kept 120 genes or 2,000 genes.",
+            "workflows": [
+              "COBRA"
+            ],
+            "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "not_supported",
+            "if_no": "supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:COBRA@226-301"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want COBRA to show how gene co-expression relates to age and BMI in our 150 adipose samples."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "obligations": [
+            {
+              "fact_key": "agent:COBRA@226-301",
+              "source": "agent",
+              "question": "Did the filtered matrix keep more than 150 genes?",
+              "user_quote": "I can't remember whether the filtered matrix kept 120 genes or 2,000 genes.",
+              "workflows": [
+                "COBRA"
+              ],
+              "status": "asked",
+              "asked_as": ""
+            }
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA",
+          "LIONESS-COEXPRESSION",
+          "BONOBO"
+        ],
+        "accepted": [
+          {
+            "question": "Did the filtered matrix keep more than 150 genes?",
+            "user_quote": "I can't remember whether the filtered matrix kept 120 genes or 2,000 genes.",
+            "workflows": [
+              "COBRA"
+            ],
+            "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "two_versions",
+            "if_yes": "not_supported",
+            "if_no": "supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:COBRA@226-301"
+          }
+        ],
+        "queued": [],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 41640,
+    "output_tokens": 1545,
+    "total_tokens": 43185,
+    "calls": [
+      {
+        "call_id": "1350abe0-97f4-40c3-84cb-a36f02dc8b8b",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090526-JZ7PueVTjqop7xq2Q50G",
+        "input_tokens": 886,
+        "output_tokens": 43,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 929,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 159,
+        "price_snapshot": null,
+        "duration_ms": 1346,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4bbba71e-759a-449a-8ca0-709badfd00c3",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090527-85tq3dvqxEEdodXYoWku",
+        "input_tokens": 5359,
+        "output_tokens": 259,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5618,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 594,
+        "price_snapshot": null,
+        "duration_ms": 4534,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e6bfc234-6c73-4247-ba51-f762289d36b7",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090532-hGz6HbBBN9wXKTnwhSKb",
+        "input_tokens": 5646,
+        "output_tokens": 272,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5918,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 713,
+        "price_snapshot": null,
+        "duration_ms": 4167,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "032908be-aef1-4514-8278-87f257d9f00a",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090536-4vxK4f4lNDguFksCFuMA",
+        "input_tokens": 1237,
+        "output_tokens": 135,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1372,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 267,
+        "price_snapshot": null,
+        "duration_ms": 2561,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6937122b-ca80-4dfb-9dcb-d29cc6969237",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 713,
+        "output_tokens": 48,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 761,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 136,
+        "price_snapshot": {
+          "snapshot_id": "331776a3-f12c-5ca1-ac95-810062c5bb6e",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T08:36:36.634965Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1205,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "f316bbc4-1474-4919-8361-22d1fc98f9b8",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090540-SQckfQuvYnWZGhfvtinq",
+        "input_tokens": 1698,
+        "output_tokens": 96,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1794,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 197,
+        "price_snapshot": null,
+        "duration_ms": 10140,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f19ba8e3-650b-446b-8e94-9f3b2261b6d9",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090550-3kqBqEjsQJgWbtdb2bvW",
+        "input_tokens": 1798,
+        "output_tokens": 38,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1836,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 293,
+        "price_snapshot": null,
+        "duration_ms": 1649,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f4be428f-e2fe-41ca-90a6-eb8371e36d73",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793090551-d7SSp2hvIaRZdqCM9Qip",
+        "input_tokens": 21613,
+        "output_tokens": 514,
+        "cache_read_tokens": 21376,
+        "cache_write_tokens": 0,
+        "total_tokens": 22127,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1947,
+        "price_snapshot": null,
+        "duration_ms": 9466,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "88b01e12-b42c-4b98-b093-eb41c99385e8",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090561-YhYicqIFh8rKClThkEao",
+        "input_tokens": 582,
+        "output_tokens": 31,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 613,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 106,
+        "price_snapshot": null,
+        "duration_ms": 1062,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "08af62cf-b6d9-41e2-bc97-64c6d7abdfc9",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090562-RY1LVdGsiWyu4vvk2Ouh",
+        "input_tokens": 2108,
+        "output_tokens": 109,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2217,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 382,
+        "price_snapshot": null,
+        "duration_ms": 1865,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "eac6c7e8-2238-4446-a145-3706a7ce7245",
+  "task_state": {
+    "version": 1,
+    "task_id": "b351124c",
+    "revision": 2,
+    "goal": "I want COBRA to show how gene co-expression relates to age and BMI in our 150 adipose samples. I have the gene-by-sample expression matrix and a design table with numeric age and BMI for every sample ID. I can't remember whether the filtered matrix kept 120 genes or 2,000 genes.",
+    "pending": [
+      {
+        "question_id": "agent:COBRA:4d218e7b07",
+        "source": "agent",
+        "what": "COBRA",
+        "question": "Did the filtered matrix keep more than 150 genes?",
+        "user_quote": "I can't remember whether the filtered matrix kept 120 genes or 2,000 genes.",
+        "workflows": [
+          "COBRA"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": true,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 2,
+    "status": "active",
+    "turns": 2
+  }
+}

@@ -1,0 +1,702 @@
+{
+  "version": 1,
+  "session_id": "hb-j2f-Q26-1",
+  "profile_id": "hb-j2f-Q26-1",
+  "auto_generated": false,
+  "created_at": 1793090221.136257,
+  "updated_at": 1793090249.050026,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Our grant promised new insights into gene regulation during neural stem cell differentiation, and now I have to deliver something. We have expression for 24 samples across the time course, a TF motif prior and a PPI table."
+    },
+    {
+      "role": "assistant",
+      "content": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample (BONOBO)\n\nWhich of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?\n\nNothing was selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: Our grant promised new insights into gene regulation during neural stem cell differentiation, and now I have to deliver something. We have expression for 24 samples across the time course, a TF motif prior and a PPI table.\nUser follow-up: I want to know how active each transcription factor is in each of the 24 samples."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I want to know how active each transcription factor is in each of the 24 samples.\" -- available from GIRAFFE.\n\nSelected path: **GIRAFFE**.\n\nYour question asks for a cohort-level TF activity matrix. **GIRAFFE** fits that result and scale.\n\nWhat you asked about:\n\n- \"I want to know how active each transcription factor is in each of the 24 samples.\" — The activity matrix holds one value per TF per sample (TF by sample, written as the `.tfa` output). GIRAFFE reports absolute activity, so every value is zero or positive.\n\n**GIRAFFE** — Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `motif_file`: motif/prior\n- `ppi_file`: PPI network\n\nOutputs:\n\n- `regulatory_network`: Inferred regulator-to-target associations.\n- `tf_activity_matrix`: Inferred transcription-factor-by-sample activity values.\n\nTF activity is how active a TF is in each sample, apart from its own mRNA level. If you mean how strongly each TF is wired to its targets in each sample, the out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the same inputs.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_giraffe"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "tf_activity_matrix",
+        "entity_types": [
+          "sample",
+          "tf"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "tf_activity_matrix",
+            "entity_types": [
+              "sample",
+              "tf"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "how active each transcription factor is in each of the 24 samples.",
+              "rationale": "The user wants to know how active each transcription factor is in each sample, which requires inferring activity levels."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "tf_activity_matrix",
+              "source": "explicit",
+              "text_span": "how active each transcription factor is in each of the 24 samples.",
+              "rationale": "The requested output is a matrix of transcription factor activities across samples."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "explicit",
+              "text_span": "in each of the 24 samples.",
+              "rationale": "The output will include activity measurements for each sample."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The artifact type 'tf_activity_matrix' allows for aggregate granularity when measuring overall transcription factor activity across samples."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_giraffe"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "addressed_concerns": [
+        {
+          "action": "run_giraffe",
+          "concern": "per_sample_values",
+          "text_span": "I want to know how active each transcription factor is in each of the 24 samples."
+        }
+      ],
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a TF motif prior and a PPI table",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF motif prior and a PPI table",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a TF motif prior and a PPI table",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want to know how active each transcription factor is in each of the 24 samples.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "giraffe.tf_activity"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "other",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 24,
+              "samples_quote": "24 samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@176-186"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "expression for 24 samples across the time course",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a TF motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a PPI table",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want to know how active each transcription factor is in each of the 24 samples.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@176-186",
+            "property": "sample_count",
+            "name": "",
+            "value": "24",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "24 samples",
+            "span": [
+              176,
+              186
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "24 samples",
+                "span": [
+                  176,
+                  186
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "24 samples",
+                "span": [
+                  176,
+                  186
+                ],
+                "result": "I want to know how active each transcription factor is in each of the 24 samples.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "GIRAFFE"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "tf_activity_matrix",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want to know how active each transcription factor is in each of the 24 samples."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "how active each transcription factor is in each of the 24 samples",
+              "uncertainty": "said_unknown",
+              "workflow": "GIRAFFE",
+              "contract_quote": "Require at least two expression samples before execution.",
+              "question": "Do you have at least two expression samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "how active each transcription factor is in each of the 24 samples"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 38814,
+    "output_tokens": 1346,
+    "total_tokens": 40160,
+    "calls": [
+      {
+        "call_id": "02f93ea9-91af-45de-ad25-b20d386fce21",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090223-eLYlNTemSBk1Xe0nQsTM",
+        "input_tokens": 912,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 954,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 162,
+        "price_snapshot": null,
+        "duration_ms": 1243,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "139020d4-f374-4a35-a341-2a783ec1bf44",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090224-yNWfqqtigckRpa2Sza07",
+        "input_tokens": 5349,
+        "output_tokens": 269,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5618,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 599,
+        "price_snapshot": null,
+        "duration_ms": 4559,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "825e6ae9-69e1-4182-a51f-e9ed8be16606",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090228-5xcDpFNshCmjhxGEWbq0",
+        "input_tokens": 5315,
+        "output_tokens": 162,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5477,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 597,
+        "price_snapshot": null,
+        "duration_ms": 2363,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1a690500-5327-44ca-b25f-8ee2857cbd96",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 667,
+        "output_tokens": 52,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 719,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 131,
+        "price_snapshot": {
+          "snapshot_id": "331776a3-f12c-5ca1-ac95-810062c5bb6e",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T08:36:36.634965Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1208,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "3473607e-b280-40f9-afee-71d9ccd0d0dc",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090232-WMW86oicxUmYdx4shDta",
+        "input_tokens": 366,
+        "output_tokens": 34,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 400,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 75,
+        "price_snapshot": null,
+        "duration_ms": 1266,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b3f7359a-799f-4232-9b99-dc75393dd98a",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793090233-PYYdIcrVA1OrnQ450pur",
+        "input_tokens": 18421,
+        "output_tokens": 442,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 18863,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1665,
+        "price_snapshot": null,
+        "duration_ms": 7257,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d7009e5d-791a-4170-a763-ed2dac5a2202",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090241-mq8mcAViNOpOjETQTgky",
+        "input_tokens": 572,
+        "output_tokens": 35,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 607,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 107,
+        "price_snapshot": null,
+        "duration_ms": 1353,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "78987fc3-b7eb-4090-8565-98d47d88eb38",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090242-meRZfccQzc24JENkyuGZ",
+        "input_tokens": 561,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 606,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 111,
+        "price_snapshot": null,
+        "duration_ms": 1192,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4be0f38b-e04f-4462-9ea5-47ae38aed1fb",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793090243-rVXWYR9l2RgUakFKeed1",
+        "input_tokens": 5321,
+        "output_tokens": 162,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5483,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 531,
+        "price_snapshot": null,
+        "duration_ms": 2995,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9acd4b0c-8a22-4b76-8ad3-9795c4c5780a",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090246-NnU9gi1tFwSHOSo00pFn",
+        "input_tokens": 1330,
+        "output_tokens": 103,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1433,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 261,
+        "price_snapshot": null,
+        "duration_ms": 2380,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "5c8f5fca-e9d4-4607-b9be-3c967a58da88",
+  "task_state": {
+    "version": 1,
+    "task_id": "4eda5857",
+    "revision": 2,
+    "goal": "Our grant promised new insights into gene regulation during neural stem cell differentiation, and now I have to deliver something. We have expression for 24 samples across the time course, a TF motif prior and a PPI table.",
+    "pending": [],
+    "facts": [],
+    "rounds": 1,
+    "status": "closed",
+    "turns": 2
+  }
+}

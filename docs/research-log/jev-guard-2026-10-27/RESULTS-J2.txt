@@ -1,0 +1,61 @@
+j2: 48 conversations in both arms (F 48, G 48)
+  F guard off: final right 25/48  FA 7  FR 7  MA 5  wrong question kind 0  extra questions 3  UNCHECKED 1  | by group {'T': '4/10', 'TC': '8/10', 'U': '5/10', 'N': '4/9', 'V': '4/9'}
+  G guard on: final right 30/48  FA 5  FR 6  MA 0  wrong question kind 0  extra questions 4  UNCHECKED 3  | by group {'T': '5/10', 'TC': '9/10', 'U': '9/10', 'N': '4/9', 'V': '3/9'}
+O1 G right >= F right + 3: 30 vs 25 -> PASS
+O2 FA/FR/MA not up: [('FA', 7, 5), ('FR', 7, 6), ('MA', 5, 0)] -> PASS
+O3 wrong jev_answer declines: none -> PASS
+S0 guard asks on TC/N gold-DO: [] (<= 2) -> PASS
+S1 T items with a DO: 6, confirm asked ['Q12', 'Q33', 'Q46', 'Q48'] (>= 4); TC asked [] (<= 1) -> PASS
+S3 Jev-asked items whose reply fails: ['Q05', 'Q12', 'Q33', 'Q46', 'Q48'], declined by the answer ['Q05', 'Q33'] -> fail
+S4 links on V [] (<= 1); N CLARIFY ['Q07', 'Q13', 'Q14', 'Q37'], linked ['Q07', 'Q14', 'Q37'] -> PASS
+-> NOT PASSED: S3
+
+id | group | gold final | F t1 -> final | G t1 -> final | G Jev actions
+  Q01 | N | DO | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  Q07 | N | DO | CLARIFY/goal_open -> DECLINE | ASK/jev_link -> DECLINE/full_gap | jev_link:link
+  Q11 | N | DECLINE | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  Q13 | N | DECLINE | CLARIFY/result_open -> DECLINE | CLARIFY/result_open -> DECLINE/full_gap | 
+  Q14 | N | DO | CLARIFY/goal_open -> CLARIFY | ASK/jev_link -> CLARIFY/goal_open | jev_link:link
+  Q23 | N | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  Q35 | N | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  Q37 | N | DO | CLARIFY/result_open -> DECLINE | ASK/jev_link -> CLARIFY/goal_unclear | jev_link:link
+  Q44 | N | DECLINE | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  Q12 | TD | DECLINE | DO/run -> DO | ASK/jev_condition -> DECLINE/full_gap | jev_condition:ask
+  Q18 | T | DECLINE | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  Q31 | T | DECLINE | DO/run -> DO | DO/run -> DO/run | 
+  Q33 | T | DECLINE | DO/results_given -> DO | ASK/jev_condition -> DECLINE/jev_answer | jev_condition:ask jev_answer:declined
+  Q34 | TD | DECLINE | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  Q39 | TD | DECLINE | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  Q41 | T | DECLINE | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  Q46 | T | DECLINE | DECLINE/full_gap -> DECLINE | ASK/jev_condition -> DO/results_given | jev_condition:ask jev_answer:answer_meets
+  Q47 | T | DECLINE | DO/results_given -> DO | ASK/jev_link -> ASK/jev_condition | jev_condition:ask jev_link:link
+  Q48 | T | DECLINE | DO/results_given -> DO | ASK/jev_condition -> DO/results_given | jev_condition:ask jev_answer:answer_meets
+  Q04 | TC | DO | CLARIFY/result_open -> DO | ASK/jev_link -> DO/results_given | jev_link:link
+  Q06 | TC | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  Q08 | TC | DO | DECLINE/full_gap -> DECLINE | DO/results_given -> DO/results_given | 
+  Q09 | TC | DO | DO/run -> DO | DO/run -> DO/run | 
+  Q16 | TCD | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  Q19 | TC | DO | DO/run -> DO | DO/run -> DO/run | 
+  Q20 | TCD | DO | DO/run -> DO | DO/results_given -> DO/results_given | 
+  Q29 | TC | DO | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  Q40 | TC | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  Q45 | TCD | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  Q02 | U | DO | DECLINE/full_gap -> DECLINE | ASK/jev_fact -> DECLINE/full_gap | jev_guard:ask
+  Q05 | U | DECLINE | DO/run -> DO | ASK/jev_fact -> DECLINE/jev_answer | jev_guard:ask jev_answer:declined
+  Q17 | U | DECLINE | ASK/fact_agent -> DECLINE | ASK/fact_agent -> DECLINE/full_gap | 
+  Q21 | U | DO | ASK/fact_agent -> DO | ASK/jev_fact -> DO/results_given | jev_guard:ask jev_guard:already_asked jev_answer:answer_meets
+  Q22 | U | DO | DO/run -> DO | ASK/jev_fact -> DO/results_given | jev_guard:ask
+  Q27 | U | DO | DO/results_given -> DO | ASK/jev_fact -> DO/results_given | jev_guard:ask jev_answer:answer_meets
+  Q28 | U | DECLINE | ASK/fact_agent -> DECLINE | ASK/fact_agent -> DECLINE/full_gap | 
+  Q30 | U | DO | ASK/needs_fact -> DO | ASK/needs_fact -> DO/results_given | 
+  Q32 | U | DECLINE | ASK/count_fact -> DECLINE | ASK/count_fact -> DECLINE/full_gap | 
+  Q42 | U | DECLINE | ASK/fact_agent -> ASK | ASK/fact_agent -> DECLINE/full_gap | 
+  Q03 | V | DO | CLARIFY/goal_unclear -> CLARIFY | CLARIFY/goal_unclear -> ASK/jev_link | jev_link:link
+  Q10 | V | CLARIFY | DO/results_given -> DO | UNCHECKED/check_unconfirmed -> UNCHECKED/check_unconfirmed | 
+  Q15 | V | DO | CLARIFY/goal_unclear -> DO | CLARIFY/goal_unclear -> DO/results_given | 
+  Q24 | V | DO | CLARIFY/goal_open -> DO | CLARIFY/goal_open -> DO/results_given | 
+  Q25 | V | CLARIFY | UNCHECKED/check_unconfirmed -> UNCHECKED | UNCHECKED/check_unconfirmed -> UNCHECKED/check_unconfirmed | 
+  Q26 | V | CLARIFY | CLARIFY/goal_unclear -> DO | UNCHECKED/check_unconfirmed -> UNCHECKED/check_unconfirmed | 
+  Q36 | V | DO | CLARIFY/goal_unclear -> DECLINE | CLARIFY/goal_unclear -> DECLINE/full_gap | 
+  Q38 | V | DO | CLARIFY/goal_unclear -> DECLINE | CLARIFY/goal_unclear -> DECLINE/full_gap | 
+  Q43 | V | DO | CLARIFY/goal_unclear -> DO | CLARIFY/goal_unclear -> DO/results_given | 

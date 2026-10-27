@@ -1,0 +1,705 @@
+{
+  "version": 1,
+  "session_id": "hb-j2g-Q05-1",
+  "profile_id": "hb-j2g-Q05-1",
+  "auto_generated": false,
+  "created_at": 1793090982.781018,
+  "updated_at": 1793091016.547243,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can you run GIRAFFE to get TF activity per sample for our 28 retina samples? I have a TF-by-gene motif prior and a TF PPI file ready. The core sent me one big matrix, and I can't remember whether it is the gene-by-sample expression table or the gene-by-gene correlation matrix they also computed."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Before I go ahead, could you settle this point you mentioned? What is the case for your data on this point?\n  You wrote: \"The core sent me one big matrix, and I can't remember whether it is the gene-by-sample expression table or the gene-by-gene correlation matrix they also computed\". GIRAFFE's contract: \"GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a TF-by-TF PPI matrix after explicit labelled-file conversion\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: Can you run GIRAFFE to get TF activity per sample for our 28 retina samples? I have a TF-by-gene motif prior and a TF PPI file ready. The core sent me one big matrix, and I can't remember whether it is the gene-by-sample expression table or the gene-by-gene correlation matrix they also computed.\nUser follow-up: It's the gene-by-gene correlation matrix."
+    },
+    {
+      "role": "assistant",
+      "content": "You answered \"Previous NetZoo goal: Can you run GIRAFFE to get TF activity per sample for our 28 retina samples? I have a TF-by-gene motif prior and a TF PPI file ready. The core sent me one big matrix, and I can't remember whether it is the gene-by-sample expression table or the gene-by-gene correlation matrix they also computed.\nUser follow-up: It's the gene-by-gene correlation matrix.\" about \"The core sent me one big matrix, and I can't remember whether it is the gene-by-sample expression table or the gene-by-gene correlation matrix they also computed\". GIRAFFE's contract: \"GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a TF-by-TF PPI matrix after explicit labelled-file conversion\". So GIRAFFE cannot do this as you asked.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A contract condition rules out every workflow offered; the reply says why.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A contract condition rules out every workflow offered; the reply says why.",
+      "candidate_actions": [
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "tf_activity_matrix",
+        "entity_types": [
+          "sample",
+          "tf"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "tf_activity_matrix",
+            "entity_types": [
+              "sample",
+              "tf"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Can you run GIRAFFE to get TF activity per sample for our 28 retina samples?",
+              "rationale": "The user is asking to run GIRAFFE to obtain TF activity per sample."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "tf_activity_matrix",
+              "source": "inferred",
+              "text_span": "get TF activity per sample",
+              "rationale": "The goal is to obtain TF activity values for each sample, which corresponds to a TF activity matrix."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "get TF activity per sample",
+              "rationale": "The artifact type 'tf_activity_matrix' restricts granularity to 'aggregate'."
+            }
+          ],
+          "assumptions": [
+            "The user has a TF-by-gene motif prior and a TF PPI file ready for the analysis."
+          ]
+        }
+      ],
+      "capability_match_status": "unsupported",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "I have a TF-by-gene motif prior and a TF PPI file ready.",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "I have a TF-by-gene motif prior and a TF PPI file ready.",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "I have a TF-by-gene motif prior and a TF PPI file ready.",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Can you run GIRAFFE to get TF activity per sample for our 28 retina samples?",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "giraffe.tf_activity"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "GIRAFFE",
+              "named_quote": "GIRAFFE",
+              "samples": 28,
+              "samples_quote": "28 retina samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@80-97"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "a TF-by-gene motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a TF PPI file",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "It's the gene-by-gene correlation matrix.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Can you run GIRAFFE to get TF activity per sample for our 28 retina samples?",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "GIRAFFE"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@80-97",
+            "property": "sample_count",
+            "name": "",
+            "value": "28",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "28 retina samples",
+            "span": [
+              80,
+              97
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "28 retina samples",
+                "span": [
+                  80,
+                  97
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "28 retina samples",
+                "span": [
+                  80,
+                  97
+                ],
+                "result": "Can you run GIRAFFE to get TF activity per sample for our 28 retina samples?",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DECLINE",
+        "partial": false,
+        "workflows": [],
+        "declined": [
+          {
+            "quote": "Previous NetZoo goal: Can you run GIRAFFE to get TF activity per sample for our 28 retina samples? I have a TF-by-gene motif prior and a TF PPI file ready. The core sent me one big matrix, and I can't remember whether it is the gene-by-sample expression table or the gene-by-gene correlation matrix they also computed.\nUser follow-up: It's the gene-by-gene correlation matrix.",
+            "reasons": [
+              "You answered \"Previous NetZoo goal: Can you run GIRAFFE to get TF activity per sample for our 28 retina samples? I have a TF-by-gene motif prior and a TF PPI file ready. The core sent me one big matrix, and I can't remember whether it is the gene-by-sample expression table or the gene-by-gene correlation matrix they also computed.\nUser follow-up: It's the gene-by-gene correlation matrix.\" about \"The core sent me one big matrix, and I can't remember whether it is the gene-by-sample expression table or the gene-by-gene correlation matrix they also computed\". GIRAFFE's contract: \"GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a TF-by-TF PPI matrix after explicit labelled-file conversion\". So GIRAFFE cannot do this as you asked."
+            ],
+            "alternatives": [],
+            "line": "You answered \"Previous NetZoo goal: Can you run GIRAFFE to get TF activity per sample for our 28 retina samples? I have a TF-by-gene motif prior and a TF PPI file ready. The core sent me one big matrix, and I can't remember whether it is the gene-by-sample expression table or the gene-by-gene correlation matrix they also computed.\nUser follow-up: It's the gene-by-gene correlation matrix.\" about \"The core sent me one big matrix, and I can't remember whether it is the gene-by-sample expression table or the gene-by-gene correlation matrix they also computed\". GIRAFFE's contract: \"GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a TF-by-TF PPI matrix after explicit labelled-file conversion\". So GIRAFFE cannot do this as you asked."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "jev_answer",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "tf_activity_matrix",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Can you run GIRAFFE to get TF activity per sample for our 28 retina samples?"
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "jev_answer": {
+            "kind_before": "DO",
+            "basis_before": "results_given",
+            "answer": "fails",
+            "confidence": 1,
+            "cost": 2.6418e-05
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I can't remember whether it is the gene-by-gene correlation matrix they also computed.",
+              "uncertainty": "said_unknown",
+              "workflow": "GIRAFFE",
+              "contract_quote": "expression_file is a gene-by-sample numeric table.",
+              "question": "Do you have a gene-by-sample expression table?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "gene-by-sample expression table",
+                "gene-by-gene correlation matrix"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 45146,
+    "output_tokens": 1733,
+    "total_tokens": 46879,
+    "calls": [
+      {
+        "call_id": "e61093fc-90ef-4545-925d-1a564d3eefac",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090984-Y9gm0WxTfiHkBHVvYEt9",
+        "input_tokens": 906,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 947,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 161,
+        "price_snapshot": null,
+        "duration_ms": 1326,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "814e24ff-e85d-4820-bf70-3c3ea37017e5",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090986-s5b5klwmquiPqTs1xxo0",
+        "input_tokens": 5366,
+        "output_tokens": 391,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5757,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 675,
+        "price_snapshot": null,
+        "duration_ms": 6888,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "5388b8f2-48e3-4103-b946-6f3b3f7806ed",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090995-zLu1U8DhpTKwwA1yWhoZ",
+        "input_tokens": 5882,
+        "output_tokens": 253,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6135,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 737,
+        "price_snapshot": null,
+        "duration_ms": 4180,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "29379dec-47c3-4cfe-b5d6-cdcf98bb2f0d",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793090993-eTgd0qL1TSvonSvZfMfU",
+        "input_tokens": 6453,
+        "output_tokens": 172,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6625,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 774,
+        "price_snapshot": null,
+        "duration_ms": 6961,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "28cc6a4f-b45f-4af6-a0b3-60ebebeeb7a4",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 677,
+        "output_tokens": 55,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 732,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 135,
+        "price_snapshot": {
+          "snapshot_id": "53b081a5-17b8-56be-82f4-4d490259e8c0",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T08:46:04.252787Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1230,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "0bb6ad27-1546-4a0f-a83c-601094aebd99",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793091001-WdtvjLuakjcovG5ZB9pq",
+        "input_tokens": 1721,
+        "output_tokens": 35,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1756,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 279,
+        "price_snapshot": null,
+        "duration_ms": 1768,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f1604330-9638-4eba-9b96-23c49970375f",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793091003-E0BPNlnwzx1kfWRNfaIC",
+        "input_tokens": 21627,
+        "output_tokens": 575,
+        "cache_read_tokens": 21248,
+        "cache_write_tokens": 0,
+        "total_tokens": 22202,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1995,
+        "price_snapshot": null,
+        "duration_ms": 7093,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b760a216-927e-4807-911e-fe510a522b5a",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793091010-Lnnb6lpzIp3KXjNJmt94",
+        "input_tokens": 589,
+        "output_tokens": 50,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 639,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 118,
+        "price_snapshot": null,
+        "duration_ms": 1415,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "cf9ed608-0f9e-495b-ba5d-56e3c91cb840",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793091011-T5A1hkFl1NkL29rwfNxj",
+        "input_tokens": 578,
+        "output_tokens": 51,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 629,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 117,
+        "price_snapshot": null,
+        "duration_ms": 1212,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "536404bc-4420-4a1e-b07d-a8a93912423c",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793091012-6cLwGDYTc5vjTyCIYREZ",
+        "input_tokens": 1347,
+        "output_tokens": 110,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1457,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 268,
+        "price_snapshot": null,
+        "duration_ms": 3154,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "0350afb6-450c-4b1c-ac81-e7f384bac4e6",
+  "task_state": {
+    "version": 1,
+    "task_id": "16254f36",
+    "revision": 2,
+    "goal": "Can you run GIRAFFE to get TF activity per sample for our 28 retina samples? I have a TF-by-gene motif prior and a TF PPI file ready. The core sent me one big matrix, and I can't remember whether it is the gene-by-sample expression table or the gene-by-gene correlation matrix they also computed.",
+    "pending": [],
+    "facts": [],
+    "rounds": 1,
+    "status": "closed",
+    "turns": 2
+  }
+}
