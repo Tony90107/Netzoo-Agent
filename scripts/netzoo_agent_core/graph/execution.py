@@ -88,13 +88,9 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
     step_index = state.get("current_step", 0)
     step = plan.steps[step_index]
     decision = effective_step_decision(plan, step_index)
-    lookup = (
-        {"query": (decision.web_query or "")[:300]}
-        if step.action == "web_search" else
-        {"library": (decision.library_id or decision.library_name or "")[:160],
-         "query": (decision.docs_query or "")[:300]}
-        if step.action == "query_context7" else None
-    )
+    lookup = ({"query": (decision.web_query or "")[:300]} if step.action == "web_search" else
+              {"library": (decision.library_id or decision.library_name or "")[:160],
+               "query": (decision.docs_query or "")[:300]} if step.action == "query_context7" else None)
     _trace(
         "tool",
         f"Executor [{step_index + 1}/{len(plan.steps)}]: {step.action}",
