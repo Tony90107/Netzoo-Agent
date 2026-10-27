@@ -35,3 +35,24 @@ As declared, a failed step is withdrawn: step 3 (the answer read), unless the us
 - Q05, Q33: declined by the answer with both quotes, both right.
 
 UNCHECKED 1 → 3 (Q10, Q26 check_unconfirmed) is the reading's variance. The guard cannot make UNCHECKED.
+
+## User decision (2026-10-27): step 3 KEPT
+
+The user kept step 3 despite S3, and asked to fix the refuses_input quote to the input_check's own text, add a test,
+and check it offline on the recorded j2 replies (no new live run).
+
+## Fix and offline re-judge (REJUDGE-J2.txt, Jev only, no agent run)
+
+Fix: a refuses_input rule now quotes the input_check's own text (`ruled_out`); a test asserts it is verbatim YAML
+and has no field key. Flag off: replay 0 of 1388 changed; 5055 tests pass.
+
+Re-judging the 7 recorded answer turns of arm G with their lines (the fixed text for Q46, Q48):
+- Q46 meets 0.52 → fails 0.69, and Q48 meets 0.92 → fails 0.59. The misread is gone, but both are under 0.7, so the
+  call stays the system's (DO).
+- Q33: same line, same reply; fails 0.88 → 0.40. Jev's confidence on answer reads varies run to run, more than on
+  the kind question (30/30 identical).
+- Q05: declined both times. Q21, Q27: meets both times. Wrong declines: 0.
+
+Correction to the S3 note above: `meets` never changes a call, so Q48's final DO came from the system's own turn-2
+reading. The step failed to catch it; it did not cause it. Step 3 adds no wrong declines, but its recall is fragile
+(1-2 of 5 here).

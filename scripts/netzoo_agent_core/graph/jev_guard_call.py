@@ -281,8 +281,8 @@ def _typed_contracts() -> dict:
     for path in sorted(WORKFLOWS.glob("*.yaml")):
         spec = yaml.safe_load(path.read_text())
         cap = spec.get("output_capability") or {}
-        refuses = {check["limit"].split(":", 1)[1] for check in spec.get("input_checks") or []
-                   if str(check.get("limit", "")).startswith("refuses_input:")}
+        refuses = {check["limit"].split(":", 1)[1]: check["text"].strip() for check in spec.get("input_checks") or []
+                   if str(check.get("limit", "")).startswith("refuses_input:")}  # the check's own words (RESULTS-J2.md)
         out[spec["workflow"]] = {"incompatible": set(cap.get("incompatible_input_artifacts") or []), "refuses": refuses,
                                  "accepted": list(cap.get("input_artifacts") or [])}
     return out
@@ -294,8 +294,8 @@ def ruled_out(workflow: str, data: tuple[str, float], same: tuple[str, float] | 
     kind, conf = data
     if conf >= THRESHOLD and kind in typed.get("incompatible", ()):
         return f"{workflow} incompatible_input_artifacts: {kind}"
-    if conf >= THRESHOLD and kind == "coexpression_network" and "coexpression_matrix" in typed.get("refuses", ()):
-        return f"{workflow} input_checks refuses_input: coexpression_matrix"
+    if conf >= THRESHOLD and kind == "coexpression_network" and "coexpression_matrix" in typed.get("refuses", {}):
+        return typed["refuses"]["coexpression_matrix"]  # j2 Q48: the field key was misread; the check's text is not
     if workflow in _PAIRED and same is not None and same[0] == "no" and same[1] >= THRESHOLD:
         return SAME_SAMPLE_LINE
     # PLAN-J2.md step 1'': a single kind of data none of the workflow's declared input artifacts is

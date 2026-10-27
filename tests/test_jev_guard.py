@@ -271,7 +271,9 @@ def test_the_result_menu_is_generated_for_every_workflow():
 def test_typed_fields_rule_a_workflow_out():
     assert jev_guard_call.ruled_out("LIONESS-COEXPRESSION", ("mutation_matrix", 0.9), None) \
         == "LIONESS-COEXPRESSION incompatible_input_artifacts: mutation_matrix"
-    assert "refuses_input" in jev_guard_call.ruled_out("LIONESS-PANDA", ("coexpression_network", 0.9), None)
+    refused = jev_guard_call.ruled_out("LIONESS-PANDA", ("coexpression_network", 0.9), None)
+    assert refused == "An aggregate COBRA adjusted co-expression artifact is not a direct LIONESS handoff"
+    assert refused in (jev_guard_call.WORKFLOWS / "lioness-panda.yaml").read_text() and "refuses_input" not in refused
     assert jev_guard_call.ruled_out("DRAGON", ("several", 0.99), ("no", 0.9)) == jev_guard_call.SAME_SAMPLE_LINE
     assert jev_guard_call.ruled_out("CONDOR", ("expression_matrix", 0.9), None) == "CONDOR input_artifacts: regulatory_network"
 
