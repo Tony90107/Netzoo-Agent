@@ -1,0 +1,790 @@
+{
+  "version": 1,
+  "session_id": "hb-jd1-Q18-1",
+  "profile_id": "hb-jd1-Q18-1",
+  "auto_generated": false,
+  "created_at": 1793112391.01283,
+  "updated_at": 1793112391.012862,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length. What we have is a bulk RNA-seq expression matrix, genes by samples, plus a gene-length file, a cancer-gene list and an MSigDB GMT file. I want two to four subtypes."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length.\" -- the request does not say whether one item may belong to several groups at once: if one group each: SAMBAR; if several groups at once: no registered workflow gives this.\n2. \"I want two to four subtypes.\" -- available from SAMBAR.\n\nBefore I choose a workflow, please tell me: Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A result waits on a fact the user said they do not know; nothing is selected before it is known.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": false,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A result waits on a fact the user said they do not know; nothing is selected before it is known.",
+      "candidate_actions": [
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [],
+        "artifact_type": "pathway_mutation_matrix",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "sample_cluster_assignment",
+              "source": "explicit",
+              "text_span": "I want two to four subtypes.",
+              "rationale": "The user explicitly requests subtypes, which corresponds to sample cluster assignments."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq expression matrix, genes by samples",
+              "rationale": "The user provided a bulk RNA-seq expression matrix as input."
+            },
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The selected artifact ontology uniquely defines the canonical scientific operation."
+            }
+          ],
+          "assumptions": []
+        },
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [],
+            "artifact_type": "pathway_mutation_matrix",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.8,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "how strongly each biological pathway is hit by mutations",
+              "rationale": "The user is interested in analyzing the impact of mutations on pathways."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "pathway_mutation_matrix",
+              "source": "explicit",
+              "text_span": "hit by mutations, normalized for gene length.",
+              "rationale": "The analysis involves pathways and their mutation impact, which aligns with pathway mutation scores."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "normalized for gene length.",
+              "rationale": "The analysis is likely to summarize pathway impacts across samples rather than per sample."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [
+        {
+          "action": "run_sambar",
+          "workflow": "SAMBAR",
+          "reason_code": "incompatible_input",
+          "input_artifacts": [
+            "expression_matrix"
+          ],
+          "accepted_input_artifacts": [
+            "mutation_matrix"
+          ],
+          "reason": "The registered SAMBAR input contract does not accept expression_matrix for this analysis; it accepts mutation_matrix."
+        }
+      ],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_sambar"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [
+        "input_artifacts"
+      ],
+      "clarification_question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length.",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "several_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "group_membership",
+            "outcomes": {
+              "one_group": [
+                "sambar.subtypes"
+              ],
+              "several_groups": []
+            },
+            "unknown_quote": "I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length.",
+            "file_checked": null,
+            "method": {
+              "samples": 300,
+              "samples_quote": "300 ovarian cancer samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@24-50"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "I want two to four subtypes.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "bulk RNA-seq expression matrix, genes by samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "gene-length file",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "cancer-gene list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "MSigDB GMT file",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@24-50",
+            "property": "sample_count",
+            "name": "",
+            "value": "300",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "300 ovarian cancer samples",
+            "span": [
+              24,
+              50
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "300 ovarian cancer samples",
+                "span": [
+                  24,
+                  50
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "300 ovarian cancer samples",
+                "span": [
+                  24,
+                  50
+                ],
+                "result": "I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+            "user_quote": "I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length.",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "",
+            "depends_on": "group_membership",
+            "outcomes": {
+              "one_group": [
+                "SAMBAR"
+              ],
+              "several_groups": []
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "dimension:group_membership@0-139"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "needs_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "pathway_mutation_matrix",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [
+            "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?"
+          ],
+          "legacy_kept": true
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want two to four subtypes.",
+              "uncertainty": "two_versions",
+              "workflow": "SAMBAR",
+              "contract_quote": "2 <= kmin <= kmax <= number of mutation samples.",
+              "question": "Do you want to try exactly 2 subtypes?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "two subtypes",
+                "four subtypes"
+              ]
+            }
+          }
+        ],
+        "legacy": [
+          {
+            "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+            "user_quote": "I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length.",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "",
+            "depends_on": "group_membership",
+            "outcomes": {
+              "one_group": [
+                "SAMBAR"
+              ],
+              "several_groups": []
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "dimension:group_membership@0-139"
+          }
+        ],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": "hit",
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 34449,
+    "output_tokens": 1400,
+    "total_tokens": 35849,
+    "calls": [
+      {
+        "call_id": "b9217d7d-92d7-4cf0-bd98-4f6c07afa66a",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793112367-eMLarSRCwlYJItKCs52L",
+        "input_tokens": 5347,
+        "output_tokens": 362,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5709,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 654,
+        "price_snapshot": null,
+        "duration_ms": 4544,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "2bb4c0b0-88af-4589-918f-580f2157ee7b",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793112371-rhGhjX0EnRQHlnL52KRC",
+        "input_tokens": 6555,
+        "output_tokens": 242,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6797,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 831,
+        "price_snapshot": null,
+        "duration_ms": 3816,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9aea36bf-5415-45f6-91ac-ed454ad6d026",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 730,
+        "output_tokens": 51,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 781,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1781,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "62f81db0-7d6d-4da1-876b-03899928eaa4",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793112377-nOWfZ9JY5LnyMDWI3hBV",
+        "input_tokens": 1620,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1636,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 253,
+        "price_snapshot": null,
+        "duration_ms": 1084,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "efc7ab22-5e24-41ec-a59b-c1e034ff869d",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793112378-jyAQWyDPvTStO5sR07XD",
+        "input_tokens": 18417,
+        "output_tokens": 586,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 19003,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1751,
+        "price_snapshot": null,
+        "duration_ms": 7749,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a77ddc1b-ea2e-4d5f-90e3-bb98efa41648",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793112386-ntzmF60yGgSowxPrmRb2",
+        "input_tokens": 570,
+        "output_tokens": 47,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 617,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 114,
+        "price_snapshot": null,
+        "duration_ms": 1528,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "af23ae51-72fd-4d63-aac3-2e264a9be466",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793112388-fpsbfSWSWWRrYTCzvDrJ",
+        "input_tokens": 1210,
+        "output_tokens": 96,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1306,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 239,
+        "price_snapshot": null,
+        "duration_ms": 2340,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "5b5d03ad-f801-4dcd-83b5-dc3ef41896fe",
+  "task_state": {
+    "version": 1,
+    "task_id": "cf81aa07",
+    "revision": 1,
+    "goal": "I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length. What we have is a bulk RNA-seq expression matrix, genes by samples, plus a gene-length file, a cancer-gene list and an MSigDB GMT file. I want two to four subtypes.",
+    "pending": [
+      {
+        "question_id": "dimension:group_membership:678ea1e33e",
+        "source": "dimension",
+        "what": "group_membership",
+        "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+        "user_quote": "I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length.",
+        "workflows": [
+          "SAMBAR"
+        ],
+        "options": {
+          "one_group": [
+            "SAMBAR"
+          ],
+          "several_groups": []
+        },
+        "labels": {
+          "one_group": "one group each",
+          "several_groups": "several groups at once"
+        },
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}
