@@ -46,3 +46,26 @@ Data: the recorded j2 and j3 items (seen), and the recorded `core.jev_condition`
 
 Plus unit tests, the full suite in a clean env with 0 new failures, and the flag-off replay at 0 of 1388 changed.
 Any hard gate failing → the fix is not kept, and that is reported.
+
+## Result (FIXES-OFFLINE.txt) — all gates pass
+
+- B1 16/16 confirm replies bind `yes` in code.
+- B2 0 of 118 non-confirm replies bind `yes` (reply_fact, reported apart: yes 3 / no 3 / unbound 12).
+- B3 7/7 recorded confirm sessions end DECLINE, the gold; Q46 Q48 R02 R28 move DO → DECLINE; no wrong decline.
+- A1 6/6 unplaced violations now ask, none on a gold-DO call. 4 of the 6 are turn-2 re-checks that the
+  once-per-task rule skips live, so the real new asks are j2 Q31 and j3 R08.
+- A2 pass.
+
+## Also restored on this branch (found while checking)
+
+Switching the app folder to main dropped 3 commits that only `evidence-contract-grounding` had:
+- 0e27f6ef: desktop turn activity with web sources, and the chat/options splitter (frontend +
+  `graph/execution.py`, `graph/source_refs.py`);
+- 1c2e66ac: the recorded sessions the replays read;
+- dfbcbfd8: specs.
+
+They were cherry-picked here. The two 10-19 spec conflicts keep main's newer text. `execution.py`'s new lookup
+expression was compacted to stay under the module's 230-line limit (229).
+
+Checks: tests 5075 passed, 0 failed (clean env); desktop vitest 121/121; the flag-off replay is back to 1388 readings,
+0 changed vs replay-frozen.json.
