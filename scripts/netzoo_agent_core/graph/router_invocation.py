@@ -493,8 +493,12 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     counted = bound_expression_samples(user_task)  # ROUND-07 (G3): a sample-count doubt the named file answers
     from .jev_overlap_call import overlap_reader, take_reads
 
+    from .jev_forms_call import forms_reader, take_reads as take_form_reads
+
     reader = overlap_reader()  # jev-overlap: Jev's overlap read, passed in; None when the flag is off
-    check, rejected = build_capability_check(user_task, proposal, claims, counted, overlap_reader=reader)
+    forms = forms_reader()  # jev-forms: Jev's reads of time_model, spatial and input_network; None when off
+    check, rejected = build_capability_check(user_task, proposal, claims, counted, overlap_reader=reader,
+                                             forms_reader=forms)
     record_event(context, state, "routing.capability_checked", "classify", {
         "proposal": proposal.model_dump(), "rejected": rejected, "check": check.model_dump(),
     })
@@ -507,13 +511,15 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         if reread is not None:
             reread_check, unplaced = build_capability_check(
                 user_task, reread_as_proposal(reread, getattr(proposal, "conditions", None)), claims, counted,
-                overlap_reader=reader)
+                overlap_reader=reader, forms_reader=forms)
             check = merge_reread(user_task, check, reread_check, passages, unplaced)
         record_event(context, state, "routing.capability_reread", "classify", {
             "passages": passages, "reread": reread.model_dump() if reread is not None else None,
             "check": check.model_dump()})
     if overlap_reads := take_reads(user_task):  # jev-overlap-2026-10-27: Jev's reads of a several_groups result
         record_event(context, state, "core.jev_overlap", "classify", {"reads": overlap_reads})
+    if form_reads := take_form_reads(user_task):  # jev-forms-2026-10-27: Jev's reads of the other limiting forms
+        record_event(context, state, "core.jev_forms", "classify", {"reads": form_reads})
     stated = [] if provisional else stated_requirements(user_task, proposal, check)
     own = [] if provisional else stated_requirements(user_task, proposal, check, own_sentence=True)
     pairs_to_check = condition_pairs(check, stated)

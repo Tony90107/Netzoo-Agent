@@ -63,6 +63,15 @@ DIMENSIONS = {
                          "Should each gene, regulator or sample belong to one group only (one group each), or may one "
                          "belong to several groups at once?",
                          (("one_group", "one group each"), ("several_groups", "several groups at once"))),
+    # jev-forms-2026-10-27: asked only when Jev finds the form unasked in the words of a result typed with it.
+    "time_model": ("whether the result must model change from one time point to the next",
+                   "Do you want results for each time point that can be compared (each time point separately), or a "
+                   "model of how the system changes from one time point to the next (a dynamic model)?",
+                   (("not_dynamic", "each time point separately"), ("dynamic", "a dynamic model"))),
+    "spatial": ("whether the result must use where samples sit in space",
+                "Should each sample be modelled on its own (each sample on its own), or must the result use where "
+                "samples sit in space and which are neighbours (spatial neighbours)?",
+                (("not_spatial", "each sample on its own"), ("uses_neighbors", "spatial neighbours"))),
 }
 
 
@@ -176,7 +185,8 @@ def fact_line(item) -> str:
                 f'does not say whether you have one: if you do, {_workflows(item.outcomes.get("has", []))}; if not, '
                 f'{item.outcome_notes.get("none", "")}.')
     about, _question, values = DIMENSIONS[item.depends_on]
-    if item.depends_on == "group_membership":  # jev-overlap: the user said nothing either way, never "not known"
+    if item.depends_on == "group_membership" or item.depends_on in (getattr(item, "doubted_forms", None) or ()):
+        # jev-overlap / jev-forms: a form Jev found unasked -- the user said nothing either way, never "not known"
         answers = "; ".join(f"if {label}: {_workflows(item.outcomes.get(value, []))}" for value, label in values)
         return f'"{item.quote}" -- the request does not say {about}: {answers}.'
     if item.depends_on == "omics_layers":
@@ -244,7 +254,7 @@ def resolve_unknowns(fitting, keys: list[str], attrs: dict, unknowns: list[tuple
     permissive = {"data_unit": "not_stated", "input_network": "none", "samples_matched": "not_stated",
                   "sample_alignment": "not_stated", "omics_layers": 0, "scale": "unstated",
                   "mutation_origin": "not_stated", "value_type": "not_stated", "mirna_driver": "not_stated",
-                  "group_membership": "not_stated"}
+                  "group_membership": "not_stated", "time_model": "not_dynamic", "spatial": "not_spatial"}
     for about, _quote, _domain in unknowns:
         if about in permissive:
             neutral[about] = permissive[about]
