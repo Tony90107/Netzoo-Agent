@@ -297,13 +297,76 @@ def test_a_violation_with_a_sentence_becomes_a_confirm_quoting_both():
     fact = after.facts[0]
     assert fact.user_quote == typed["sentence"] and fact.contract_quote == typed["violated"]
     pending = _pending(after.model_dump(mode="json"))[0].model_dump()
-    assert jev_guard_call.asked_contract_question({"pending": [pending]})["labels"]["contract"] == typed["violated"]
+    assert pending["labels"]["contract"] == typed["violated"] and pending["yes_no"]
+    # FIXES.md B: its answer is bound in code, never read by Jev
+    assert jev_guard_call.asked_contract_question({"pending": [pending]}) is None
 
 
-@pytest.mark.parametrize("typed", [{"violated": None}, {"violated": "x", "workflow": "CONDOR"}])
-def test_no_violation_or_no_sentence_leaves_the_do(typed):
+def test_no_violation_leaves_the_do():
     core = do()
-    assert jev_guard_call.conditioned_core(core, typed)[0] is core
+    assert jev_guard_call.conditioned_core(core, {"violated": None})[0] is core
+
+
+@pytest.mark.parametrize("typed,words", [
+    ({"unplaced": "SAMBAR incompatible_input_artifacts: expression_matrix", "workflow": "SAMBAR",
+      "data": ["expression_matrix", 1.0]}, "a gene-by-sample expression table"),
+    ({"unplaced": jev_guard_call.SAME_SAMPLE_LINE, "workflow": "DRAGON", "data": ["several", 0.99],
+      "same_samples": ["no", 0.9]}, "different samples or individuals")])
+def test_an_unplaced_violation_still_asks_naming_the_typed_fact(typed, words):
+    """FIXES.md A, j3 R08: the rule matched but no sentence was placed; the confirm names the fact, quotes no user."""
+    from netzoo_agent_core.interpretation.ask_facts import ask_reply
+
+    core = do().model_copy(update={"workflows": [typed["workflow"]]})
+    after, action = jev_guard_call.conditioned_core(core, typed)
+    assert (after.kind, after.basis, action) == ("ASK", "jev_condition", "ask")
+    fact = after.facts[0]
+    assert fact.user_quote == "" and fact.contract_quote == typed["unplaced"]
+    assert words in fact.question and "(yes or no)" in fact.question and "You wrote" not in ask_reply(after)
+
+
+def test_a_data_confirm_is_asked_once_per_task():
+    typed = {"unplaced": "x", "workflow": "PANDA", "data": ["mutation_matrix", 1.0]}
+    state = {"pending": [{"what": "jev:condition"}]}
+    assert jev_guard_call.condition_asked(state) and not jev_guard_call.condition_asked({"pending": []})
+    assert jev_guard_call.conditioned_core(do(), typed, already=True)[1] == "already_asked"
+
+
+@pytest.mark.parametrize("reply,value", [("Yes, they are two different patient groups.", "yes"),
+                                         ("Right, it is the mutation matrix.", "yes"),
+                                         ("Correct.", "yes"), ("No, they are the same patients.", "no")])
+def test_the_confirm_answer_binds_in_code_and_a_yes_declines_with_both_quotes(reply, value):
+    """FIXES.md B, j3 R02/R28: the answer read by Jev at 0.69/0.66 fell back to DO; now the code binds it."""
+    from netzoo_agent_core.contracts.task_state import TaskState
+    from netzoo_agent_core.engine.task_updates import _pending, bind_answers
+
+    typed = {"violated": "PANDA incompatible_input_artifacts: mutation_matrix", "workflow": "PANDA",
+             "sentence": "We only have the mutation matrix.", "data": ["mutation_matrix", 1.0]}
+    asked, _ = jev_guard_call.conditioned_core(do(), typed)
+    [pending] = _pending(asked.model_dump(mode="json"))
+    state = TaskState.model_validate({"task_id": "t", "goal": "g", "pending": [pending.model_dump()]})
+    state, bound, _ = bind_answers(state, reply)
+    assert [fact.value for fact in bound] == [value]
+    found = jev_guard_call.condition_answer(state.model_dump(mode="json"))
+    assert found["value"] == value
+    after, action = jev_guard_call.answered_core(do(), found, reply, {"answer": "fails", "confidence": 1.0})
+    if value == "yes":
+        assert (after.kind, after.basis) == ("DECLINE", "jev_answer") and reply.rstrip(".") in after.declined[0].line
+        assert "mutation_matrix" in after.declined[0].line
+
+
+def test_an_unbound_or_old_answer_is_not_acted_on():
+    from netzoo_agent_core.contracts.task_state import TaskState
+    from netzoo_agent_core.engine.task_updates import _pending, bind_answers
+
+    typed = {"unplaced": "x line", "workflow": "PANDA", "data": ["mutation_matrix", 1.0]}
+    asked, _ = jev_guard_call.conditioned_core(do(), typed)
+    [pending] = _pending(asked.model_dump(mode="json"))
+    state = TaskState.model_validate({"task_id": "t", "goal": "g", "pending": [pending.model_dump()]})
+    state, bound, _ = bind_answers(state, "It is the table we made last spring.")
+    assert bound == [] and jev_guard_call.condition_answer(state.model_dump(mode="json")) is None
+    state, bound, _ = bind_answers(state, "Yes.")
+    later = state.model_copy(update={"turns": state.turns + 1}).model_dump(mode="json")
+    assert jev_guard_call.condition_answer(later) is None  # bound on an earlier turn: not this turn's answer
 
 
 def test_a_confirm_is_only_on_a_do_and_never_repeated():
