@@ -1,0 +1,583 @@
+{
+  "version": 1,
+  "session_id": "hb-j3f-R38-1",
+  "profile_id": "hb-j3f-R38-1",
+  "auto_generated": false,
+  "created_at": 1793095104.4229581,
+  "updated_at": 1793095127.414649,
+  "messages": [
+    {
+      "role": "user",
+      "content": "My PI asked me to look into our lung transcriptome data before the lab meeting. I have RNA-seq for 90 samples (about 18,000 genes) and a design table with numeric age and sex coded 0/1 for every sample. I'm not sure what she expects to see."
+    },
+    {
+      "role": "assistant",
+      "content": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample (BONOBO)\n\nWhich of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?\n\nNothing was selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Let's look at how age and sex change gene co-expression across the 90 samples."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"how age and sex change gene co-expression across the 90 samples\" -- available from LIONESS-COEXPRESSION's output plus a step you run outside NetZoo: A test outside NetZoo.\n\nSelected path: **LIONESS-COEXPRESSION**.\n\nYour question asks for a co-expression network. **LIONESS-COEXPRESSION** fits that result.\n\n**LIONESS-COEXPRESSION** — Infer aggregate and sample-specific co-expression networks with LIONESS. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n\nOutputs:\n\n- `coexpression_network`: Inferred gene-to-gene associations.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited LIONESS-COEXPRESSION for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The capability check credited LIONESS-COEXPRESSION for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "run_cobra",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_lioness_coexpression"
+      ],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "covariate_association"
+        ],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "covariate_association"
+            ],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "how age and sex change gene co-expression",
+              "rationale": "The user wants to examine how age and sex affect gene co-expression."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "gene co-expression across the 90 samples.",
+              "rationale": "The user is interested in gene co-expression across the 90 samples, which implies a coexpression network."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "covariate_association",
+              "source": "explicit",
+              "text_span": "how age and sex change gene co-expression",
+              "rationale": "The user wants to examine how age and sex affect gene co-expression."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_lioness_coexpression"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "how age and sex change gene co-expression across the 90 samples",
+            "kind": "result",
+            "status": "with_step",
+            "delivered_by": [
+              "lioness_coexpression.comparisons"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 90,
+              "samples_quote": "the 90 samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@63-77"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "how age and sex change gene co-expression across the 90 samples.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@63-77",
+            "property": "sample_count",
+            "name": "",
+            "value": "90",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "the 90 samples",
+            "span": [
+              63,
+              77
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "the 90 samples",
+                "span": [
+                  63,
+                  77
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "the 90 samples",
+                "span": [
+                  63,
+                  77
+                ],
+                "result": "how age and sex change gene co-expression across the 90 samples",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "LIONESS-COEXPRESSION"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "with_step"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "how age and sex change gene co-expression across the 90 samples."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-COEXPRESSION",
+          "COBRA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "how age and sex change gene co-expression",
+              "uncertainty": "two_readings",
+              "workflow": "COBRA",
+              "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+              "question": "Do you have a labeled gene-by-sample matrix with more genes than samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "how age and sex change gene co-expression",
+              "uncertainty": "two_readings",
+              "workflow": "LIONESS-COEXPRESSION",
+              "contract_quote": "Require at least three samples and validate expression inside the execution wrapper.",
+              "question": "Do you have at least three samples for the analysis?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 31450,
+    "output_tokens": 1119,
+    "total_tokens": 32569,
+    "calls": [
+      {
+        "call_id": "20b9284b-c323-419b-9ba1-9d482f19a75a",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095106-mFAUSG7YLPdZkGZoV5zn",
+        "input_tokens": 902,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 947,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 162,
+        "price_snapshot": null,
+        "duration_ms": 1482,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "25ccc206-b4de-47a7-bfbc-5dde9e5c1ac0",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095107-eyZnqBVc2hAWA4WrjImX",
+        "input_tokens": 5295,
+        "output_tokens": 127,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5422,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 477,
+        "price_snapshot": null,
+        "duration_ms": 2225,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "eecd88e4-01fe-4fbe-99ef-fe90a56f60cd",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095109-aeHK9cdaCaWHNCHSNYu2",
+        "input_tokens": 4638,
+        "output_tokens": 93,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 4731,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 540,
+        "price_snapshot": null,
+        "duration_ms": 1785,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "efe74e31-3d03-4015-bc1a-3ebc2a9ce6e5",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095111-92jZPxQhRAmIrwefxuaI",
+        "input_tokens": 989,
+        "output_tokens": 62,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1051,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 186,
+        "price_snapshot": null,
+        "duration_ms": 1857,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6d4c12d9-ed94-491e-b729-1a6f31b7a0f1",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 599,
+        "output_tokens": 59,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 658,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 125,
+        "price_snapshot": {
+          "snapshot_id": "06ec005e-b9fe-55c4-ba33-4637c14a7865",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T09:55:55.919954Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1283,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "736bc60b-f2b9-4976-9089-f878dde91b8c",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095114-ef9sEnRRYmM7WDgrunFG",
+        "input_tokens": 238,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 242,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 38,
+        "price_snapshot": null,
+        "duration_ms": 819,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b1acec42-c1b0-45a6-b0ae-0fa511fc5c82",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793095115-7XpJzVODKMcntt5yhAMG",
+        "input_tokens": 11969,
+        "output_tokens": 358,
+        "cache_read_tokens": 11776,
+        "cache_write_tokens": 0,
+        "total_tokens": 12327,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1127,
+        "price_snapshot": null,
+        "duration_ms": 5255,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6f708c60-0db8-4e36-9101-0ed3121bc12f",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095120-XrqdFny5PoHoLdKrag8l",
+        "input_tokens": 518,
+        "output_tokens": 35,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 553,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 99,
+        "price_snapshot": null,
+        "duration_ms": 1046,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "dbf11f3a-363e-4d0d-91f3-96f0a51fdf6c",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793095121-O9My3CsJkBi8onAmlqGi",
+        "input_tokens": 5267,
+        "output_tokens": 148,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5415,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 495,
+        "price_snapshot": null,
+        "duration_ms": 2504,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "90ae5b7e-ce20-4463-80fd-4557286ed331",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095124-sW7mIHZsSdMb3vxLJUoF",
+        "input_tokens": 1035,
+        "output_tokens": 188,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1223,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 268,
+        "price_snapshot": null,
+        "duration_ms": 2901,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "4093f59b-0816-4a22-a108-930d95daf8c0",
+  "task_state": null
+}

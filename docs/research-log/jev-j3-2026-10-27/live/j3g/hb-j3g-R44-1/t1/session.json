@@ -1,0 +1,819 @@
+{
+  "version": 1,
+  "session_id": "hb-j3g-R44-1",
+  "profile_id": "hb-j3g-R44-1",
+  "auto_generated": false,
+  "created_at": 1793095656.767421,
+  "updated_at": 1793095656.767446,
+  "messages": [
+    {
+      "role": "user",
+      "content": "For a drug-response paper I want to know how active each transcription factor is in each of my 24 treated and control cell-line samples, and whether each TF switches its target genes on or off. I have the gene-by-sample expression, a TF-gene motif prior and a TF-TF PPI matrix."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Did you mean LIONESS-PANDA's result? LIONESS-PANDA's contract: \"Infer aggregate PANDA and sample-specific LIONESS-PANDA networks\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "tf_activity_matrix",
+        "entity_types": [
+          "sample",
+          "tf"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "tf_gene_regulation",
+          "tfa"
+        ],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "tf_activity_matrix",
+            "entity_types": [
+              "sample",
+              "tf"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "tf_gene_regulation",
+              "tfa"
+            ],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "how active each transcription factor is in each of my 24 treated and control cell-line samples",
+              "rationale": "The user wants to determine the activity of transcription factors in each sample."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "tf_activity_matrix",
+              "source": "explicit",
+              "text_span": "how active each transcription factor is in each of my 24 treated and control cell-line samples",
+              "rationale": "The user specifically requests a matrix of transcription factor activities."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The artifact type 'tf_activity_matrix' allows for aggregate granularity when the results are not specified to vary per sample."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "tfa",
+              "source": "explicit",
+              "text_span": "how active each transcription factor is in each of my 24 treated and control cell-line samples",
+              "rationale": "The user wants to determine the activity of transcription factors in each sample."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "tf_gene_regulation",
+              "source": "explicit",
+              "text_span": "whether each TF switches its target genes on or off",
+              "rationale": "The user wants to know whether each TF switches its target genes on or off."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Did you mean LIONESS-PANDA's result?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a TF-gene motif prior and a TF-TF PPI matrix",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF-gene motif prior and a TF-TF PPI matrix",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a TF-gene motif prior and a TF-TF PPI matrix",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "how active each transcription factor is in each of my 24 treated and control cell-line samples",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "other",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 24,
+              "samples_quote": "24 treated and control cell-line samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@95-135"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "whether each TF switches its target genes on or off",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 24,
+              "samples_quote": "24 treated and control cell-line samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@95-135"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "the gene-by-sample expression",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a TF-gene motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a TF-TF PPI matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_giraffe"
+        ],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "how active each transcription factor is in each of my 24 treated and control cell-line samples, and whether each TF switches its target genes on or off.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "how active each transcription factor is in each of my 24 treated and control cell-line samples, and whether each TF switches its target genes on or off",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "how active each transcription factor is in each of my 24 treated and control cell-line samples"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@95-135",
+            "property": "sample_count",
+            "name": "",
+            "value": "24",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "24 treated and control cell-line samples",
+            "span": [
+              95,
+              135
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "24 treated and control cell-line samples",
+                "span": [
+                  95,
+                  135
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "24 treated and control cell-line samples",
+                "span": [
+                  95,
+                  135
+                ],
+                "result": "how active each transcription factor is in each of my 24 treated and control cell-line samples",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "24 treated and control cell-line samples",
+                "span": [
+                  95,
+                  135
+                ],
+                "result": "whether each TF switches its target genes on or off",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-PANDA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Did you mean LIONESS-PANDA's result?",
+            "user_quote": "",
+            "workflows": [
+              "LIONESS-PANDA"
+            ],
+            "contract_quote": "Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.",
+            "depends_on": "jev_link:LIONESS-PANDA",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": ""
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "jev_link",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "tf_activity_matrix",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "how active each transcription factor is in each of my 24 treated and control cell-line samples, and whether each TF switches its target genes on or off."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "jev_link": {
+            "kind_before": "CLARIFY",
+            "basis_before": "goal_open",
+            "result": "LIONESS-PANDA",
+            "confidence": 0.89,
+            "cost": 4.4058e-05
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "how active each transcription factor is in each of my 24 treated and control cell-line samples",
+              "uncertainty": "said_unknown",
+              "workflow": "GIRAFFE",
+              "contract_quote": "Require at least two expression samples before execution.",
+              "question": "Do you have at least two expression samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "how active each transcription factor is in each of my 24 treated and control cell-line samples"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "whether each TF switches its target genes on or off",
+              "uncertainty": "said_unknown",
+              "workflow": "GIRAFFE",
+              "contract_quote": "TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.",
+              "question": "Do you want to know if the TFs activate or repress their target genes?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "whether each TF switches its target genes on or off"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 32937,
+    "output_tokens": 1821,
+    "total_tokens": 34758,
+    "calls": [
+      {
+        "call_id": "544f06e6-d299-4026-b993-13edfbd598df",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095625-q2UZUGap74FltGBRTFpE",
+        "input_tokens": 5342,
+        "output_tokens": 418,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5760,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 659,
+        "price_snapshot": null,
+        "duration_ms": 6461,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "331cab09-dad2-4d13-aed0-e1ec5c52c759",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095632-11t9aqmki5nJ3yqFoXt5",
+        "input_tokens": 5527,
+        "output_tokens": 168,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5695,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 632,
+        "price_snapshot": null,
+        "duration_ms": 3313,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f9218938-383b-44e6-ade1-440a25740943",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095635-4YOKU9n3arKh90BlEIpt",
+        "input_tokens": 1687,
+        "output_tokens": 120,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1807,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 325,
+        "price_snapshot": null,
+        "duration_ms": 2051,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ebbb3e53-fc5f-4c4f-b3dd-1282b46a364e",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 654,
+        "output_tokens": 51,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 705,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 129,
+        "price_snapshot": {
+          "snapshot_id": "d92d620c-d3cf-5579-9ed8-74492ebd2b1e",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T10:06:25.529038Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1149,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "35345a36-88cb-4099-a1fb-bbba956a66eb",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095638-0al14xyJg2nYLjZULcE6",
+        "input_tokens": 1697,
+        "output_tokens": 46,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1743,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 167,
+        "price_snapshot": null,
+        "duration_ms": 1309,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ebaa198b-92be-46fb-b5cd-884111aed346",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793095639-QMNTNahavr41sGXh99pG",
+        "input_tokens": 15235,
+        "output_tokens": 626,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15861,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1605,
+        "price_snapshot": null,
+        "duration_ms": 9000,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4deddf3f-e934-459f-928f-183ccced43ad",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095648-UilCaUPNZkHwBJURg9Om",
+        "input_tokens": 565,
+        "output_tokens": 67,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 632,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 125,
+        "price_snapshot": null,
+        "duration_ms": 1445,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2b8bf37d-26b2-44fb-9587-7215d721db87",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095650-kG0y1OUDVcX30u8DsacN",
+        "input_tokens": 554,
+        "output_tokens": 50,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 604,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 113,
+        "price_snapshot": null,
+        "duration_ms": 1287,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1fd8f92f-f5f7-4509-bf0a-1af775f6dc0f",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095651-j63WYGxp2t36hvi0Bhfn",
+        "input_tokens": 1323,
+        "output_tokens": 234,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1557,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 339,
+        "price_snapshot": null,
+        "duration_ms": 3337,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ea868add-bf28-470a-9085-59acd0866ae1",
+        "role": "goal_read",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793095655-gqFSzbUoCHEYbSVYQR1h",
+        "input_tokens": 353,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 394,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 78,
+        "price_snapshot": null,
+        "duration_ms": 1200,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "98200609-c229-40c2-831d-4a23bf2a6cef",
+  "task_state": {
+    "version": 1,
+    "task_id": "31286e34",
+    "revision": 1,
+    "goal": "For a drug-response paper I want to know how active each transcription factor is in each of my 24 treated and control cell-line samples, and whether each TF switches its target genes on or off. I have the gene-by-sample expression, a TF-gene motif prior and a TF-TF PPI matrix.",
+    "pending": [
+      {
+        "question_id": "dimension:jev_link:LIONESS-PANDA:e3b0c44298",
+        "source": "dimension",
+        "what": "jev_link:LIONESS-PANDA",
+        "question": "Did you mean LIONESS-PANDA's result?",
+        "user_quote": "",
+        "workflows": [
+          "LIONESS-PANDA"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

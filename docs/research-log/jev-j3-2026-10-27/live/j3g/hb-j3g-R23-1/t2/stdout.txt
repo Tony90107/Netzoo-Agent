@@ -1,0 +1,38 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.92s)
+● Matching registered workflows…
+✓ Workflow — BONOBO
+✓ Guidance prepared
+What I understood you are asking for:
+1. "Please run BONOBO to get a co-expression network for each of our 18 tumor biopsies; the matrix is labeled gene-by-sample and was centered per gene." -- available from BONOBO.
+
+Selected path: **BONOBO**.
+
+Your question asks for a per-sample co-expression network. **BONOBO** fits that result and scale.
+
+**BONOBO** — Infer sample-specific gene-gene co-expression networks with netZooPy BONOBO. BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+
+Outputs:
+
+- `coexpression_network`: Inferred gene-to-gene associations.
+- `pvalue_matrix`: P-value matrix paired with a sample-specific gene-gene co-expression result.
+
+When `sparsify=False` and `save_pvals=False`: full sample-specific gene-gene co-expression matrices; no p-value artifact is written.
+
+When `sparsify=True` and `save_pvals=False`: upstream thresholds each sample-specific co-expression matrix; no p-value artifact is written.
+
+When `sparsify=True` and `save_pvals=True`: upstream retains the full co-expression matrix for each selected sample and writes a matching p-value matrix; threshold it from the saved p-value matrix; it does not also emit an already-thresholded network in this mode.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+Input compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.
+
+----------------------------------------
+Next step
+Enter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.
+Enter/back: start a new task | exit: close
+> 

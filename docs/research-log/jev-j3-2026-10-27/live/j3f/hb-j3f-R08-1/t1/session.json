@@ -1,0 +1,559 @@
+{
+  "version": 1,
+  "session_id": "hb-j3f-R08-1",
+  "profile_id": "hb-j3f-R08-1",
+  "auto_generated": false,
+  "created_at": 1793095382.812438,
+  "updated_at": 1793095382.812494,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I have an RNA-seq expression matrix for 200 prostate tumors, genes by samples, and nothing else. Please use SAMBAR to subtype the tumors from this expression matrix."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Please use SAMBAR to subtype the tumors from this expression matrix.\" -- available from SAMBAR.\n\nHere is how registered workflows can reach this result, with their algorithmic premises and inputs:\n\nResult: sample cluster assignment (aggregate), from expression matrix.\nNo registered workflow assigns samples to clusters from expression. A registered workflow can give each sample a feature profile to cluster on:\n- **LIONESS-PANDA** gives a TF-by-sample out-degree matrix -- each TF's summed edge weights to its targets in each sample's network (how strongly the TF is wired).\n  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow\n  - Required inputs: all of: expression matrix, motif/prior, PPI network.\n- **LIONESS-PUMA** gives the same out-degree matrix with miRNAs among the regulators (needs a miRNA list).\n  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow\n  - Required inputs: all of: expression matrix, motif/prior, PPI network, miRNA list.\n- **GIRAFFE** gives its TF-by-sample activity matrix -- how active each TF is apart from its own mRNA level, a different reading from wiring.\n  - Method premise: factor gene expression using motif and TF-protein interaction priors; jointly infer a TF-gene regulatory matrix and a TF-by-sample activity matrix\n  - Required inputs: all of: expression matrix, motif/prior, PPI network.\n- **BONOBO** gives one gene co-expression network per sample; with about genes-squared edges each, summarize them first (for example per-gene degree).\n  - Method premise: Bayesian shrinkage estimation of sample-specific co-expression; sparsify sample-specific co-expression and return matching p-value matrices\n  - Required inputs: all of: expression matrix.\n- **LIONESS-COEXPRESSION** gives one gene co-expression network per sample, summarized the same way.\n  - Method premise: derive each sample network from all-sample and leave-one-out networks\n  - Required inputs: all of: expression matrix.\nClustering the samples on that matrix (for example hierarchical clustering or k-means) is not a NetZoo workflow; run it separately.\nPer-sample networks from LIONESS are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.\nClusters are unsupervised: whether they predict an outcome such as treatment response has to be tested against that outcome, keyed by the same sample IDs.\n\nWhich per-sample profile should we start with: LIONESS-PANDA, LIONESS-PUMA, GIRAFFE, BONOBO or LIONESS-COEXPRESSION?\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The SAMBAR method requires a mutation matrix as input, not an RNA-seq expression matrix, so execution cannot proceed.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": false,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "The SAMBAR method requires a mutation matrix as input, not an RNA-seq expression matrix, so execution cannot proceed.",
+      "candidate_actions": [
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "sample_cluster_assignment",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq expression matrix for 200 prostate tumors, genes by samples.",
+              "rationale": "The user has provided an RNA-seq expression matrix for analysis."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "sample_cluster_assignment",
+              "source": "explicit",
+              "text_span": "Please use SAMBAR to subtype the tumors.",
+              "rationale": "The user requests to subtype tumors, which corresponds to sample clustering."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "Subtyping tumors typically results in a single clustering outcome for the entire dataset rather than individual assignments per sample."
+            },
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The selected artifact ontology uniquely defines the canonical scientific operation."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "unsupported",
+      "match_basis": "semantic",
+      "rejected_methods": [
+        {
+          "action": "run_sambar",
+          "workflow": "SAMBAR",
+          "reason_code": "incompatible_input",
+          "input_artifacts": [
+            "expression_matrix"
+          ],
+          "accepted_input_artifacts": [
+            "mutation_matrix"
+          ],
+          "reason": "The registered SAMBAR input contract does not accept expression_matrix for this analysis; it accepts mutation_matrix."
+        }
+      ],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [
+        "input_artifacts"
+      ],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Please use SAMBAR to subtype the tumors from this expression matrix.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "SAMBAR",
+              "named_quote": "SAMBAR",
+              "samples": 200,
+              "samples_quote": "200 prostate tumors"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@40-59"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "an RNA-seq expression matrix for 200 prostate tumors, genes by samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "nothing else",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Please use SAMBAR to subtype the tumors from this expression matrix.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "SAMBAR"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@40-59",
+            "property": "sample_count",
+            "name": "",
+            "value": "200",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "200 prostate tumors",
+            "span": [
+              40,
+              59
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "200 prostate tumors",
+                "span": [
+                  40,
+                  59
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "200 prostate tumors",
+                "span": [
+                  40,
+                  59
+                ],
+                "result": "Please use SAMBAR to subtype the tumors from this expression matrix.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "sample_cluster_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Please use SAMBAR to subtype the tumors from this expression matrix."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I have an RNA-seq expression matrix for 200 prostate tumors, genes by samples, and nothing else.",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length CSV, a tab-delimited cancer-gene list, and a GMT pathway file.",
+              "question": "Do you have a samples-by-genes somatic mutation CSV file?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 28455,
+    "output_tokens": 974,
+    "total_tokens": 29429,
+    "calls": [
+      {
+        "call_id": "0cd94640-d992-4031-b40f-49fe00c2fbf5",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095364-YKCki9WYQ9xEWsRFNc2u",
+        "input_tokens": 5313,
+        "output_tokens": 185,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5498,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 514,
+        "price_snapshot": null,
+        "duration_ms": 3795,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "e1e96243-e641-48e2-a192-0bf8ad92813b",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095367-ntpEQRYMdqNnxeXO6pY9",
+        "input_tokens": 5564,
+        "output_tokens": 202,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5766,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 658,
+        "price_snapshot": null,
+        "duration_ms": 4704,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7a628767-3926-4581-b17c-4d3b57ea973d",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 689,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 730,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 128,
+        "price_snapshot": {
+          "snapshot_id": "06ec005e-b9fe-55c4-ba33-4637c14a7865",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T09:55:55.919954Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1037,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "501fffb2-3799-4517-98b1-daf8218ec1a7",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793095373-yyDkbTJZOpbHsKFgXuyS",
+        "input_tokens": 15177,
+        "output_tokens": 391,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15568,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1455,
+        "price_snapshot": null,
+        "duration_ms": 5227,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f08e1358-47ee-4da9-ad03-972cbe7ed6f1",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095378-ckUVcFG500EHO8vAs0HV",
+        "input_tokens": 536,
+        "output_tokens": 29,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 565,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 98,
+        "price_snapshot": null,
+        "duration_ms": 1042,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f4d617fc-b80f-424a-8d08-3ec6853f4482",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095379-t0ZUBFovpDAMn0wwDANn",
+        "input_tokens": 1176,
+        "output_tokens": 126,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1302,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 252,
+        "price_snapshot": null,
+        "duration_ms": 2890,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "65d54411-a2b4-4aa4-a597-91326fb98fc2",
+  "task_state": null
+}

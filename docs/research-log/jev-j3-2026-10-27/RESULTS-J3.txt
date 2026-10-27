@@ -1,0 +1,66 @@
+j3: 48 conversations in both arms (F 48, G 48)
+  F flags off: final right 31/48  FA 5  FR 7  MA 4  wrong question kind 0  extra questions 0  UNCHECKED 1
+    by group {'GT': '3/8', 'GO': '6/6', 'GL': '3/4', 'T': '3/6', 'TC': '6/6', 'U': '4/8', 'N': '3/5', 'V': '3/5'}
+  G flags on: final right 35/48  FA 4  FR 4  MA 3  wrong question kind 0  extra questions 0  UNCHECKED 2
+    by group {'GT': '7/8', 'GO': '6/6', 'GL': '3/4', 'T': '4/6', 'TC': '5/6', 'U': '4/8', 'N': '3/5', 'V': '3/5'}
+O1 G >= F + 4: 35 vs 31 -> PASS
+O2 FA/FR/MA not up: [('FA', 5, 4), ('FR', 7, 4), ('MA', 4, 3)] -> PASS
+O3 wrong jev_answer declines: none -> PASS
+O4 overlap reason on non-GO finals: F ['R12', 'R18', 'R31', 'R34', 'R39'] G ['R39'] -> PASS
+OV1 GO kept DECLINE + reason, never asked: bad none of 6 -> PASS
+OV2 GT refused by F with the overlap reason ['R12', 'R18', 'R31', 'R34', 'R39']: G DO ['R12', 'R18', 'R31', 'R34'], still waiting [] -> PASS
+S0 J-ask on gold-DO items: [] (<= 2) -> PASS
+S1 T DO calls ['R02', 'R05', 'R28'], confirmed ['R02', 'R05', 'R28']; TC confirmed [] -> PASS
+S4 V links [] (<= 1) -> PASS
+-> ALL PASS
+S3 (reported) answer reads acting: [('R02', 'answer_meets'), ('R28', 'answer_fails')]
+
+id | group | gold | F t1 -> final [overlap reason] | G t1 -> final [overlap reason] | G Jev actions
+  R12 | GT | DO | DECLINE/full_gap -> DECLINE [OV] | ASK/needs_fact -> DO/results_given | overlap:doubted overlap:doubted
+  R18 | GT | DO | CLARIFY/result_open -> DECLINE [OV] | ASK/jev_link -> DO/results_given | jev_link:link overlap:doubted overlap:doubted overlap:doubted overlap:doubted overlap:doubted overlap:doubted overlap:doubted overlap:doubted
+  R31 | GT | DO | DECLINE/full_gap -> DECLINE [OV] | ASK/needs_fact -> DO/results_given | overlap:doubted overlap:doubted
+  R33 | GT | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  R34 | GT | DO | DECLINE/full_gap -> DECLINE [OV] | ASK/needs_fact -> DO/results_given | overlap:doubted overlap:doubted
+  R39 | GT | DO | DECLINE/full_gap -> DECLINE [OV] | DECLINE/full_gap -> DECLINE/full_gap [OV] | 
+  R41 | GT | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  R47 | GT | DO | CLARIFY/goal_open -> DO | ASK/jev_link -> DO/results_given | jev_link:link
+  R16 | GO | DECLINE | DECLINE/full_gap -> DECLINE [OV] | DECLINE/full_gap -> DECLINE/full_gap [OV] | overlap:kept overlap:kept
+  R19 | GO | DECLINE | DECLINE/full_gap -> DECLINE [OV] | DECLINE/full_gap -> DECLINE/full_gap [OV] | overlap:kept overlap:kept
+  R20 | GO | DECLINE | DECLINE/full_gap -> DECLINE [OV] | DECLINE/full_gap -> DECLINE/full_gap [OV] | 
+  R45 | GO | DECLINE | DECLINE/full_gap -> DECLINE [OV] | DECLINE/full_gap -> DECLINE/full_gap [OV] | overlap:kept overlap:kept
+  R46 | GO | DECLINE | DECLINE/full_gap -> DECLINE [OV] | DECLINE/full_gap -> DECLINE/full_gap [OV] | overlap:kept overlap:kept
+  R48 | GO | DECLINE | DECLINE/full_gap -> DECLINE [OV] | DECLINE/full_gap -> DECLINE/full_gap [OV] | overlap:kept overlap:kept
+  R08 | GL | DECLINE | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  R09 | GL | DECLINE | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  R29 | GL | DECLINE | CLARIFY/result_open -> DECLINE | CLARIFY/result_open -> DECLINE/all_results_not_available | 
+  R40 | GL | DECLINE | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  R02 | T | DECLINE | DO/results_given -> DO | ASK/jev_condition -> DO/results_given | jev_condition:ask jev_answer:answer_meets
+  R04 | T | DECLINE | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  R05 | T | DECLINE | DO/results_given -> DO | ASK/jev_condition -> DECLINE/full_gap | jev_condition:ask
+  R06 | T | DECLINE | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  R27 | T | DECLINE | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  R28 | T | DECLINE | DO/results_given -> DO | ASK/jev_condition -> DO/results_given | jev_condition:ask jev_answer:answer_fails
+  R17 | TC | DO | CLARIFY/result_open -> DO | ASK/jev_link -> DO/results_given | jev_link:link
+  R21 | TC | DO | ASK/fact_agent -> DO | ASK/fact_agent -> UNCHECKED/check_unconfirmed | 
+  R22 | TC | DO | DO/run -> DO | DO/run -> DO/run | 
+  R30 | TC | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  R32 | TC | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  R42 | TC | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  R01 | U | DECLINE | ASK/fact_agent -> DO | ASK/fact_agent -> DO/results_given | 
+  R07 | U | DECLINE | ASK/fact_agent -> DECLINE | ASK/fact_agent -> DECLINE/full_gap | jev_guard:ask jev_guard:already_asked
+  R11 | U | DECLINE | ASK/fact_agent -> DECLINE | ASK/fact_agent -> DECLINE/full_gap | 
+  R13 | U | DO | DO/results_given -> DO | ASK/jev_fact -> DECLINE/full_gap | jev_guard:ask
+  R14 | U | ASK | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  R23 | U | DO | ASK/fact_agent -> DO | ASK/jev_fact -> DO/results_given | jev_guard:ask
+  R35 | U | ASK | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  R37 | U | DO | ASK/fact_agent -> DO | ASK/fact_agent -> DO/results_given | jev_guard:ask jev_guard:already_asked
+  R15 | N | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  R24 | N | DECLINE | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  R26 | N | DO | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  R36 | N | DO | DECLINE/full_gap -> DECLINE | DECLINE/full_gap -> DECLINE/full_gap | 
+  R44 | N | DO | CLARIFY/goal_open -> DECLINE | ASK/jev_link -> DECLINE/full_gap | jev_link:link
+  R03 | V | DECLINE | CLARIFY/goal_unclear -> UNCHECKED | CLARIFY/goal_unclear -> UNCHECKED/check_unconfirmed | 
+  R10 | V | CLARIFY | DO/results_given -> DO | DO/results_given -> DO/results_given | 
+  R25 | V | DO | CLARIFY/goal_unclear -> DO | CLARIFY/goal_unclear -> DO/results_given | 
+  R38 | V | DO | CLARIFY/goal_unclear -> DO | CLARIFY/goal_unclear -> DO/results_given | 
+  R43 | V | DO | CLARIFY/goal_unclear -> DO | CLARIFY/goal_unclear -> DO/results_given | 

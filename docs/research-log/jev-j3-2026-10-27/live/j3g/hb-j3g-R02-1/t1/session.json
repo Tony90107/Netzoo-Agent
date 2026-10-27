@@ -1,0 +1,824 @@
+{
+  "version": 1,
+  "session_id": "hb-j3g-R02-1",
+  "profile_id": "hb-j3g-R02-1",
+  "auto_generated": false,
+  "created_at": 1793096248.865643,
+  "updated_at": 1793096248.865692,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I'd like a transcription-factor-to-gene regulatory network for our endometrial cancer cohort. What I have is a binary somatic mutation matrix (patients by genes), plus motif and PPI priors."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Before I go ahead, could you confirm this about your data?\n  You wrote: \"What I have is a binary somatic mutation matrix (patients by genes), plus motif and PPI priors\". PANDA's contract: \"PANDA incompatible_input_artifacts: mutation_matrix\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "mutation_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "mutation_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "I'd like a transcription-factor-to-gene regulatory network",
+              "rationale": "The user explicitly requests a transcription-factor-to-gene regulatory network."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "mutation_matrix",
+              "source": "explicit",
+              "text_span": "somatic mutation",
+              "rationale": "The user explicitly mentions having a binary somatic mutation matrix available for analysis."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "transcription-factor-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "transcription-factor-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": [
+            "The user has a binary somatic mutation matrix and motif and PPI priors available for analysis."
+          ]
+        },
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "I'd like a transcription-factor-to-gene regulatory network",
+              "rationale": "The user explicitly requests a transcription-factor-to-gene regulatory network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "transcription-factor-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "transcription-factor-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user is interested in a transcription-factor-to-gene regulatory network for their cohort, which implies a cohort-wide analysis."
+            }
+          ],
+          "assumptions": [
+            "The user has a binary somatic mutation matrix and motif and PPI priors available for analysis."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Before I go ahead, could you confirm this about your data?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "motif and PPI priors",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "motif and PPI priors",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "motif and PPI priors",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like a transcription-factor-to-gene regulatory network for our endometrial cancer cohort.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "panda.tf_gene_network",
+              "puma.regulator_gene_network",
+              "otter.tf_gene_network",
+              "giraffe.signed_regulation"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "binary",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a binary somatic mutation matrix (patients by genes)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "motif and PPI priors",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like a transcription-factor-to-gene regulatory network for our endometrial cancer cohort.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "PANDA",
+          "PUMA",
+          "OTTER",
+          "GIRAFFE"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Before I go ahead, could you confirm this about your data?",
+            "user_quote": "What I have is a binary somatic mutation matrix (patients by genes), plus motif and PPI priors.",
+            "workflows": [
+              "PANDA",
+              "PUMA",
+              "OTTER",
+              "GIRAFFE"
+            ],
+            "contract_quote": "PANDA incompatible_input_artifacts: mutation_matrix",
+            "depends_on": "jev:condition",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": ""
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "jev_condition",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like a transcription-factor-to-gene regulatory network for our endometrial cancer cohort."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "jev_condition": {
+            "kind_before": "DO",
+            "basis_before": "results_given",
+            "data": [
+              "mutation_matrix",
+              0.93
+            ],
+            "same_samples": null
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "PANDA",
+          "PUMA",
+          "OTTER",
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "What I have is a binary somatic mutation matrix (patients by genes), plus motif and PPI priors.",
+              "uncertainty": "said_unknown",
+              "workflow": "PANDA",
+              "contract_quote": "PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors, or a validated adjusted gene-by-gene co-expression matrix through coexpression_file.",
+              "question": "Do you have a gene-by-sample expression matrix?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "What I have is a binary somatic mutation matrix (patients by genes), plus motif and PPI priors.",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI projection P, and either a gene-by-sample expression matrix (from which C is computed) or a validated labeled gene-by-gene co-expression matrix.",
+              "question": "Do you have an OTTER seed/prior TF-by-gene edge list?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "What I have is a binary somatic mutation matrix (patients by genes), plus motif and PPI priors.",
+              "uncertainty": "said_unknown",
+              "workflow": "PUMA",
+              "contract_quote": "PUMA consumes a gene-by-sample expression matrix plus motif, PPI, and miRNA priors, or a validated adjusted gene-by-gene co-expression matrix through coexpression_file.",
+              "question": "Do you have a gene-by-sample expression matrix?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 43388,
+    "output_tokens": 1919,
+    "total_tokens": 45307,
+    "calls": [
+      {
+        "call_id": "66df66b7-6272-4f73-aebc-08db90cd6f9b",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793096213-oLx2Kmj90hYkLxjcBoak",
+        "input_tokens": 5319,
+        "output_tokens": 257,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5576,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 558,
+        "price_snapshot": null,
+        "duration_ms": 4353,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "80885d0b-e08c-4f83-ad11-68e725cb15bb",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793096222-r2CfPje3nMgttUOs5cXa",
+        "input_tokens": 5616,
+        "output_tokens": 194,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5810,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 661,
+        "price_snapshot": null,
+        "duration_ms": 3751,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "564171da-a714-426e-b7b7-7d3c2f109922",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793096218-TebYSErnxuWLdsBlcTC4",
+        "input_tokens": 6584,
+        "output_tokens": 231,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6815,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 829,
+        "price_snapshot": null,
+        "duration_ms": 8519,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7d6d785b-9ea1-45ab-b574-d4e9d67d4635",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793096226-68DLJ4x7bml5s1APb5fd",
+        "input_tokens": 1615,
+        "output_tokens": 143,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1758,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 328,
+        "price_snapshot": null,
+        "duration_ms": 2701,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a4d69eb3-f779-404c-b6fa-4486e93caad2",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 689,
+        "output_tokens": 53,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 742,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 135,
+        "price_snapshot": {
+          "snapshot_id": "d92d620c-d3cf-5579-9ed8-74492ebd2b1e",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T10:06:25.529038Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1183,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "e9607655-c180-48db-a5b0-0e3a7610cd7d",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793096230-HzmAAhBqLCFI8WGbC64H",
+        "input_tokens": 1716,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1732,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 267,
+        "price_snapshot": null,
+        "duration_ms": 1038,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "051a4ce1-4bf6-454d-b57c-d4bdf6d554f3",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793096231-cyX6pd6hJKQX3ORkdI00",
+        "input_tokens": 2732,
+        "output_tokens": 141,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2873,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 494,
+        "price_snapshot": null,
+        "duration_ms": 2251,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "59bac301-0a7c-4648-b066-c0c859bab345",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793096233-SxaFwrZwcYALIy8Z01li",
+        "input_tokens": 15189,
+        "output_tokens": 413,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15602,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1470,
+        "price_snapshot": null,
+        "duration_ms": 5933,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "30abb663-16e0-4168-87c0-dc88118047bf",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793096239-Dha9TfC7wqJdm9AO91uF",
+        "input_tokens": 542,
+        "output_tokens": 38,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 580,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 104,
+        "price_snapshot": null,
+        "duration_ms": 1115,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bef9f9aa-8cf2-42af-a1ad-5698680a7b52",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793096240-jBm0znxg8oUApsLrzXMS",
+        "input_tokens": 531,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 573,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 105,
+        "price_snapshot": null,
+        "duration_ms": 1222,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3bf0515b-e450-4c57-86e1-5716909b0de5",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793096242-xpRWo8ssgQlbE3rtAOGC",
+        "input_tokens": 2855,
+        "output_tokens": 391,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 3246,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 663,
+        "price_snapshot": null,
+        "duration_ms": 5378,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "02efabef-1583-4669-b569-af2a9d7c2090",
+  "task_state": {
+    "version": 1,
+    "task_id": "522fadf8",
+    "revision": 1,
+    "goal": "I'd like a transcription-factor-to-gene regulatory network for our endometrial cancer cohort. What I have is a binary somatic mutation matrix (patients by genes), plus motif and PPI priors.",
+    "pending": [
+      {
+        "question_id": "dimension:jev:condition:0edb268ad1",
+        "source": "dimension",
+        "what": "jev:condition",
+        "question": "Before I go ahead, could you confirm this about your data?",
+        "user_quote": "What I have is a binary somatic mutation matrix (patients by genes), plus motif and PPI priors.",
+        "workflows": [
+          "PANDA",
+          "PUMA",
+          "OTTER",
+          "GIRAFFE"
+        ],
+        "options": {},
+        "labels": {
+          "contract": "PANDA incompatible_input_artifacts: mutation_matrix"
+        },
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

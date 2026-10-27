@@ -1,0 +1,754 @@
+{
+  "version": 1,
+  "session_id": "hb-j3f-R35-1",
+  "profile_id": "hb-j3f-R35-1",
+  "auto_generated": false,
+  "created_at": 1793095423.530442,
+  "updated_at": 1793095423.530497,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Please run LIONESS-DRAGON for 100 colon tissue samples, with layer one being 300 proteins and layer two metabolites, both on the same samples with complete values. I'm not sure whether the metabolite layer will end up with 200 or 600 metabolites after QC."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Please run LIONESS-DRAGON for 100 colon tissue samples, with layer one being 300 proteins and layer two metabolites, both on the same samples with complete values.\" -- available from LIONESS-DRAGON.\n2. \"I'm not sure whether the metabolite layer will end up with 200 or 600 metabolites after QC.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n\nSelected path: **LIONESS-DRAGON**.\n\n**LIONESS-DRAGON** — Infer one sample-specific two-layer multi-omic partial-correlation network per sample with LIONESS-DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.\n\nRequired workflow inputs:\n\n- `omics_layer_1`: DRAGON omics layer 1\n- `omics_layer_2`: DRAGON omics layer 2\n\nCost: LIONESS runs DRAGON once on all samples and once more without each sample, so N samples take N+1 DRAGON runs and give N network files. Plan the runtime and disk space, and filter edges before downstream statistics.\n\nOutputs:\n\n- `multi_omic_network`: Inferred associations between omics features.\n\nWorkflow-specific scientific notes:\n\n- LIONESS-DRAGON estimates DRAGON's two shrinkage values once on all samples, then derives each sample's network from the all-sample network and the network refitted without that sample.\n- Each sample's network is an undirected partial-correlation graph across both layers; like DRAGON's, it is an association graph, not a causal one.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited LIONESS-DRAGON for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.0,
+      "reason": "The capability check credited LIONESS-DRAGON for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [],
+      "recommended_actions": [
+        "run_lioness_dragon"
+      ],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_lioness_dragon"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "operation_authorization": {
+        "requested": [
+          "run"
+        ],
+        "forbidden": [],
+        "explain_only": null,
+        "preview_requested": false,
+        "blocked_action": null
+      },
+      "data_plan": {
+        "answerable": true,
+        "basis": "none",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Please run LIONESS-DRAGON for 100 colon tissue samples, with layer one being 300 proteins and layer two metabolites, both on the same samples with complete values.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_dragon.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-DRAGON",
+              "named_quote": "LIONESS-DRAGON",
+              "samples": 100,
+              "samples_quote": "100 colon tissue samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@30-54"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "100 colon tissue samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "layer one being 300 proteins",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "layer two metabolites",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "both on the same samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "complete values",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "I'm not sure whether the metabolite layer will end up with 200 or 600 metabolites after QC.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-DRAGON",
+              "named_quote": "LIONESS-DRAGON",
+              "samples": 100,
+              "samples_quote": "100 colon tissue samples",
+              "features": 300,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  77,
+                  89,
+                  300
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@30-54",
+              "feature_count@77-89"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {
+          "I'm not sure whether the metabolite layer will end up with 200 or 600 metabolites after QC.": {
+            "kind": "choices",
+            "values": [
+              200,
+              600
+            ]
+          }
+        },
+        "unknown_scopes": {
+          "I'm not sure whether the metabolite layer will end up with 200 or 600 metabolites after QC.": []
+        },
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Please run LIONESS-DRAGON for 100 colon tissue samples, with layer one being 300 proteins and layer two metabolites, both on the same samples with complete values.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [
+          {
+            "of": "features",
+            "quote": "layer one being 300 proteins",
+            "values": [
+              1,
+              300
+            ]
+          }
+        ],
+        "uncertain_quotes": [
+          "I'm not sure whether the metabolite layer will end up with 200 or 600 metabolites after QC."
+        ],
+        "stated_quotes": [
+          "LIONESS-DRAGON"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@30-54",
+            "property": "sample_count",
+            "name": "",
+            "value": "100",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "100 colon tissue samples",
+            "span": [
+              30,
+              54
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "100 colon tissue samples",
+                "span": [
+                  30,
+                  54
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "100 colon tissue samples",
+                "span": [
+                  30,
+                  54
+                ],
+                "result": "Please run LIONESS-DRAGON for 100 colon tissue samples, with layer one being 300 proteins and layer two metabolites, both on the same samples with complete values.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "100 colon tissue samples",
+                "span": [
+                  30,
+                  54
+                ],
+                "result": "I'm not sure whether the metabolite layer will end up with 200 or 600 metabolites after QC.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@61-89:candidates",
+            "property": "feature_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "1",
+              "300"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "layer one being 300 proteins",
+            "span": [
+              61,
+              89
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "side_by_side",
+                "quote": "layer one being 300 proteins",
+                "span": [
+                  61,
+                  89
+                ],
+                "result": "",
+                "role": "alternative"
+              },
+              {
+                "reader": "side_by_side",
+                "quote": "layer one being 300 proteins",
+                "span": [
+                  61,
+                  89
+                ],
+                "result": "Please run LIONESS-DRAGON for 100 colon tissue samples, with layer one being 300 proteins and layer two metabolites, both on the same samples with complete values.",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@77-89",
+            "property": "feature_count",
+            "name": "",
+            "value": "300",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "300 proteins",
+            "span": [
+              77,
+              89
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "result",
+                "quote": "300 proteins",
+                "span": [
+                  77,
+                  89
+                ],
+                "result": "I'm not sure whether the metabolite layer will end up with 200 or 600 metabolites after QC.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "LIONESS-DRAGON"
+        ],
+        "declined": [
+          {
+            "quote": "I'm not sure whether the metabolite layer will end up with 200 or 600 metabolites after QC.",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"I'm not sure whether the metabolite layer will end up with 200 or 600 metabolites after QC.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": null,
+          "reason_code": "research_choices_unread",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "result",
+              "not_available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Please run LIONESS-DRAGON for 100 colon tissue samples, with layer one being 300 proteins and layer two metabolites, both on the same samples with complete values."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-DRAGON"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R3 yes and no do not lead to different outcomes",
+            "proposal": {
+              "user_quote": "I'm not sure whether the metabolite layer will end up with 200 or 600 metabolites after QC.",
+              "uncertainty": "two_versions",
+              "workflow": "LIONESS-DRAGON",
+              "contract_quote": "Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven.",
+              "question": "Will the metabolite layer have 200 metabolites after QC?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "200 metabolites",
+                "600 metabolites"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 24474,
+    "output_tokens": 996,
+    "total_tokens": 25470,
+    "calls": [
+      {
+        "call_id": "d2c2fafa-2222-4c4c-89c1-3a5d6f51ab6e",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095404-bTmhtGiK28PbMEBMC1q5",
+        "input_tokens": 1608,
+        "output_tokens": 98,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1706,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 300,
+        "price_snapshot": null,
+        "duration_ms": 2190,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "24041767-8566-448c-8b69-d3312997d06b",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793095406-BBh4ChAObgYCkcFxlle7",
+        "input_tokens": 15221,
+        "output_tokens": 550,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15771,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1557,
+        "price_snapshot": null,
+        "duration_ms": 8921,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8881c487-1bd1-4949-b92f-5f5285489b48",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095415-9Keke3Jt5TUT7lY9u8C5",
+        "input_tokens": 558,
+        "output_tokens": 43,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 601,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 110,
+        "price_snapshot": null,
+        "duration_ms": 1321,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d09e6797-0e03-4b39-a358-e9f5dc70d56a",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793095417-bN9Quh45WzQ4JhZerk9Z",
+        "input_tokens": 5325,
+        "output_tokens": 178,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5503,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 522,
+        "price_snapshot": null,
+        "duration_ms": 2993,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bc2fcf93-f0e7-4207-971b-c95cb892db8e",
+        "role": "capability_second_opinion",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793095420-ndtPkXW0298Ut6Mi0Rq5",
+        "input_tokens": 366,
+        "output_tokens": 6,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 372,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 59,
+        "price_snapshot": null,
+        "duration_ms": 1043,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f90acec8-19c7-4bc2-8f6a-90d401248f81",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793095421-CIjpHv2V24YH9ibIoDgm",
+        "input_tokens": 1396,
+        "output_tokens": 121,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1517,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 282,
+        "price_snapshot": null,
+        "duration_ms": 2278,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "61e7b055-5a8f-48b5-ab82-67d29933486c",
+  "task_state": null
+}
