@@ -55,9 +55,10 @@ _REGULATOR_LABELS = {"tf": "TF", "mirna": "miRNA", "lncrna": "lncRNA"}
 def _form_reasons(item: CheckedRequirement) -> list[str]:
     """Why the result's own typed attributes leave no registered result, from the capability sheet."""
     attrs, reasons = item.attrs, []
+    doubted = set(getattr(item, "doubted_forms", ()) or ())  # jev-overlap ROUND-2: a form Jev found unasked
     for (name, value), text in _FORM_REASONS.items():
         allowed = data_units() if name == "data_unit" else result_forms().get(name, frozenset())
-        if attrs.get(name) == value and value not in allowed:
+        if attrs.get(name) == value and value not in allowed and name not in doubted:
             reasons.append(text)
     # No layer-count reason: replayed over the recorded full gaps, 11 of 12 came from motif, PPI and expression
     # read as three omics layers (binding affinity, edge conservation), so it named a reason the request never raised.

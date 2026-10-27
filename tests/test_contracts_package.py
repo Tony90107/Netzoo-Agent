@@ -206,7 +206,9 @@ SCHEMA_DIGESTS = {
     # verified in the request, on a full gap no reason can be given for; it turns that DECLINE into CLARIFY.
     # 2026-10-23 (harness repair P1): code-owned FactQuestion.fact_key and FactCheck.queued (kept questions past
     # the two asked, still open). Verified the digest returns to the previous pin when only these two are removed.
-    "TaskDecision": "c58744b0ef8cdf90f6b940acea9c269d75ac7533f1f6120fb6fc6bb1064102f5",
+    # 2026-10-27 (jev-overlap ROUND-2): code-owned CheckedRequirement.doubted_forms -- result forms Jev did not confirm,
+    # whose form reason the reply leaves out; no model schema carries it. Reply only, calls unchanged.
+    "TaskDecision": "a960e7e0017cb5bec5a0251d6c66d46acced82bbafc50213ef9ddc092b2ec6f1",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
