@@ -1,0 +1,439 @@
+{
+  "version": 1,
+  "session_id": "hb-j1-J48-1",
+  "profile_id": "hb-j1-J48-1",
+  "auto_generated": false,
+  "created_at": 1793073889.3042,
+  "updated_at": 1793073889.304242,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want CONDOR to find communities of TFs and genes from our liver PANDA analysis. There are two similarly named files in the project folder. One of them is the PANDA output saved as a source, target, weight edge list, and the other is the expression table we fed into PANDA, and I'm not sure which one I copied over."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I want CONDOR to find communities of TFs and genes from our liver PANDA analysis.\" -- available from CONDOR.\n\nSelected path: **CONDOR**.\n\nYour question asks for a cohort-level community assignment. **CONDOR** fits that result and scale.\n\n**CONDOR** — Detect communities in a validated bipartite network with CONDOR. CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain separate partitions, and between-partition connectivity is compared with a degree/strength-preserving bipartite null model. A giant community can reflect an unsuitable null model, resolution or weight handling. Hubs alone do not prove every conventional algorithm fails, and bipartite modularity does not guarantee biologically meaningful modules. Verify the edge-weight conventions.\n\nRequired workflow inputs:\n\n- `network_file`: bipartite network\n\nBefore CONDOR: a PANDA or LIONESS network is dense and its edge weights can be negative. netZooR's pandaToCondorObject keeps only edges above a threshold (by default midway between the median weights of prior and non-prior edges) before CONDOR; threshold your network the same way, or otherwise make the weights non-negative, before running it here. CONDOR puts each node in one community and gives each node a core score, its share of its community's modularity, which picks out each module's core regulators.\n\nOutputs:\n\n- `community_assignment`: Network-node community memberships, not patient subtype labels.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The user is seeking guidance on which file to use for the CONDOR analysis, indicating a need for an answer rather than immediate execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The user is seeking guidance on which file to use for the CONDOR analysis, indicating a need for an answer rather than immediate execution.",
+      "candidate_actions": [
+        "run_condor",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_condor"
+      ],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [],
+        "artifact_type": "community_assignment",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [],
+            "artifact_type": "community_assignment",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "community_assignment",
+              "source": "explicit",
+              "text_span": "find communities of TFs and genes",
+              "rationale": "The user wants to find communities of TFs and genes."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_condor"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want CONDOR to find communities of TFs and genes from our liver PANDA analysis.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "condor.communities"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "CONDOR",
+              "named_quote": "CONDOR"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "method_named",
+        "goal_quote": "I want CONDOR to find communities of TFs and genes from our liver PANDA analysis.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "CONDOR"
+        ],
+        "facts": [],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "CONDOR"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "community_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "method_named",
+            "I want CONDOR to find communities of TFs and genes from our liver PANDA analysis."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "CONDOR",
+          "PANDA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure which one I copied over.",
+              "uncertainty": "said_unknown",
+              "workflow": "CONDOR",
+              "contract_quote": "CONDOR consumes a weighted source-target bipartite edge list made from a validated regulator-gene network and returns community assignments with regulator-side and gene-side partitions.",
+              "question": "Did you copy over the PANDA output saved as a source, target, weight edge list?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "the PANDA output saved as a source, target, weight edge list",
+                "the expression table we fed into PANDA"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 32713,
+    "output_tokens": 974,
+    "total_tokens": 33687,
+    "calls": [
+      {
+        "call_id": "6ddd9b62-99c2-4a16-89c0-a547c258c615",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793073872-6EqSB1EGM1YzRTK4zuyj",
+        "input_tokens": 1624,
+        "output_tokens": 37,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1661,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 266,
+        "price_snapshot": null,
+        "duration_ms": 1222,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "163b2839-1013-4053-8bf0-fd0fb50d8437",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793073873-ix6yErowAQXUlc3ACNCo",
+        "input_tokens": 5351,
+        "output_tokens": 102,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5453,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 499,
+        "price_snapshot": null,
+        "duration_ms": 2061,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "76ef0592-9273-4cda-a7ae-7e73c82e23d8",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793073875-Rg9W2mArnAVdHO2x3Xwq",
+        "input_tokens": 4913,
+        "output_tokens": 232,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5145,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 579,
+        "price_snapshot": null,
+        "duration_ms": 3346,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "60bd50a7-be8b-44fa-bded-c24c10f707bc",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 656,
+        "output_tokens": 47,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 703,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 127,
+        "price_snapshot": {
+          "snapshot_id": "bbf87e5a-a751-5135-b6b3-f0d5bf83572c",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T04:04:07.713235Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1134,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "dd18fdab-1443-41f4-8f6d-112559b23793",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793073880-cqNfg7s4PoPwbDUvOvFk",
+        "input_tokens": 18425,
+        "output_tokens": 403,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 18828,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1642,
+        "price_snapshot": null,
+        "duration_ms": 5733,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "523bc83c-731b-4934-8f14-223c73b6b410",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793073886-dLMFT5Jz31Wed4P2ZSp9",
+        "input_tokens": 574,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 585,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 93,
+        "price_snapshot": null,
+        "duration_ms": 795,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "82e32fe2-ce42-481e-a3e0-97ff8aa528cf",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793073886-GkioqGb8jrzV1KpXRemh",
+        "input_tokens": 1170,
+        "output_tokens": 142,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1312,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 261,
+        "price_snapshot": null,
+        "duration_ms": 2310,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "a7773559-4add-4016-9a13-ab04b8b9c7ee",
+  "task_state": null
+}

@@ -1,0 +1,645 @@
+{
+  "version": 1,
+  "session_id": "hb-j1-J24-1",
+  "profile_id": "hb-j1-J24-1",
+  "auto_generated": false,
+  "created_at": 1793074039.000191,
+  "updated_at": 1793074039.000235,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want sample-specific co-expression networks with LIONESS built from our binary somatic mutation matrix for 100 tumors. Would that be possible?"
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"sample-specific co-expression networks with LIONESS built from our binary somatic mutation matrix for 100 tumors\" -- available from LIONESS-COEXPRESSION.\n\nDo not use **LIONESS-COEXPRESSION** with the current `mutation_matrix` input. The registered LIONESS-COEXPRESSION input contract does not accept mutation_matrix for this analysis; it accepts expression_matrix. This restriction concerns this registered workflow and these inputs, not every possible use of the method.\n\nNo compatible workflow has been selected for execution.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited LIONESS-COEXPRESSION for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.8,
+      "reason": "The capability check credited LIONESS-COEXPRESSION for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_lioness_coexpression"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "mutation_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [
+          "gene",
+          "sample"
+        ],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "lioness_base_compatibility"
+        ],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "mutation_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [
+              "gene",
+              "sample"
+            ],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "lioness_base_compatibility"
+            ],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I want sample-specific co-expression networks",
+              "rationale": "The user is asking for the construction of co-expression networks."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "co-expression networks",
+              "rationale": "The user specifies co-expression networks as the desired output."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "sample-specific co-expression networks",
+              "rationale": "The user specifies that the networks should be sample-specific."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "mutation_matrix",
+              "source": "explicit",
+              "text_span": "binary somatic mutation matrix",
+              "rationale": "The user mentions using a binary somatic mutation matrix as input."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "mutation_matrix",
+              "source": "explicit",
+              "text_span": "binary somatic mutation matrix",
+              "rationale": "The user mentions using a binary somatic mutation matrix as input."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "Co-expression networks typically involve genes as entities."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user specifies that the networks should be sample-specific, indicating samples are involved."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "lioness_base_compatibility",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user requests LIONESS, which implies compatibility with that method."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_lioness_coexpression"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "sample-specific co-expression networks with LIONESS built from our binary somatic mutation matrix for 100 tumors",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_coexpression.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "binary",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS",
+              "named_quote": "LIONESS",
+              "samples": 100,
+              "samples_quote": "100 tumors"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@109-119"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "sample-specific co-expression networks",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "binary somatic mutation matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "100 tumors",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "sample-specific co-expression networks with LIONESS built from our binary somatic mutation matrix for 100 tumors.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "LIONESS"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@109-119",
+            "property": "sample_count",
+            "name": "",
+            "value": "100",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "100 tumors",
+            "span": [
+              109,
+              119
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "100 tumors",
+                "span": [
+                  109,
+                  119
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "100 tumors",
+                "span": [
+                  109,
+                  119
+                ],
+                "result": "sample-specific co-expression networks with LIONESS built from our binary somatic mutation matrix for 100 tumors",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "for 100 tumors",
+                "span": [
+                  105,
+                  119
+                ],
+                "result": "I want sample-specific co-expression networks with LIONESS built from our binary somatic mutation matrix for 100 tumors.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "LIONESS-COEXPRESSION"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "sample-specific co-expression networks with LIONESS built from our binary somatic mutation matrix for 100 tumors."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-COEXPRESSION"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want sample-specific co-expression networks with LIONESS built from our binary somatic mutation matrix for 100 tumors.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-COEXPRESSION",
+              "contract_quote": "LIONESS co-expression consumes a gene-by-sample expression matrix and produces sample-specific co-expression networks.",
+              "question": "Do you have a gene-by-sample expression matrix available?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 33125,
+    "output_tokens": 1334,
+    "total_tokens": 34459,
+    "calls": [
+      {
+        "call_id": "555e9c69-b743-4c68-ba18-690fd9fcd468",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793074019-w34QELKMg3DDLsVj48CV",
+        "input_tokens": 5307,
+        "output_tokens": 232,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5539,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 570,
+        "price_snapshot": null,
+        "duration_ms": 3209,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "dadbd53b-3b4a-41a6-b46e-12b6b8ca52eb",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793074022-YOxt6KhsnBWeliPx5JbC",
+        "input_tokens": 5321,
+        "output_tokens": 317,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5638,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 691,
+        "price_snapshot": null,
+        "duration_ms": 4823,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "17966631-9fbe-4df9-afff-7fd00ab8df69",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 638,
+        "output_tokens": 53,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 691,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 128,
+        "price_snapshot": {
+          "snapshot_id": "bbf87e5a-a751-5135-b6b3-f0d5bf83572c",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T04:04:07.713235Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1030,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "992ba93d-adf0-4a2a-9653-8745de9dbeeb",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793074028-HJOY8RTYUzoziZ5HSLID",
+        "input_tokens": 15165,
+        "output_tokens": 406,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15571,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1462,
+        "price_snapshot": null,
+        "duration_ms": 4950,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "38d7755d-696d-43b6-ac10-35ce063bf09c",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793074033-mrNl90XgzITcFonxKMKQ",
+        "input_tokens": 530,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 571,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 104,
+        "price_snapshot": null,
+        "duration_ms": 1086,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "191e9639-14b2-44ec-ac39-d1d0bc0342b7",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793074034-RcClEGydKZuLWvXVEuv9",
+        "input_tokens": 5281,
+        "output_tokens": 167,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5448,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 508,
+        "price_snapshot": null,
+        "duration_ms": 2678,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "23081f11-92fe-4991-a5ee-ececf0aec13e",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793074037-Ujn5UQB75RrVRSYkJfa2",
+        "input_tokens": 883,
+        "output_tokens": 118,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1001,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 203,
+        "price_snapshot": null,
+        "duration_ms": 1754,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "9ef99ca2-f11c-4f2d-8d11-225df19d9ae2",
+  "task_state": null
+}
