@@ -70,3 +70,15 @@ Stop rule: if F1 fails, the round is withdrawn as declared. The questions in `fo
 
 Turn 2 binding is covered by unit tests only. A live check (<= 16 sessions) is proposed only after the user sees
 these results.
+
+## Amendment before measuring the added readings (2026-10-27)
+
+My population scan ran before rebasing onto main 17dd2745, which restored the recorded core-judgment sessions
+(1c2e66ac). It missed 13 readings of 3 requests (`population-added.json`). They are labelled now, before any
+measurement on them:
+- C16 (x10, "order the cells along a pseudotime trajectory"): control. A trajectory is change from one state to the
+  next.
+- C37 (x1, a methods question over bulk omics at several time points): misread time_model, uncredited.
+- C21 (x2, the user does not know whether the table is TF-to-gene or gene-gene): misread input_network (`other` is
+  not what the user said). Asking is right (gold ASK).
+F1, F2 and F4 are computed on the full population (original + added); the original-only figures are also reported.
