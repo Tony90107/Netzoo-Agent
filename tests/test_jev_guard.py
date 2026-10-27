@@ -167,3 +167,59 @@ def test_a_sentence_already_asked_in_the_task_is_not_asked_again():
     other = {"pending": [{"what": "dimension:count", "user_quote": sentence}]}  # not Jev's question: still asked
     assert jev_guard_call.guarded_core(core, ask, clarify, jev_guard_call.asked_sentences(other))[1] == "ask"
     assert jev_guard_call.asked_sentences(None) == set()
+
+
+# ANSWERS.md: the contract line a Jev question quotes, and the user's answer read against it.
+
+def _question(contract="An aggregate COBRA adjusted co-expression artifact is not a direct LIONESS handoff"):
+    return {"what": "jev:data_property", "status": "asked", "question": "Before I go ahead ...",
+            "user_quote": "I can't remember whether it is the raw matrix or the COBRA matrix.",
+            "workflows": ["LIONESS-PANDA"], "labels": {"contract": contract}}
+
+
+def test_contract_lines_are_verbatim_contract_text():
+    lines = jev_guard_call.contract_lines(("LIONESS-PANDA",))
+    text = " ".join((jev_guard_call.WORKFLOWS / "lioness-panda.yaml").read_text().split())
+    assert lines and all(name == "LIONESS-PANDA" and " ".join(line.split()) in text for name, line in lines)
+
+
+def test_a_failed_answer_declines_with_both_verbatim_quotes_and_says_nothing_of_other_workflows():
+    from netzoo_agent_core.interpretation.core_views import decline_reply
+
+    answer = "It's the COBRA adjusted co-expression matrix."
+    after, action = jev_guard_call.answered_core(do(), _question(), answer, {"answer": "fails", "confidence": 0.9})
+    assert (after.kind, after.basis, action) == ("DECLINE", "jev_answer", "declined")
+    reply = decline_reply(after, "options line")
+    assert answer.rstrip(".") in reply and "not a direct LIONESS handoff" in reply
+    assert "No registered workflow" not in reply and "options line" not in reply
+
+
+@pytest.mark.parametrize("judged", [{"answer": "meets", "confidence": 1.0}, {"answer": "unclear", "confidence": 1.0},
+                                    {"answer": "fails", "confidence": 0.69}, {"answer": "not_run:X", "confidence": 0}])
+def test_anything_but_a_confident_fail_leaves_the_call(judged):
+    core = do()
+    assert jev_guard_call.answered_core(core, _question(), "yes", judged)[0] is core
+
+
+def test_only_a_do_is_declined_by_an_answer():
+    for kind in ("ASK", "CLARIFY", "DECLINE", "UNCHECKED"):
+        core = do(kind, "fact_agent")
+        assert jev_guard_call.answered_core(core, _question(), "no", {"answer": "fails", "confidence": 1})[0] is core
+
+
+def test_the_waiting_question_is_found_only_with_its_line():
+    assert jev_guard_call.asked_contract_question({"pending": [_question()]})["what"] == "jev:data_property"
+    assert jev_guard_call.asked_contract_question({"pending": [_question(contract="")]}) is None
+    assert jev_guard_call.asked_contract_question({"pending": [{**_question(), "what": "dimension:x"}]}) is None
+    assert jev_guard_call.asked_contract_question(None) is None
+
+
+def test_the_pending_question_keeps_the_contract_line():
+    from netzoo_agent_core.engine.task_updates import _pending
+
+    core = {"kind": "ASK", "facts": [{"question": "q", "user_quote": "u", "workflows": ["PANDA"],
+                                      "depends_on": "jev:input_exists", "contract_quote": "PANDA consumes ..."}]}
+    assert _pending(core)[0].labels == {"contract": "PANDA consumes ..."}
+    core["facts"][0]["depends_on"] = "jev:count"
+    core["facts"][0]["contract_quote"] = ""
+    assert _pending(core)[0].labels == {}

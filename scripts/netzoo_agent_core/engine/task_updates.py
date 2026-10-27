@@ -58,7 +58,10 @@ def _pending(core: dict) -> list[PendingQuestion]:
             question=fact.get("question", ""), user_quote=fact.get("user_quote", ""),
             workflows=list(fact.get("workflows") or []),
             options={} if source == "agent" else dict(fact.get("outcomes") or {}),
-            labels=dict(dimension[2]) if dimension else {}, yes_no=source == "agent"))
+            labels=dict(dimension[2]) if dimension else (
+                {"contract": fact["contract_quote"]}  # ANSWERS.md: the contract line a Jev question quoted
+                if str(what).startswith("jev:") and fact.get("contract_quote") else {}),
+            yes_no=source == "agent"))
     for item in (core.get("evidence") or {}).get("obligations") or []:
         if item.get("status") == "queued" and not item.get("asked_as"):
             what = item.get("fact_key", "").split(":", 1)[-1].rsplit("@", 1)[0]
