@@ -43,3 +43,16 @@ path fires only where the guard asked on turn 1 and picked a line. Per session t
 (`kind_before`).
 - L1: no `jev_answer` DECLINE where the gold final is DO.
 - Reported: declines caught, and finals right with the step against the same sessions' `kind_before`.
+
+## Live result (RESULTS-ANSWERS.txt, 20 sessions, US$0.149, code 0259b312)
+
+- L1 pass: 0 wrong `jev_answer` declines.
+- Caught: J04 ("PPI file never made"), J20 ("COBRA matrix"), W01 — all three DO without the step, DECLINE with it.
+- Finals right 12/20 with the step vs 9/20 without (same sessions' `kind_before`).
+- Turn-1 Jev asks 7, with a contract line only 3 (offline 14/20 lines on gold workflows; live the call's workflows);
+  the other 4 asked as before and their answers went to the system.
+
+Left (not this step): J09 — the system's own fact-agent question, answered "fails", still DO: the answer read covers
+only Jev's questions, though fact-agent questions carry a contract quote too (candidate next). J48 — system DECLINE
+full_gap after a "meets" answer (follow-up reading). J46, W13, W14, W21, W28 — turn-1 misses where Jev was not
+confident (or agreed), as on arm S.

@@ -1,0 +1,722 @@
+{
+  "version": 1,
+  "session_id": "hb-j1u-J09-1",
+  "profile_id": "hb-j1u-J09-1",
+  "auto_generated": false,
+  "created_at": 1793087396.868203,
+  "updated_at": 1793087396.8682492,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want GIRAFFE to estimate TF activity in our 28 sorghum root samples. I have the expression matrix and a motif prior. I'm not sure whether anyone in the lab ever built a TF-TF protein interaction file for sorghum."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Has a TF-TF protein interaction file for sorghum been built in the lab?\n  You wrote: \"I'm not sure whether anyone in the lab ever built a TF-TF protein interaction file for sorghum\". GIRAFFE's contract: \"GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a TF-by-TF PPI matrix after explicit labelled-file conversion\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "tf_activity_matrix",
+        "entity_types": [
+          "sample",
+          "tf"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "tf_activity_matrix",
+            "entity_types": [
+              "sample",
+              "tf"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I want GIRAFFE to estimate TF activity in our 28 sorghum root samples.",
+              "rationale": "The user wants to estimate TF activity."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "I have the expression matrix.",
+              "rationale": "The user has provided an expression matrix for the analysis."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "unknown",
+              "source": "explicit",
+              "text_span": "and a motif prior.",
+              "rationale": "The user mentioned a motif prior but did not specify its type."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "tf_activity_matrix",
+              "source": "explicit",
+              "text_span": "I want GIRAFFE to estimate TF activity in our 28 sorghum root samples.",
+              "rationale": "The user explicitly mentioned estimating TF activity, which aligns with the artifact type of tf_activity_matrix."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The artifact type tf_activity_matrix allows for aggregate granularity when estimating TF activity across multiple samples."
+            }
+          ],
+          "assumptions": [
+            "The expression matrix is suitable for estimating TF activity.",
+            "The motif prior is relevant for the analysis."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Has a TF-TF protein interaction file for sorghum been built in the lab?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a motif prior",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a motif prior",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want GIRAFFE to estimate TF activity in our 28 sorghum root samples.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "giraffe.signed_regulation",
+              "giraffe.activity_tests"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": true,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "GIRAFFE",
+              "named_quote": "GIRAFFE",
+              "samples": 28,
+              "samples_quote": "28 sorghum root samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@46-69"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "the expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {
+          "I'm not sure whether anyone in the lab ever built a TF-TF protein interaction file for sorghum.": []
+        },
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want GIRAFFE to estimate TF activity in our 28 sorghum root samples.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I'm not sure whether anyone in the lab ever built a TF-TF protein interaction file for sorghum."
+        ],
+        "stated_quotes": [
+          "GIRAFFE"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@46-69",
+            "property": "sample_count",
+            "name": "",
+            "value": "28",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "28 sorghum root samples",
+            "span": [
+              46,
+              69
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "28 sorghum root samples",
+                "span": [
+                  46,
+                  69
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "28 sorghum root samples",
+                "span": [
+                  46,
+                  69
+                ],
+                "result": "I want GIRAFFE to estimate TF activity in our 28 sorghum root samples.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "GIRAFFE"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Has a TF-TF protein interaction file for sorghum been built in the lab?",
+            "user_quote": "I'm not sure whether anyone in the lab ever built a TF-TF protein interaction file for sorghum.",
+            "workflows": [
+              "GIRAFFE"
+            ],
+            "contract_quote": "GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a TF-by-TF PPI matrix after explicit labelled-file conversion.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:GIRAFFE@119-214"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "tf_activity_matrix",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want GIRAFFE to estimate TF activity in our 28 sorghum root samples."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "obligations": [
+            {
+              "fact_key": "agent:GIRAFFE@119-214",
+              "source": "agent",
+              "question": "Has a TF-TF protein interaction file for sorghum been built in the lab?",
+              "user_quote": "I'm not sure whether anyone in the lab ever built a TF-TF protein interaction file for sorghum.",
+              "workflows": [
+                "GIRAFFE"
+              ],
+              "status": "asked",
+              "asked_as": ""
+            }
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "GIRAFFE"
+        ],
+        "accepted": [
+          {
+            "question": "Has a TF-TF protein interaction file for sorghum been built in the lab?",
+            "user_quote": "I'm not sure whether anyone in the lab ever built a TF-TF protein interaction file for sorghum.",
+            "workflows": [
+              "GIRAFFE"
+            ],
+            "contract_quote": "GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a TF-by-TF PPI matrix after explicit labelled-file conversion.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:GIRAFFE@119-214"
+          }
+        ],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R6 the same words already ask a fact",
+            "proposal": {
+              "user_quote": "I'm not sure whether anyone in the lab ever built a TF-TF protein interaction file for sorghum.",
+              "uncertainty": "said_unknown",
+              "workflow": "GIRAFFE",
+              "contract_quote": "The adapter explicitly symmetrizes edge-list pairs and supplies the required unit diagonal; all TF IDs must match the motif/prior TF set.",
+              "question": "Has a TF-TF protein interaction file for sorghum been built in the lab?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 34348,
+    "output_tokens": 1409,
+    "total_tokens": 35757,
+    "calls": [
+      {
+        "call_id": "28c8c1a1-004c-4d55-9d6e-5ad9e304a9ef",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087372-ETapMFFR5zFEUqadwVfn",
+        "input_tokens": 1602,
+        "output_tokens": 48,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1650,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 269,
+        "price_snapshot": null,
+        "duration_ms": 1941,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "90a43088-272c-4c1d-8c73-99485897df07",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087373-eSt73Llq9MTXq069jVWs",
+        "input_tokens": 5329,
+        "output_tokens": 267,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5596,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 595,
+        "price_snapshot": null,
+        "duration_ms": 4971,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "ebdbee09-f6f6-40f1-a151-05492f8bce41",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087378-ZLWhs3th2oVOm06dArvT",
+        "input_tokens": 5641,
+        "output_tokens": 225,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5866,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 684,
+        "price_snapshot": null,
+        "duration_ms": 3870,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1c1d8301-e309-463e-b3ba-b6c789f7e89e",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 631,
+        "output_tokens": 51,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 682,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 125,
+        "price_snapshot": {
+          "snapshot_id": "b06e3a32-d519-5ac8-8a56-ff9b7f6035a7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T07:46:15.430656Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1115,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "489b9130-4751-433a-94e3-281eeb25e74f",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793087384-VyQi2KKSe7fid8vucahn",
+        "input_tokens": 18381,
+        "output_tokens": 475,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 18856,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1679,
+        "price_snapshot": null,
+        "duration_ms": 5609,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f20c9a0c-665d-4317-80eb-0de7d1b796bd",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087389-MxRR8ztERdduWU5BaFBw",
+        "input_tokens": 552,
+        "output_tokens": 39,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 591,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 106,
+        "price_snapshot": null,
+        "duration_ms": 1029,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4ff0aa5c-8499-4071-97cc-f03c40e5861a",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087390-9AI02BMLFs807AYsiQu8",
+        "input_tokens": 541,
+        "output_tokens": 38,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 579,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 104,
+        "price_snapshot": null,
+        "duration_ms": 1047,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f0b0175a-c1c2-4f71-a37e-4ff514f71a7d",
+        "role": "capability_second_opinion",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793087392-huEYPLq3OYUR9fXKjNUc",
+        "input_tokens": 361,
+        "output_tokens": 6,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 367,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 58,
+        "price_snapshot": null,
+        "duration_ms": 1966,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6f02ce7f-8c9a-463b-b354-cf66e58dd57c",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087393-nKz9Z2VOpzjzvEvoZPxT",
+        "input_tokens": 1310,
+        "output_tokens": 260,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1570,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 353,
+        "price_snapshot": null,
+        "duration_ms": 3181,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "cb335a1f-28ef-4114-8840-d1eb6cd32cdc",
+  "task_state": {
+    "version": 1,
+    "task_id": "33002f6c",
+    "revision": 1,
+    "goal": "I want GIRAFFE to estimate TF activity in our 28 sorghum root samples. I have the expression matrix and a motif prior. I'm not sure whether anyone in the lab ever built a TF-TF protein interaction file for sorghum.",
+    "pending": [
+      {
+        "question_id": "agent:GIRAFFE:df81c65784",
+        "source": "agent",
+        "what": "GIRAFFE",
+        "question": "Has a TF-TF protein interaction file for sorghum been built in the lab?",
+        "user_quote": "I'm not sure whether anyone in the lab ever built a TF-TF protein interaction file for sorghum.",
+        "workflows": [
+          "GIRAFFE"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": true,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

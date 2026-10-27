@@ -1,0 +1,897 @@
+{
+  "version": 1,
+  "session_id": "hb-j1u-W27-1",
+  "profile_id": "hb-j1u-W27-1",
+  "auto_generated": false,
+  "created_at": 1793087400.522537,
+  "updated_at": 1793087435.8121212,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Please build per-sample TF and miRNA regulatory networks with LIONESS-PUMA for our rare adrenocortical carcinoma biopsies, using the combined TF/miRNA prior, PPI file and miRNA list we already have. I'm not sure whether two or four of the biopsies passed RNA-seq QC; the report is still with the sequencing core."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 2 or 4?\n  You wrote: \"I'm not sure whether two or four of the biopsies passed RNA-seq QC; the report is still with the sequencing core\".\n  - 2: no registered workflow can do this as asked\n  - 4: LIONESS-PUMA can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: Please build per-sample TF and miRNA regulatory networks with LIONESS-PUMA for our rare adrenocortical carcinoma biopsies, using the combined TF/miRNA prior, PPI file and miRNA list we already have. I'm not sure whether two or four of the biopsies passed RNA-seq QC; the report is still with the sequencing core.\nUser follow-up: I'd like LIONESS-PUMA networks for each of the adrenocortical biopsies that made it through QC."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Did at least three biopsies pass RNA-seq QC?\n  You wrote: \"I'm not sure whether two or four of the biopsies passed RNA-seq QC; the report is still with the sequencing core\". LIONESS-PUMA's contract: \"Require at least three expression samples and a validated one-ID-per-line miRNA list\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_lioness_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "mirna",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf",
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "mirna",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf",
+              "mirna"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like LIONESS-PUMA networks for each of the adrenocortical biopsies that made it through QC.",
+              "rationale": "The user requests to build networks using LIONESS-PUMA, which involves inferring regulatory networks."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "I'd like LIONESS-PUMA networks for each of the adrenocortical biopsies that made it through QC.",
+              "rationale": "The user specifies the need for regulatory networks."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "for each of the adrenocortical biopsies that made it through QC.",
+              "rationale": "The user specifies networks for each biopsy, indicating a sample-specific output."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF and miRNA regulatory networks",
+              "rationale": "The user mentions TFs as part of the regulatory networks."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "mirna",
+              "source": "explicit",
+              "text_span": "TF and miRNA regulatory networks",
+              "rationale": "The user specifies the need for regulatory networks involving miRNAs."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF and miRNA regulatory networks",
+              "rationale": "The user specifies the need for regulatory networks targeting genes."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Did at least three biopsies pass RNA-seq QC?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "the combined TF/miRNA prior, PPI file and miRNA list we already have",
+        "mirna": "stated",
+        "mirna_quote": "the combined TF/miRNA prior, PPI file and miRNA list we already have"
+      },
+      "applicability": [
+        {
+          "action": "run_lioness_puma",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "the combined TF/miRNA prior, PPI file and miRNA list we already have",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "stated",
+              "quote": "the combined TF/miRNA prior, PPI file and miRNA list we already have",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_puma",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "the combined TF/miRNA prior, PPI file and miRNA list we already have",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "stated",
+              "quote": "the combined TF/miRNA prior, PPI file and miRNA list we already have",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "the combined TF/miRNA prior, PPI file and miRNA list we already have",
+            "action": "none"
+          },
+          {
+            "kind": "mirna",
+            "state": "stated",
+            "source": "model",
+            "quote": "the combined TF/miRNA prior, PPI file and miRNA list we already have",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Please build per-sample TF and miRNA regulatory networks with LIONESS-PUMA for our rare adrenocortical carcinoma biopsies, using the combined TF/miRNA prior, PPI file and miRNA list we already have.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_puma.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PUMA",
+              "named_quote": "LIONESS-PUMA"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "I'd like LIONESS-PUMA networks for each of the adrenocortical biopsies that made it through QC.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_puma.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PUMA",
+              "named_quote": "LIONESS-PUMA"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "per-sample TF and miRNA regulatory networks",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "combined TF/miRNA prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "PPI file",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "miRNA list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "LIONESS-PUMA networks for each of the adrenocortical biopsies that made it through QC.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [
+          {
+            "of": "samples",
+            "quote": "two or four of the biopsies",
+            "values": [
+              2,
+              4
+            ]
+          }
+        ],
+        "uncertain_quotes": [
+          "I'm not sure whether two or four of the biopsies passed RNA-seq QC; the report is still with the sequencing core."
+        ],
+        "stated_quotes": [
+          "LIONESS-PUMA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@242-269:candidates",
+            "property": "sample_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "2",
+              "4"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "two or four of the biopsies",
+            "span": [
+              242,
+              269
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "side_by_side",
+                "quote": "two or four of the biopsies",
+                "span": [
+                  242,
+                  269
+                ],
+                "result": "two or four of the biopsies passed RNA-seq QC",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-PUMA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Did at least three biopsies pass RNA-seq QC?",
+            "user_quote": "I'm not sure whether two or four of the biopsies passed RNA-seq QC; the report is still with the sequencing core.",
+            "workflows": [
+              "LIONESS-PUMA"
+            ],
+            "contract_quote": "Require at least three expression samples and a validated one-ID-per-line miRNA list.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:LIONESS-PUMA@221-334"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "LIONESS-PUMA networks for each of the adrenocortical biopsies that made it through QC."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "obligations": [
+            {
+              "fact_key": "agent:LIONESS-PUMA@221-334",
+              "source": "agent",
+              "question": "Did at least three biopsies pass RNA-seq QC?",
+              "user_quote": "I'm not sure whether two or four of the biopsies passed RNA-seq QC; the report is still with the sequencing core.",
+              "workflows": [
+                "LIONESS-PUMA"
+              ],
+              "status": "asked",
+              "asked_as": ""
+            }
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PUMA",
+          "PUMA"
+        ],
+        "accepted": [
+          {
+            "question": "Did at least three biopsies pass RNA-seq QC?",
+            "user_quote": "I'm not sure whether two or four of the biopsies passed RNA-seq QC; the report is still with the sequencing core.",
+            "workflows": [
+              "LIONESS-PUMA"
+            ],
+            "contract_quote": "Require at least three expression samples and a validated one-ID-per-line miRNA list.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:LIONESS-PUMA@221-334"
+          }
+        ],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'd like LIONESS-PUMA networks for each of the adrenocortical biopsies that made it through QC.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-PUMA",
+              "contract_quote": "When a patient or sample identifier is supplied, produce sample-specific networks for all available samples, select the requested sample afterward, and keep it separate from the aggregate network.",
+              "question": "Do you want sample-specific networks for all available biopsies that passed QC?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "sample-specific networks for each of the adrenocortical biopsies that made it through QC"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 42900,
+    "output_tokens": 2259,
+    "total_tokens": 45159,
+    "calls": [
+      {
+        "call_id": "c5abecf8-9d29-41c3-ad87-2604544577b4",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087402-yoRhGdHf9YLnx5va3BDB",
+        "input_tokens": 915,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 956,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 162,
+        "price_snapshot": null,
+        "duration_ms": 1300,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "57bfa85c-d3ad-4338-a268-abee370daf9a",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087403-L0OjXysntylShPJbpsIy",
+        "input_tokens": 1660,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1676,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 259,
+        "price_snapshot": null,
+        "duration_ms": 906,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "12e4da2d-55eb-4d6e-82dd-d79e47009c04",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087404-dEpXIjhTMSzNgIDFHwsE",
+        "input_tokens": 5387,
+        "output_tokens": 309,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5696,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 629,
+        "price_snapshot": null,
+        "duration_ms": 5177,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "1eae18a8-fa95-454c-8f8c-c02c455c0e8c",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087409-DGZbhC2F6hfcVVYxoH6w",
+        "input_tokens": 4877,
+        "output_tokens": 69,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 4946,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 562,
+        "price_snapshot": null,
+        "duration_ms": 2097,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f9f778df-fe51-4319-8ea5-2ae7de2eb843",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 703,
+        "output_tokens": 54,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 757,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 138,
+        "price_snapshot": {
+          "snapshot_id": "b06e3a32-d519-5ac8-8a56-ff9b7f6035a7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T07:46:15.430656Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1183,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "7a2ecca1-c6b3-48a2-9ad6-4103a663f08c",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793087413-Bt7MRMjO284TVYH8TEUQ",
+        "input_tokens": 18497,
+        "output_tokens": 1014,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 19511,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2020,
+        "price_snapshot": null,
+        "duration_ms": 11303,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ca127625-7c9e-42ab-a0b8-17d512036aaf",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087424-7Q4JqTxkNdOLRgIWd3rp",
+        "input_tokens": 610,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 655,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 119,
+        "price_snapshot": null,
+        "duration_ms": 1117,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6a6ce01e-1fb4-490c-b0bb-78a9f54b1a78",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087425-0UkgccT6V6rKNGrPbdwp",
+        "input_tokens": 599,
+        "output_tokens": 73,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 672,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 134,
+        "price_snapshot": null,
+        "duration_ms": 1445,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f90c9fbc-f603-4c92-aebc-909bb8ca1950",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793087427-4boQjOIRoynYZFblWDDn",
+        "input_tokens": 8415,
+        "output_tokens": 377,
+        "cache_read_tokens": 7936,
+        "cache_write_tokens": 0,
+        "total_tokens": 8792,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 893,
+        "price_snapshot": null,
+        "duration_ms": 4703,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a51c6269-83e3-4d2f-b195-b37bed1250c7",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087431-kftsbJwuK2OVpw3VQ6mU",
+        "input_tokens": 1237,
+        "output_tokens": 261,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1498,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 342,
+        "price_snapshot": null,
+        "duration_ms": 4069,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "292ce2bc-cc1b-4662-b6e0-894142cf305a",
+  "task_state": {
+    "version": 1,
+    "task_id": "de43290e",
+    "revision": 2,
+    "goal": "Please build per-sample TF and miRNA regulatory networks with LIONESS-PUMA for our rare adrenocortical carcinoma biopsies, using the combined TF/miRNA prior, PPI file and miRNA list we already have. I'm not sure whether two or four of the biopsies passed RNA-seq QC; the report is still with the sequencing core.",
+    "pending": [
+      {
+        "question_id": "agent:LIONESS-PUMA:5c7a460dfb",
+        "source": "agent",
+        "what": "LIONESS-PUMA",
+        "question": "Did at least three biopsies pass RNA-seq QC?",
+        "user_quote": "I'm not sure whether two or four of the biopsies passed RNA-seq QC; the report is still with the sequencing core.",
+        "workflows": [
+          "LIONESS-PUMA"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": true,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 2,
+    "status": "active",
+    "turns": 2
+  }
+}

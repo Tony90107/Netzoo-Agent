@@ -1,0 +1,811 @@
+{
+  "version": 1,
+  "session_id": "hb-j1u-J06-1",
+  "profile_id": "hb-j1u-J06-1",
+  "auto_generated": false,
+  "created_at": 1793087283.089942,
+  "updated_at": 1793087283.089982,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Please run LIONESS-PUMA to get per-sample TF and miRNA-to-gene networks for 36 endometrial samples. I have the expression matrix, motif prior and PPI. I don't know whether the miRNA list for this project was ever made."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Before I go ahead, could you settle this point you mentioned? Do you have this input?\n  You wrote: \"I don't know whether the miRNA list for this project was ever made\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": false,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_lioness_puma",
+        "run_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "gene",
+          "tf",
+          "mirna"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf",
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "gene",
+              "tf",
+              "mirna"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf",
+              "mirna"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Please run LIONESS-PUMA to get per-sample TF and miRNA-to-gene networks.",
+              "rationale": "The user explicitly requests to run LIONESS-PUMA to obtain networks."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "per-sample TF and miRNA-to-gene networks.",
+              "rationale": "The user specifies that the networks should be per-sample."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF and miRNA-to-gene networks.",
+              "rationale": "The user is interested in gene networks."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF and miRNA-to-gene networks.",
+              "rationale": "The user is interested in transcription factors as part of the networks."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "mirna",
+              "source": "explicit",
+              "text_span": "TF and miRNA-to-gene networks.",
+              "rationale": "The user is interested in miRNAs as part of the networks."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user explicitly mentions having an expression matrix as part of the current inputs."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF and miRNA-to-gene networks.",
+              "rationale": "The user is interested in TFs as part of the networks, which supports the inclusion of 'tf' as a regulator type."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The reading's regulators include miRNAs, and the request states no TF-only result such as TF activity, so the result is the regulatory network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "mirna",
+              "source": "explicit",
+              "text_span": "miRNA-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "miRNA-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Before I go ahead, could you settle this point you mentioned? Do you have this input?",
+      "operation_authorization": {
+        "requested": [
+          "run"
+        ],
+        "forbidden": [],
+        "explain_only": null,
+        "preview_requested": false,
+        "blocked_action": null
+      },
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "motif prior and PPI",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "motif prior and PPI",
+            "action": "none"
+          },
+          {
+            "kind": "mirna",
+            "state": "unstated",
+            "source": "model",
+            "quote": "",
+            "action": "ask"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Please run LIONESS-PUMA to get per-sample TF and miRNA-to-gene networks for 36 endometrial samples.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PUMA",
+              "named_quote": "LIONESS-PUMA",
+              "samples": 36,
+              "samples_quote": "36 endometrial samples"
+            },
+            "limits": [
+              "You said \"I have the expression matrix, motif prior and PPI.\"; LIONESS-PUMA needs a miRNA list and no registered workflow or tool provides it"
+            ],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@76-98"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "PPI",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "I don't know whether the miRNA list for this project was ever made.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Please run LIONESS-PUMA to get per-sample TF and miRNA-to-gene networks for 36 endometrial samples.",
+        "ruled_out": {},
+        "only_inputs": [
+          "expression",
+          "motif_prior",
+          "ppi"
+        ],
+        "only_inputs_quote": "I have the expression matrix, motif prior and PPI.",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "LIONESS-PUMA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@76-98",
+            "property": "sample_count",
+            "name": "",
+            "value": "36",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "36 endometrial samples",
+            "span": [
+              76,
+              98
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "36 endometrial samples",
+                "span": [
+                  76,
+                  98
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "36 endometrial samples",
+                "span": [
+                  76,
+                  98
+                ],
+                "result": "Please run LIONESS-PUMA to get per-sample TF and miRNA-to-gene networks for 36 endometrial samples.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Before I go ahead, could you settle this point you mentioned? Do you have this input?",
+            "user_quote": "I don't know whether the miRNA list for this project was ever made.",
+            "workflows": [],
+            "contract_quote": "",
+            "depends_on": "jev:input_exists",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": ""
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "jev_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Please run LIONESS-PUMA to get per-sample TF and miRNA-to-gene networks for 36 endometrial samples."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "jev_guard": {
+            "kind_before": "DECLINE",
+            "basis_before": "full_gap",
+            "jev": "ASK",
+            "confidence": 0.95
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PUMA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I don't know whether the miRNA list for this project was ever made.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-PUMA",
+              "contract_quote": "Require at least three expression samples and a validated one-ID-per-line miRNA list.",
+              "question": "Was the miRNA list for this project made?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I don't know whether the miRNA list for this project was ever made.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-PUMA",
+              "contract_quote": "LIONESS-PUMA uses the original gene-by-sample expression matrix, motif, PPI, and miRNA priors to internally infer the aggregate PUMA network and derive sample-specific TF/miRNA-to-gene networks.",
+              "question": "Was the miRNA list for this project made?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 34534,
+    "output_tokens": 1698,
+    "total_tokens": 36232,
+    "calls": [
+      {
+        "call_id": "a71d2a68-0bdc-4d71-bdc5-8890c7938ce7",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087255-e6sKJy8WgEJG0P1VfU0f",
+        "input_tokens": 5333,
+        "output_tokens": 423,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5756,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 689,
+        "price_snapshot": null,
+        "duration_ms": 7462,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "53ca02dc-ed6d-495d-8bf5-42f73b346825",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087262-8EsgKT0thMbXb0CcY3PQ",
+        "input_tokens": 6129,
+        "output_tokens": 255,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6384,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 775,
+        "price_snapshot": null,
+        "duration_ms": 3453,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "359fc69e-bd6d-4f0a-8daf-7cbc3ca40ead",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 641,
+        "output_tokens": 54,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 695,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 129,
+        "price_snapshot": {
+          "snapshot_id": "b06e3a32-d519-5ac8-8a56-ff9b7f6035a7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T07:46:15.430656Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1170,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "5992489c-18b5-451e-b2ef-ac88d5781200",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087267-IMVfMe3OkmMboOrNLRbc",
+        "input_tokens": 1606,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1650,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 267,
+        "price_snapshot": null,
+        "duration_ms": 1761,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a6268024-d216-4067-933a-ac270fcea73c",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793087269-CXKt2GxRzXbltfyAl1om",
+        "input_tokens": 18389,
+        "output_tokens": 614,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 19003,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1764,
+        "price_snapshot": null,
+        "duration_ms": 7464,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c3270d74-540d-4a03-b78d-10a66c477649",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087276-MToHu8ZFKdinv0r8EYUd",
+        "input_tokens": 556,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 567,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 90,
+        "price_snapshot": null,
+        "duration_ms": 752,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "aa36518d-8ca3-4086-979b-8085fa4facaf",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087277-Q6ZByppuTapLe39UU0nI",
+        "input_tokens": 545,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 586,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 106,
+        "price_snapshot": null,
+        "duration_ms": 1815,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "721d8c93-53f7-4614-bb3d-7235c4e5ef88",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087279-FnXYKexQ7nVGmUTtwNVL",
+        "input_tokens": 991,
+        "output_tokens": 226,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1217,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 284,
+        "price_snapshot": null,
+        "duration_ms": 2854,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6e4b3f12-c6a0-4180-97c6-76450c4490b6",
+        "role": "goal_read",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793087282-EWFoMtSWIswwf2rwXvAz",
+        "input_tokens": 344,
+        "output_tokens": 30,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 374,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 70,
+        "price_snapshot": null,
+        "duration_ms": 1048,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "6ced98a4-9590-4b75-a56f-399c8a6b1666",
+  "task_state": {
+    "version": 1,
+    "task_id": "6a322b3a",
+    "revision": 1,
+    "goal": "Please run LIONESS-PUMA to get per-sample TF and miRNA-to-gene networks for 36 endometrial samples. I have the expression matrix, motif prior and PPI. I don't know whether the miRNA list for this project was ever made.",
+    "pending": [
+      {
+        "question_id": "dimension:jev:input_exists:1ad6897408",
+        "source": "dimension",
+        "what": "jev:input_exists",
+        "question": "Before I go ahead, could you settle this point you mentioned? Do you have this input?",
+        "user_quote": "I don't know whether the miRNA list for this project was ever made.",
+        "workflows": [],
+        "options": {},
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

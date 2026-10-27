@@ -1,0 +1,804 @@
+{
+  "version": 1,
+  "session_id": "hb-j1u-W33-1",
+  "profile_id": "hb-j1u-W33-1",
+  "auto_generated": false,
+  "created_at": 1793087284.289849,
+  "updated_at": 1793087284.289877,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We want one network for the whole cohort showing how both TFs and miRNAs regulate their target genes across our 60 failing-heart samples; we have the expression matrix, a PPI file and a prior that holds TF motifs and miRNA-target predictions. I'm not sure whether anyone in the lab ever made the separate file listing our miRNA IDs that goes with it."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Before I go ahead, could you settle this point you mentioned? Do you have this input?\n  You wrote: \"I'm not sure whether anyone in the lab ever made the separate file listing our miRNA IDs that goes with it\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "gene",
+          "tf",
+          "unknown",
+          "mirna"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf",
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "gene",
+              "tf",
+              "unknown",
+              "mirna"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf",
+              "mirna"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "We want one network for the whole cohort showing how both TFs and miRNAs regulate their target genes.",
+              "rationale": "The user wants to construct a regulatory network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "one network for the whole cohort.",
+              "rationale": "The user mentions wanting one network for the whole cohort."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "we have the expression matrix.",
+              "rationale": "The user states they have an expression matrix available for the analysis."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "We want one network for the whole cohort showing how both TFs and miRNAs regulate their target genes.",
+              "rationale": "The user specifies the need for a network that includes both TFs and miRNAs."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The reading's regulators include miRNAs, and the request states no TF-only result such as TF activity, so the result is the regulatory network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "mirna",
+              "source": "explicit",
+              "text_span": "miRNAs regulate their target genes",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "miRNAs regulate their target genes",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Before I go ahead, could you settle this point you mentioned? Do you have this input?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a prior that holds TF motifs and miRNA-target predictions",
+        "mirna": "ruled_out",
+        "mirna_quote": "I'm not sure whether anyone in the lab ever made the separate file listing our miRNA IDs that goes with it."
+      },
+      "applicability": [
+        {
+          "action": "run_puma",
+          "status": "not_applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a prior that holds TF motifs and miRNA-target predictions",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "ruled_out",
+              "quote": "I'm not sure whether anyone in the lab ever made the separate file listing our miRNA IDs that goes with it.",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a prior that holds TF motifs and miRNA-target predictions",
+            "action": "none"
+          },
+          {
+            "kind": "mirna",
+            "state": "ruled_out",
+            "source": "model",
+            "quote": "I'm not sure whether anyone in the lab ever made the separate file listing our miRNA IDs that goes with it.",
+            "action": "say_ruled_out"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "one network for the whole cohort showing how both TFs and miRNAs regulate their target genes across our 60 failing-heart samples",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 60,
+              "samples_quote": "60 failing-heart samples"
+            },
+            "limits": [
+              "You said \"we have the expression matrix, a PPI file and a prior that holds TF motifs and miRNA-target predictions\"; PUMA needs a miRNA list and no registered workflow or tool provides it"
+            ],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@112-136"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "the expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a PPI file",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "a prior that holds TF motifs and miRNA-target predictions",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "the separate file listing our miRNA IDs that goes with it",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_puma"
+        ],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "one network for the whole cohort showing how both TFs and miRNAs regulate their target genes across our 60 failing-heart samples",
+        "ruled_out": {},
+        "only_inputs": [
+          "expression",
+          "ppi",
+          "motif_prior"
+        ],
+        "only_inputs_quote": "we have the expression matrix, a PPI file and a prior that holds TF motifs and miRNA-target predictions",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "one network for the whole cohort showing how both TFs and miRNAs regulate their target genes across our 60 failing-heart samples"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@112-136",
+            "property": "sample_count",
+            "name": "",
+            "value": "60",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "60 failing-heart samples",
+            "span": [
+              112,
+              136
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "60 failing-heart samples",
+                "span": [
+                  112,
+                  136
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "60 failing-heart samples",
+                "span": [
+                  112,
+                  136
+                ],
+                "result": "one network for the whole cohort showing how both TFs and miRNAs regulate their target genes across our 60 failing-heart samples",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Before I go ahead, could you settle this point you mentioned? Do you have this input?",
+            "user_quote": "I'm not sure whether anyone in the lab ever made the separate file listing our miRNA IDs that goes with it.",
+            "workflows": [],
+            "contract_quote": "",
+            "depends_on": "jev:input_exists",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": ""
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "jev_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "one network for the whole cohort showing how both TFs and miRNAs regulate their target genes across our 60 failing-heart samples"
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "jev_guard": {
+            "kind_before": "DECLINE",
+            "basis_before": "full_gap",
+            "jev": "ASK",
+            "confidence": 0.91
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "PUMA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure whether anyone in the lab ever made the separate file listing our miRNA IDs that goes with it.",
+              "uncertainty": "said_unknown",
+              "workflow": "PUMA",
+              "contract_quote": "Require one miRNA identifier per line and require every miRNA in prior column one.",
+              "question": "Do you have a separate file listing your miRNA IDs?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 36643,
+    "output_tokens": 1867,
+    "total_tokens": 38510,
+    "calls": [
+      {
+        "call_id": "02dbd77a-5a98-4e38-bbd4-205eb84c17bc",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087254-CoEvUas8degGH2RApUCK",
+        "input_tokens": 1625,
+        "output_tokens": 49,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1674,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 273,
+        "price_snapshot": null,
+        "duration_ms": 1941,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4e1ad824-ea5a-45e4-823e-d61c07a16dd8",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087256-Fn75TpzejsdVBPPGKCfz",
+        "input_tokens": 5352,
+        "output_tokens": 385,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5737,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 669,
+        "price_snapshot": null,
+        "duration_ms": 6820,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "3e63c18d-8801-4536-93be-43cc028679f0",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087263-FEsODizmaIS6CsTZuGY2",
+        "input_tokens": 5927,
+        "output_tokens": 258,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6185,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 746,
+        "price_snapshot": null,
+        "duration_ms": 3450,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "715eb67c-23c3-4edf-b383-bda93028dc95",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 678,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 723,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 129,
+        "price_snapshot": {
+          "snapshot_id": "b06e3a32-d519-5ac8-8a56-ff9b7f6035a7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T07:46:15.430656Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1035,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "74dca9d4-d720-4fdd-9f19-81bdccd54d2d",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793087267-5qDitYbIi8BrTruCaA9f",
+        "input_tokens": 15255,
+        "output_tokens": 691,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15946,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1647,
+        "price_snapshot": null,
+        "duration_ms": 8102,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "32c553bb-1501-4d4f-9edb-6d226db89459",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087275-Cdu3J8YB8Hgwjv2RChT6",
+        "input_tokens": 575,
+        "output_tokens": 48,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 623,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 115,
+        "price_snapshot": null,
+        "duration_ms": 1095,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3cc86338-3ced-48af-b786-07856ba31e1c",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087276-k7mM08mBW1eucpb7u7qa",
+        "input_tokens": 564,
+        "output_tokens": 70,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 634,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 127,
+        "price_snapshot": null,
+        "duration_ms": 1588,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8b7bde1a-c4b4-4a08-bec2-0c8c129d51bd",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793087278-OWy18Vk0iCsx9gmTxVe5",
+        "input_tokens": 5332,
+        "output_tokens": 177,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5509,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 522,
+        "price_snapshot": null,
+        "duration_ms": 2630,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0256bed4-4c27-479d-8769-992dfb1f4bb7",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087281-z4Rv6WCvl5NVWL62eL5z",
+        "input_tokens": 972,
+        "output_tokens": 108,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1080,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 211,
+        "price_snapshot": null,
+        "duration_ms": 2059,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7c7e939b-4e8c-42bf-83f1-b073c7c09628",
+        "role": "goal_read",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793087283-7xGlrMrw5J6zd5WXzTxi",
+        "input_tokens": 363,
+        "output_tokens": 36,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 399,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 76,
+        "price_snapshot": null,
+        "duration_ms": 1180,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "63062b6f-95a8-4238-bc45-ca3918972682",
+  "task_state": {
+    "version": 1,
+    "task_id": "08bacca9",
+    "revision": 1,
+    "goal": "We want one network for the whole cohort showing how both TFs and miRNAs regulate their target genes across our 60 failing-heart samples; we have the expression matrix, a PPI file and a prior that holds TF motifs and miRNA-target predictions. I'm not sure whether anyone in the lab ever made the separate file listing our miRNA IDs that goes with it.",
+    "pending": [
+      {
+        "question_id": "dimension:jev:input_exists:4a47a8e287",
+        "source": "dimension",
+        "what": "jev:input_exists",
+        "question": "Before I go ahead, could you settle this point you mentioned? Do you have this input?",
+        "user_quote": "I'm not sure whether anyone in the lab ever made the separate file listing our miRNA IDs that goes with it.",
+        "workflows": [],
+        "options": {},
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

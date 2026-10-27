@@ -1,0 +1,816 @@
+{
+  "version": 1,
+  "session_id": "hb-j1u-J08-1",
+  "profile_id": "hb-j1u-J08-1",
+  "auto_generated": false,
+  "created_at": 1793087239.0857759,
+  "updated_at": 1793087263.809736,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I'd like SAMBAR to subtype our sarcoma cohort, trying anywhere from 2 to 12 clusters. I have all four input files. I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Do you have 15 tumors in the cohort?\n  You wrote: \"I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round\". SAMBAR's contract: \"2 <= kmin <= kmax <= number of mutation samples\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: I'd like SAMBAR to subtype our sarcoma cohort, trying anywhere from 2 to 12 clusters. I have all four input files. I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round.\nUser follow-up: The cohort has 15 tumors."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 10 or 15?\n  You wrote: \"I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round\".\n  - 10: no registered workflow can do this as asked\n  - 15: SAMBAR can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_sambar",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [],
+        "artifact_type": "sample_cluster_assignment",
+        "entity_types": [
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": [
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "sample_cluster_assignment",
+              "source": "explicit",
+              "text_span": "I'd like SAMBAR to subtype our sarcoma cohort, trying anywhere from 2 to 12 clusters.",
+              "rationale": "The user is interested in subtyping the cohort into clusters."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "explicit",
+              "text_span": "The cohort has 15 tumors.",
+              "rationale": "The user specifies the number of tumors in the cohort."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these is right: 10 or 15?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like SAMBAR to subtype our sarcoma cohort, trying anywhere from 2 to 12 clusters.",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "sample_count",
+            "outcomes": {
+              "10": [],
+              "15": [
+                "sambar.subtypes"
+              ]
+            },
+            "unknown_quote": "I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round.",
+            "file_checked": null,
+            "method": {
+              "named": "SAMBAR",
+              "named_quote": "SAMBAR",
+              "settings": [
+                {
+                  "name": "SAMBAR.kmin",
+                  "quote": "trying anywhere from 2 to 12 clusters",
+                  "value": "2",
+                  "span": [
+                    69,
+                    106
+                  ],
+                  "at": 90
+                },
+                {
+                  "name": "SAMBAR.kmax",
+                  "quote": "trying anywhere from 2 to 12 clusters",
+                  "value": "12",
+                  "span": [
+                    69,
+                    106
+                  ],
+                  "at": 95
+                }
+              ],
+              "samples_quote": "15 tumors"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": true,
+            "outcome_notes": {},
+            "fact_ids": [
+              "setting:SAMBAR.kmin@69-106",
+              "setting:SAMBAR.kmax@69-106",
+              "sample_count@137-220:candidates"
+            ],
+            "blocks": []
+          },
+          {
+            "quote": "I have all four input files.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          },
+          {
+            "quote": "The cohort has 15 tumors.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {
+          "I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round.": {
+            "kind": "choices",
+            "values": [
+              10,
+              15
+            ],
+            "kept_without_scope": true
+          }
+        },
+        "unknown_scopes": {},
+        "unknowns": [
+          [
+            "sample_count",
+            "I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round."
+          ]
+        ],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like SAMBAR to subtype our sarcoma cohort, trying anywhere from 2 to 12 clusters.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round."
+        ],
+        "stated_quotes": [
+          "SAMBAR",
+          "trying anywhere from 2 to 12 clusters",
+          "2",
+          "12"
+        ],
+        "facts": [
+          {
+            "id": "setting:SAMBAR.kmin@69-106",
+            "property": "setting",
+            "name": "SAMBAR.kmin",
+            "value": "2",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "trying anywhere from 2 to 12 clusters",
+            "span": [
+              69,
+              106
+            ],
+            "value_quote": "2",
+            "value_span": [
+              90,
+              91
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "trying anywhere from 2 to 12 clusters",
+                "span": [
+                  69,
+                  106
+                ],
+                "result": "",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:SAMBAR.kmax@69-106",
+            "property": "setting",
+            "name": "SAMBAR.kmax",
+            "value": "12",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "trying anywhere from 2 to 12 clusters",
+            "span": [
+              69,
+              106
+            ],
+            "value_quote": "12",
+            "value_span": [
+              95,
+              97
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "trying anywhere from 2 to 12 clusters",
+                "span": [
+                  69,
+                  106
+                ],
+                "result": "",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@179-188",
+            "property": "sample_count",
+            "name": "",
+            "value": "15",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "15 tumors",
+            "span": [
+              179,
+              188
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "15 tumors",
+                "span": [
+                  179,
+                  188
+                ],
+                "result": "",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@137-220:candidates",
+            "property": "sample_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "10",
+              "15"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round.",
+            "span": [
+              137,
+              220
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "unknown_facts",
+                "quote": "I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round.",
+                "span": [
+                  137,
+                  220
+                ],
+                "result": "",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": [
+          {
+            "property": "sample_count",
+            "name": "",
+            "result": "",
+            "used": [
+              "sample_count@137-220:candidates"
+            ],
+            "set_aside": [],
+            "reason": "empty_scope_kept"
+          },
+          {
+            "property": "sample_count",
+            "name": "",
+            "result": "I'd like SAMBAR to subtype our sarcoma cohort, trying anywhere from 2 to 12 clusters.",
+            "used": [],
+            "set_aside": [
+              "sample_count@179-188"
+            ],
+            "reason": "unsure_candidates"
+          }
+        ]
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which of these is right: 10 or 15?",
+            "user_quote": "I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round.",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "",
+            "depends_on": "sample_count",
+            "outcomes": {
+              "10": [],
+              "15": [
+                "SAMBAR"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": true,
+            "notes": {},
+            "fact_key": "count:sample_count@137-220"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "count_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "sample_cluster_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like SAMBAR to subtype our sarcoma cohort, trying anywhere from 2 to 12 clusters."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "obligations": [
+            {
+              "fact_key": "count:sample_count@137-220",
+              "source": "count",
+              "question": "Which of these is right: 10 or 15?",
+              "user_quote": "I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round.",
+              "workflows": [
+                "SAMBAR"
+              ],
+              "status": "asked",
+              "asked_as": ""
+            },
+            {
+              "fact_key": "agent:SAMBAR@137-220",
+              "source": "agent",
+              "question": "Is the cohort confirmed to have 15 tumors?",
+              "user_quote": "I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round.",
+              "workflows": [
+                "SAMBAR"
+              ],
+              "status": "asked",
+              "asked_as": "count:sample_count@137-220"
+            }
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [
+          {
+            "question": "Is the cohort confirmed to have 15 tumors?",
+            "user_quote": "I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round.",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:SAMBAR@137-220"
+          }
+        ],
+        "queued": [],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 37129,
+    "output_tokens": 1444,
+    "total_tokens": 38573,
+    "calls": [
+      {
+        "call_id": "1ddd0cac-bea6-475d-9c88-961d58577ba8",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087240-pgi6xJ0phpsRC1APaJoJ",
+        "input_tokens": 867,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 909,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 155,
+        "price_snapshot": null,
+        "duration_ms": 1735,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ff8ac517-68d6-4624-83a0-3e10b0a4d674",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087242-u5Ex3ahs3WMxvC5drJMh",
+        "input_tokens": 1614,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1630,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 252,
+        "price_snapshot": null,
+        "duration_ms": 1144,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "02bf5d69-018c-4b27-a6a5-e58250f1cf29",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087244-bNK8h31XhXHBTu5AK1dN",
+        "input_tokens": 5341,
+        "output_tokens": 183,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5524,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 546,
+        "price_snapshot": null,
+        "duration_ms": 3945,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ffe38848-ee7d-48bd-8c85-6fe2ce6a7e72",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 648,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 693,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 124,
+        "price_snapshot": {
+          "snapshot_id": "b06e3a32-d519-5ac8-8a56-ff9b7f6035a7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-27T07:46:15.430656Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1239,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "558f74ec-b9ab-474c-ab02-f2a0a196ef3a",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793087249-aBtYHB4C2UzQJ3DLEMSI",
+        "input_tokens": 21577,
+        "output_tokens": 663,
+        "cache_read_tokens": 21376,
+        "cache_write_tokens": 0,
+        "total_tokens": 22240,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2031,
+        "price_snapshot": null,
+        "duration_ms": 7284,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "11c52aad-d7be-444c-8d8a-f75e9970bd92",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087256-SqzikcdK6Tq5mBdvqH8e",
+        "input_tokens": 564,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 606,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 110,
+        "price_snapshot": null,
+        "duration_ms": 1206,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "08f368d3-ce5a-4592-8c8a-7975c231252a",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793087257-lbQcl0m5ssqi38tKyAn2",
+        "input_tokens": 5314,
+        "output_tokens": 345,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5659,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 620,
+        "price_snapshot": null,
+        "duration_ms": 4162,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "850bf5eb-0b28-4e1d-a6f2-a29d35f9a0c7",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793087261-49r7PxCVrvWKkZygdaq6",
+        "input_tokens": 1204,
+        "output_tokens": 108,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1312,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 245,
+        "price_snapshot": null,
+        "duration_ms": 1884,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "ea15280f-b19a-4561-b039-12c513299a12",
+  "task_state": {
+    "version": 1,
+    "task_id": "47b5b407",
+    "revision": 2,
+    "goal": "I'd like SAMBAR to subtype our sarcoma cohort, trying anywhere from 2 to 12 clusters. I have all four input files. I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round.",
+    "pending": [
+      {
+        "question_id": "count:sample_count:ca602136b8",
+        "source": "count",
+        "what": "sample_count",
+        "question": "Which of these is right: 10 or 15?",
+        "user_quote": "I'm not sure whether the cohort has 10 or 15 tumors after the last exclusion round.",
+        "workflows": [
+          "SAMBAR"
+        ],
+        "options": {
+          "10": [],
+          "15": [
+            "SAMBAR"
+          ]
+        },
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 2,
+    "status": "active",
+    "turns": 2
+  }
+}
