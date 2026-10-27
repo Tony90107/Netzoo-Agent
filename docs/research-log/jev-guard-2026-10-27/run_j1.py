@@ -41,7 +41,7 @@ SNAPSHOT_NEW: tuple = ()
 MODELS = {'openai/gpt-4o-mini', 'openai/gpt-4o-mini-2024-07-18'}
 CAP_USD = 0.50
 RESERVE = 0.012
-TAGS = ('j1smoke', 'j1')
+TAGS = ('j1smoke', 'j1', 'j1a')
 WAITING = ('ASK', 'CLARIFY')
 SEED = 1026
 
@@ -114,6 +114,8 @@ def asks_fact(core: dict | None, keywords: list[str]) -> bool:
     if not core or not keywords:
         return False
     asked = [fact.get('question', '') for fact in core.get('facts') or []]
+    if core.get('basis') == 'jev_fact':  # RESULTS-J1.md: its fact is the quoted sentence it asks the user to settle
+        asked += [fact.get('user_quote', '') for fact in core.get('facts') or []]
     asked.append((core.get('clarify') or {}).get('question', ''))
     text = ' '.join(asked).casefold()
     return any(keyword.casefold() in text for keyword in keywords)
@@ -255,7 +257,7 @@ def setup(tag: str) -> Runner:
         'head': frozen['head'], 'snapshot': {p: frozen['files'][p] for p in (*SNAPSHOT_MODIFIED, *SNAPSHOT_NEW)},
         'files_sha256': hashlib.sha256(json.dumps(frozen['files'], sort_keys=True).encode()).hexdigest()},
         'items_sha256': check_sealed() if tag != 'j1smoke' else None, 'runner_sha256': sha(__file__), 'harness_sha256': sha(HARNESS), 'jev_url': env.get('NETZOO_JEV_URL', ''),
-        'config': config, 'jev_guard': 'shadow', 'provider_prices': prices, 'price_catalog': pricing,
+        'config': config, 'jev_guard': 'on' if tag == 'j1a' else 'shadow', 'provider_prices': prices, 'price_catalog': pricing,
         'cap_usd': CAP_USD, 'reserve_usd': RESERVE, 'spent_before_usd': round(spent(), 6)})
     return Runner(tag, env, live, frozen)
 
@@ -293,6 +295,11 @@ def main(mode: str):
         if len(todo) != 48:
             raise ValueError('Expected 48 items')
         (HERE / 'live' / 'j1').mkdir(parents=True, exist_ok=False)
+    elif mode == 'armA':  # RESULTS-J1.md user decision: the guard on, turns 1-3, on the items arm S changed
+        runner, turns, workers = setup('j1a'), range(1, 4), 3
+        runner.env['NETZOO_JEV_GUARD'] = 'on'
+        todo = json.loads((HERE / 'gates-j1.json').read_text())['hits']
+        (HERE / 'live' / 'j1a').mkdir(parents=True, exist_ok=False)
     else:
         raise ValueError(mode)
     random.Random(SEED).shuffle(todo)

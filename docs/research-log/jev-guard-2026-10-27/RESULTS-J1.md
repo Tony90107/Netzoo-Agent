@@ -25,3 +25,15 @@ US$0.015). Raw: RESULTS-J1.txt, gates-j1.json.
   all four, including the K and DRAGON controls. Only j1 is fresh.
 - J13 is a frozen-system crash unrelated to the guard: DRAGON `lambda1` 1.5 fails `TaskDecision` validation
   (`le=1`) during routing and the turn ends in an error instead of a DECLINE.
+
+## User decision (2026-10-27): KEPT
+
+The user kept J-ask despite F1 ("better than the original -> keep"): on j1 right 37 -> 40, MA 4 -> 1, FA/FR
+unchanged, 0 false alarms on every set. Arm A then runs as planned on the three changed items (J04, J20, J48), turns
+1-3 with the guard on, gates F6/F7.
+
+Declared before arm A: the scripted reply rule (`next_reply`) matches `fact_keywords` against an ASK's question text
+only. A `jev_fact` question carries the fact in the quoted sentence, not in its generic question, so for basis
+`jev_fact` the match also reads the fact's `user_quote` (the sentence the reply asks the user to settle). F6 is that
+keyword check plus my reading of the three replies; F7 = final call right after `reply_fact`, and no DO run on a
+wrong final call.
