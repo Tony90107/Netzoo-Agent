@@ -264,3 +264,49 @@ def test_a_link_question_is_never_judged_as_an_answer_to_a_contract_line():
 def test_the_result_menu_is_generated_for_every_workflow():
     menu = jev_guard_call.result_menu()
     assert len(menu) == 15 and set(jev_guard_call.RESULT_NONE) <= set(menu) and "Result: " in menu["DRAGON"]
+
+
+# PLAN-J2.md step 1'': typed data checks on a DO turn it into a confirm, never a decline.
+
+def test_typed_fields_rule_a_workflow_out():
+    assert jev_guard_call.ruled_out("LIONESS-COEXPRESSION", ("mutation_matrix", 0.9), None) \
+        == "LIONESS-COEXPRESSION incompatible_input_artifacts: mutation_matrix"
+    assert "refuses_input" in jev_guard_call.ruled_out("LIONESS-PANDA", ("coexpression_network", 0.9), None)
+    assert jev_guard_call.ruled_out("DRAGON", ("several", 0.99), ("no", 0.9)) == jev_guard_call.SAME_SAMPLE_LINE
+    assert jev_guard_call.ruled_out("CONDOR", ("expression_matrix", 0.9), None) == "CONDOR input_artifacts: regulatory_network"
+
+
+@pytest.mark.parametrize("args", [("OTTER", ("coexpression_network", 0.99), None),   # OTTER takes a co-expression matrix
+                                  ("PANDA", ("expression_matrix", 0.99), None),
+                                  ("CONDOR", ("expression_matrix", 0.69), None),     # unsure
+                                  ("CONDOR", ("several", 0.99), None), ("CONDOR", ("not_stated", 1.0), None),
+                                  ("DRAGON", ("several", 0.99), ("yes", 1.0)), ("DRAGON", ("several", 0.99), ("no", 0.6))])
+def test_typed_fields_leave_what_the_contract_allows(args):
+    assert jev_guard_call.ruled_out(*args) is None
+
+
+def test_a_violation_with_a_sentence_becomes_a_confirm_quoting_both():
+    from netzoo_agent_core.engine.task_updates import _pending
+
+    typed = {"violated": "CONDOR input_artifacts: regulatory_network", "workflow": "CONDOR",
+             "sentence": "Run CONDOR on expr.tsv.", "data": ("expression_matrix", 1.0)}
+    after, action = jev_guard_call.conditioned_core(do("DO", "run").model_copy(update={"workflows": ["CONDOR"]}), typed)
+    assert (after.kind, after.basis, action) == ("ASK", "jev_condition", "ask")
+    fact = after.facts[0]
+    assert fact.user_quote == typed["sentence"] and fact.contract_quote == typed["violated"]
+    pending = _pending(after.model_dump(mode="json"))[0].model_dump()
+    assert jev_guard_call.asked_contract_question({"pending": [pending]})["labels"]["contract"] == typed["violated"]
+
+
+@pytest.mark.parametrize("typed", [{"violated": None}, {"violated": "x", "workflow": "CONDOR"}])
+def test_no_violation_or_no_sentence_leaves_the_do(typed):
+    core = do()
+    assert jev_guard_call.conditioned_core(core, typed)[0] is core
+
+
+def test_a_confirm_is_only_on_a_do_and_never_repeated():
+    typed = {"violated": "x", "workflow": "PANDA", "sentence": "s"}
+    for kind in ("ASK", "CLARIFY", "DECLINE"):
+        core = do(kind, "x")
+        assert jev_guard_call.conditioned_core(core, typed)[0] is core
+    assert jev_guard_call.conditioned_core(do(), typed, {"s"})[1] == "already_asked"

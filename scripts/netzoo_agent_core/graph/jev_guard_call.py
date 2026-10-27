@@ -283,7 +283,8 @@ def _typed_contracts() -> dict:
         cap = spec.get("output_capability") or {}
         refuses = {check["limit"].split(":", 1)[1] for check in spec.get("input_checks") or []
                    if str(check.get("limit", "")).startswith("refuses_input:")}
-        out[spec["workflow"]] = {"incompatible": set(cap.get("incompatible_input_artifacts") or []), "refuses": refuses}
+        out[spec["workflow"]] = {"incompatible": set(cap.get("incompatible_input_artifacts") or []), "refuses": refuses,
+                                 "accepted": list(cap.get("input_artifacts") or [])}
     return out
 
 
@@ -297,6 +298,11 @@ def ruled_out(workflow: str, data: tuple[str, float], same: tuple[str, float] | 
         return f"{workflow} input_checks refuses_input: coexpression_matrix"
     if workflow in _PAIRED and same is not None and same[0] == "no" and same[1] >= THRESHOLD:
         return SAME_SAMPLE_LINE
+    # PLAN-J2.md step 1'': a single kind of data none of the workflow's declared input artifacts is
+    accepted = typed.get("accepted") or []
+    if conf >= THRESHOLD and kind in DATA_CRITERIA and kind not in ("several", "not_stated") and accepted \
+            and kind not in accepted:
+        return f"{workflow} input_artifacts: {', '.join(accepted)}"
     return None
 
 
@@ -357,6 +363,26 @@ def check_result(task: str) -> dict:
     answer = out["answers"]["result"]
     return {"result": answer["choice"], "confidence": answer["confidence"],
             "cost": (out.get("usage") or {}).get("cost", 0)}
+
+
+def conditioned_core(core: CoreDecision, typed: dict, asked: set[str] = frozenset()) -> tuple[CoreDecision, str]:
+    """PLAN-J2.md step 1'': a DO whose every workflow a typed contract field rules out for the user's stated data ->
+    ASK `jev_condition`, a confirm quoting the user's sentence and the field. The pending question keeps the field as
+    its contract line, so the reply is read by step 3 (a confident `fails` declines). Never a decline here."""
+    if core.kind != "DO":
+        return core, "not_do"
+    if not typed.get("violated") or not typed.get("sentence"):
+        return core, "no_violation"
+    if typed["sentence"] in asked:
+        return core, "already_asked"
+    workflow = typed["workflow"]
+    fact = FactQuestion(question="Before I go ahead, could you confirm this about your data?",
+                        user_quote=typed["sentence"], workflows=[workflow, *(w for w in core.workflows if w != workflow)],
+                        contract_quote=typed["violated"], uncertainty="said_unknown", depends_on="jev:condition")
+    evidence = {**core.evidence, "jev_condition": {"kind_before": core.kind, "basis_before": core.basis,
+                                                   "data": typed.get("data"), "same_samples": typed.get("same_samples")}}
+    return CoreDecision(kind="ASK", basis="jev_condition", facts=[fact], workflows=list(fact.workflows),
+                        evidence=evidence), "ask"
 
 
 def linked_already(task_state) -> bool:
@@ -463,6 +489,17 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
             "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
             "would_have": {"kind": after.kind, "basis": after.basis}, "judged": judged,
             "contract": question["labels"]["contract"]})
+        if after is not core:
+            return after if mode == "on" else core
+    if core.kind == "DO" and core.workflows:  # PLAN-J2.md step 1'': typed data checks against the DO's workflows
+        try:
+            typed = check_typed_data(user_task, core.workflows)
+        except Exception as exc:  # noqa: BLE001 -- the call as it came, and says so
+            typed = {"violated": None, "error": type(exc).__name__}
+        after, action = conditioned_core(core, typed, asked_sentences(state.get("task_state")))
+        record_event(context, state, "core.jev_condition", "classify", {
+            "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
+            "would_have": {"kind": after.kind, "basis": after.basis}, "typed": typed})
         if after is not core:
             return after if mode == "on" else core
     if core.kind == "CLARIFY" and not linked_already(state.get("task_state")):  # LINKS.md step 4
