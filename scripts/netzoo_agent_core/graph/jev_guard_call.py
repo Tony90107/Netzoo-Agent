@@ -114,7 +114,8 @@ def _decide(state: str, questions: dict) -> dict:
     if not key:
         raise RuntimeError("no_key")
     body = json.dumps({"model": MODEL, "state": state, "questions": questions}).encode()
-    request = urllib.request.Request(URL, data=body, headers={"Authorization": f"Bearer {key}",
+    url = os.environ.get("NETZOO_JEV_URL", "").strip() or URL  # a test can point it elsewhere (smoke: Jev down)
+    request = urllib.request.Request(url, data=body, headers={"Authorization": f"Bearer {key}",
                                                               "Content-Type": "application/json"})
     with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
         return json.loads(response.read())
