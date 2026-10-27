@@ -10,10 +10,8 @@ a DO or a DECLINE, never picks a workflow and writes no reason. A call that fail
 
 from __future__ import annotations
 
-import json
 import os
 import re
-import urllib.request
 from concurrent.futures import Future, ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
@@ -21,13 +19,12 @@ from pathlib import Path
 import yaml
 
 from ..contracts.core_decision import CoreDecision, DeclinedPart, FactQuestion
+from ..jev_client import decide
 from .context import record_event
 
 __all__ = ["ABOUT_LINES", "KIND_CRITERIA", "apply_jev_guard", "guarded_core", "jev_mode", "request_sentences",
            "start_jev"]
 
-URL = "https://openrouter.ai/api/alpha/decisions"
-MODEL = "typesafe/jev-1.13"
 THRESHOLD = 0.7
 TIMEOUT = 20
 WORKFLOWS = Path(__file__).resolve().parents[3] / "workflows"
@@ -110,15 +107,7 @@ def request_sentences(task: str) -> list[str]:
 
 
 def _decide(state: str, questions: dict) -> dict:
-    key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-    if not key:
-        raise RuntimeError("no_key")
-    body = json.dumps({"model": MODEL, "state": state, "questions": questions}).encode()
-    url = os.environ.get("NETZOO_JEV_URL", "").strip() or URL  # a test can point it elsewhere (smoke: Jev down)
-    request = urllib.request.Request(url, data=body, headers={"Authorization": f"Bearer {key}",
-                                                              "Content-Type": "application/json"})
-    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-        return json.loads(response.read())
+    return decide(state, questions, timeout=TIMEOUT)
 
 
 def _read(task: str) -> dict:

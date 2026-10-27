@@ -370,7 +370,7 @@ def _fitting(keys: list[str], item) -> list[str]:
 
 def build_capability_check(
     task: str, proposal, verified_claims: dict[str, str] | frozenset[str] = frozenset(),
-    counted_samples: tuple[int, str] | None = None,
+    counted_samples: tuple[int, str] | None = None, overlap_reader=None,
 ) -> tuple[CapabilityCheck, list[dict]]:
     """The verified check for one proposal, and what was rejected.
 
@@ -499,17 +499,13 @@ def build_capability_check(
         if (fit_attrs.get("group_membership") == "several_groups" and read
                 and _fitting(read, SimpleNamespace(**{**fit_attrs, "group_membership": "not_stated"}))):
             # jev-overlap-2026-10-27: refused by the overlap form alone; Jev's read of the words may make it a question.
-            from .jev_overlap import overlap_doubted
-
-            if overlap_doubted(task, result):
+            if overlap_reader is not None and overlap_reader(task, result):
                 applicable = [*applicable, ("group_membership", result, None)]
         doubted_forms = []
         if fit_attrs.get("group_membership") == "several_groups" and not any(
                 known.get(k) and known[k].kind == "produces" for item in items for k in item.delivered_by):
             # ROUND-2: credited to nothing, so no question can be asked; the overlap reason is said only if Jev agrees.
-            from .jev_overlap import overlap_doubted
-
-            if overlap_doubted(task, result):
+            if overlap_reader is not None and overlap_reader(task, result):
                 doubted_forms = ["group_membership"]
         if applicable:
             possible, analyses = resolve_unknowns(_fitting, read, fit_attrs, applicable)

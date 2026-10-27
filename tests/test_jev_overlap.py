@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from netzoo_agent_core.interpretation import jev_overlap as jev_overlap_call  # noqa: E402
+from netzoo_agent_core.graph import jev_overlap_call  # noqa: E402
 
 PLAIN = {"scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [],
          "needs_sign": False, "input_network": "none", "group_membership": "not_about_groups",
@@ -48,7 +48,8 @@ def jev(monkeypatch):
 def _check(task, quote, delivered):
     from netzoo_agent_core.interpretation.capability_check import build_capability_check
 
-    check, _ = build_capability_check(task, _proposal(quote, delivered, group_membership="several_groups"))
+    check, _ = build_capability_check(task, _proposal(quote, delivered, group_membership="several_groups"),
+                                      overlap_reader=jev_overlap_call.overlap_reader())
     return check.results()[0]
 
 
@@ -105,7 +106,8 @@ def test_a_reply_naming_an_option_binds_in_code_and_settles_the_row_next_turn(je
 
     monkeypatch.setenv("NETZOO_JEV_OVERLAP", "on")
     check, _ = build_capability_check(SUBTYPES, _proposal(SUBTYPES, ("sambar.subtypes",),
-                                                          group_membership="several_groups"))
+                                                          group_membership="several_groups"),
+                                      overlap_reader=jev_overlap_call.overlap_reader())
     [fact] = _facts(check, task=SUBTYPES)
     [pending] = _pending({"kind": "ASK", "facts": [fact.model_dump()]})
     assert pending.source == "dimension" and set(pending.options) == {"one_group", "several_groups"}
@@ -122,7 +124,8 @@ def _line(task, quote, monkeypatch, mode="on"):
 
     monkeypatch.setenv("NETZOO_JEV_OVERLAP", mode)
     check, _ = build_capability_check(task, _proposal(quote, (), group_membership="several_groups",
-                                                      input_network="regulator_gene"))
+                                                      input_network="regulator_gene"),
+                                      overlap_reader=jev_overlap_call.overlap_reader())
     [row] = check.results()
     return row, _status_line(row, check=check)
 
@@ -144,3 +147,26 @@ def test_round2_an_uncredited_grouping_jev_finds_unasked_never_says_the_overlap_
 def test_round2_an_uncredited_real_overlap_request_keeps_its_reason(jev, monkeypatch):
     row, said = _line(FUZZY, FUZZY, monkeypatch)
     assert row.doubted_forms == [] and "overlapping memberships" in said
+
+
+def test_the_builder_reads_nothing_without_a_reader_even_with_the_flag_on(jev, monkeypatch):
+    """Merge plan 2026-10-27: the capability check makes no Jev call of its own; only an injected reader reads."""
+    from netzoo_agent_core.interpretation.capability_check import build_capability_check
+
+    monkeypatch.setenv("NETZOO_JEV_OVERLAP", "on")
+    check, _ = build_capability_check(SUBTYPES, _proposal(SUBTYPES, ("sambar.subtypes",),
+                                                          group_membership="several_groups"))
+    assert check.results()[0].status == "not_available" and jev == []
+    assert jev_overlap_call.overlap_reader() is jev_overlap_call.overlap_doubted
+    monkeypatch.setenv("NETZOO_JEV_OVERLAP", "off")
+    assert jev_overlap_call.overlap_reader() is None
+
+
+def test_jev_client_is_a_leaf_module():
+    import ast
+
+    source = (Path(__file__).resolve().parents[1] / "scripts/netzoo_agent_core/jev_client.py").read_text()
+    imported = {alias.name.split(".")[0] for node in ast.walk(ast.parse(source))
+                for alias in getattr(node, "names", []) if isinstance(node, (ast.Import, ast.ImportFrom))}
+    froms = [node for node in ast.walk(ast.parse(source)) if isinstance(node, ast.ImportFrom)]
+    assert all(node.level == 0 for node in froms) and imported <= {"annotations", "json", "os", "urllib"}
