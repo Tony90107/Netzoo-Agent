@@ -151,14 +151,33 @@ def reply_answers(state, recorder, answer: str, intent: str) -> list[TaskFact]:
         state.task_state = None
         return []
     state.task_state, bound, corrected = bind_answers(state.task_state, answer)
+    read = _jev_answers(state, recorder, answer)  # jev-answers: natural answers to form questions, read by Jev
     if bound:
         recorder.append(state.run_id, "task.answers_bound", "cli", {
             "task_id": state.task_state.task_id, "corrected": corrected,
             "facts": [[fact.question_id, fact.value] for fact in bound]})
+    bound = [*bound, *read]
     if corrected:
         state.clear_preview()
         state.pending_plan = None
     return bound
+
+
+def _jev_answers(state, recorder, answer: str) -> list[TaskFact]:
+    """jev-answers-2026-10-27: form questions the code binding left open, read by Jev on their closed menu (flag
+    NETZOO_JEV_FORMS=on; otherwise nothing is read). Each binding is recorded with Jev's read."""
+    from ..graph.jev_forms_call import answer_reader
+    from ..interpretation.jev_forms import bind_form_answers
+
+    reader = answer_reader()
+    if reader is None or state.task_state is None:
+        return []
+    state.task_state, read = bind_form_answers(state.task_state, answer, reader)
+    if reader.reads:
+        recorder.append(state.run_id, "task.answers_read", "cli", {
+            "task_id": state.task_state.task_id, "reads": reader.reads,
+            "facts": [[fact.question_id, fact.value] for fact in read]})
+    return read
 
 
 def _option_names(question: PendingQuestion) -> list[str]:

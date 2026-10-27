@@ -99,6 +99,12 @@ def _boundary(decision, task: str) -> tuple[str, str] | None:
     return None
 
 
+def form_doubt(row) -> bool:
+    """A wait on a result form Jev doubted (jev-overlap / jev-forms), not on a fact the user said they do not know."""
+    return row.depends_on in ("group_membership", "time_model", "spatial") or (
+        row.depends_on in (getattr(row, "doubted_forms", None) or ()))
+
+
 def _facts(check, by_code: bool | None = None, task: str = "") -> list[FactQuestion]:
     """The check's waits as questions: all, or only those code judged (phase 5b) or only the legacy dimensions'.
 
@@ -109,6 +115,7 @@ def _facts(check, by_code: bool | None = None, task: str = "") -> list[FactQuest
     rows = [row for row in (check.needed_facts() if check is not None else [])
             if by_code is None or row.by_code == by_code]
     found: list[FactQuestion] = []
+    forms: set[str] = set()
     for row in rows:
         fact = FactQuestion(question=_question(row), user_quote=row.unknown_quote, depends_on=row.depends_on or "",
                             workflows=_names(key for keys in row.outcomes.values() for key in keys),
@@ -116,10 +123,15 @@ def _facts(check, by_code: bool | None = None, task: str = "") -> list[FactQuest
                             by_code=row.by_code, notes=dict(row.outcome_notes),
                             fact_key=fact_key("count" if row.by_code else "dimension", row.depends_on or "", task,
                                               row.unknown_quote))
+        # jev-answers (ROUND.md): a form Jev doubted is asked once, whatever words each row quotes (j4 S32).
+        form = form_doubt(row)
         same = next((index for index, known in enumerate(found)
                      if (known.depends_on, known.by_code, list(known.outcomes)) == (fact.depends_on, fact.by_code,
                                                                                     list(fact.outcomes))
-                     and _same_words(task, known.user_quote, fact.user_quote)), None)
+                     and ((form and known.depends_on in forms) or _same_words(task, known.user_quote, fact.user_quote))),
+                    None)
+        if form:
+            forms.add(fact.depends_on)
         if same is None:
             found.append(fact)
             continue
