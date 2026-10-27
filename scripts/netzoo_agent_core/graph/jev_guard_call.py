@@ -257,6 +257,78 @@ def check_conditions(task: str, workflows) -> dict:
     return result
 
 
+DATA_INSTRUCTIONS = "Which kind of data does the user say the analysis should be built from?"
+DATA_CRITERIA = {
+    "expression_matrix": "a gene-by-sample expression table (counts, TPM, microarray intensities)",
+    "coexpression_network": "a gene-by-gene co-expression or correlation matrix, including a COBRA adjusted one",
+    "mutation_matrix": "somatic mutation calls per sample (binary or counts per gene)",
+    "regulatory_network": "an inferred TF-to-gene network or its edge list",
+    "measurement_dataset": "another omics measurement table: proteomics, metabolomics, methylation and the like",
+    "several": "more than one of these kinds as the main data",
+    "not_stated": "the request does not say what data the analysis is built from",
+}
+SAME_INSTRUCTIONS = "Does the user say the two data layers were measured on the same samples (the same individuals)?"
+SAME_CRITERIA = {"yes": "the user says or makes clear they are the same samples",
+                 "no": "the user says or makes clear they come from different samples or individuals",
+                 "not_stated": "the request does not say"}
+SAME_SAMPLE_LINE = "Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven."
+_PAIRED = ("DRAGON", "LIONESS-DRAGON")
+
+
+@lru_cache(maxsize=1)
+def _typed_contracts() -> dict:
+    out = {}
+    for path in sorted(WORKFLOWS.glob("*.yaml")):
+        spec = yaml.safe_load(path.read_text())
+        cap = spec.get("output_capability") or {}
+        refuses = {check["limit"].split(":", 1)[1] for check in spec.get("input_checks") or []
+                   if str(check.get("limit", "")).startswith("refuses_input:")}
+        out[spec["workflow"]] = {"incompatible": set(cap.get("incompatible_input_artifacts") or []), "refuses": refuses}
+    return out
+
+
+def ruled_out(workflow: str, data: tuple[str, float], same: tuple[str, float] | None) -> str | None:
+    """CONDITIONS-TYPED.md: the typed contract field that rules the workflow out for the read data, else None."""
+    typed = _typed_contracts().get(workflow) or {}
+    kind, conf = data
+    if conf >= THRESHOLD and kind in typed.get("incompatible", ()):
+        return f"{workflow} incompatible_input_artifacts: {kind}"
+    if conf >= THRESHOLD and kind == "coexpression_network" and "coexpression_matrix" in typed.get("refuses", ()):
+        return f"{workflow} input_checks refuses_input: coexpression_matrix"
+    if workflow in _PAIRED and same is not None and same[0] == "no" and same[1] >= THRESHOLD:
+        return SAME_SAMPLE_LINE
+    return None
+
+
+def check_typed_data(task: str, workflows) -> dict:
+    """Jev's typed read of the user's data, and the call's workflows it rules out; `violated` when it rules out all of
+    them and a sentence states it."""
+    questions = {"data": {"type": "choice", "instructions": DATA_INSTRUCTIONS, "criteria": DATA_CRITERIA}}
+    if any(name in _PAIRED for name in workflows):
+        questions["same_samples"] = {"type": "choice", "instructions": SAME_INSTRUCTIONS, "criteria": SAME_CRITERIA}
+    out = _decide(f"User request:\n{task}", questions)
+    answers = out["answers"]
+    data = (answers["data"]["choice"], answers["data"]["confidence"])
+    same = (answers["same_samples"]["choice"], answers["same_samples"]["confidence"]) if "same_samples" in answers \
+        else None
+    reasons = {name: ruled_out(name, data, same) for name in workflows}
+    result = {"violated": None, "data": data, "same_samples": same, "ruled_out": reasons,
+              "cost": (out.get("usage") or {}).get("cost", 0)}
+    sentences = request_sentences(task)
+    if workflows and all(reasons.values()) and sentences:
+        name, line = workflows[0], reasons[workflows[0]]
+        options = {f"s{i}": text for i, text in enumerate(sentences, 1)} | {"none": "no sentence states it"}
+        picked = _decide(f"User request:\n{task}\n\nContract:\n{line}", {"sentence": {
+            "type": "choice", "instructions": BREAKING_INSTRUCTIONS, "criteria": options}})
+        answer = picked["answers"]["sentence"]
+        result["cost"] += (picked.get("usage") or {}).get("cost", 0)
+        if answer["choice"] != "none" and answer["confidence"] >= THRESHOLD:
+            result |= {"violated": line, "workflow": name, "sentence": options[answer["choice"]]}
+        else:
+            result |= {"unplaced": line}
+    return result
+
+
 def asked_sentences(task_state) -> set[str]:
     """The sentences a Jev question already asked in this task (pending or answered): arm A J20/J48 asked one again
     after the user answered it, since an option-free answer is never bound."""
