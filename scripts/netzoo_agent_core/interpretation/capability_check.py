@@ -508,8 +508,12 @@ def build_capability_check(
             if overlap_reader is not None and overlap_reader(task, result):
                 doubted_forms = ["group_membership"]
         if forms_reader is not None:  # jev-forms-2026-10-27: the other limiting forms, read as overlap is
-            applicable, doubted_forms = _forms_doubts(task, result, fit_attrs, read, items, applicable, doubted_forms,
-                                                      forms_reader, overlap_reader)
+            from .jev_forms import forms_doubts
+
+            credited = [known[k] for item in items for k in item.delivered_by
+                        if known.get(k) and known[k].kind == "produces"]
+            applicable, doubted_forms = forms_doubts(task, result, fit_attrs, read, credited, applicable,
+                                                     doubted_forms, forms_reader, overlap_reader, _fitting)
         if applicable:
             possible, analyses = resolve_unknowns(_fitting, read, fit_attrs, applicable)
             update = fact_update(possible, analyses, _status, unknown_domains)
@@ -567,36 +571,6 @@ def build_capability_check(
                                                for item in alternatives],
                            facts=record.facts_list(), fact_conflicts=list(record.conflicts),
                            **dict(zip(("only_inputs", "only_inputs_quote"), only_inputs(task, proposal)))), rejected
-
-
-def _forms_doubts(task, result, fit_attrs, read, items, applicable, doubted_forms, forms_reader, overlap_reader):
-    """jev-forms ROUND.md: the waits and unsaid form reasons Jev's reads of time_model, spatial and input_network add.
-
-    A credited row refused by its typed attributes: each limiting one Jev doubts (with group_membership when the overlap
-    read doubts it too) is fitted at its neutral value; when the credits then fit, each doubted one becomes a wait. A row
-    credited to nothing: a doubted time_model or spatial is only not said as the reason. Nothing else changes."""
-    from .jev_forms import NEUTRAL, limiting_forms
-
-    known = sheet_entries()
-    credited = [known[k] for item in items for k in item.delivered_by if known.get(k) and known[k].kind == "produces"]
-    if not credited:
-        found = [attr for attr, options in limiting_forms(fit_attrs, []) if forms_reader(task, result, attr, options)]
-        return applicable, [*doubted_forms, *found]
-    if not read or _fitting(read, SimpleNamespace(**fit_attrs)):
-        return applicable, doubted_forms  # credited to nothing after the method checks, or not refused by its forms
-    found = [attr for attr, options in limiting_forms(fit_attrs, [known[k] for k in read])
-             if forms_reader(task, result, attr, options)]
-    if not found:
-        return applicable, doubted_forms
-    waits = [about for about, _quote, _domain in applicable if _quote == result]
-    if (fit_attrs.get("group_membership") == "several_groups" and "group_membership" not in waits
-            and overlap_reader is not None and overlap_reader(task, result)):
-        found.append("group_membership")
-    neutral = {**fit_attrs, **{attr: NEUTRAL.get(attr, "not_stated") for attr in [*found, *waits]}}
-    if not _fitting(read, SimpleNamespace(**neutral)):
-        return applicable, doubted_forms
-    added = [(attr, result, None) for attr in found if attr not in waits]
-    return [*applicable, *added], [*doubted_forms, *(attr for attr in found if attr != "group_membership")]
 
 
 def _names(names: list[str]) -> str:
