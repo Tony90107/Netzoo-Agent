@@ -36,6 +36,7 @@ ITEMS = HERE / 'j1' / 'items.json'
 SEALED = HERE / 'j1' / 'SEALED.json'
 RUN = CHECKOUT
 COMMIT = '0634ead5'  # arm S; arm A2 runs the already-asked fix
+COMMIT_L4 = 'ae829af3'  # step 4, LINKS.md
 COMMIT_A3 = '0259b312'  # step 3, ANSWERS.md
 COMMIT_A2 = '2e18980a'
 SNAPSHOT_MODIFIED: tuple = ()
@@ -44,7 +45,7 @@ MODELS = {'openai/gpt-4o-mini', 'openai/gpt-4o-mini-2024-07-18'}
 CAP_USD = 0.50
 RESERVE = 0.012
 TAG = ['']
-TAGS = ('j1smoke', 'j1', 'j1a', 'j1a2', 'j1u')
+TAGS = ('j1smoke', 'j1', 'j1a', 'j1a2', 'j1u', 'j1l')
 WAITING = ('ASK', 'CLARIFY')
 SEED = 1026
 
@@ -73,7 +74,7 @@ def check_system(frozen: dict) -> None:
     untracked = sorted(subprocess.check_output(['git', 'ls-files', '--others', '--exclude-standard'], cwd=RUN,
                                                text=True).split())
     code = [n for n in (*modified, *untracked) if not n.startswith('docs/research-log/')]
-    drift = subprocess.run(['git', 'diff', '--quiet', {'j1a2': COMMIT_A2, 'j1u': COMMIT_A3}.get(TAG[0], COMMIT), 'HEAD', '--', 'scripts', 'workflows', 'prompts', 'AGENTS.md'],
+    drift = subprocess.run(['git', 'diff', '--quiet', {'j1a2': COMMIT_A2, 'j1u': COMMIT_A3, 'j1l': COMMIT_L4}.get(TAG[0], COMMIT), 'HEAD', '--', 'scripts', 'workflows', 'prompts', 'AGENTS.md'],
                            cwd=RUN).returncode  # the round's records may be committed; the code may not change
     if drift or code:
         raise RuntimeError(f'{RUN.name} is not {COMMIT} with clean code (changed: {code[:5]})')
@@ -260,7 +261,7 @@ def setup(tag: str) -> Runner:
         'head': frozen['head'], 'snapshot': {p: frozen['files'][p] for p in (*SNAPSHOT_MODIFIED, *SNAPSHOT_NEW)},
         'files_sha256': hashlib.sha256(json.dumps(frozen['files'], sort_keys=True).encode()).hexdigest()},
         'items_sha256': check_sealed() if tag != 'j1smoke' else None, 'runner_sha256': sha(__file__), 'harness_sha256': sha(HARNESS), 'jev_url': env.get('NETZOO_JEV_URL', ''),
-        'config': config, 'jev_guard': 'on' if tag in ('j1a', 'j1a2', 'j1u') else 'shadow', 'provider_prices': prices, 'price_catalog': pricing,
+        'config': config, 'jev_guard': 'on' if tag in ('j1a', 'j1a2', 'j1u', 'j1l') else 'shadow', 'provider_prices': prices, 'price_catalog': pricing,
         'cap_usd': CAP_USD, 'reserve_usd': RESERVE, 'spent_before_usd': round(spent(), 6)})
     return Runner(tag, env, live, frozen)
 
@@ -298,6 +299,16 @@ def main(mode: str):
         if len(todo) != 48:
             raise ValueError('Expected 48 items')
         (HERE / 'live' / 'j1').mkdir(parents=True, exist_ok=False)
+    elif mode == 'links':  # LINKS.md live check: recorded non-gold CLARIFY items, guard on, turns 1-2
+        TAG[0] = 'j1l'
+        runner, turns, workers = setup('j1l'), range(1, 3), 3
+        runner.env['NETZOO_JEV_GUARD'] = 'on'
+        base = CHECKOUT.parent / 'netzoo-misread/docs/research-log/misread-detection-2026-10-25'
+        for tag in ('h10', 'h9'):
+            for item in json.loads((base / tag / 'items.json').read_text())['single']:
+                by_id[item['id']] = item
+        todo = ['J38', 'J42', 'W03', 'W08', 'W11', 'W14', 'W16', 'W17', 'W23', 'W30', 'W34', 'Z12']
+        (HERE / 'live' / 'j1l').mkdir(parents=True, exist_ok=False)
     elif mode == 'answers':  # ANSWERS.md live check: the U items of j1 and h10, guard on, turns 1-2
         TAG[0] = 'j1u'
         runner, turns, workers = setup('j1u'), range(1, 3), 3
