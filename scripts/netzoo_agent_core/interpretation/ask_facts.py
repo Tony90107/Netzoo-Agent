@@ -7,9 +7,21 @@ workflow's own input check could settle is asked too (ROUND-21, user decision: R
 
 from __future__ import annotations
 
-__all__ = ["ASK_KIND", "ask_result"]
+__all__ = ["ASK_KIND", "ask_result", "contract_clause"]
 
 ASK_KIND = "ask_facts"
+
+
+def contract_clause(workflow: str, line: str) -> str:
+    """How a reply says a contract line: prose in quotes; a typed field from the guard's data rule as a plain sentence
+    (j4 S32: "SAMBAR incompatible_input_artifacts: expression_matrix" read as code)."""
+    line = line.rstrip(". ")
+    for field, sentence in ((" incompatible_input_artifacts: ", "lists {} among the inputs it cannot take"),
+                            (" input_artifacts: ", "takes only {} as input")):
+        name, found, value = line.partition(field)
+        if found and name == workflow:
+            return f"{workflow}'s contract {sentence.format(value)}"
+    return f"{workflow}'s contract: \"{line}\""
 
 
 def ask_reply(core) -> str:
@@ -28,7 +40,7 @@ def ask_reply(core) -> str:
                          + "\n".join(f"  - {line}" for line in count_outcome_lines(fact.outcomes, fact.notes)))
             continue
         workflow = fact.workflows[0] if fact.workflows else "the workflow"
-        contract = (f" {workflow}'s contract: \"{fact.contract_quote.rstrip('. ')}\"." if fact.contract_quote
+        contract = (f" {contract_clause(workflow, fact.contract_quote)}." if fact.contract_quote
                     else "")  # the hybrid gate's requirement questions quote no clause: none addresses it
         wrote = f"\n  You wrote: \"{fact.user_quote.rstrip('. ')}\"." if fact.user_quote else ""  # core data: none said
         lines.append(f"- {fact.question}{wrote}{contract}" if wrote or contract else f"- {fact.question}")

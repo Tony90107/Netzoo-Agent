@@ -59,7 +59,8 @@ def _pending(core: dict) -> list[PendingQuestion]:
             workflows=list(fact.get("workflows") or []),
             options={} if source == "agent" else dict(fact.get("outcomes") or {}),
             labels=dict(dimension[2]) if dimension else (
-                {"contract": fact["contract_quote"]}  # ANSWERS.md: the contract line a Jev question quoted
+                {"contract": fact["contract_quote"],  # ANSWERS.md: the contract line a Jev question quoted
+                 **({"workflow": fact["workflows"][0]} if fact.get("workflows") else {})}  # named in its decline
                 if str(what).startswith("jev:") and fact.get("contract_quote") else {}),
             yes_no=source == "agent" or what == "jev:condition"))  # FIXES.md B: a data confirm binds yes/no
     for item in (core.get("evidence") or {}).get("obligations") or []:
