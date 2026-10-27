@@ -120,14 +120,14 @@ def test_shadow_records_and_keeps_the_call(monkeypatch, events):
     core = do()
     after = jev_guard_call.apply_jev_guard(None, {}, None, core, TASK, done(read("CLARIFY")))
     assert after is core
-    monkeypatch.setattr(jev_guard_call, "guarded_core", lambda c, r, f: (do("CLARIFY", "jev_goal"), "clarify"))
+    monkeypatch.setattr(jev_guard_call, "guarded_core", lambda c, r, f, a=(): (do("CLARIFY", "jev_goal"), "clarify"))
     jev_guard_call.apply_jev_guard(None, {}, None, core, TASK, done(read("CLARIFY")))
     assert events[-1]["would_have"]["kind"] == "CLARIFY" and events[-1]["mode"] == "shadow"
 
 
 def test_on_applies_the_guard(monkeypatch, events):
     monkeypatch.setenv("NETZOO_JEV_GUARD", "on")
-    monkeypatch.setattr(jev_guard_call, "guarded_core", lambda c, r, f: (do("CLARIFY", "jev_goal"), "clarify"))
+    monkeypatch.setattr(jev_guard_call, "guarded_core", lambda c, r, f, a=(): (do("CLARIFY", "jev_goal"), "clarify"))
     assert jev_guard_call.apply_jev_guard(None, {}, None, do(), TASK, done(read("CLARIFY"))).kind == "CLARIFY"
 
 
@@ -155,3 +155,15 @@ def test_an_unreachable_jev_fails_inside_the_future(monkeypatch):
     monkeypatch.setenv("NETZOO_JEV_URL", "http://127.0.0.1:9/decisions")
     with pytest.raises(OSError):
         jev_guard_call._read(TASK)
+
+
+def test_a_sentence_already_asked_in_the_task_is_not_asked_again():
+    sentence = jev_guard_call.request_sentences(TASK)[1]
+    state = {"pending": [{"what": "jev:which_file", "user_quote": sentence}], "facts": []}
+    core = do()
+    ask = read("ASK", sentence=sentence, sentence_confidence=0.9, about="which_file")
+    after, action = jev_guard_call.guarded_core(core, ask, clarify, jev_guard_call.asked_sentences(state))
+    assert after is core and action == "already_asked"
+    other = {"pending": [{"what": "dimension:count", "user_quote": sentence}]}  # not Jev's question: still asked
+    assert jev_guard_call.guarded_core(core, ask, clarify, jev_guard_call.asked_sentences(other))[1] == "ask"
+    assert jev_guard_call.asked_sentences(None) == set()
