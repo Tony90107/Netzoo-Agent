@@ -19,7 +19,8 @@ from pathlib import Path
 from ..interpretation.jev_forms import QUESTIONS, answer_question, answer_state, answer_value, doubted, state_text
 from ..jev_client import decide
 
-__all__ = ["answer_reader", "forms_doubted", "forms_mode", "forms_reader", "take_reads"]
+__all__ = ["answer_reader", "apply_data_first", "data_first_core", "forms_doubted", "forms_mode", "forms_reader",
+           "take_reads"]
 
 TIMEOUT = 20
 
@@ -133,3 +134,45 @@ def answer_reader():
         return value
     read.reads = reads  # this reply's reads, for its `task.answers_read` record
     return read
+
+
+def data_first_core(core, user_task: str, task_state, check=None):
+    """jev-data-first-2026-10-27 (ROUND.md): a call asking only form questions, whose workflows the user's data rules
+    out, becomes the guard's data confirm instead -- the question that decides the request comes first (j4 S32).
+
+    Returns (call, action, typed read). The guard's own typed check and `conditioned_core` are used unchanged."""
+    from ..interpretation.jev_forms import FORM_DIMENSIONS
+    from .jev_guard_call import asked_sentences, check_typed_data, conditioned_core
+
+    if core.kind != "ASK" or not core.facts or any(fact.depends_on not in FORM_DIMENSIONS for fact in core.facts):
+        return core, "not_form_ask", None
+    workflows = list(dict.fromkeys(name for fact in core.facts for names in fact.outcomes.values() for name in names))
+    if not workflows:
+        return core, "no_workflows", None
+    typed = (check or check_typed_data)(user_task, workflows)
+    after, action = conditioned_core(core.model_copy(update={"kind": "DO", "workflows": workflows}), typed,
+                                     asked_sentences(task_state))
+    if action != "ask":
+        return core, action, typed
+    condition = {**after.evidence["jev_condition"], "kind_before": core.kind, "basis_before": core.basis,
+                 "form_questions": [fact.depends_on for fact in core.facts]}
+    return after.model_copy(update={"evidence": {**after.evidence, "jev_condition": condition}}), "ask", typed
+
+
+def apply_data_first(context, state, core, user_task: str):
+    """The call after the data-first step: only with NETZOO_JEV_FORMS and NETZOO_JEV_GUARD on; any failure leaves it."""
+    from .context import record_event
+    from .jev_guard_call import jev_mode
+
+    if forms_mode() != "on" or jev_mode() != "on":
+        return core
+    try:
+        after, action, typed = data_first_core(core, user_task, state.get("task_state"))
+    except Exception as exc:  # noqa: BLE001 -- Jev down or slow: the form question stands
+        record_event(context, state, "core.jev_data_first", "classify", {"action": f"not_run:{type(exc).__name__}"})
+        return core
+    if action != "not_form_ask":
+        record_event(context, state, "core.jev_data_first", "classify", {
+            "action": action, "kind_before": core.kind, "basis_before": core.basis,
+            "would_have": {"kind": after.kind, "basis": after.basis, "workflows": after.workflows}, "typed": typed})
+    return after

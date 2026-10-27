@@ -59,6 +59,10 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
                                                        budget_warnings)
     # Jev guard (PLAN-FRESH.md): a confident Jev CLARIFY/ASK may turn a DO or DECLINE into that question, never more.
     core = apply_jev_guard(context, state, decision, core, user_task, jev)
+    # jev-data-first: a form-only ASK whose workflows the user's data rules out asks the guard's data confirm instead.
+    from .jev_forms_call import apply_data_first
+
+    core = apply_data_first(context, state, core, user_task)
     # Harness repair P3: a third round of clarification is not asked (spec 7.2).
     from ..interpretation.task_answers import clarification_rounds
 
