@@ -37,3 +37,25 @@ only. A `jev_fact` question carries the fact in the quoted sentence, not in its 
 `jev_fact` the match also reads the fact's `user_quote` (the sentence the reply asks the user to settle). F6 is that
 keyword check plus my reading of the three replies; F7 = final call right after `reply_fact`, and no DO run on a
 wrong final call.
+
+## Arm A (guard on, turns 1-3; J04, J20, J48) — US$0.07 for both runs
+
+First run (guard 0634ead5, `live/j1a`): every turn 1 asked the deciding fact (keywords matched in all 3; the
+`reply_fact` branch was sent each time). Defect: on turn 2 the guard asked the same sentence again in J20 and J48
+(an option-free answer is never bound, so the question stayed pending and Jev re-read the same sentence); turn 3
+ended UNCHECKED. Fixed in 2e18980a: a sentence a Jev question already asked in the task is never asked again
+(`already_asked`); unit test added; flag off still 0/1388 replay changes.
+
+Rerun (2e18980a, `live/j1a2`):
+
+| item | turn 1 | turn 2 (after reply_fact) | gold final | frozen system (turn 1, no question) |
+|---|---|---|---|---|
+| J04 | ASK jev_fact | DO PANDA (guidance) | DECLINE | DO PANDA, no run |
+| J20 | ASK jev_fact | DO LIONESS-PANDA (guidance, `already_asked`) | DECLINE | DO/run LIONESS-PANDA, **run_allowed** |
+| J48 | ASK jev_fact | DO CONDOR | DO | DO CONDOR |
+
+- F6 pass: 3/3 questions ask the deciding fact.
+- F7 pass: final right 1/3 = the frozen system's 1/3, no run approved on a wrong final. The frozen system approved a
+  LIONESS-PANDA run on J20 before knowing whether the file is the COBRA matrix; with the guard it did not.
+- Not fixed by the guard: after the answer, J04 ("the PPI file was never made") and J20 ("it's the COBRA matrix")
+  still get DO guidance. That is the frozen system's follow-up reading, not the guard; Jev only asks.
