@@ -13,7 +13,9 @@ This module holds the frozen questions and the rules. The call (I/O, memo, offli
 
 from __future__ import annotations
 
-__all__ = ["NEUTRAL", "QUESTIONS", "THRESHOLD", "doubted", "limiting_forms", "state_text"]
+from types import SimpleNamespace
+
+__all__ = ["NEUTRAL", "QUESTIONS", "THRESHOLD", "doubted", "forms_doubts", "limiting_forms", "state_text"]
 
 # Frozen with the stability check (jev-forms-2026-10-27/forms_q.py); never reworded after a run.
 QUESTIONS = {
@@ -89,3 +91,33 @@ def doubted(read: dict, options: tuple[str, ...]) -> bool:
     if "error" in read or not read.get("probabilities"):
         return False
     return sum(read["probabilities"].get(option, 0) for option in options) <= THRESHOLD
+
+
+def forms_doubts(task, result, attrs, read, credited, applicable, doubted_forms, reader, overlap_reader, fitting):
+    """ROUND.md: the waits and unsaid form reasons Jev's reads add to one result row, as (applicable, doubted_forms).
+
+    A credited row refused by its typed attributes: each limiting one Jev doubts (with group_membership when the overlap
+    read doubts it too) is fitted at its neutral value; when the credits then fit, each doubted one becomes a wait. A
+    row credited to nothing: a doubted time_model or spatial is only not said as the reason. Nothing else changes.
+    `read`: the credits left after the method checks; `fitting`: the check's `_fitting`."""
+    from ..capability_sheet import sheet_entries
+
+    if not credited:
+        found = [attr for attr, options in limiting_forms(attrs, []) if reader(task, result, attr, options)]
+        return applicable, [*doubted_forms, *found]
+    if not read or fitting(read, SimpleNamespace(**attrs)):
+        return applicable, doubted_forms  # nothing left after the method checks, or not refused by its forms
+    known = sheet_entries()
+    found = [attr for attr, options in limiting_forms(attrs, [known[k] for k in read])
+             if reader(task, result, attr, options)]
+    if not found:
+        return applicable, doubted_forms
+    waits = [about for about, quote, _domain in applicable if quote == result]
+    if (attrs.get("group_membership") == "several_groups" and "group_membership" not in waits
+            and overlap_reader is not None and overlap_reader(task, result)):
+        found.append("group_membership")
+    neutral = {**attrs, **{attr: NEUTRAL.get(attr, "not_stated") for attr in [*found, *waits]}}
+    if not fitting(read, SimpleNamespace(**neutral)):
+        return applicable, doubted_forms
+    added = [(attr, result, None) for attr in found if attr not in waits]
+    return [*applicable, *added], [*doubted_forms, *(attr for attr in found if attr != "group_membership")]
