@@ -40,3 +40,13 @@ item golds: does the user's stated data rule out the workflow the form question 
 
 Measured offline by running the step on each case's recorded call and task (Jev typed reads, under US$0.01).
 Stop rule: if E1 fails, the change is withdrawn as declared.
+
+## Amendment after the offline gates (2026-10-27, from the jev-guard session's review)
+
+The answer turn was not covered. The user's "yes" to the swapped confirm binds in code, but the guard declines a
+bound yes only when that turn's call is a DO (`answered_core`, "answer_not_on_do"). On S32 the turn-2 call is the
+form ASK again, so the "yes" would be ignored and the form question would come back (`conditioned_core` sees the
+confirm already asked). Fix in this step only (the guard's DO-only rule is unchanged for every other call): when the
+confirm's answer is bound this turn and the call is a form-only ASK, a "yes" goes through `answered_core` on the DO
+copy (DECLINE `jev_answer`, both quotes) and a "no" leaves the form question. Added gate E4: a unit test replays S32's
+turn 2 with "Yes, it's the expression matrix." and must DECLINE; with "no" the form question stays.

@@ -47,3 +47,28 @@ def test_only_form_only_asks_are_read():
     for core in (other, CoreDecision(kind="DO", basis="results_given", workflows=["SAMBAR"])):
         after, action, typed = data_first_core(core, TASK, None, check=lambda task, wfs: (_ for _ in ()).throw(AssertionError))
         assert after is core and action == "not_form_ask" and typed is None
+
+
+def _answered_state(value: str) -> dict:
+    """S32's task after turn 1's confirm and the user's reply, as the graph state carries it (bound this turn)."""
+    return {"turns": 2, "pending": [], "facts": [{
+        "question_id": "dimension:jev:condition:x", "source": "dimension", "what": "jev:condition",
+        "question": "Before I go ahead, could you confirm this about your data? (yes or no)", "user_quote": TASK,
+        "options": {}, "labels": {"contract": RULED["violated"]}, "value": value,
+        "answer_quote": "Yes, it's the expression matrix.", "turn": 2, "status": "known", "workflows": ["SAMBAR"]}]}
+
+
+def test_the_confirms_yes_declines_on_the_answer_turn_even_when_the_call_is_the_form_ask_again():
+    """jev-guard's note: the guard declines a bound yes only on a DO; turn 2 of S32 is the form ASK again."""
+    after, action, _ = data_first_core(_form_ask(), TASK, _answered_state("yes"),
+                                       check=lambda task, wfs: (_ for _ in ()).throw(AssertionError))
+    assert action == "declined" and (after.kind, after.basis) == ("DECLINE", "jev_answer")
+    assert after.evidence["jev_answer"]["kind_before"] == "ASK"
+    assert "SAMBAR" in after.declined[0].line and "expression_matrix" in after.declined[0].line
+
+
+def test_the_confirms_no_leaves_the_form_question():
+    core = _form_ask()
+    after, action, _ = data_first_core(core, TASK, _answered_state("no"),
+                                       check=lambda task, wfs: (_ for _ in ()).throw(AssertionError))
+    assert after is core and action == "answer_no"

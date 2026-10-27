@@ -142,13 +142,21 @@ def data_first_core(core, user_task: str, task_state, check=None):
 
     Returns (call, action, typed read). The guard's own typed check and `conditioned_core` are used unchanged."""
     from ..interpretation.jev_forms import FORM_DIMENSIONS
-    from .jev_guard_call import asked_sentences, check_typed_data, conditioned_core
+    from .jev_guard_call import answered_core, asked_sentences, check_typed_data, condition_answer, conditioned_core
 
     if core.kind != "ASK" or not core.facts or any(fact.depends_on not in FORM_DIMENSIONS for fact in core.facts):
         return core, "not_form_ask", None
     workflows = list(dict.fromkeys(name for fact in core.facts for names in fact.outcomes.values() for name in names))
     if not workflows:
         return core, "no_workflows", None
+    bound = condition_answer(task_state)
+    if bound is not None:  # the answer turn of the confirm this step asked: the guard declines only on a DO (its rule)
+        if bound["value"] != "yes":
+            return core, f"answer_{bound['value']}", None
+        after, action = answered_core(core.model_copy(update={"kind": "DO", "workflows": workflows}), bound,
+                                      bound.get("answer_quote", ""), {"answer": "fails", "confidence": 1.0, "by": "code"})
+        answer = {**after.evidence.get("jev_answer", {}), "kind_before": core.kind, "basis_before": core.basis}
+        return after.model_copy(update={"evidence": {**after.evidence, "jev_answer": answer}}), action, None
     typed = (check or check_typed_data)(user_task, workflows)
     after, action = conditioned_core(core.model_copy(update={"kind": "DO", "workflows": workflows}), typed,
                                      asked_sentences(task_state))
@@ -171,7 +179,7 @@ def apply_data_first(context, state, core, user_task: str):
     except Exception as exc:  # noqa: BLE001 -- Jev down or slow: the form question stands
         record_event(context, state, "core.jev_data_first", "classify", {"action": f"not_run:{type(exc).__name__}"})
         return core
-    if action != "not_form_ask":
+    if action != "not_form_ask":  # "declined": the confirm's yes on its answer turn (ROUND.md amendment)
         record_event(context, state, "core.jev_data_first", "classify", {
             "action": action, "kind_before": core.kind, "basis_before": core.basis,
             "would_have": {"kind": after.kind, "basis": after.basis, "workflows": after.workflows}, "typed": typed})

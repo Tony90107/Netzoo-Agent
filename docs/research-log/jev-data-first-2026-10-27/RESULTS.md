@@ -19,5 +19,7 @@ Raw: `cases.json`, `measure.py`, `measure.json`, `gates-replay.txt`.
 
 - The harness replay does not run the graph's planning step, so it shows only that flags-off is unchanged. The
   effect is measured on the recorded calls above.
-- Not measured: the next turn. The user's "yes" binds in code to the guard's confirm, and the guard then declines
-  (FIXES.md B). That path is the guard's and was live-checked in j4 (S17, S21, S42 declined right).
+- E4 (ROUND.md amendment, PASS): the guard declines a bound "yes" only on a DO, and S32's turn-2 call is the form
+  ASK again. This step now declines it (`answered_core` on the DO copy). `test_the_confirms_yes_declines_on_the_answer_turn_even_when_the_call_is_the_form_ask_again`
+  and `test_the_confirms_no_leaves_the_form_question` pass. The gap was found by the jev-guard session's review;
+  my first note here wrongly said the guard's path covered it.
