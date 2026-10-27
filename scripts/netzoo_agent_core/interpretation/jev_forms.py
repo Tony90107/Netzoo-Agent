@@ -15,7 +15,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-__all__ = ["NEUTRAL", "QUESTIONS", "THRESHOLD", "doubted", "forms_doubts", "limiting_forms", "state_text"]
+__all__ = ["ANSWER_VALUES", "BIND", "FORM_DIMENSIONS", "NEUTRAL", "QUESTIONS", "THRESHOLD", "answer_question",
+           "answer_state", "answer_value", "bind_form_answers", "doubted", "forms_doubts", "limiting_forms", "state_text"]
 
 # Frozen with the stability check (jev-forms-2026-10-27/forms_q.py); never reworded after a run.
 QUESTIONS = {
@@ -126,3 +127,64 @@ def forms_doubts(task, result, attrs, read, credited, applicable, doubted_forms,
 
 _FORM_REASON_ATTRS = ("time_model", "spatial", "group_membership")
 """The forms whose reason `stated_reasons._form_reasons` says; input_network has none."""
+
+
+# jev-answers-2026-10-27 (ROUND.md): a natural answer to a form question, read on the same closed menu, bound in code.
+FORM_DIMENSIONS = ("group_membership", "time_model", "spatial", "input_network")
+BIND = 0.7
+"""Bound when Jev's probability on the options meaning one value is at least this (offline: 8/8 right, 0 wrong)."""
+ANSWER_VALUES = {
+    "group_membership": {"overlapping": "several_groups", "one_each": "one_group"},
+    "time_model": {"dynamic": "dynamic", "separate": "not_dynamic"},
+    "spatial": {"uses_neighbors": "uses_neighbors", "independent": "not_spatial"},
+    "input_network": {"regulator_gene": "regulator_gene", "gene_gene": "gene_gene"},
+}
+"""Jev option -> the dimension value it means; the other options (not_stated, other, none) bind nothing."""
+
+
+def answer_question(dim: str) -> tuple[str, dict[str, str]]:
+    """The frozen instructions and criteria of a dimension's question (group_membership: the overlap read's)."""
+    if dim == "group_membership":
+        from .jev_overlap import CRITERIA, INSTRUCTIONS
+
+        return INSTRUCTIONS, CRITERIA
+    return QUESTIONS[dim]["instructions"], QUESTIONS[dim]["criteria"]
+
+
+def answer_state(question: str, answer: str) -> str:
+    return f"The assistant asked the user:\n{question}\n\nThe user's answer:\n{answer}"
+
+
+def answer_value(dim: str, read: dict) -> str | None:
+    """The value a read binds, or None (an error, nothing at BIND, or only options that bind nothing)."""
+    if "error" in read or not read.get("probabilities"):
+        return None
+    totals: dict[str, float] = {}
+    for option, value in ANSWER_VALUES[dim].items():
+        totals[value] = totals.get(value, 0) + read["probabilities"].get(option, 0)
+    return next((value for value, total in totals.items() if total >= BIND), None)
+
+
+def bind_form_answers(state, reply: str, reader):
+    """The task with the asked form questions a natural reply answers bound, and the facts bound (ROUND.md).
+
+    Only questions still open after the code binding are read; `reader(dim, question, reply)` gives the value or None.
+    A value binds only when it is one of the question's own options."""
+    from ..contracts.task_state import TaskFact
+
+    if state is None or state.status == "closed":
+        return state, []
+    asked = [q for q in state.pending if q.status == "asked" and q.source == "dimension" and q.what in FORM_DIMENSIONS]
+    bound = []
+    for question in asked:
+        value = reader(question.what, question.question, reply)
+        if value is not None and value in question.options:
+            bound.append(TaskFact(question_id=question.question_id, source=question.source, what=question.what,
+                                  question=question.question, user_quote=question.user_quote,
+                                  options=question.options, labels=question.labels, value=value,
+                                  answer_quote=reply.strip(), turn=state.turns))
+    if not bound:
+        return state, []
+    done = {fact.question_id for fact in bound}
+    return state.model_copy(update={"pending": [q for q in state.pending if q.question_id not in done],
+                                    "facts": [*state.facts, *bound], "revision": state.revision + 1}), bound

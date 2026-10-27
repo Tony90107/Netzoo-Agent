@@ -46,13 +46,15 @@ def answered_check(check, task_state):
         return check
     from ..capability_sheet import entry
     from .capability_check import _status
+    from .core_decision import form_doubt
 
     facts = [fact for fact in state.known() if fact.source in ("count", "dimension")]
     rows, changed = [], False
     for row in check.requirements:
+        # jev-answers: an answer about a doubted form settles every row waiting on it, whatever words each quotes.
         fact = next((fact for fact in facts if row.status == "needs_fact" and fact.what == (row.depends_on or "")
                      and (fact.source == "count") == row.by_code and fact.value in row.outcomes
-                     and _overlap(row.unknown_quote, fact.user_quote)), None)
+                     and (form_doubt(row) or _overlap(row.unknown_quote, fact.user_quote))), None)
         if fact is not None:
             keys = list(row.outcomes[fact.value])
             label = fact.labels.get(fact.value) or fact.value
