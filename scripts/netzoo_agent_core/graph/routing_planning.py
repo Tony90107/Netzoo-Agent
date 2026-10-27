@@ -18,6 +18,7 @@ from ..planning import build_workflow_plan, render_plan
 from .context import _GraphContext, record_event
 from .contract_veto_call import apply_contract_veto
 from .hybrid_gate_call import apply_hybrid_gates
+from .jev_guard_call import apply_jev_guard, start_jev
 from .operation_authority import with_operation_authority
 from .router_invocation import invoke_router
 from .planning_mapper import PlanningMapper
@@ -32,6 +33,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     # Plan item 2: the request's requirements are read once, from the full
     # message; the router and model calls read the bounded window.
     requirements = read_request_requirements(latest_user_message(state["messages"]))
+    jev = start_jev(user_task)  # Jev guard (off by default): reads the request alone, beside the reading
     invocation = with_operation_authority(
         context, state, requirements, invoke_router(context, state, user_task),
     )
@@ -55,6 +57,8 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     # Hybrid spec 2026-10-19: the contract veto replaces the hard gates at the same hook (both off by default).
     core, usage, budget_warnings = apply_contract_veto(context, state, decision, core, user_task, usage,
                                                        budget_warnings)
+    # Jev guard (PLAN-FRESH.md): a confident Jev CLARIFY/ASK may turn a DO or DECLINE into that question, never more.
+    core = apply_jev_guard(context, state, decision, core, user_task, jev)
     # Harness repair P3: a third round of clarification is not asked (spec 7.2).
     from ..interpretation.task_answers import clarification_rounds
 
