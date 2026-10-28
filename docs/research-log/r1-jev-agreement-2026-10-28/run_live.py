@@ -1,5 +1,5 @@
 """Live check G4 for r1-jev-agreement (ROUND.md): turn 1 only, gpt-4o-mini, 1 rep, the app's settings (guard on),
-code CODE. Targets: j5 W40, j1 J46 (gold ASK). Controls (non-ASK items stating an irrelevant doubt): j5 W18, j4 S14,
+code 8af7574b. Targets: j5 W40, j1 J46 (gold ASK). Controls (non-ASK items stating an irrelevant doubt): j5 W18, j4 S14,
 j3 R21. All seen. Cost cap US$0.08.
 
 Usage: python3 run_live.py   (tag ra1; never reruns)
@@ -22,7 +22,7 @@ RUN = HERE.parents[2]
 LOGS = RUN / 'docs/research-log'
 DOTENV = RUN.parent.parent / 'netzoo_agent/.env'
 HARNESS = LOGS / 'closed-menu-hybrid-2026-10-19/h4/run_live.py'
-CODE = '47d0c769'
+CODE = '8af7574b'
 CAP_USD = 0.08
 TAG = 'ra1'
 SETS = {'j1': LOGS / 'jev-guard-2026-10-27/j1/items.json', 'j2': LOGS / 'jev-guard-2026-10-27/j2/items.json',
