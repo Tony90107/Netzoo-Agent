@@ -1,0 +1,50 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.73s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "Could you build a PANDA network and then use CONDOR to find communities of TFs and target genes in it?" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set. PANDA gives: one weighted TF-to-gene regulatory network across all the samples given. CONDOR gives: communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity. Each regulator's and gene's core score -- its share of its community's modularity -- to pick out each community's core nodes.
+2. "then use CONDOR to find communities of TFs and target genes in it" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set. CONDOR gives: communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity. Each regulator's and gene's core score -- its share of its community's modularity -- to pick out each community's core nodes.
+3. "I want to see which regulators hang together with which gene sets." -- available from CONDOR.
+4. "User follow-up: So: a PANDA network for the placentas, then CONDOR communities of TFs and genes from it." -- available from PANDA.
+
+Your request has 2 steps, one after the other: each step uses the result of the one before. Each step is listed with the registered workflows that fit it, their algorithmic premises and inputs:
+
+**Step 1 -- "a PANDA network for the placentas"**
+Result: regulatory networks (aggregate), from expression matrix.
+- **TF-only regulatory network — PANDA**
+  - Registered purpose: Infer an aggregate TF-to-gene regulatory network with PANDA.
+  - Method premise: iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow
+  - Mathematical interpretation: Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+  - Declared output: regulatory networks (cohort-level aggregate).
+- **TF-only regulatory network — OTTER**
+  - Registered purpose: Infer an aggregate TF-to-gene regulatory network with OTTER by solving a continuous-relaxation graph-matching optimization with an explicit objective and gamma regularization that balances motif/PPI priors with co-expression constraints.
+  - Method premise: continuous relaxed graph-matching; explicit objective/loss, gradient descent, convergence; not heuristic message passing
+  - Mathematical interpretation: OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+  - Required inputs: all of: motif/prior, PPI network; and one of: expression matrix or adjusted co-expression matrix.
+  - Declared output: regulatory networks (cohort-level aggregate).
+- **TF-only signed regulatory-effect network — GIRAFFE**
+  - Registered purpose: Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.
+  - Method premise: factor gene expression using motif and TF-protein interaction priors; jointly infer a TF-gene regulatory matrix and a TF-by-sample activity matrix
+  - Mathematical interpretation: GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+  - Declared output: regulatory networks, TF activity matrices (cohort-level aggregate).
+
+**Step 2 -- "use CONDOR to find communities"**
+Result: community assignments (aggregate), from the regulatory networks of the previous step.
+No single registered workflow produces this from the stated inputs; a registered handoff does, in two steps:
+- **PANDA → CONDOR** — PANDA infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).
+- **OTTER → CONDOR** — OTTER infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).
+  - Method premise: find communities in a two-mode network; return network modules or community membership
+
+Should we start with step 1 (PANDA or OTTER or GIRAFFE)? Each step is planned and approved on its own. Step 2 has no registered workflow; what to do instead is described above.
+
+No files were inspected and no analysis ran.
+
+----------------------------------------
+Next step
+Which result do you mean: inferred regulator-to-target associations, one cohort-wide result (PANDA or PUMA or OTTER or GIRAFFE); or network-node community memberships, not patient subtype labels (CONDOR)?
+Answer this clarification or describe another NetZoo goal.
+Enter/back: start a new task | exit: close
+> 

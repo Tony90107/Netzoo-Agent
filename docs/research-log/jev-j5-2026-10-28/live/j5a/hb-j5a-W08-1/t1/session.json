@@ -1,0 +1,676 @@
+{
+  "version": 1,
+  "session_id": "hb-j5a-W08-1",
+  "profile_id": "hb-j5a-W08-1",
+  "auto_generated": false,
+  "created_at": 1793167762.3595269,
+  "updated_at": 1793167762.359561,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I have three files: an expression matrix of 15,000 genes by 90 muscle biopsies, a design table with one row per biopsy giving age, sex coded 0/1 and sequencing batch coded 0/1, and a gene annotation table mapping Ensembl IDs to symbols. I want to know which parts of the gene co-expression are associated with age while accounting for batch and sex."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"which parts of the gene co-expression are associated with age while accounting for batch and sex\" -- available from COBRA.\n\nSelected path: **COBRA**.\n\n**COBRA** — Model covariate-associated gene co-expression with COBRA. COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `design_file`: sample covariate design matrix\n\nOutputs:\n\n- `coexpression_network`: Inferred gene-to-gene associations.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited COBRA for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The capability check credited COBRA for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "run_lioness_coexpression",
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_cobra"
+      ],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_cobra"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "which parts of the gene co-expression are associated with age while accounting for batch and sex",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 90,
+              "samples_quote": "90 muscle biopsies",
+              "features": 15000,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  44,
+                  56,
+                  15000
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@60-78",
+              "feature_count@44-56"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "an expression matrix of 15,000 genes by 90 muscle biopsies",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a design table with one row per biopsy giving age, sex coded 0/1 and sequencing batch coded 0/1",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a gene annotation table mapping Ensembl IDs to symbols",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "which parts of the gene co-expression are associated with age while accounting for batch and sex.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@60-78",
+            "property": "sample_count",
+            "name": "",
+            "value": "90",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "90 muscle biopsies",
+            "span": [
+              60,
+              78
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "90 muscle biopsies",
+                "span": [
+                  60,
+                  78
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "90 muscle biopsies",
+                "span": [
+                  60,
+                  78
+                ],
+                "result": "which parts of the gene co-expression are associated with age while accounting for batch and sex",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@44-56",
+            "property": "feature_count",
+            "name": "",
+            "value": "15000",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "15,000 genes",
+            "span": [
+              44,
+              56
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "15,000 genes",
+                "span": [
+                  44,
+                  56
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "15,000 genes",
+                "span": [
+                  44,
+                  56
+                ],
+                "result": "which parts of the gene co-expression are associated with age while accounting for batch and sex",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": null,
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "which parts of the gene co-expression are associated with age while accounting for batch and sex."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA",
+          "LIONESS-COEXPRESSION",
+          "BONOBO"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "which parts of the gene co-expression are associated with age",
+              "uncertainty": "said_unknown",
+              "workflow": "COBRA",
+              "contract_quote": "COBRA consumes a gene-by-sample expression matrix and numeric sample covariates, then produces a covariate-associated covariance decomposition and a labeled adjusted gene-by-gene co-expression artifact.",
+              "question": "Are you interested in the association of gene co-expression with age?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "associated with age"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "while accounting for batch and sex",
+              "uncertainty": "said_unknown",
+              "workflow": "COBRA",
+              "contract_quote": "Design rows must use exactly the expression sample IDs and numeric covariates.",
+              "question": "Do you have the design table with age, sex, and batch information for each biopsy?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want to know which parts of the gene co-expression are associated with age",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-COEXPRESSION",
+              "contract_quote": "LIONESS co-expression consumes a gene-by-sample expression matrix and produces sample-specific co-expression networks.",
+              "question": "Do you want sample-specific co-expression networks associated with age?",
+              "yes_outcome": "supported",
+              "yes_workflow": "LIONESS-COEXPRESSION",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "associated with age"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 39648,
+    "output_tokens": 1802,
+    "total_tokens": 41450,
+    "calls": [
+      {
+        "call_id": "d7699cde-3590-4704-ba4c-6ee010e5c664",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167736-nztWysRl5iMZojKwGP7d",
+        "input_tokens": 5359,
+        "output_tokens": 248,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5607,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 588,
+        "price_snapshot": null,
+        "duration_ms": 3796,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "956803f0-84d1-483e-8a44-6694772ae048",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167739-CbCjhAYy5XLBuxDfBEdm",
+        "input_tokens": 5650,
+        "output_tokens": 165,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5815,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 649,
+        "price_snapshot": null,
+        "duration_ms": 2478,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "84606bc8-c5d3-40a4-84e3-7d360c3faf01",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167742-Nu1sxTLVY85x1sbuEcyF",
+        "input_tokens": 1142,
+        "output_tokens": 90,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1232,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 225,
+        "price_snapshot": null,
+        "duration_ms": 1641,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e0b39999-e8a9-4b72-9fef-7f03c54d67b0",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 710,
+        "output_tokens": 60,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 770,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 143,
+        "price_snapshot": {
+          "snapshot_id": "3863156e-6d3c-5100-9fdd-f1d51e10088e",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-28T06:02:31.700656Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1319,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "98bba998-31d1-4659-a699-6540adca42c6",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167745-GAikYep5RTOpD8qnJq9s",
+        "input_tokens": 1698,
+        "output_tokens": 96,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1794,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 197,
+        "price_snapshot": null,
+        "duration_ms": 1899,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "087fb916-7a57-4010-ac8a-4fa95e03285d",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167746-aY3dMirErdGlHiWCzLrk",
+        "input_tokens": 1798,
+        "output_tokens": 103,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1901,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 332,
+        "price_snapshot": null,
+        "duration_ms": 1813,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5f69ffee-7a8e-48a3-b8fa-cbf1f682a1e4",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793167748-PWHsJZo6HVBW4OGY9cGK",
+        "input_tokens": 15269,
+        "output_tokens": 467,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15736,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1515,
+        "price_snapshot": null,
+        "duration_ms": 4469,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "97cbeae3-2f3d-4bed-b57d-756b540ed322",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167753-WZ0HZ8fvnbqmZhr38LG7",
+        "input_tokens": 582,
+        "output_tokens": 64,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 646,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 126,
+        "price_snapshot": null,
+        "duration_ms": 1210,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ed0fe15e-520c-4047-843e-b271096bf99a",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793167754-AAcyYPiO8b22tqsdlpLw",
+        "input_tokens": 5332,
+        "output_tokens": 178,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5510,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 542,
+        "price_snapshot": null,
+        "duration_ms": 1853,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f761ce2b-db42-4409-85c5-59d274865a63",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167756-jTZzsqllJPKPt6SmMg7N",
+        "input_tokens": 2108,
+        "output_tokens": 331,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2439,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 515,
+        "price_snapshot": null,
+        "duration_ms": 5375,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "ce2da0e0-b297-4b3d-8dcf-d813fe7b3ad6",
+  "task_state": null
+}

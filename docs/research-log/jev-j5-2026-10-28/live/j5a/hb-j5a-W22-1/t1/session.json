@@ -1,0 +1,769 @@
+{
+  "version": 1,
+  "session_id": "hb-j5a-W22-1",
+  "profile_id": "hb-j5a-W22-1",
+  "auto_generated": false,
+  "created_at": 1793167710.2693179,
+  "updated_at": 1793167710.269353,
+  "messages": [
+    {
+      "role": "user",
+      "content": "To prioritise small RNAs for knockdown experiments, I'd like a single map for our 45 prostate tumours of which transcription factors and which microRNAs control which genes. I have the expression matrix, a combined prior of motif hits and microRNA target predictions, a PPI table and the list of microRNA IDs."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like a single map for our 45 prostate tumours of which transcription factors and which microRNAs control which genes.\" -- available from PUMA.\n\nAssumptions behind this recommendation (not confirmed facts):\n\n- No scale was stated; PUMA gives one result for the whole cohort; LIONESS-PUMA gives one result for the whole cohort or one result per sample.\n\nSelected path: **PUMA**.\n\nYour question asks for a regulatory network. **PUMA** fits that result. PUMA extends PANDA's message passing to miRNA regulators.\n\n**PUMA**: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA.\n\nRouting-level input modality: gene expression, coexpression.\n\nMethod premise: iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow.\n\nPUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression.\n\nMessage passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.\n\nWorkflow-specific scientific notes:\n\n- PUMA uses message passing to integrate miRNA-target predictions with target-gene co-expression alongside TF motif and PPI evidence.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `motif_file`: motif/prior\n- `ppi_file`: PPI network\n- `mirna_file`: miRNA list\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `regulatory_network`: Inferred regulator-to-target associations.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited PUMA for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The capability check credited PUMA for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "run_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_puma"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "gene",
+          "tf",
+          "mirna"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf",
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "gene",
+              "tf",
+              "mirna"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf",
+              "mirna"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like a single map for our 45 prostate tumours of which transcription factors and which microRNAs control which genes.",
+              "rationale": "The user seeks to construct a regulatory network mapping TFs and miRNAs to genes."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "which transcription factors and which microRNAs control which genes.",
+              "rationale": "Transcription factors are explicitly mentioned as part of the mapping."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "mirna",
+              "source": "explicit",
+              "text_span": "which transcription factors and which microRNAs control which genes.",
+              "rationale": "MicroRNAs are explicitly mentioned as part of the mapping."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "which transcription factors and which microRNAs control which genes.",
+              "rationale": "Genes are the targets of the regulatory network being requested."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user explicitly provided an expression matrix as a current input for the analysis."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "which transcription factors and which microRNAs control which genes.",
+              "rationale": "Transcription factors are explicitly mentioned as part of the mapping."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "mirna",
+              "source": "explicit",
+              "text_span": "which transcription factors and which microRNAs control which genes.",
+              "rationale": "MicroRNAs are explicitly mentioned as part of the mapping."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "which transcription factors and which microRNAs control which genes.",
+              "rationale": "Genes are the targets of the regulatory network being requested."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The reading's regulators include miRNAs, and the request states no TF-only result such as TF activity, so the result is the regulatory network."
+            }
+          ],
+          "assumptions": [
+            "No scale was stated; PUMA gives one result for the whole cohort; LIONESS-PUMA gives one result for the whole cohort or one result per sample."
+          ]
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_puma"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a combined prior of motif hits and microRNA target predictions",
+        "mirna": "stated",
+        "mirna_quote": "the list of microRNA IDs"
+      },
+      "applicability": [
+        {
+          "action": "run_puma",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a combined prior of motif hits and microRNA target predictions",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "stated",
+              "quote": "the list of microRNA IDs",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a combined prior of motif hits and microRNA target predictions",
+            "action": "none"
+          },
+          {
+            "kind": "mirna",
+            "state": "stated",
+            "source": "model",
+            "quote": "the list of microRNA IDs",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like a single map for our 45 prostate tumours of which transcription factors and which microRNAs control which genes.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "puma.regulator_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 45,
+              "samples_quote": "45 prostate tumours"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@82-101"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "combined prior of motif hits and microRNA target predictions",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "PPI table",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "list of microRNA IDs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like a single map for our 45 prostate tumours of which transcription factors and which microRNAs control which genes.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@82-101",
+            "property": "sample_count",
+            "name": "",
+            "value": "45",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "45 prostate tumours",
+            "span": [
+              82,
+              101
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "45 prostate tumours",
+                "span": [
+                  82,
+                  101
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "45 prostate tumours",
+                "span": [
+                  82,
+                  101
+                ],
+                "result": "I'd like a single map for our 45 prostate tumours of which transcription factors and which microRNAs control which genes.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "45 prostate tumours",
+                "span": [
+                  82,
+                  101
+                ],
+                "result": "I'd like a single map for our 45 prostate tumours of which transcription factors and which microRNAs control which genes.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "PUMA"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "regulatory_network",
+          "reason_code": "registry_guidance_fallback",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like a single map for our 45 prostate tumours of which transcription factors and which microRNAs control which genes."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "PUMA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "which transcription factors and which microRNAs control which genes",
+              "uncertainty": "two_versions",
+              "workflow": "PUMA",
+              "contract_quote": "PUMA uses message passing to integrate miRNA-target predictions with target-gene co-expression alongside TF motif and PPI evidence.",
+              "question": "Do you have the necessary data for transcription factors and microRNAs?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "a single map for our 45 prostate tumours of which transcription factors and which microRNAs control which genes"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 35719,
+    "output_tokens": 1806,
+    "total_tokens": 37525,
+    "calls": [
+      {
+        "call_id": "04a8ed46-467b-417e-acf4-db7a845ce28e",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167687-ZvhxPVvmClnfNUJVz81H",
+        "input_tokens": 5343,
+        "output_tokens": 403,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5746,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 678,
+        "price_snapshot": null,
+        "duration_ms": 5082,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "a9c387ff-3149-4019-9a9d-83f1af5e093d",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167692-BF0w7bMLPpsn5S0Sfgo2",
+        "input_tokens": 6747,
+        "output_tokens": 334,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 7081,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 915,
+        "price_snapshot": null,
+        "duration_ms": 3638,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bd2d7b9e-a6d0-4c5d-b028-8c13cbc703ca",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 673,
+        "output_tokens": 46,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 719,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 129,
+        "price_snapshot": {
+          "snapshot_id": "3863156e-6d3c-5100-9fdd-f1d51e10088e",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-28T06:02:31.700656Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1579,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "ffc6225a-9e4f-43c5-9a62-4e3b096d0c53",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167697-Lbtk9MQBQDREysQ1DK5y",
+        "input_tokens": 313,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 317,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 49,
+        "price_snapshot": null,
+        "duration_ms": 796,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "387c7df1-4492-45c6-b921-ad2e2d96e37a",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793167698-z2vhhlMbWazSTyScPDuD",
+        "input_tokens": 15237,
+        "output_tokens": 611,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15848,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1596,
+        "price_snapshot": null,
+        "duration_ms": 4733,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4f445084-4616-435b-a779-a411a467714d",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167703-O4lKHknpVcqfkTHFxR5X",
+        "input_tokens": 566,
+        "output_tokens": 32,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 598,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 104,
+        "price_snapshot": null,
+        "duration_ms": 960,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "875fed37-9421-43e1-a04a-1668673bc5f5",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167704-kzgpCmXMDHtB2HbltTme",
+        "input_tokens": 555,
+        "output_tokens": 54,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 609,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 116,
+        "price_snapshot": null,
+        "duration_ms": 1312,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "22ab000e-134d-445f-865b-8ea5261add72",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793167705-qECubEEfvKjxI1xd3qVg",
+        "input_tokens": 5322,
+        "output_tokens": 193,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5515,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 549,
+        "price_snapshot": null,
+        "duration_ms": 1931,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "08b8272f-d7e7-4090-af96-3d07c0a0a83b",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167707-SjGbnh6ai347fhhTYugQ",
+        "input_tokens": 963,
+        "output_tokens": 129,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1092,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 222,
+        "price_snapshot": null,
+        "duration_ms": 1966,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "53406e1a-b41f-49a9-9eca-b2e8bc52335a",
+  "task_state": null
+}

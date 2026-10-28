@@ -1,0 +1,728 @@
+{
+  "version": 1,
+  "session_id": "hb-j5a-W16-1",
+  "profile_id": "hb-j5a-W16-1",
+  "auto_generated": false,
+  "created_at": 1793167433.3212621,
+  "updated_at": 1793167467.021112,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I'd like a gene co-expression network for each of our 20 liver biopsies, with a p-value saved for every edge, from the expression matrix in our project folder. There are two versions of that matrix in the folder, raw counts and a log-transformed, gene-centred one, and I'm not sure which of them I'll be handing over."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Will you be handing over the log-transformed, gene-centred matrix?\n  You wrote: \"I'm not sure which of them I'll be handing over\". BONOBO's contract: \"The agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: I'd like a gene co-expression network for each of our 20 liver biopsies, with a p-value saved for every edge, from the expression matrix in our project folder. There are two versions of that matrix in the folder, raw counts and a log-transformed, gene-centred one, and I'm not sure which of them I'll be handing over.\nUser follow-up: It'll be the raw counts file."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like a gene co-expression network for each of our 20 liver biopsies, with a p-value saved for every edge, from the expression matrix in our project folder.\" -- available from LIONESS-COEXPRESSION.\n2. \"from the expression matrix in our project folder.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n\nSelected path: **LIONESS-COEXPRESSION**.\n\nYour question asks for a per-sample co-expression network. **LIONESS-COEXPRESSION** fits that result and scale.\n\n**LIONESS-COEXPRESSION** — Infer aggregate and sample-specific co-expression networks with LIONESS. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n\nOutputs:\n\n- `coexpression_network`: Inferred gene-to-gene associations.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited LIONESS-COEXPRESSION for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "The capability check credited LIONESS-COEXPRESSION for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_lioness_coexpression"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "sparse_pvalue_coexpression"
+        ],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "sparse_pvalue_coexpression"
+            ],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like a gene co-expression network for each of our 20 liver biopsies.",
+              "rationale": "The user explicitly requests to generate a co-expression network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "I'd like a gene co-expression network for each of our 20 liver biopsies.",
+              "rationale": "The user specifies the desired output as a gene co-expression network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "for each of our 20 liver biopsies.",
+              "rationale": "The user mentions generating a network for each biopsy, indicating sample-specific results."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "from the expression matrix in our project folder.",
+              "rationale": "The user refers to the expression matrix as the source of data for the analysis."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "gene co-expression network.",
+              "rationale": "The output involves gene interactions, thus gene is a relevant entity type."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "explicit",
+              "text_span": "for each of our 20 liver biopsies.",
+              "rationale": "The user specifies that the networks are to be generated for each sample (biopsy)."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "from the expression matrix in our project folder.",
+              "rationale": "The user specifies the source of data as the expression matrix in the project folder."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "sparse_pvalue_coexpression",
+              "source": "explicit",
+              "text_span": "with a p-value saved for every edge.",
+              "rationale": "The user requests a p-value saved for every edge in the co-expression network, indicating a need for sparsification and p-value inclusion."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_lioness_coexpression"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like a gene co-expression network for each of our 20 liver biopsies, with a p-value saved for every edge, from the expression matrix in our project folder.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_coexpression.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 20,
+              "samples_quote": "20 liver biopsies"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@76-93"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "from the expression matrix in our project folder.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "raw counts file",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "It'll be the raw counts file.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like a gene co-expression network for each of our 20 liver biopsies, with a p-value saved for every edge, from the expression matrix in our project folder.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@76-93",
+            "property": "sample_count",
+            "name": "",
+            "value": "20",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "20 liver biopsies",
+            "span": [
+              76,
+              93
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "20 liver biopsies",
+                "span": [
+                  76,
+                  93
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "20 liver biopsies",
+                "span": [
+                  76,
+                  93
+                ],
+                "result": "I'd like a gene co-expression network for each of our 20 liver biopsies, with a p-value saved for every edge, from the expression matrix in our project folder.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "execution_requested": true,
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "LIONESS-COEXPRESSION"
+        ],
+        "declined": [
+          {
+            "quote": "from the expression matrix in our project folder.",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"from the expression matrix in our project folder.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like a gene co-expression network for each of our 20 liver biopsies, with a p-value saved for every edge, from the expression matrix in our project folder."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-COEXPRESSION",
+          "BONOBO"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure which of them I'll be handing over.",
+              "uncertainty": "two_versions",
+              "workflow": "BONOBO",
+              "contract_quote": "Expression data must be numeric, finite, complete, gene-by-sample, and have at least three total samples so each leave-one-out background has at least two samples.",
+              "question": "Will you be using the raw counts file?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "raw counts",
+                "log-transformed, gene-centred"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure which of them I'll be handing over.",
+              "uncertainty": "two_versions",
+              "workflow": "LIONESS-COEXPRESSION",
+              "contract_quote": "LIONESS co-expression consumes a gene-by-sample expression matrix and produces sample-specific co-expression networks.",
+              "question": "Will you be using the raw counts file?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "raw counts",
+                "log-transformed, gene-centred"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 40718,
+    "output_tokens": 1966,
+    "total_tokens": 42684,
+    "calls": [
+      {
+        "call_id": "bb125143-e02b-4485-8441-5064b1b3da2e",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167435-8hfKloMfXy6Oh7ORBZxp",
+        "input_tokens": 897,
+        "output_tokens": 43,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 940,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 160,
+        "price_snapshot": null,
+        "duration_ms": 1422,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "909ecad6-3264-416e-b286-c57b9f583ff6",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167436-kCZsvRDmguLjMPZulb4d",
+        "input_tokens": 1638,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1682,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 272,
+        "price_snapshot": null,
+        "duration_ms": 1327,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ec1ea6b2-3478-4f3c-b0cb-a6acef766094",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167437-WoW409hc2UxsqgIKXQYg",
+        "input_tokens": 5365,
+        "output_tokens": 393,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5758,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 676,
+        "price_snapshot": null,
+        "duration_ms": 4741,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c3e8c345-1541-4a5b-ae50-ad71a5ac515a",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167442-gH9tF0qMT7GqJZ3NaGoJ",
+        "input_tokens": 5812,
+        "output_tokens": 270,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6082,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 736,
+        "price_snapshot": null,
+        "duration_ms": 4727,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "54bb0d29-e66b-47a6-b437-96d33b16931b",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 677,
+        "output_tokens": 53,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 730,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 133,
+        "price_snapshot": {
+          "snapshot_id": "3863156e-6d3c-5100-9fdd-f1d51e10088e",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-28T06:02:31.700656Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1082,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "86992b70-2c5e-427a-a0f7-ec4aba9f9e73",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793167448-Ufas352cbaJl0ktGGe9f",
+        "input_tokens": 18453,
+        "output_tokens": 698,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 19151,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1824,
+        "price_snapshot": null,
+        "duration_ms": 10564,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "032a0216-7e27-45b6-beae-c67bfd06a3ba",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167459-9wnaKbM7pJfTVM1DTFhi",
+        "input_tokens": 588,
+        "output_tokens": 47,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 635,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 116,
+        "price_snapshot": null,
+        "duration_ms": 1026,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "18e1d33d-3401-45f0-bd3a-155fbc6b3cc5",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793167460-nyCirtEXnuAKWLghV5vb",
+        "input_tokens": 5338,
+        "output_tokens": 186,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5524,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 528,
+        "price_snapshot": null,
+        "duration_ms": 2923,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6603a216-7b02-49e3-a1ba-f8747e3bcdd6",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793167463-KK18jOusFCtEAS1ffNaB",
+        "input_tokens": 1950,
+        "output_tokens": 232,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2182,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 432,
+        "price_snapshot": null,
+        "duration_ms": 3350,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "7e673458-54c7-47f5-9488-45847e2f697d",
+  "task_state": {
+    "version": 1,
+    "task_id": "258cfb6e",
+    "revision": 2,
+    "goal": "I'd like a gene co-expression network for each of our 20 liver biopsies, with a p-value saved for every edge, from the expression matrix in our project folder. There are two versions of that matrix in the folder, raw counts and a log-transformed, gene-centred one, and I'm not sure which of them I'll be handing over.",
+    "pending": [],
+    "facts": [],
+    "rounds": 1,
+    "status": "closed",
+    "turns": 2
+  }
+}
