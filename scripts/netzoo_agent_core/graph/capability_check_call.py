@@ -32,7 +32,7 @@ from ..settings import ROUTER_CONTEXT_MAX_CHARS
 from .context import _GraphContext, preflight_budget, record_event
 from ..contracts.strict_schema import expanded_enum_values
 from .structured_calls import _serialized_structured_input, _validation_issue_types
-from .required_check_budget import check_output_reserve, retryable_check_error
+from .required_check_budget import capability_max_tokens, check_output_reserve, retryable_check_error
 
 __all__ = ["same_model", "capability_check_system", "build_capability_check_messages", "build_reread_messages",
            "request_capability_reread", "request_capability_check", "request_condition_check",
@@ -140,7 +140,7 @@ def _check_model(context):
         # Core decision follow-up (2026-10-16): the phase 1-2 fields grew the reply (median 5,580, p90 7,788, max 8,977
         # of 9,000 on the bench rounds) and 27 of 249 calls were undecodable (156-285 s each). Re-read with 16,000,
         # all 27 decoded (8 needed more than 9,000 tokens, largest 12,906); research log offline_cap_check.py.
-        model, llm = own, _own_llm(own, int(os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS", "16000")))
+        model, llm = own, _own_llm(own, capability_max_tokens(own))
     return model, llm
 
 
