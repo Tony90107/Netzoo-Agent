@@ -248,9 +248,24 @@ def checked_default_line(question: str, credited: set[str]) -> str:
     return head + (_DEFAULT_LINE + ", ".join(kept) + "." if kept else "") + rest
 
 
+SCALE_QUESTION = "Should the result be aggregate or sample-specific?"
+_STATED_SCALES = ("per_sample", "whole_cohort")
+
+
+def checked_scale_question(question: str | None, scales: list) -> str | None:
+    """checked-scale-question-2026-10-28: the question without routing's scale question when the check read a scale
+    for every result it credited (cd1 W01: `whole_cohort` twice, DO on aggregate workflows, yet "Should the result be
+    aggregate or sample-specific?"). None when nothing else is left; unchanged when a scale is unstated or nothing is
+    credited."""
+    if not question or SCALE_QUESTION not in question or not scales or any(s not in _STATED_SCALES for s in scales):
+        return question
+    return " ".join(question.replace(SCALE_QUESTION, " ").split()) or None
+
+
 def with_checked_default_line(context, state, result):
-    """The router result with its tie question's default line checked (`checked_default_line`) once the capability
-    check is attached; recorded as `routing.default_line_checked`."""
+    """The router result with its questions checked against the attached capability check: the tie question's
+    default line (`checked_default_line`, `routing.default_line_checked`) and routing's scale question
+    (`checked_scale_question`, `routing.scale_question_dropped`)."""
     from dataclasses import replace
 
     from ..capability_sheet import entry
@@ -261,11 +276,17 @@ def with_checked_default_line(context, state, result):
         return result
     credited = {entry(key).workflow for item in check.results() for key in item.delivered_by}
     question = checked_default_line(decision.clarification_question, credited)
-    if question == decision.clarification_question:
+    if question != decision.clarification_question:
+        record_event(context, state, "routing.default_line_checked", "classify", {
+            "before": decision.clarification_question, "after": question, "credited": sorted(credited)})
+    scales = [item.attrs.get("scale") for item in check.results() if item.delivered_by]
+    unscaled = checked_scale_question(question, scales)
+    if unscaled != question:
+        record_event(context, state, "routing.scale_question_dropped", "classify", {
+            "before": question, "after": unscaled, "scales": scales})
+    if unscaled == decision.clarification_question:
         return result
-    record_event(context, state, "routing.default_line_checked", "classify", {
-        "before": decision.clarification_question, "after": question, "credited": sorted(credited)})
-    return replace(result, decision=decision.model_copy(update={"clarification_question": question}))
+    return replace(result, decision=decision.model_copy(update={"clarification_question": unscaled}))
 
 
 def separating_question(
