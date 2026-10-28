@@ -43,7 +43,8 @@ def classification_progress_detail(
     # Core decision phase 1 (round p1 C19): a turn that asks its goal names no workflow, not even routing's candidates.
     # Phase 3 (round p3 C42, C43): a turn that could not be judged names no workflow either.
     clarifying = decision.core is not None and (decision.core.kind in ("CLARIFY", "UNCHECKED")
-                                                or decision.core.kind == "ASK" and decision.core.basis in ("fact_agent", "count_fact", "jev_fact", "jev_link", "jev_condition"))
+                                                or decision.core.kind == "ASK" and decision.core.basis in ("fact_agent", "count_fact", "jev_fact", "jev_link", "jev_condition",
+                                                                                "jev_agent"))
     show_candidates = not clarifying and not (
         semantic_goal.get("request_mode") == "guidance"
         and match_status != "exact"
