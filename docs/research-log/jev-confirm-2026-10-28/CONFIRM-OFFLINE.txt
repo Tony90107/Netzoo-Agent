@@ -1,0 +1,24 @@
+positives 22: yes>=0.7 6 -> L1 fail
+   missed j2:Q12: yes 0.62 | The protein and metabolite tables come from two different groups of patients.
+   missed j2:Q18: no 0.74 | The matrix is RNA-seq expression, not mutation calls.
+   missed j2:Q31: no 0.64 | The matrix is gene-by-gene correlations, not per-sample expression.
+   missed j2:Q34: yes 0.35 | The file is the DRAGON partial-correlation matrix itself.
+   missed j2:Q39: yes 0.64 | The metabolomics children are a different group from the transcriptomics children.
+   missed j2:Q41: yes 0.62 | All I have is the gene-by-sample expression table.
+   missed j2:Q46: yes 0.58 | We only have the averaged gene-by-gene correlation matrix.
+   missed j2:Q48: yes 0.43 | The input would be the COBRA adjusted co-expression matrix.
+   missed j3:R02: yes 0.49 | The matrix is somatic mutation calls, zeros and ones, not expression.
+   missed j3:R05: no 0.25 | It's a mutation count matrix, not expression values.
+   missed j3:R27: yes 0.43 | I only have the gene-by-gene correlation matrix; no expression table exists.
+   missed j3:R28: yes 0.52 | The input I want to use is the aggregate COBRA-adjusted co-expression matrix.
+   missed j4:S17: yes 0.33 | The input I want to use is COBRA's adjusted co-expression matrix itself.
+   missed j4:S32: yes 0.55 | It's TPM expression from RNA-seq.
+   missed j4:S35: yes 0.64 | I checked: it's the COBRA batch-adjusted co-expression matrix.
+   missed j4:S42: yes 0.43 | The matrix holds mutation counts from tumour sequencing, not expression.
+negatives 250 (kind: n, read yes>=0.7): {'neg-restate': [143, 1], 'neg-fact': [23, 1], 'neg-unsure': [63, 0], 'neg-denial': [21, 0]} -> L2 FAIL ["neg-fact j2:Q02: It's the somatic mutation table. (0.89)", 'neg-restate j4:S42: So the plan is a PANDA TF-gene network with the mutation-cou (0.80)']
+   L3 pos j4:S35: sides {False, True}; answers ['yes', 'yes', 'yes', 'yes', 'yes', 'yes', 'yes', 'yes', 'yes', 'yes']; conf 0.59-0.70
+   L3 neg-denial j2:Q12: sides {False}; answers ['no', 'no', 'no', 'no', 'no', 'no', 'no', 'no', 'no', 'no']; conf 1.00-1.00
+   L3 neg-unsure j2:Q12: sides {False}; answers ['not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer']; conf 1.00-1.00
+   L3 neg-restate j2:Q01: sides {False}; answers ['not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer', 'not_answer']; conf 0.98-0.98
+L3 fail
+-> NOT PASSED; cost US$0.0056 (+40 L3 reads)

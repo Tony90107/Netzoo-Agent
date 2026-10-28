@@ -420,3 +420,74 @@ def test_a_placed_confirm_still_quotes_the_users_sentence_in_its_decline():
     assert after.declined[0].line == ('You answered "Yes." about "We only have the mutation matrix". PANDA\'s contract '
                                       'lists mutation_matrix among the inputs it cannot take. So PANDA cannot do this '
                                       'as you asked.')
+
+
+# jev-confirm-2026-10-28 (j4 S35): a natural reply to the data confirm that the code cannot bind.
+
+def _waiting():
+    return {"what": "jev:condition", "status": "asked", "user_quote": "",
+            "question": "Before I go ahead, please confirm: is the data you will use a gene-by-gene co-expression "
+                        "matrix? (yes or no)", "workflows": ["LIONESS-PANDA"],
+            "labels": {"contract": "An aggregate COBRA adjusted co-expression artifact is not a direct LIONESS handoff",
+                       "workflow": "LIONESS-PANDA"}}
+
+
+def test_a_confident_jev_yes_on_an_unbound_reply_declines_with_both_quotes():
+    reply = "I checked: it's the COBRA batch-adjusted co-expression matrix."
+    after, action = jev_guard_call.confirmed_core(do(), _waiting(), reply, {"answer": "yes", "confidence": 0.9})
+    assert (after.kind, after.basis, action) == ("DECLINE", "jev_answer", "declined")
+    assert reply.rstrip(".") in after.declined[0].line and "LIONESS-PANDA" in after.declined[0].line
+
+
+def test_a_confident_jev_no_leaves_the_call():
+    core = do()
+    assert jev_guard_call.confirmed_core(core, _waiting(), "No, it's raw counts.",
+                                         {"answer": "no", "confidence": 0.95}) == (core, "answer_no")
+
+
+@pytest.mark.parametrize("read", [{"answer": "not_answer", "confidence": 0.99}, {"answer": "yes", "confidence": 0.69},
+                                  {"answer": "no", "confidence": 0.5}, {"answer": "not_run:URLError", "confidence": 0}])
+def test_an_unsettled_confirm_never_releases_a_do(read):
+    """Layer 2: whatever Jev says short of a confident answer, a DO becomes the same confirm, asked again."""
+    after, action = jev_guard_call.confirmed_core(do(), _waiting(), "No idea, sorry.", read)
+    assert (after.kind, after.basis, action) == ("ASK", "jev_condition", "reask")
+    fact = after.facts[0]
+    assert fact.question.startswith(jev_guard_call.REASK) and fact.contract_quote == _waiting()["labels"]["contract"]
+    again, _ = jev_guard_call.confirmed_core(do(), {**_waiting(), "question": fact.question}, "hm", read)
+    assert again.facts[0].question.count(jev_guard_call.REASK) == 1  # never stacked
+
+
+@pytest.mark.parametrize("kind", ["ASK", "CLARIFY", "DECLINE", "UNCHECKED"])
+def test_an_unsettled_or_yes_read_leaves_a_call_that_is_not_a_do(kind):
+    core = do(kind, "x")
+    assert jev_guard_call.confirmed_core(core, _waiting(), "?", {"answer": "not_answer", "confidence": 1})[0] is core
+    assert jev_guard_call.confirmed_core(core, _waiting(), "yes it is", {"answer": "yes", "confidence": 1})[0] is core
+
+
+def test_the_reasked_confirm_is_capped_by_the_clarification_rounds():
+    from netzoo_agent_core.interpretation.task_answers import clarification_rounds, exhausted
+
+    after, _ = jev_guard_call.confirmed_core(do(), _waiting(), "No idea.", {"answer": "not_answer", "confidence": 1})
+    capped = clarification_rounds(after, {"task_id": "t", "goal": "g", "rounds": 2, "pending": [], "facts": []})
+    assert capped.kind == "ASK" and exhausted(capped)
+
+
+def test_only_an_unbound_data_confirm_waits_for_the_jev_read():
+    assert jev_guard_call.pending_condition({"pending": [_waiting()]})["what"] == "jev:condition"
+    assert jev_guard_call.pending_condition({"pending": [{**_waiting(), "what": "jev:data_property"}]}) is None
+    assert jev_guard_call.pending_condition({"pending": [{**_waiting(), "labels": {}}]}) is None
+    assert jev_guard_call.pending_condition(None) is None
+
+
+def test_layer_one_is_withdrawn_an_unbound_reply_is_never_read_by_jev(monkeypatch):
+    """jev-confirm-2026-10-28: L1/L2/L3 failed offline; the live path never calls judge_confirm."""
+    from netzoo_agent_core.contracts import HumanMessage
+
+    monkeypatch.setenv("NETZOO_JEV_GUARD", "on")
+    monkeypatch.setattr(jev_guard_call, "judge_confirm", lambda *a: pytest.fail("Jev read called"))
+    seen = []
+    monkeypatch.setattr(jev_guard_call, "record_event", lambda *a: seen.append(a[4]))
+    state = {"task_state": {"pending": [_waiting()], "facts": [], "turns": 2},
+             "messages": [HumanMessage(content="I checked: it's the COBRA batch-adjusted co-expression matrix.")]}
+    after = jev_guard_call.apply_jev_guard(None, state, None, do(), TASK, done(read("DO")))
+    assert (after.kind, after.basis) == ("ASK", "jev_condition") and seen[-1]["action"] == "reask"
