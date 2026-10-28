@@ -1,0 +1,852 @@
+{
+  "version": 1,
+  "session_id": "hb-ca1-Q02-1",
+  "profile_id": "hb-ca1-Q02-1",
+  "auto_generated": false,
+  "created_at": 1793165294.5991528,
+  "updated_at": 1793165294.599194,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Please run SAMBAR on our 120 bladder tumors to get pathway mutation scores and subtypes with 2 to 4 clusters. I have the gene-length file, the cancer-gene list and a GMT file. I'm not sure whether the tumor matrix the sequencing core put in our folder is the somatic mutation table or the RNA-seq expression table."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Before I go ahead, could you settle this point you mentioned? What is the case for your data on this point?\n  You wrote: \"I'm not sure whether the tumor matrix the sequencing core put in our folder is the somatic mutation table or the RNA-seq expression table\". SAMBAR's contract: \"SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length CSV, a tab-delimited cancer-gene list, and a GMT pathway file\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": false,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "pathway_mutation_matrix",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "pathway_mutation_matrix",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "pathway_mutation_matrix",
+              "source": "explicit",
+              "text_span": "get pathway mutation scores",
+              "rationale": "The user explicitly requests pathway mutation scores."
+            },
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "get pathway mutation scores",
+              "rationale": "The user is requesting to obtain pathway mutation scores and subtypes, which requires inference from the data."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The pathway mutation scores are typically reported as aggregate scores across samples rather than per individual sample."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Before I go ahead, could you settle this point you mentioned? What is the case for your data on this point?",
+      "operation_authorization": {
+        "requested": [
+          "run"
+        ],
+        "forbidden": [],
+        "explain_only": null,
+        "preview_requested": false,
+        "blocked_action": null
+      },
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Please run SAMBAR on our 120 bladder tumors to get pathway mutation scores and subtypes with 2 to 4 clusters.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "sambar.subtypes",
+              "sambar.clinical_comparison"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "SAMBAR",
+              "named_quote": "SAMBAR",
+              "samples": 120,
+              "samples_quote": "120 bladder tumors",
+              "settings": [
+                {
+                  "name": "SAMBAR.kmin",
+                  "quote": "2 to 4 clusters",
+                  "value": "2",
+                  "span": [
+                    93,
+                    108
+                  ]
+                },
+                {
+                  "name": "SAMBAR.kmax",
+                  "quote": "2 to 4 clusters",
+                  "value": "4",
+                  "span": [
+                    93,
+                    108
+                  ]
+                }
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@25-43"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "to get pathway mutation scores",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "sambar.subtypes",
+              "sambar.clinical_comparison"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "SAMBAR",
+              "named_quote": "SAMBAR",
+              "samples": 120,
+              "samples_quote": "120 bladder tumors"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@25-43"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "with 2 to 4 clusters",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "SAMBAR",
+              "named_quote": "SAMBAR",
+              "samples": 120,
+              "samples_quote": "120 bladder tumors",
+              "settings": [
+                {
+                  "name": "SAMBAR.kmin",
+                  "quote": "2 to 4 clusters",
+                  "value": "2",
+                  "span": [
+                    93,
+                    108
+                  ]
+                },
+                {
+                  "name": "SAMBAR.kmax",
+                  "quote": "2 to 4 clusters",
+                  "value": "4",
+                  "span": [
+                    93,
+                    108
+                  ]
+                }
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@25-43"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "I'm not sure whether the tumor matrix the sequencing core put in our folder is the somatic mutation table or the RNA-seq expression table.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "I have the gene-length file, the cancer-gene list and a GMT file.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Please run SAMBAR on our 120 bladder tumors to get pathway mutation scores and subtypes with 2 to 4 clusters.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "2 to 4 clusters"
+        ],
+        "stated_quotes": [
+          "SAMBAR"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@25-43",
+            "property": "sample_count",
+            "name": "",
+            "value": "120",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "120 bladder tumors",
+            "span": [
+              25,
+              43
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "120 bladder tumors",
+                "span": [
+                  25,
+                  43
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "120 bladder tumors",
+                "span": [
+                  25,
+                  43
+                ],
+                "result": "Please run SAMBAR on our 120 bladder tumors to get pathway mutation scores and subtypes with 2 to 4 clusters.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "120 bladder tumors",
+                "span": [
+                  25,
+                  43
+                ],
+                "result": "to get pathway mutation scores",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "120 bladder tumors",
+                "span": [
+                  25,
+                  43
+                ],
+                "result": "with 2 to 4 clusters",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Before I go ahead, could you settle this point you mentioned? What is the case for your data on this point?",
+            "user_quote": "I'm not sure whether the tumor matrix the sequencing core put in our folder is the somatic mutation table or the RNA-seq expression table.",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length CSV, a tab-delimited cancer-gene list, and a GMT pathway file.",
+            "depends_on": "jev:data_property",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": ""
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "jev_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "pathway_mutation_matrix",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Please run SAMBAR on our 120 bladder tumors to get pathway mutation scores and subtypes with 2 to 4 clusters."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "jev_guard": {
+            "kind_before": "DO",
+            "basis_before": "results_given",
+            "jev": "ASK",
+            "confidence": 0.99
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure whether the tumor matrix the sequencing core put in our folder is the somatic mutation table or the RNA-seq expression table.",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "SAMBAR consumes a samples-by-genes somatic mutation CSV",
+              "question": "Is the tumor matrix the somatic mutation table?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I have the gene-length file, the cancer-gene list and a GMT file.",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "All four inputs must have a non-empty four-way gene identifier overlap before execution.",
+              "question": "Do the gene-length file, cancer-gene list, and GMT file have a non-empty overlap with the tumor matrix?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I have the gene-length file, the cancer-gene list and a GMT file.",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length CSV, a tab-delimited cancer-gene list, and a GMT pathway file.",
+              "question": "Do you have all four required inputs for SAMBAR?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 34064,
+    "output_tokens": 1788,
+    "total_tokens": 35852,
+    "calls": [
+      {
+        "call_id": "0cde10ee-d2b8-4ead-b351-6a95fb1d213d",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793165268-xWRQkW911hYT1bA6W4vj",
+        "input_tokens": 1622,
+        "output_tokens": 54,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1676,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 276,
+        "price_snapshot": null,
+        "duration_ms": 1642,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "fb5bc19a-c268-4c64-ab34-8d0ded1fac33",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793165270-v5yJOFaXGSsOVNeSgleT",
+        "input_tokens": 5349,
+        "output_tokens": 136,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5485,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 519,
+        "price_snapshot": null,
+        "duration_ms": 2169,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "621ee28e-ad9e-41c2-ba2e-f638c0a22e29",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793165272-fVjqI2mqDG0ZQp8Qr85U",
+        "input_tokens": 5522,
+        "output_tokens": 209,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5731,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 656,
+        "price_snapshot": null,
+        "duration_ms": 2856,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4806fb00-21d2-4fbb-a28c-cd95cd226b0f",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 654,
+        "output_tokens": 32,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 686,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 991,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "e9d14afb-a90a-4bcb-8004-b37132ebd178",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793165276-HKtuni8uN9KIBNK57XWi",
+        "input_tokens": 18421,
+        "output_tokens": 920,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 19341,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1952,
+        "price_snapshot": null,
+        "duration_ms": 9097,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3d9765ff-3963-49ae-bf61-7c12e323fa84",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793165285-xB7KdjQcfHd9LjQ69ZjD",
+        "input_tokens": 572,
+        "output_tokens": 35,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 607,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 107,
+        "price_snapshot": null,
+        "duration_ms": 1055,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4c889c21-1778-4c67-bb5e-b2f5cb27bea8",
+        "role": "settings_read",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793165286-58a3FU7B1BPTLRxoRKWS",
+        "input_tokens": 356,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 389,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 73,
+        "price_snapshot": null,
+        "duration_ms": 1121,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2f09444a-c9cc-46fd-bc5d-66df912489ba",
+        "role": "settings_read",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793165287-ZdHIG7xUtIYeJMjMF43T",
+        "input_tokens": 356,
+        "output_tokens": 33,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 389,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 73,
+        "price_snapshot": null,
+        "duration_ms": 1031,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "beb26438-f1d2-4f6e-9007-c234cc65f006",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793165288-RGdsqPbIFVeodztn0mub",
+        "input_tokens": 1212,
+        "output_tokens": 336,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1548,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 383,
+        "price_snapshot": null,
+        "duration_ms": 4723,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "f36b90a3-2e70-462d-84e2-5491629cf324",
+  "task_state": {
+    "version": 1,
+    "task_id": "0c199407",
+    "revision": 1,
+    "goal": "Please run SAMBAR on our 120 bladder tumors to get pathway mutation scores and subtypes with 2 to 4 clusters. I have the gene-length file, the cancer-gene list and a GMT file. I'm not sure whether the tumor matrix the sequencing core put in our folder is the somatic mutation table or the RNA-seq expression table.",
+    "pending": [
+      {
+        "question_id": "dimension:jev:data_property:9bd0eff00e",
+        "source": "dimension",
+        "what": "jev:data_property",
+        "question": "Before I go ahead, could you settle this point you mentioned? What is the case for your data on this point?",
+        "user_quote": "I'm not sure whether the tumor matrix the sequencing core put in our folder is the somatic mutation table or the RNA-seq expression table.",
+        "workflows": [
+          "SAMBAR"
+        ],
+        "options": {},
+        "labels": {
+          "contract": "SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length CSV, a tab-delimited cancer-gene list, and a GMT pathway file.",
+          "workflow": "SAMBAR"
+        },
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

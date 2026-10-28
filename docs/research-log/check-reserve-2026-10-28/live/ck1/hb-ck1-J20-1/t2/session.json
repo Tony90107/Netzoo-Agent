@@ -1,0 +1,717 @@
+{
+  "version": 1,
+  "session_id": "hb-ck1-J20-1",
+  "profile_id": "hb-ck1-J20-1",
+  "auto_generated": false,
+  "created_at": 1793163028.151293,
+  "updated_at": 1793163054.74818,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples? I have the motif and PPI files ready. I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Before I go ahead, could you settle this point you mentioned? What is the case for your data on this point?\n  You wrote: \"I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month\". LIONESS-PANDA's contract: \"LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI priors to internally infer the aggregate PANDA network and derive sample-specific TF-to-gene networks\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples? I have the motif and PPI files ready. I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month.\nUser follow-up: It's the COBRA adjusted co-expression matrix."
+    },
+    {
+      "role": "assistant",
+      "content": "You answered \"Previous NetZoo goal: Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples? I have the motif and PPI files ready. I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month.\nUser follow-up: It's the COBRA adjusted co-expression matrix.\" about \"I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month\". LIONESS-PANDA's contract: \"LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI priors to internally infer the aggregate PANDA network and derive sample-specific TF-to-gene networks\". So LIONESS-PANDA cannot do this as you asked.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A contract condition rules out every workflow offered; the reply says why.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "A contract condition rules out every workflow offered; the reply says why.",
+      "candidate_actions": [
+        "run_lioness_panda",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples?",
+              "rationale": "The user is asking to run LIONESS-PANDA to obtain a TF-to-gene network per sample."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "It's the COBRA adjusted co-expression matrix.",
+              "rationale": "The user confirmed that the input is the COBRA adjusted co-expression matrix."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The goal is to obtain a TF-to-gene regulatory network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "one TF-to-gene network per sample",
+              "rationale": "The request explicitly states the output granularity."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "unsupported",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "I have the motif and PPI files ready",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_lioness_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "I have the motif and PPI files ready",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "I have the motif and PPI files ready",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "I have the motif and PPI files ready",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples?",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_panda.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PANDA",
+              "named_quote": "LIONESS-PANDA",
+              "samples": 50,
+              "samples_quote": "50 kidney samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@99-116"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "I have the motif and PPI files ready.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "It's the COBRA adjusted co-expression matrix.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples?",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "LIONESS-PANDA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@99-116",
+            "property": "sample_count",
+            "name": "",
+            "value": "50",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "50 kidney samples",
+            "span": [
+              99,
+              116
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "50 kidney samples",
+                "span": [
+                  99,
+                  116
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "50 kidney samples",
+                "span": [
+                  99,
+                  116
+                ],
+                "result": "Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples?",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DECLINE",
+        "partial": false,
+        "workflows": [],
+        "declined": [
+          {
+            "quote": "Previous NetZoo goal: Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples? I have the motif and PPI files ready. I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month.\nUser follow-up: It's the COBRA adjusted co-expression matrix.",
+            "reasons": [
+              "You answered \"Previous NetZoo goal: Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples? I have the motif and PPI files ready. I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month.\nUser follow-up: It's the COBRA adjusted co-expression matrix.\" about \"I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month\". LIONESS-PANDA's contract: \"LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI priors to internally infer the aggregate PANDA network and derive sample-specific TF-to-gene networks\". So LIONESS-PANDA cannot do this as you asked."
+            ],
+            "alternatives": [],
+            "line": "You answered \"Previous NetZoo goal: Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples? I have the motif and PPI files ready. I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month.\nUser follow-up: It's the COBRA adjusted co-expression matrix.\" about \"I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month\". LIONESS-PANDA's contract: \"LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI priors to internally infer the aggregate PANDA network and derive sample-specific TF-to-gene networks\". So LIONESS-PANDA cannot do this as you asked."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "jev_answer",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples?"
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "jev_answer": {
+            "kind_before": "DO",
+            "basis_before": "results_given",
+            "answer": "fails",
+            "confidence": 1,
+            "cost": 2.625e-05
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PANDA",
+          "PANDA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month.",
+              "uncertainty": "two_versions",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI priors to internally infer the aggregate PANDA network and derive sample-specific TF-to-gene networks.",
+              "question": "Is the expression file the original gene-by-sample matrix?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "original gene-by-sample matrix",
+                "COBRA adjusted co-expression matrix"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 47888,
+    "output_tokens": 1706,
+    "total_tokens": 49594,
+    "calls": [
+      {
+        "call_id": "9354e880-6b44-4010-82d6-fc536114660d",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793163029-AuMmdVd6X9e6XJWsCddI",
+        "input_tokens": 901,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 942,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 160,
+        "price_snapshot": null,
+        "duration_ms": 1375,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "70e18296-7cbd-4574-938d-990f0eff3d26",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793163031-EH7ZOaXPKOEkZsL3e99E",
+        "input_tokens": 5361,
+        "output_tokens": 265,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5626,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 598,
+        "price_snapshot": null,
+        "duration_ms": 3934,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4ef7c657-4b95-4fa0-868b-851d3e704f15",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 695,
+        "output_tokens": 51,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 746,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1737,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "2d49625a-b3dd-4220-ab79-a7f14b17ed5c",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793163037-iN22ch4sf3foA6mDNivm",
+        "input_tokens": 1681,
+        "output_tokens": 46,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1727,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 165,
+        "price_snapshot": null,
+        "duration_ms": 1314,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f6eef66b-db8f-4129-83fa-2558cb2e813e",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": null,
+        "input_tokens": 9891,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 9891,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1051,
+        "status": "failed",
+        "estimated": true
+      },
+      {
+        "call_id": "6c6f3d64-e42f-40d0-86af-21da33e60c65",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793163039-XczB1sL18j5p7ZKSnGOI",
+        "input_tokens": 21617,
+        "output_tokens": 471,
+        "cache_read_tokens": 21376,
+        "cache_write_tokens": 0,
+        "total_tokens": 22088,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1922,
+        "price_snapshot": null,
+        "duration_ms": 4936,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ab37e0b6-8aae-4efd-8669-4da1f37f6d23",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793163044-PHEEFUvZAFcLLJwRfoUb",
+        "input_tokens": 584,
+        "output_tokens": 36,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 620,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 109,
+        "price_snapshot": null,
+        "duration_ms": 985,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "25440117-064e-4578-a38d-a491233187ee",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793163045-CwdnxwjddvKnk4zorLws",
+        "input_tokens": 573,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 618,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 113,
+        "price_snapshot": null,
+        "duration_ms": 1098,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bc9e6546-975c-489e-863c-5ffe51fc9222",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793163046-8pRCwJTnqHTMApw8aLvW",
+        "input_tokens": 5334,
+        "output_tokens": 597,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5931,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 774,
+        "price_snapshot": null,
+        "duration_ms": 5698,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3e88af21-8223-4c80-a5ab-d9c9bb4a7097",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793163052-4kyOOKet9H46emQD70AB",
+        "input_tokens": 1251,
+        "output_tokens": 154,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1405,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 280,
+        "price_snapshot": null,
+        "duration_ms": 2003,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "adfc1364-ee38-439d-a17e-d085ddc421c5",
+  "task_state": {
+    "version": 1,
+    "task_id": "27e316f7",
+    "revision": 2,
+    "goal": "Could you run LIONESS-PANDA to get one TF-to-gene network per sample for our 50 kidney samples? I have the motif and PPI files ready. I can't remember whether the expression file I saved is the original gene-by-sample matrix or the COBRA adjusted co-expression matrix we made last month.",
+    "pending": [],
+    "facts": [],
+    "rounds": 1,
+    "status": "closed",
+    "turns": 2
+  }
+}

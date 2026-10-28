@@ -37,6 +37,7 @@ from .method_conditions import (
     method_fitting, named_limits, request_method_for, request_method_limit, settings_apart, typed_setting,
     verified_method, with_request_method,
 )
+from .jev_forms import condition_doubts
 from .request_facts import FactRecord
 from .required_conditions import quantity_note
 from .sentence_ownership import owned_sentences, request_sentences
@@ -545,7 +546,8 @@ def build_capability_check(
         if (found := request_method_limit(whole, conditions, said, task)) is not None:
             requirements.append(found.model_copy(update={"fact_ids": record.ids_for(found.method)}))
     covered = [*asks, *(found for item in additions if (found := _span(task, item.quote)) is not None)]
-    requirements += additions + condition_requirements(task, conditions, form_spans, covered)
+    requirements += additions + condition_doubts(task, condition_requirements(task, conditions, form_spans, covered),
+                                                 forms_reader, overlap_reader)  # jev-conditions: J01
     spans += [span for span in form_spans.values() if not any(a <= span[0] and span[1] <= b for a, b in asks)]
     deliveries = delivery_requirements(task, proposal, [item for item in requirements if item.kind == "result"])
     requirements += deliveries

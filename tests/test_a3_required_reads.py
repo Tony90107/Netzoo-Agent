@@ -80,7 +80,7 @@ def refused(total: int, budget: int) -> LLMUsage:
 
 
 @pytest.mark.parametrize("total, budget, is_spent", [
-    (26760, 30000, False), (30000, 30000, True), (42645, 60000, False), (60000, 60000, True), (0, 30000, False)])
+    (26760, 30000, False), (30000, 30000, True), (42645, 75000, False), (75000, 75000, True), (0, 30000, False)])
 def test_spent_is_what_the_calls_used_not_the_flag(total, budget, is_spent):
     assert capability.spent(refused(total, budget)) is is_spent
 
@@ -96,7 +96,7 @@ def test_a_refused_routing_call_leaves_the_check_to_run_with_its_allowance(polic
     llm = Answers("reading")
     proposal, _, _, status = capability.request_capability_check(
         context(policy, llm), {}, TASK, refused(26760, 30000), [])  # M09 E t1
-    assert proposal is not None and status == "ok" and llm.calls == 1 and budgets == [60000]
+    assert proposal is not None and status == "ok" and llm.calls == 1 and budgets == [75000]
 
 
 def test_routing_that_spent_the_turn_still_skips_the_check(policy):
@@ -109,19 +109,19 @@ def test_routing_that_spent_the_turn_still_skips_the_check(policy):
 
 def test_a_refused_second_opinion_leaves_the_fact_check_to_run(policy):
     llm = Answers({"facts": []})
-    checked, usage, _ = fact.request_fact_check(context(policy, llm), {}, TASK, decision(), refused(42645, 60000), [])
+    checked, usage, _ = fact.request_fact_check(context(policy, llm), {}, TASK, decision(), refused(42645, 75000), [])
     assert checked.status == "checked" and llm.calls == 1  # M09 E' t3
-    assert usage.budget_tokens == 60000  # recorded against the allowance
+    assert usage.budget_tokens == 75000  # recorded against the allowance
 
 
 def test_the_fact_check_still_passes_its_own_preflight(policy):
     """A flag no longer blocks it, but its own reservation does: 58k + its input + output exceeds 60k - 1.5k."""
     llm = Answers({"facts": []})
-    checked, _, _ = fact.request_fact_check(context(policy, llm), {}, TASK, decision(), refused(58000, 60000), [])
+    checked, _, _ = fact.request_fact_check(context(policy, llm), {}, TASK, decision(), refused(73000, 75000), [])
     assert checked.status == "blocked" and llm.calls == 0
 
 
 def test_a_turn_whose_allowance_was_spent_skips_the_fact_check(policy):
     llm = Answers({"facts": []})
-    checked, _, _ = fact.request_fact_check(context(policy, llm), {}, TASK, decision(), refused(60000, 60000), [])
+    checked, _, _ = fact.request_fact_check(context(policy, llm), {}, TASK, decision(), refused(75000, 75000), [])
     assert checked.status == "blocked" and llm.calls == 0

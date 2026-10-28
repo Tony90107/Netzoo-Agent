@@ -90,7 +90,7 @@ def test_fact_check_permanent_provider_error_is_not_retried(policy):
 
 def test_fact_check_does_not_reopen_exhausted_usage(policy):
     llm = Answers({"facts": []})
-    usage = LLMUsage(budget_tokens=60000, total_tokens=60000, budget_exhausted=True)  # A3: spent, not refused once
+    usage = LLMUsage(budget_tokens=75000, total_tokens=75000, budget_exhausted=True)  # A3: spent, not refused once
     checked, returned, _ = fact.request_fact_check(context(policy, llm), {}, TASK, decision(), usage, [])
     assert checked.status == "blocked" and checked.candidates == ["BONOBO"]
     assert returned is usage and llm.calls == 0
@@ -153,7 +153,7 @@ def test_reserved_required_check_skips_optional_read_without_spending_turn(polic
     ctx = context(policy, llm)
     reserve = required_fact_check_reserve(ctx, TASK, decision())
     # Leave room for the required fact check, not for it plus an advisory read.
-    usage = LLMUsage(total_tokens=60000 - 1500 - reserve)
+    usage = LLMUsage(total_tokens=75000 - 1500 - reserve)
     _, usage, _ = getattr(module, function_name)(ctx, {"required_check_reserve": reserve}, TASK, usage, [])
     assert llm.calls == 0 and not usage.budget_exhausted and not usage.calls
     llm.answers = [{"facts": []}]
@@ -163,7 +163,7 @@ def test_reserved_required_check_skips_optional_read_without_spending_turn(polic
 
 @pytest.mark.parametrize("kind", ["capability", "fact"])
 def test_invalid_provider_reply_retains_actual_usage_and_prevents_retry(policy, kind):
-    raw = SimpleNamespace(usage_metadata={"input_tokens": 59999, "output_tokens": 1, "total_tokens": 60000},
+    raw = SimpleNamespace(usage_metadata={"input_tokens": 74999, "output_tokens": 1, "total_tokens": 75000},
                           response_metadata={}, tool_calls=[])
     llm = Answers({"parsed": None, "raw": raw, "parsing_error": ValueError("bad response")})
     ctx = context(policy, llm)
@@ -173,7 +173,7 @@ def test_invalid_provider_reply_retains_actual_usage_and_prevents_retry(policy, 
         checked, usage, _ = fact.request_fact_check(ctx, {}, TASK, decision(), LLMUsage(), [])
         status = checked.status
     assert status == "blocked" and usage.budget_exhausted and llm.calls == 1
-    assert usage.calls[0].usage_provenance == "actual" and usage.total_tokens == 60000
+    assert usage.calls[0].usage_provenance == "actual" and usage.total_tokens == 75000
 
 
 def test_fact_check_with_no_candidate_remains_optional(policy):
@@ -207,7 +207,7 @@ def test_preflight_honors_own_models_actual_output_cap(policy, monkeypatch):
     monkeypatch.setattr(capability, "_own_llm", lambda *a: own_llm)
     ctx = context(policy, Answers())
     # A 16k output reservation cannot fit in 15k remaining reading allowance.
-    usage = LLMUsage(total_tokens=45000)
+    usage = LLMUsage(total_tokens=60000)  # 75k ceiling (check-allowance-2026-10-28) - 60k = 15k
     checked, _, _ = fact.request_fact_check(ctx, {}, TASK, decision(), usage, [])
     assert checked.status == "blocked" and own_llm.calls == 0
 
