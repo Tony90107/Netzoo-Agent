@@ -42,3 +42,17 @@ No check-budget, enum or reserve failure occurred.
   (three different kinds of answer: form, fact, count). Linking has been tried twice before and failed precision;
   binding of a reply is where answers to questions the system itself asked are lost.
 - One rep per item: single misses may be reading variance.
+
+## Correction after tracing the "binding" class (2026-10-28, before any code)
+
+A closer read of W42, W16, W39 (and W26) shows only one is a binding failure:
+
+| item | first class | traced cause |
+|---|---|---|
+| W42 | binding | **not binding**: the system asked group_membership on a DO item (Jev overlap: "not_stated", doubted); the scripted `reply_form` answers the input-network form ("regulator-to-target network"), so Jev rightly read it as not stating group membership. Cause: a form question on a request that did not need it + runner reply mismatch |
+| W39 | binding | **not binding**: the count question ("Which of these is right: 2 or 4?") contains none of the item's `fact_keywords`, so the runner sent `reply_restate`, not the fact; the restatement was then read as a vague request (CLARIFY, jev_link). Cause: runner keyword rule + restatement read as a new goal |
+| W16 | binding | **binding**: the asked fact is a yes/no question ("Will you be handing over the log-transformed, gene-centred matrix?"); the answer names an option instead ("It'll be the raw counts file."), which the yes/no binding (first word) leaves unbound; the next turn reroutes to LIONESS-COEXPRESSION and drops the per-edge p-value |
+| W26 | counts | **counts typing**: "60 or 70 samples" was not read into `count_alternatives` (empty), so the fact agent asked about the 3-sample minimum ("at least 60?") instead of the 20M-value cap; even a perfect binding of "70" gives DO |
+
+Revised tally of the 12: linking 3, counts typing 1 (W26), binding 1 (W16), form question not needed 1 (W42),
+restatement read as a new goal 1 (W39), and W11, W40, W43, W18, W01 as before.
