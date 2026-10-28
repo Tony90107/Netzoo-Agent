@@ -62,3 +62,18 @@ def test_a_waiting_row_still_settles_and_several_results_are_left_alone():
                       samples_quote="100 breast tumors", omics_layers=2))
     assert len([r for r in two.results() if r.delivered_by]) == 2
     assert answered_check(two, _state("400"), TASK) is two
+
+
+def test_a_corrected_answer_is_used_never_the_superseded_one():
+    """jev-guard review: P3 keeps a corrected answer as superseded; only the known one refits."""
+    old = _state("400").facts[0].model_copy(update={"status": "superseded"})
+    new = _state("150").facts[0]
+    (row,) = answered_check(_reread(), TaskState(task_id="t", facts=[old, new]), TASK).results()
+    assert row.status == "available" and row.method["features"] == 550
+
+
+def test_the_refusal_line_is_the_code_limit_with_both_numbers_and_the_answer():
+    (row,) = answered_check(_reread(), _state("400"), TASK).results()
+    limit = next(line for line in row.limits if "LIONESS-DRAGON writes at most" in line)
+    assert "20,000,000" in limit and "31,960,000" in limit
+    assert row.limits[-1] == 'You answered "It was the 400-metabolite panel." to "Which of these is right: 150 or 400?".'
