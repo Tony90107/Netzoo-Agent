@@ -28,3 +28,9 @@ check credited for a result; the line is dropped when none remain; nothing chang
   from the survey (keeps LIONESS-PANDA); about US$0.02.
 
 Stop rule: a failed gate -> withdraw; no gate is changed afterwards.
+
+## Live addendum (declared after the offline pass, before any run)
+
+`run_live.py` (tag cd1): W01 and recorded C04, turn 1, cap US$0.05.
+- **E1** W01's reply names no LIONESS-PANDA in its default line (or has none), and C04's, if it has the line, keeps
+  LIONESS-PANDA and names no PANDA.
