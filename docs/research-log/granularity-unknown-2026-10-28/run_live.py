@@ -1,5 +1,5 @@
 """Live check for granularity-unknown (ROUND.md, live addendum): turn 1 only, gpt-4o-mini, 1 rep, the app's settings,
-code CODE below. The three recorded requests whose interpreter failed on a contradicted granularity and that U1 keeps:
+code c02e687c. The three recorded requests whose interpreter failed on a contradicted granularity and that U1 keeps:
 j5 W01, m3 P29, h2 J45 (their recorded first user message). Cost cap US$0.10.
 
 Usage: python3 run_live.py   (tag gu1; never reruns)
@@ -22,7 +22,7 @@ RUN = HERE.parents[2]
 LOGS = RUN / 'docs/research-log'
 DOTENV = RUN.parent.parent / 'netzoo_agent/.env'
 HARNESS = LOGS / 'closed-menu-hybrid-2026-10-19/h4/run_live.py'
-CODE = '47d0c769'
+CODE = 'c02e687c'
 CAP_USD = 0.10
 TAG = 'gu1'
 SETS = {'j1': LOGS / 'jev-guard-2026-10-27/j1/items.json', 'j2': LOGS / 'jev-guard-2026-10-27/j2/items.json',
