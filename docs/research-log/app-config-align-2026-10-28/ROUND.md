@@ -28,3 +28,15 @@ bound, since refused calls that now run can change what follows.
 
 Stop rule: any gate failing -> revert the compose edit, report; no gate is relaxed after the fact.
 Live re-measurement on the app's settings is listed with its cost and run only after the user agrees.
+
+## Live re-measure (declared 2026-10-28, user decision "跑 live", before any run)
+
+`run_live.py` (copy of check-reserve-2026-10-28's, FORMS off, tags casmoke / ca1), `score_live.py` (copy).
+The 14 seen ck1 conversations, 1 rep, up to 3 turns, gpt-4o-mini, settings = aligned compose + app `.env`
+(GUARD on, OVERLAP on, FORMS off), code 7c9fbdd4. Smoke S35 first; cap US$0.20 for ca1.
+
+What it reports (a description, not a gate; the items were picked where bugs hit, so no system-wide rate):
+- check health on the app settings: enum 400s, check budget refusals, UNCHECKED/provisional (expected 0, as ck1);
+- right finals vs ck1's 11/14, item by item, with each difference traced to FORMS off or to reading variance
+  (ck1 vs its smoke already disagreed on S35).
+A check-health count above 0 is reported as a defect of the aligned settings, not explained away.
