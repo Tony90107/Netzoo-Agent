@@ -639,7 +639,7 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     # Harness repair P3: a wait the user already answered is settled by that answer, never asked again.
     from ..interpretation.task_answers import answered_check
 
-    check = answered_check(check, state.get("task_state"))
+    check = answered_check(check, state.get("task_state"), user_task)
     if check.needed_facts():
         # Verdict layer step 2: a result waits on a fact the user said they do not know -- on a guidance turn or a
         # run, nothing is selected, refused or run before it is known.

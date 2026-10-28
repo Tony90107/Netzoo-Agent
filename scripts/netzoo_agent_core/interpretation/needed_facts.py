@@ -285,6 +285,18 @@ def resolve_unknowns(fitting, keys: list[str], attrs: dict, unknowns: list[tuple
     return [key for key in baseline if key in possible], adjusted
 
 
+FEATURE_SIZED = 10
+"""layer-count-features-2026-10-29: no request has ten or more omics data types; layer-count candidates that large are
+feature counts (17 recorded readings, smallest 96: "150 or 400 metabolites", "250-gene or 2,000-gene panel")."""
+
+
+def feature_sized_layers(fact) -> bool:
+    """An unknown `omics_layers` count given as candidates that are all feature-sized: a feature-count doubt."""
+    values = getattr(fact, "count_values", None) or ()
+    return (getattr(fact, "about", "") == "omics_layers" and getattr(fact, "count_kind", "") == "choices"
+            and len(set(values)) >= 2 and min(values) >= FEATURE_SIZED)
+
+
 def stated_sample_choices(fact) -> bool:
     """ROUND-09: an unknown sample count given as two or more candidates, each stated in its own words."""
     from ..workflow_conditions import stated_numbers
@@ -319,7 +331,7 @@ def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
               if (span := _span(task, words)) is not None]
     found = []
     for fact in getattr(conditions, "unknown_facts", None) or ():
-        if fact.about in ("other", "feature_count"):
+        if fact.about in ("other", "feature_count") or feature_sized_layers(fact):
             # core decision phase 2: the agent's witness, never a fixed dimension. feature-count-doubts: a feature
             # count's candidates are judged as count alternatives (`FactRecord.read_alternatives`), never here.
             continue

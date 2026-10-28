@@ -60,16 +60,20 @@ def test_a_jev_agent_ask_is_shown_as_its_question_and_clears_the_run():
         reply["content"]
 
 
-def test_a_doubt_the_task_asked_or_the_user_answered_is_not_revived():
-    """jev-agent-once-2026-10-29 (j6 X02, X22): an agent question on the sentence, pending or answered, stops it."""
-    from netzoo_agent_core.graph.jev_guard_call import agent_doubts
+def test_a_doubt_any_question_asked_or_the_user_answered_is_not_revived():
+    """jev-agent-once / asked-doubts (j6 X02, lc1 X22): a question of any source on the sentence stops a revival."""
+    from netzoo_agent_core.graph.jev_guard_call import asked_doubts
 
     sentence = W40["jev"]["sentence"]
-    for key, item in (("pending", {"source": "agent", "status": "asked"}),
-                      ("facts", {"source": "agent", "status": "known", "value": "yes"})):
-        state = {key: [{**item, "user_quote": sentence.rstrip(".")}]}
-        assert agreed_fact_core(DO, W40["jev"], W40["task"], _decision(), load_project_policy(),
-                                agent_asked=agent_doubts(state))[1] == "already_asked"
-    other = {"pending": [{"source": "dimension", "user_quote": sentence}]}
+    for source in ("agent", "count", "dimension"):
+        for key, item in (("pending", {"source": source, "status": "asked"}),
+                          ("facts", {"source": source, "status": "known", "value": "400"})):
+            state = {key: [{**item, "user_quote": sentence.rstrip(".")}]}
+            assert agreed_fact_core(DO, W40["jev"], W40["task"], _decision(), load_project_policy(),
+                                    agent_asked=asked_doubts(state))[1] == "already_asked"
+    goal = {"pending": [{"source": "goal", "user_quote": W40["task"]}]}  # a CLARIFY goal quote holding the sentence
     assert agreed_fact_core(DO, W40["jev"], W40["task"], _decision(), load_project_policy(),
-                            agent_asked=agent_doubts(other))[1] == "ask"
+                            agent_asked=asked_doubts(goal))[1] == "ask"
+    other = {"pending": [{"source": "count", "user_quote": "We have 85 tumours."}]}
+    assert agreed_fact_core(DO, W40["jev"], W40["task"], _decision(), load_project_policy(),
+                            agent_asked=asked_doubts(other))[1] == "ask"
