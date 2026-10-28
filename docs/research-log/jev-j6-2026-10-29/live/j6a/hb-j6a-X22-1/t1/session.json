@@ -1,0 +1,791 @@
+{
+  "version": 1,
+  "session_id": "hb-j6a-X22-1",
+  "profile_id": "hb-j6a-X22-1",
+  "auto_generated": false,
+  "created_at": 1793204759.939661,
+  "updated_at": 1793204759.939696,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We have 100 breast tumors with 400 transcript features and a metabolite panel measured on the same tumors, and we want LIONESS-DRAGON networks for every tumor. The transcript and metabolite tables share sample IDs. I don't know yet whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Did the metabolomics core use the 150-metabolite panel?\n  You wrote: \"I don't know yet whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel\". LIONESS-DRAGON's contract: \"LIONESS-DRAGON consumes exactly two paired sample-by-feature continuous omics tables, DRAGON's inputs, and produces the aggregate DRAGON matrix plus one partial-correlation network per sample, written as an edge-by-sample table (source, target, one column per sample) with layer-qualified node IDs\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.0,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "multi_omic_network",
+            "entity_types": [
+              "omics_layer_1_feature",
+              "omics_layer_2_feature"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "we want LIONESS-DRAGON networks for every tumor.",
+              "rationale": "The user is seeking to construct networks from the provided data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "multi_omic_network",
+              "source": "explicit",
+              "text_span": "transcript features and a metabolite panel measured on the same tumors.",
+              "rationale": "The request involves integrating transcript and metabolite data for network construction."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "omics_layer_1_feature",
+              "source": "explicit",
+              "text_span": "400 transcript features",
+              "rationale": "The request specifies transcript features as part of the input data."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "omics_layer_2_feature",
+              "source": "explicit",
+              "text_span": "metabolite panel measured on the same tumors.",
+              "rationale": "The request specifies metabolite measurements as part of the input data."
+            }
+          ],
+          "assumptions": [
+            "The metabolomics core may have used either the 150-metabolite or the 400-metabolite panel, which could affect the analysis.",
+            "No scale was stated; DRAGON gives one result for the whole cohort; LIONESS-DRAGON gives one result per sample."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Did the metabolomics core use the 150-metabolite panel?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "we want LIONESS-DRAGON networks for every tumor",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_dragon.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-DRAGON",
+              "named_quote": "LIONESS-DRAGON",
+              "samples": 100,
+              "samples_quote": "100 breast tumors",
+              "features": 400,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  31,
+                  54,
+                  400
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@8-25",
+              "feature_count@31-54"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "The transcript and metabolite tables share sample IDs.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "We have 100 breast tumors with 400 transcript features and a metabolite panel measured on the same tumors, and",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_dragon.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-DRAGON",
+              "named_quote": "LIONESS-DRAGON",
+              "samples": 100,
+              "samples_quote": "100 breast tumors",
+              "features": 400,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  31,
+                  54,
+                  400
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@8-25",
+              "feature_count@31-54"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "I don't know yet whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {
+          "I don't know yet whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel.": {
+            "kind": "choices",
+            "values": [
+              150,
+              400
+            ]
+          }
+        },
+        "unknown_scopes": {
+          "I don't know yet whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel.": []
+        },
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "we want LIONESS-DRAGON networks for every tumor.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [
+          "I don't know yet whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel."
+        ],
+        "stated_quotes": [
+          "The transcript and metabolite tables share sample IDs.",
+          "LIONESS-DRAGON"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@8-25",
+            "property": "sample_count",
+            "name": "",
+            "value": "100",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "100 breast tumors",
+            "span": [
+              8,
+              25
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "100 breast tumors",
+                "span": [
+                  8,
+                  25
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "100 breast tumors",
+                "span": [
+                  8,
+                  25
+                ],
+                "result": "we want LIONESS-DRAGON networks for every tumor",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "100 breast tumors",
+                "span": [
+                  8,
+                  25
+                ],
+                "result": "We have 100 breast tumors with 400 transcript features and a metabolite panel measured on the same tumors, and",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@31-54",
+            "property": "feature_count",
+            "name": "",
+            "value": "400",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "400 transcript features",
+            "span": [
+              31,
+              54
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "400 transcript features",
+                "span": [
+                  31,
+                  54
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "400 transcript features",
+                "span": [
+                  31,
+                  54
+                ],
+                "result": "we want LIONESS-DRAGON networks for every tumor",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "400 transcript features",
+                "span": [
+                  31,
+                  54
+                ],
+                "result": "We have 100 breast tumors with 400 transcript features and a metabolite panel measured on the same tumors, and",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-DRAGON"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Did the metabolomics core use the 150-metabolite panel?",
+            "user_quote": "I don't know yet whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel.",
+            "workflows": [
+              "LIONESS-DRAGON"
+            ],
+            "contract_quote": "LIONESS-DRAGON consumes exactly two paired sample-by-feature continuous omics tables, DRAGON's inputs, and produces the aggregate DRAGON matrix plus one partial-correlation network per sample, written as an edge-by-sample table (source, target, one column per sample) with layer-qualified node IDs.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:LIONESS-DRAGON@215-324"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": null,
+          "reason_code": "registry_guidance_fallback",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "not_available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "we want LIONESS-DRAGON networks for every tumor."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "obligations": [
+            {
+              "fact_key": "agent:LIONESS-DRAGON@215-324",
+              "source": "agent",
+              "question": "Did the metabolomics core use the 150-metabolite panel?",
+              "user_quote": "I don't know yet whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel.",
+              "workflows": [
+                "LIONESS-DRAGON"
+              ],
+              "status": "asked",
+              "asked_as": ""
+            }
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-DRAGON"
+        ],
+        "accepted": [
+          {
+            "question": "Did the metabolomics core use the 150-metabolite panel?",
+            "user_quote": "I don't know yet whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel.",
+            "workflows": [
+              "LIONESS-DRAGON"
+            ],
+            "contract_quote": "LIONESS-DRAGON consumes exactly two paired sample-by-feature continuous omics tables, DRAGON's inputs, and produces the aggregate DRAGON matrix plus one partial-correlation network per sample, written as an edge-by-sample table (source, target, one column per sample) with layer-qualified node IDs.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:LIONESS-DRAGON@215-324"
+          }
+        ],
+        "queued": [],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 43264,
+    "output_tokens": 1905,
+    "total_tokens": 45169,
+    "calls": [
+      {
+        "call_id": "72123732-9984-4284-b966-9f81d3b382e3",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204731-ghi7P0jS9vXQkXNltO06",
+        "input_tokens": 5350,
+        "output_tokens": 376,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5726,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 663,
+        "price_snapshot": null,
+        "duration_ms": 5324,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "9afeec69-229f-4d7d-b113-6d4dbf62fc52",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204736-BraYJ6fYWjNuSrIgSYJH",
+        "input_tokens": 6715,
+        "output_tokens": 385,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 7100,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1238,
+        "price_snapshot": null,
+        "duration_ms": 6686,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c7061aac-90c8-4a35-a7b5-c84585d3d903",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 677,
+        "output_tokens": 43,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 720,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 127,
+        "price_snapshot": {
+          "snapshot_id": "f41418ad-cce6-510f-8056-cf7141179991",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-28T16:24:04.956180Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1191,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "80d29845-c356-4d14-8d34-f5c8d54ea38a",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204744-9SFWmuPzFxmgvm1LuRtU",
+        "input_tokens": 1668,
+        "output_tokens": 17,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1685,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 260,
+        "price_snapshot": null,
+        "duration_ms": 1219,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "93ff83a6-fb13-4184-808a-98bb9fd45eba",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793204745-V8soeScvkAin2plXKqHv",
+        "input_tokens": 18450,
+        "output_tokens": 523,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 18973,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1718,
+        "price_snapshot": null,
+        "duration_ms": 5979,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1cf0c625-e27b-4366-8e8a-940d717592b3",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204751-CiwXKrCfwPtqqfEV00LE",
+        "input_tokens": 573,
+        "output_tokens": 36,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 609,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 108,
+        "price_snapshot": null,
+        "duration_ms": 1516,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "39b2fe1a-0bf0-48b8-b32b-9329dc949e46",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793204753-HJhvrowbsIARJoFQAOrT",
+        "input_tokens": 8420,
+        "output_tokens": 345,
+        "cache_read_tokens": 8192,
+        "cache_write_tokens": 0,
+        "total_tokens": 8765,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 856,
+        "price_snapshot": null,
+        "duration_ms": 4311,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8c3a898d-810b-47b7-a5fa-2bad05ed39d2",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204757-qlDq4WeVKr3nWU6asQYI",
+        "input_tokens": 1411,
+        "output_tokens": 180,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1591,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 320,
+        "price_snapshot": null,
+        "duration_ms": 2265,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "f6fb70c4-f3f2-431a-ab84-531c10efecd6",
+  "task_state": {
+    "version": 1,
+    "task_id": "26042546",
+    "revision": 1,
+    "goal": "We have 100 breast tumors with 400 transcript features and a metabolite panel measured on the same tumors, and we want LIONESS-DRAGON networks for every tumor. The transcript and metabolite tables share sample IDs. I don't know yet whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel.",
+    "pending": [
+      {
+        "question_id": "agent:LIONESS-DRAGON:5edda01428",
+        "source": "agent",
+        "what": "LIONESS-DRAGON",
+        "question": "Did the metabolomics core use the 150-metabolite panel?",
+        "user_quote": "I don't know yet whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel.",
+        "workflows": [
+          "LIONESS-DRAGON"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": true,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

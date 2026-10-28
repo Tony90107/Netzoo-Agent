@@ -1,0 +1,494 @@
+{
+  "version": 1,
+  "session_id": "hb-j6a-X25-1",
+  "profile_id": "hb-j6a-X25-1",
+  "auto_generated": false,
+  "created_at": 1793204863.924014,
+  "updated_at": 1793204883.466183,
+  "messages": [
+    {
+      "role": "user",
+      "content": "In my grant I promised a network-based integration of liver transcriptomics and metabolomics, both measured on the same 50 mice on a high-fat diet. The reviewers liked it, and now I have to deliver something. I haven't settled what exactly that should be."
+    },
+    {
+      "role": "assistant",
+      "content": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample (BONOBO)\n\nWhich of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?\n\nNothing was selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "I want a causal network that shows which metabolites drive the expression of which genes."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I want a causal network that shows which metabolites drive the expression of which genes.\" -- not available here: no registered workflow produces this. Every registered workflow estimates associations or model coefficients from observational data.\n\nNo registered workflow produces this, so none is offered as the way to get it.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "multi_omic_network",
+        "entity_types": [
+          "metabolite",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "multi_omic_network",
+            "entity_types": [
+              "metabolite",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "multi_omic_network",
+              "source": "explicit",
+              "text_span": "a causal network that shows which metabolites drive the expression of which genes.",
+              "rationale": "The user is requesting a causal network that connects metabolites to gene expression, which aligns with the definition of a multi-omic network."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "metabolite",
+              "source": "explicit",
+              "text_span": "which metabolites drive the expression of which genes.",
+              "rationale": "The user specifies metabolites as the drivers in the causal relationship."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "which metabolites drive the expression of which genes.",
+              "rationale": "The user specifies genes as the targets in the causal relationship."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The request implies a network that summarizes relationships across all samples rather than individual patient-specific networks."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "unsupported",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": false,
+        "basis": "unanswerable",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want a causal network that shows which metabolites drive the expression of which genes.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [
+              "causal_proof"
+            ],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_dragon"
+        ],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want a causal network that shows which metabolites drive the expression of which genes.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {
+          "causal": [
+            "I want a causal network that shows which metabolites drive the expression of which genes."
+          ]
+        },
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DECLINE",
+        "partial": false,
+        "workflows": [],
+        "declined": [
+          {
+            "quote": "I want a causal network that shows which metabolites drive the expression of which genes.",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"I want a causal network that shows which metabolites drive the expression of which genes.\" -- not available here: no registered workflow produces this. Every registered workflow estimates associations or model coefficients from observational data."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "full_gap",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "multi_omic_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want a causal network that shows which metabolites drive the expression of which genes."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "DRAGON"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "which metabolites drive the expression of which genes",
+              "uncertainty": "two_readings",
+              "workflow": "DRAGON",
+              "contract_quote": "DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.",
+              "question": "Do you want to see associations rather than causal relationships?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "causal network",
+                "association network"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 21358,
+    "output_tokens": 900,
+    "total_tokens": 22258,
+    "calls": [
+      {
+        "call_id": "cc551ff7-4f20-4504-9b9e-a8cfd7e7eef3",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204866-36nFKWppTabPdomuqJ9m",
+        "input_tokens": 893,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 938,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 161,
+        "price_snapshot": null,
+        "duration_ms": 3029,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8d56632e-8844-4fad-8248-5d46dd021c17",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204869-mG4Mz8lc8wKqd3VkaHvL",
+        "input_tokens": 5294,
+        "output_tokens": 270,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5564,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 591,
+        "price_snapshot": null,
+        "duration_ms": 3812,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8df35686-9116-4962-b2ef-d2c3afc930cd",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 604,
+        "output_tokens": 55,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 659,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 124,
+        "price_snapshot": {
+          "snapshot_id": "f41418ad-cce6-510f-8056-cf7141179991",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-28T16:24:04.956180Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1016,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "d67fdbd8-d27d-4c06-b8be-226b92446c87",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204873-MkGGfku1p9NfyOdHnQ6d",
+        "input_tokens": 262,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 266,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 42,
+        "price_snapshot": null,
+        "duration_ms": 922,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c32c44a1-8593-4f91-b3d6-c83616c2380a",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793204874-pYvj51EZZhNiySG41pH0",
+        "input_tokens": 11994,
+        "output_tokens": 355,
+        "cache_read_tokens": 11904,
+        "cache_write_tokens": 0,
+        "total_tokens": 12349,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1119,
+        "price_snapshot": null,
+        "duration_ms": 3917,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "43c712c1-1dd1-48e0-bf7f-fdbc9fa8e57b",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204878-l5pDxcHqSWaz4pQhGb29",
+        "input_tokens": 517,
+        "output_tokens": 37,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 554,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 100,
+        "price_snapshot": null,
+        "duration_ms": 1254,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5ee4b5ae-2ec0-4dad-8250-0a23f18c2664",
+        "role": "capability_second_opinion",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793204880-bLE6b2yDUdY5kgUOBV13",
+        "input_tokens": 364,
+        "output_tokens": 6,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 370,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 58,
+        "price_snapshot": null,
+        "duration_ms": 1139,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d21e1500-1b39-4e37-8ec5-2ab3e4583d57",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204881-bnEM5DaThL9KGCyBPgAu",
+        "input_tokens": 1430,
+        "output_tokens": 128,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1558,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 291,
+        "price_snapshot": null,
+        "duration_ms": 2244,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "4df7d6e5-4cd4-4097-bab0-58e02a9151e8",
+  "task_state": null
+}

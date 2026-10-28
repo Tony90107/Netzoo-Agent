@@ -1,0 +1,841 @@
+{
+  "version": 1,
+  "session_id": "hb-j6a-X05-1",
+  "profile_id": "hb-j6a-X05-1",
+  "auto_generated": false,
+  "created_at": 1793204881.818711,
+  "updated_at": 1793204905.900157,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We have whole-exome somatic mutation calls for 140 colorectal tumors as a samples-by-genes matrix, plus a gene-length file, a cancer-gene list and an MSigDB pathway GMT. I'd like the tumors split into subtypes based on which pathways carry their mutations. Please try between 2 and 5 subtypes."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like the tumors split into subtypes based on which pathways carry their mutations.\" -- the request does not say whether one item may belong to several groups at once: if one group each: SAMBAR; if several groups at once: no registered workflow gives this.\n\nBefore I choose a workflow, please tell me: Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: We have whole-exome somatic mutation calls for 140 colorectal tumors as a samples-by-genes matrix, plus a gene-length file, a cancer-gene list and an MSigDB pathway GMT. I'd like the tumors split into subtypes based on which pathways carry their mutations. Please try between 2 and 5 subtypes.\nUser follow-up: Each tumor should get a single subtype label; I'm not after tumors that sit in two subtypes."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like the tumors split into subtypes based on which pathways carry their mutations.\" -- available from SAMBAR.\n\nSelected path: **SAMBAR**.\n\nYour question asks for a cohort-level sample cluster assignment. **SAMBAR** fits that result and scale.\n\nWhy this recommendation:\n\nGene length normalization addresses the greater opportunity for mutations in longer genes; gene/exon sizes are therefore required, not just the mutation matrix.\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\nWhat you asked about:\n\n- \"Each tumor should get a single subtype label; I'm not after tumors that sit in two subtypes.\" — Subtype labels can be compared with clinical variables -- survival between subtypes, for example; that needs a clinical table keyed by the same sample IDs. The pathway mutation scores show which pathways separate the subtypes.\n\n**SAMBAR** — Subtype somatic-mutation samples through pathway mutation scores with SAMBAR. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.\n\nRequired workflow inputs:\n\n- `mutation_file`: somatic mutation matrix\n- `exon_size_file`: gene/exon-size CSV\n- `cancer_gene_file`: cancer-gene list\n- `pathway_file`: GMT pathway file\n\nOutputs:\n\n- `gene_mutation_scores`: Sample-by-gene mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_sambar",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_sambar"
+      ],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [
+          "mutation_matrix"
+        ],
+        "artifact_type": "sample_cluster_assignment",
+        "entity_types": [
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "mutation_matrix"
+            ],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": [
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "sample_cluster_assignment",
+              "source": "explicit",
+              "text_span": "Each tumor should get a single subtype label; I'm not after tumors that sit in two subtypes.",
+              "rationale": "The user wants to assign subtype labels to tumors based on pathway mutations."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "Each tumor should get a single subtype label.",
+              "rationale": "The user specifies that each tumor should receive one subtype label, indicating a single assignment per sample."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "mutation_matrix",
+              "source": "explicit",
+              "text_span": "whole-exome somatic mutation",
+              "rationale": "The user provided whole-exome somatic mutation calls as a samples-by-genes matrix, which is necessary for the analysis."
+            },
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The selected artifact ontology uniquely defines the canonical scientific operation."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "addressed_concerns": [
+        {
+          "action": "run_sambar",
+          "concern": "downstream_use",
+          "text_span": "Each tumor should get a single subtype label; I'm not after tumors that sit in two subtypes."
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like the tumors split into subtypes based on which pathways carry their mutations.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "one_group",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "settings": [
+                {
+                  "name": "SAMBAR.kmin",
+                  "quote": "2",
+                  "value": "2",
+                  "span": [
+                    298,
+                    299
+                  ],
+                  "at": 298
+                },
+                {
+                  "name": "SAMBAR.kmax",
+                  "quote": "5",
+                  "value": "5",
+                  "span": [
+                    304,
+                    305
+                  ],
+                  "at": 304
+                }
+              ],
+              "samples": 140,
+              "samples_quote": "140"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "setting:SAMBAR.kmin@298-299",
+              "setting:SAMBAR.kmax@304-305",
+              "sample_count@69-72"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "whole-exome somatic mutation calls for 140 colorectal tumors as a samples-by-genes matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a gene-length file",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a cancer-gene list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "an MSigDB pathway GMT",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "Each tumor should get a single subtype label; I'm not after tumors that sit in two subtypes.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like the tumors split into subtypes based on which pathways carry their mutations.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "Each tumor should get a single subtype label; I'm not after tumors that sit in two subtypes.",
+          "2",
+          "5"
+        ],
+        "facts": [
+          {
+            "id": "setting:SAMBAR.kmin@298-299",
+            "property": "setting",
+            "name": "SAMBAR.kmin",
+            "value": "2",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "2",
+            "span": [
+              298,
+              299
+            ],
+            "value_quote": "2",
+            "value_span": [
+              298,
+              299
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "2",
+                "span": [
+                  298,
+                  299
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "2",
+                "span": [
+                  298,
+                  299
+                ],
+                "result": "I'd like the tumors split into subtypes based on which pathways carry their mutations.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:SAMBAR.kmax@304-305",
+            "property": "setting",
+            "name": "SAMBAR.kmax",
+            "value": "5",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "5",
+            "span": [
+              304,
+              305
+            ],
+            "value_quote": "5",
+            "value_span": [
+              304,
+              305
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "5",
+                "span": [
+                  304,
+                  305
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "5",
+                "span": [
+                  304,
+                  305
+                ],
+                "result": "I'd like the tumors split into subtypes based on which pathways carry their mutations.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@69-72",
+            "property": "sample_count",
+            "name": "",
+            "value": "140",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "140",
+            "span": [
+              69,
+              72
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "140",
+                "span": [
+                  69,
+                  72
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "140",
+                "span": [
+                  69,
+                  72
+                ],
+                "result": "I'd like the tumors split into subtypes based on which pathways carry their mutations.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "sample_cluster_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like the tumors split into subtypes based on which pathways carry their mutations."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Each tumor should get a single subtype label; I'm not after tumors that sit in two subtypes.",
+              "uncertainty": "said_unknown",
+              "workflow": "SAMBAR",
+              "contract_quote": "cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.",
+              "question": "Do you want to try between 2 and 5 subtypes?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "between 2 and 5 subtypes"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 36417,
+    "output_tokens": 1309,
+    "total_tokens": 37726,
+    "calls": [
+      {
+        "call_id": "83b975dd-3ea8-4561-8b7a-3687dfe47b89",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204883-Sf6Qz9PhcXvcLaO3VWv6",
+        "input_tokens": 965,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1007,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 170,
+        "price_snapshot": null,
+        "duration_ms": 1420,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "be167e48-f7da-445c-bd64-252efdb9e1fe",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204885-Y3VSQXl9y5A7i0nt2p38",
+        "input_tokens": 5375,
+        "output_tokens": 177,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5552,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 519,
+        "price_snapshot": null,
+        "duration_ms": 3550,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "8ccd29d3-bb03-44e5-aa19-a37a7b8280bc",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204889-Kd1tMEKB3nCPMKTnh8pG",
+        "input_tokens": 5568,
+        "output_tokens": 175,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5743,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 643,
+        "price_snapshot": null,
+        "duration_ms": 2521,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "876be6df-e272-4b94-aeee-17d3b0a047c1",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 683,
+        "output_tokens": 55,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 738,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 135,
+        "price_snapshot": {
+          "snapshot_id": "f41418ad-cce6-510f-8056-cf7141179991",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-28T16:24:04.956180Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1207,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "bfd83a3b-d80f-4a0e-8ddf-60d8906a199d",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204892-V4cI0QFhPQzilvHYO6pC",
+        "input_tokens": 318,
+        "output_tokens": 36,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 354,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 69,
+        "price_snapshot": null,
+        "duration_ms": 1283,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9e7d42c8-7a70-46aa-9051-058348a2debb",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793204894-57k2LIvL1PHGuMoCY2FA",
+        "input_tokens": 21672,
+        "output_tokens": 671,
+        "cache_read_tokens": 21376,
+        "cache_write_tokens": 0,
+        "total_tokens": 22343,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2050,
+        "price_snapshot": null,
+        "duration_ms": 7534,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e5396c80-a9ad-4aaa-b1a7-54000867cf82",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204901-RA9fP3nBxtun1zKXMo6l",
+        "input_tokens": 598,
+        "output_tokens": 37,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 635,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 112,
+        "price_snapshot": null,
+        "duration_ms": 1571,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f51061a1-e7da-4ab4-ad00-843b3da562be",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204903-fVZA39sWePVHBRbT74xr",
+        "input_tokens": 1238,
+        "output_tokens": 116,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1354,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 255,
+        "price_snapshot": null,
+        "duration_ms": 1906,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "7bf12918-40c8-442d-920a-2a285f73c115",
+  "task_state": {
+    "version": 1,
+    "task_id": "ce03bf84",
+    "revision": 3,
+    "goal": "We have whole-exome somatic mutation calls for 140 colorectal tumors as a samples-by-genes matrix, plus a gene-length file, a cancer-gene list and an MSigDB pathway GMT. I'd like the tumors split into subtypes based on which pathways carry their mutations. Please try between 2 and 5 subtypes.",
+    "pending": [],
+    "facts": [
+      {
+        "question_id": "dimension:group_membership:b16351b5b0",
+        "source": "dimension",
+        "what": "group_membership",
+        "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+        "user_quote": "I'd like the tumors split into subtypes based on which pathways carry their mutations.",
+        "options": {
+          "one_group": [
+            "SAMBAR"
+          ],
+          "several_groups": []
+        },
+        "labels": {
+          "one_group": "one group each",
+          "several_groups": "several groups at once"
+        },
+        "value": "one_group",
+        "answer_quote": "Each tumor should get a single subtype label; I'm not after tumors that sit in two subtypes.",
+        "turn": 1,
+        "status": "known"
+      }
+    ],
+    "rounds": 1,
+    "status": "closed",
+    "turns": 2
+  }
+}

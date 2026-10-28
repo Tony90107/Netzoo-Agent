@@ -1,0 +1,529 @@
+{
+  "version": 1,
+  "session_id": "hb-j6a-X18-1",
+  "profile_id": "hb-j6a-X18-1",
+  "auto_generated": false,
+  "created_at": 1793204960.5750551,
+  "updated_at": 1793204960.575104,
+  "messages": [
+    {
+      "role": "user",
+      "content": "From a previous project I have a human liver regulatory network stored as a CSV with three columns: source, target and weight. Each row links a transcription factor to one of its target genes, so TFs and genes never appear in the same column, and all weights are positive. Can you find communities of TFs together with the genes they regulate?"
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Can you find communities of TFs together with the genes they regulate?\" -- available from CONDOR.\n\nSelected path: **CONDOR**.\n\nYour question asks for a cohort-level community assignment. **CONDOR** fits that result and scale.\n\n**CONDOR** — Detect communities in a validated bipartite network with CONDOR. CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain separate partitions, and between-partition connectivity is compared with a degree/strength-preserving bipartite null model. A giant community can reflect an unsuitable null model, resolution or weight handling. Hubs alone do not prove every conventional algorithm fails, and bipartite modularity does not guarantee biologically meaningful modules. Verify the edge-weight conventions.\n\nRequired workflow inputs:\n\n- `network_file`: bipartite network\n\nBefore CONDOR: a PANDA or LIONESS network is dense and its edge weights can be negative. netZooR's pandaToCondorObject keeps only edges above a threshold (by default midway between the median weights of prior and non-prior edges) before CONDOR; threshold your network the same way, or otherwise make the weights non-negative, before running it here. CONDOR puts each node in one community and gives each node a core score, its share of its community's modularity, which picks out each module's core regulators.\n\nOutputs:\n\n- `community_assignment`: Network-node community memberships, not patient subtype labels.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is for guidance on identifying communities in a regulatory network, which falls under the category of an answer request rather than an execution authorization.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request is for guidance on identifying communities in a regulatory network, which falls under the category of an answer request rather than an execution authorization.",
+      "candidate_actions": [
+        "run_condor",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_condor"
+      ],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [],
+        "artifact_type": "community_assignment",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [],
+            "artifact_type": "community_assignment",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "Can you find communities of TFs together with the genes they regulate?",
+              "rationale": "The user is asking to find communities within a regulatory network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "community_assignment",
+              "source": "explicit",
+              "text_span": "find communities of TFs together with the genes they regulate.",
+              "rationale": "The user is interested in identifying communities, which corresponds to community assignments."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The request implies a single analysis of the entire network rather than separate analyses for individual samples."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_condor"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "I have a human liver regulatory network stored as a CSV with three columns: source, target and weight.",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_condor",
+          "status": "applicable",
+          "basis": []
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "I have a human liver regulatory network stored as a CSV with three columns: source, target and weight.",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Can you find communities of TFs together with the genes they regulate?",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "condor.communities"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "not_stated",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a human liver regulatory network stored as a CSV with three columns: source, target and weight",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "Each row links a transcription factor to one of its target genes, so TFs and genes never appear in the same column, and all weights are positive.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "find communities of TFs together with the genes they regulate",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "find communities of TFs together with the genes they regulate"
+        ],
+        "facts": [],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "CONDOR"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "community_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "find communities of TFs together with the genes they regulate"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "CONDOR"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "communities of TFs together with the genes they regulate",
+              "uncertainty": "said_unknown",
+              "workflow": "CONDOR",
+              "contract_quote": "Detect communities in a validated bipartite network with CONDOR.",
+              "question": "Is your network validated as a regulator-gene network?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "communities of TFs together with the genes they regulate"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 26803,
+    "output_tokens": 902,
+    "total_tokens": 27705,
+    "calls": [
+      {
+        "call_id": "c3091d21-3c00-4fd3-bbb9-c0c56d893880",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204945-f3ZMkoczCBPPPX0Kjf0t",
+        "input_tokens": 5348,
+        "output_tokens": 193,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5541,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 553,
+        "price_snapshot": null,
+        "duration_ms": 3284,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5747a898-2ba7-4f87-a474-cd6783ebb523",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 667,
+        "output_tokens": 55,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 722,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 133,
+        "price_snapshot": {
+          "snapshot_id": "f41418ad-cce6-510f-8056-cf7141179991",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-28T16:24:04.956180Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1055,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "6dc17670-3694-4fa9-b150-547c1b2dab30",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204949-ZGqJEaobaXP2W4jRNbVE",
+        "input_tokens": 291,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 295,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 46,
+        "price_snapshot": null,
+        "duration_ms": 813,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d0538a26-30f5-4023-b7d4-6c7cdbdd0b35",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793204950-76mIF8hg4tbMKEZJp3w0",
+        "input_tokens": 18446,
+        "output_tokens": 457,
+        "cache_read_tokens": 18176,
+        "cache_write_tokens": 0,
+        "total_tokens": 18903,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1678,
+        "price_snapshot": null,
+        "duration_ms": 5829,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "02081560-3f26-43cf-85d7-ded3b7ac6a81",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204956-rVUDrlTuzkxq4dHdBKDT",
+        "input_tokens": 571,
+        "output_tokens": 32,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 603,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 105,
+        "price_snapshot": null,
+        "duration_ms": 1034,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "64bcde64-8da8-4ac1-add5-a2bc051f1c78",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204957-u8z1UkUXbUodnnK0ZXQZ",
+        "input_tokens": 560,
+        "output_tokens": 56,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 616,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 118,
+        "price_snapshot": null,
+        "duration_ms": 1214,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "53d5221d-1e5b-4c5f-a493-865e9e93d56b",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204958-DZBXQ3WHOpOkRV3MgzzB",
+        "input_tokens": 920,
+        "output_tokens": 105,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1025,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 201,
+        "price_snapshot": null,
+        "duration_ms": 1546,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "17d547c1-71bb-4a40-9537-18fcfba08fa6",
+  "task_state": null
+}

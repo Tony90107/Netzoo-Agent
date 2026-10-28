@@ -1,0 +1,880 @@
+{
+  "version": 1,
+  "session_id": "hb-j6a-X07-1",
+  "profile_id": "hb-j6a-X07-1",
+  "auto_generated": false,
+  "created_at": 1793204835.156919,
+  "updated_at": 1793204835.156959,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We measured plasma transcripts (300 features) and metabolites (200 features) on the same 80 type 2 diabetes patients, and both tables use identical patient IDs. I'd like LIONESS-DRAGON to give each patient their own two-layer partial-correlation network."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 2 or 80?\n  You wrote: \"80 type 2 diabetes patients\".\n  - 2: no registered workflow can do this as asked -- LIONESS-DRAGON needs at least 3 samples; the request has 2\n  - 80: LIONESS-DRAGON can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "multi_omic_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "multi_omic_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like LIONESS-DRAGON to give each patient their own two-layer partial-correlation network.",
+              "rationale": "The user wants to construct a network from the provided data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "multi_omic_network",
+              "source": "explicit",
+              "text_span": "plasma transcripts (300 features) and metabolites (200 features)",
+              "rationale": "The user specifies a two-layer network involving transcripts and metabolites."
+            }
+          ],
+          "assumptions": [
+            "No scale was stated; DRAGON gives one result for the whole cohort; LIONESS-DRAGON gives one result per sample."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "assumed_outcome",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these is right: 2 or 80?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "give each patient their own two-layer partial-correlation network",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "lioness_dragon.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "80": [
+                "lioness_dragon.per_sample_networks"
+              ]
+            },
+            "unknown_quote": "80 type 2 diabetes patients",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-DRAGON",
+              "named_quote": "LIONESS-DRAGON",
+              "features": 500,
+              "feature_counts": 2,
+              "feature_items": [
+                [
+                  12,
+                  45,
+                  300
+                ],
+                [
+                  50,
+                  76,
+                  200
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": true,
+            "outcome_notes": {
+              "2": "LIONESS-DRAGON needs at least 3 samples; the request has 2"
+            },
+            "fact_ids": [
+              "feature_count@12-45",
+              "feature_count@50-76",
+              "feature_count=feature_count@12-45+feature_count@50-76",
+              "sample_count@89-116:candidates"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "plasma transcripts (300 features)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "metabolites (200 features)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "80 type 2 diabetes patients",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "identical patient IDs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {
+          "joint_layers": "2"
+        },
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "give each patient their own two-layer partial-correlation network.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [
+          {
+            "of": "samples",
+            "quote": "80 type 2 diabetes patients",
+            "values": [
+              2,
+              80
+            ]
+          }
+        ],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "LIONESS-DRAGON"
+        ],
+        "facts": [
+          {
+            "id": "feature_count@12-45",
+            "property": "feature_count",
+            "name": "",
+            "value": "300",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "plasma transcripts (300 features)",
+            "span": [
+              12,
+              45
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "plasma transcripts (300 features)",
+                "span": [
+                  12,
+                  45
+                ],
+                "result": "",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@50-76",
+            "property": "feature_count",
+            "name": "",
+            "value": "200",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "metabolites (200 features)",
+            "span": [
+              50,
+              76
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "metabolites (200 features)",
+                "span": [
+                  50,
+                  76
+                ],
+                "result": "",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@89-116:candidates",
+            "property": "sample_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "2",
+              "80"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "80 type 2 diabetes patients",
+            "span": [
+              89,
+              116
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "side_by_side",
+                "quote": "80 type 2 diabetes patients",
+                "span": [
+                  89,
+                  116
+                ],
+                "result": "",
+                "role": "alternative"
+              },
+              {
+                "reader": "side_by_side",
+                "quote": "80 type 2 diabetes patients",
+                "span": [
+                  89,
+                  116
+                ],
+                "result": "80 type 2 diabetes patients",
+                "role": "alternative"
+              },
+              {
+                "reader": "side_by_side",
+                "quote": "80 type 2 diabetes patients",
+                "span": [
+                  89,
+                  116
+                ],
+                "result": "give each patient their own two-layer partial-correlation network",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count=feature_count@12-45+feature_count@50-76",
+            "property": "feature_count",
+            "name": "",
+            "value": "500",
+            "values": [],
+            "state": "stated",
+            "origin": "derived",
+            "quote": "",
+            "span": [],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "plasma transcripts (300 features)",
+                "span": [
+                  12,
+                  45
+                ],
+                "result": "",
+                "role": "operand"
+              },
+              {
+                "reader": "request",
+                "quote": "metabolites (200 features)",
+                "span": [
+                  50,
+                  76
+                ],
+                "result": "",
+                "role": "operand"
+              }
+            ],
+            "derived_from": [
+              "feature_count@12-45",
+              "feature_count@50-76"
+            ],
+            "formula": "300 + 200",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "LIONESS-DRAGON"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which of these is right: 2 or 80?",
+            "user_quote": "80 type 2 diabetes patients",
+            "workflows": [
+              "LIONESS-DRAGON"
+            ],
+            "contract_quote": "",
+            "depends_on": "sample_count",
+            "outcomes": {
+              "2": [],
+              "80": [
+                "LIONESS-DRAGON"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": true,
+            "notes": {
+              "2": "LIONESS-DRAGON needs at least 3 samples; the request has 2"
+            },
+            "fact_key": "count:sample_count@89-116"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "count_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "multi_omic_network",
+          "reason_code": "registry_guidance_fallback",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "give each patient their own two-layer partial-correlation network."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "obligations": [
+            {
+              "fact_key": "count:sample_count@89-116",
+              "source": "count",
+              "question": "Which of these is right: 2 or 80?",
+              "user_quote": "80 type 2 diabetes patients",
+              "workflows": [
+                "LIONESS-DRAGON"
+              ],
+              "status": "asked",
+              "asked_as": ""
+            }
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-DRAGON",
+          "DRAGON"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'd like LIONESS-DRAGON to give each patient their own two-layer partial-correlation network.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-DRAGON",
+              "contract_quote": "Require at least three samples.",
+              "question": "Do you have at least three samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'd like LIONESS-DRAGON to give each patient their own two-layer partial-correlation network.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-DRAGON",
+              "contract_quote": "LIONESS-DRAGON consumes exactly two paired sample-by-feature continuous omics tables, DRAGON's inputs.",
+              "question": "Do you have two paired sample-by-feature continuous omics tables?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'd like LIONESS-DRAGON to give each patient their own two-layer partial-correlation network.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-DRAGON",
+              "contract_quote": "Values must be finite continuous numeric measurements; missing values, duplicate IDs and zero-variance features are rejected.",
+              "question": "Are all values finite continuous numeric measurements without missing values or duplicates?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 33801,
+    "output_tokens": 1499,
+    "total_tokens": 35300,
+    "calls": [
+      {
+        "call_id": "659d1dfe-923e-49ec-8c60-b46df0c0dada",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204814-75FWJTRVIDNrFxg3tbMN",
+        "input_tokens": 5332,
+        "output_tokens": 179,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5511,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 542,
+        "price_snapshot": null,
+        "duration_ms": 3118,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "142599eb-2a73-4f57-a74c-dc8251afa42a",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204817-ZqQcE07hQP0x7ErdqwCx",
+        "input_tokens": 4305,
+        "output_tokens": 57,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 4362,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 469,
+        "price_snapshot": null,
+        "duration_ms": 1402,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "eca7cae1-7a80-4108-b7f1-470637331b56",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 656,
+        "output_tokens": 56,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 712,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 132,
+        "price_snapshot": {
+          "snapshot_id": "f41418ad-cce6-510f-8056-cf7141179991",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-28T16:24:04.956180Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1148,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "b3a8f8a8-fb98-4a76-bc60-9b8638b8edf6",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204819-w4UKShb0F47Gsblh3DXF",
+        "input_tokens": 300,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 304,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 47,
+        "price_snapshot": null,
+        "duration_ms": 717,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c22d5fb7-4ae2-452c-920f-059b2a6b61e1",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793204820-eUjf4uZwIwrv5JPXBDsD",
+        "input_tokens": 15242,
+        "output_tokens": 640,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15882,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1614,
+        "price_snapshot": null,
+        "duration_ms": 7105,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "51c950a1-2025-4028-a7ac-9285e9c8b5d1",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204827-UnOU8WGFlsZ1wyQNzi2o",
+        "input_tokens": 555,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 597,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 108,
+        "price_snapshot": null,
+        "duration_ms": 1276,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3dc82ccb-4143-4732-9b97-629fa6f636f9",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793204829-4fO6FqeBCOV4mytsKvT6",
+        "input_tokens": 5310,
+        "output_tokens": 198,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5508,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 531,
+        "price_snapshot": null,
+        "duration_ms": 2654,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f0b0e501-aae5-431b-b702-0f9d100db963",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793204831-jIYLF9imcbJIjHHmXWiC",
+        "input_tokens": 2101,
+        "output_tokens": 323,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2424,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 509,
+        "price_snapshot": null,
+        "duration_ms": 3406,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "9f11847e-75a3-4177-88af-419959db1711",
+  "task_state": {
+    "version": 1,
+    "task_id": "466bdb42",
+    "revision": 1,
+    "goal": "We measured plasma transcripts (300 features) and metabolites (200 features) on the same 80 type 2 diabetes patients, and both tables use identical patient IDs. I'd like LIONESS-DRAGON to give each patient their own two-layer partial-correlation network.",
+    "pending": [
+      {
+        "question_id": "count:sample_count:b7ca75921a",
+        "source": "count",
+        "what": "sample_count",
+        "question": "Which of these is right: 2 or 80?",
+        "user_quote": "80 type 2 diabetes patients",
+        "workflows": [
+          "LIONESS-DRAGON"
+        ],
+        "options": {
+          "2": [],
+          "80": [
+            "LIONESS-DRAGON"
+          ]
+        },
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}
