@@ -436,7 +436,9 @@ class FactRecord:
         quantity from being judged twice when a dedicated candidate reading already owns it. feature-count-doubts
         (j2 Q42, j3 R35): before `feature_count` was a type, a feature doubt was written as a sample count or not at
         all; its candidates are judged like `count_alternatives` (`read_alternatives`)."""
-        about = getattr(unknown, "about", "")
+        from .needed_facts import feature_sized_layers
+
+        about = "feature_count" if feature_sized_layers(unknown) else getattr(unknown, "about", "")
         values = sorted(set(getattr(unknown, "count_values", None) or ()))
         if about not in ("sample_count", "feature_count") or getattr(unknown, "count_kind", "") != "choices" \
                 or len(values) < 2:

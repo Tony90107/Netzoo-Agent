@@ -54,8 +54,9 @@ def _overlap(a: str, b: str) -> bool:
     return bool(a and b) and (a in b or b in a)
 
 
-def answered_check(check, task_state):
-    """The check with each wait a known answer settles resolved by that answer's own outcome."""
+def answered_check(check, task_state, task: str = ""):
+    """The check with each wait a known answer settles resolved by that answer's own outcome; a known count answer
+    that settled no wait is applied to the request's one credited result (`_applied_counts`)."""
     state = _state(task_state)
     if check is None or state is None:
         return check
@@ -64,13 +65,14 @@ def answered_check(check, task_state):
     from .core_decision import form_doubt
 
     facts = [fact for fact in state.known() if fact.source in ("count", "dimension")]
-    rows, changed = [], False
+    rows, changed, settled = [], False, set()
     for row in check.requirements:
         # jev-answers: an answer about a doubted form settles every row waiting on it, whatever words each quotes.
         fact = next((fact for fact in facts if row.status == "needs_fact" and fact.what == (row.depends_on or "")
                      and (fact.source == "count") == row.by_code and fact.value in row.outcomes
                      and (form_doubt(row) or _overlap(row.unknown_quote, fact.user_quote))), None)
         if fact is not None:
+            settled.add(fact.question_id)
             keys = list(row.outcomes[fact.value])
             label = fact.labels.get(fact.value) or fact.value
             names = list(dict.fromkeys(entry(key).workflow for found in row.outcomes.values() for key in found))
@@ -80,10 +82,50 @@ def answered_check(check, task_state):
                                         f"none of the workflows matched to this result ({', '.join(names)}) gives it"]})
             changed = True
         rows.append(row)
-    if not changed:
+    rows, applied = _applied_counts(rows, [fact for fact in facts if fact.source == "count"
+                                           and fact.question_id not in settled], task)
+    if not (changed or applied):
         return check
     results = [row for row in rows if row.kind == "result"]
     return check.model_copy(update={"requirements": rows, "full_gap": full_gap(results, check.unchecked)})
+
+
+def _applied_counts(rows, facts, task: str):
+    """answered-counts-2026-10-29: a count the user answered that settled no wait this turn, applied to the request's
+    one credited result -- ad1 j6 X22: "150 or 400 metabolites?" -> "400" bound, but turn 2's re-reading dropped the
+    doubt, its row was available with the 400 transcripts alone, and the answer had no wait to settle.
+
+    Features read from inside the doubt's words are replaced by one data type of the answered size; an answered sample
+    count replaces the method's. The row is re-fitted and is not available, the answer quoted, when nothing fits.
+    Several credited results or a doubt not placed in the request: unchanged."""
+    from .method_conditions import method_fitting
+    from .request_spans import _span
+
+    credited = [index for index, row in enumerate(rows) if row.kind == "result" and row.delivered_by]
+    if len(credited) != 1 or not task:
+        return rows, False
+    index = credited[0]
+    row, applied = rows[index], False
+    for fact in facts:
+        where = _span(task, fact.user_quote) if fact.user_quote.strip() else None
+        if where is None or fact.what not in ("feature_count", "sample_count") or not fact.value.isdigit():
+            continue
+        value, method = int(fact.value), dict(row.method)
+        if fact.what == "sample_count":
+            method.update(samples=value, samples_quote=fact.user_quote)
+        else:
+            items = [item for item in method.get("feature_items", []) if not (where[0] <= item[0] and item[1] <= where[1])]
+            items.append([where[0], where[1], value])
+            method.update(features=sum(item[2] for item in items), feature_counts=len(items), feature_items=items)
+        kept, limits, *_rest = method_fitting(method, list(row.delivered_by))
+        update = {"method": method}
+        if not kept:
+            update.update(status="not_available", delivered_by=[], limits=[
+                *row.limits, *limits, f'You answered "{fact.answer_quote}" to "{fact.question}".'])
+        row, applied = row.model_copy(update=update), True
+    rows = list(rows)
+    rows[index] = row
+    return rows, applied
 
 
 def clarification_rounds(core, task_state):

@@ -64,3 +64,27 @@ def test_a_feature_doubt_without_candidates_is_no_fixed_dimension():
                    unknown_facts=[_doubt(PANELS, (), kind="unspecified")])
     assert not check.unknowns
     assert not any(f.property == "feature_count" and f.state == "unsure" for f in check.facts)
+
+
+def test_x22_shape_a_feature_sized_layer_count_is_judged_as_features():
+    """layer-count-features-2026-10-29 (j6 X22): "150 or 400 metabolites" typed omics_layers is a feature count."""
+    task = ("We have 100 breast tumors with 400 transcript features and a metabolite panel measured on the same tumors, "
+            "and we want LIONESS-DRAGON networks for every tumor. I don't know yet whether the metabolomics core used "
+            "their 150-metabolite panel or their 400-metabolite panel.")
+    doubt = "whether the metabolomics core used their 150-metabolite panel or their 400-metabolite panel"
+    ask = _ask("we want LIONESS-DRAGON networks for every tumor", [KEY], samples=100, samples_quote="100 breast tumors",
+               omics_layers=2, scale="per_sample", features=[(400, "400 transcript features")])
+    check = _check(task, ask, unknown_facts=[_doubt(doubt, (150, 400), about="omics_layers")])
+    (row,) = check.results()
+    # 550 features: 150,975 pairs x 100 = 15,097,500 values; 800: 319,600 x 100 = 31,960,000 > 20,000,000.
+    assert (row.status, row.depends_on, row.by_code) == ("needs_fact", "feature_count", True)
+    assert row.outcomes == {"150": [KEY], "400": []}
+    assert not check.unknowns
+
+
+def test_a_small_layer_count_doubt_is_unchanged():
+    task = "We want one partial-correlation network. I'm not sure whether we have one or two omics layers."
+    ask = _ask("We want one partial-correlation network", [KEY], samples=50, samples_quote="50", omics_layers=2)
+    check = _check(task, ask, unknown_facts=[_doubt("whether we have one or two omics layers", (1, 2),
+                                                    about="omics_layers")])
+    assert not any(f.property == "feature_count" and f.state == "unsure" for f in check.facts)

@@ -433,13 +433,16 @@ def asked_sentences(task_state) -> set[str]:
 R1_UNSURE = "R1 the check did not read these words as the user being unsure"
 
 
-def agent_doubts(task_state) -> list[str]:
-    """jev-agent-once-2026-10-29: the user words of every agent question this task asked (pending) or the user answered
-    (facts). j6 X02: the "yes" bound, and `agreed_fact_core` asked the same doubt again; X22: it revived another
-    proposal on a doubt the fact agent had already asked."""
+def asked_doubts(task_state) -> list[str]:
+    """The user words of every question this task asked (pending) or the user answered (facts), whatever asked it.
+
+    jev-agent-once-2026-10-29: j6 X02's "yes" bound and `agreed_fact_core` asked the same doubt again. asked-doubts-
+    2026-10-29 (lc1 X22): the doubt was asked and answered by a code-judged count question ("150 or 400?" -> "400",
+    DECLINE with the verified limit), and the rule revived a fact-agent proposal on it, overriding the DECLINE."""
     state = task_state or {}
+    # A CLARIFY's goal quote (source "goal") can hold most of the request, so it would block genuine doubts inside it.
     return [item.get("user_quote", "") for key in ("pending", "facts") for item in state.get(key) or []
-            if item.get("source") == "agent" and item.get("user_quote")]
+            if item.get("user_quote") and item.get("source") != "goal"]
 
 
 def agreed_fact_core(core: CoreDecision, read: dict, task: str, decision, policy,
@@ -686,7 +689,7 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
 
     policy = getattr(context, "project_policy", None)
     after, action = agreed_fact_core(core, read, user_task, decision, policy, asked_sentences(state.get("task_state")),
-                                     agent_doubts(state.get("task_state")))
+                                     asked_doubts(state.get("task_state")))
     if action not in ("not_acting", "no_sentence"):
         record_event(context, state, "core.jev_agent", "classify", {
             "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
