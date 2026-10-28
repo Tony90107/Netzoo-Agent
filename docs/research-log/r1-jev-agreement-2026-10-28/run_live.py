@@ -2,7 +2,7 @@
 code 8af7574b. Targets: j5 W40, j1 J46 (gold ASK). Controls (non-ASK items stating an irrelevant doubt): j5 W18, j4 S14,
 j3 R21. All seen. Cost cap US$0.08.
 
-Usage: python3 run_live.py   (tag ra1; never reruns)
+Usage: python3 run_live.py   (tag ra2: W40, J46 rerun after the basis fix; never reruns)
 """
 from __future__ import annotations
 
@@ -22,12 +22,12 @@ RUN = HERE.parents[2]
 LOGS = RUN / 'docs/research-log'
 DOTENV = RUN.parent.parent / 'netzoo_agent/.env'
 HARNESS = LOGS / 'closed-menu-hybrid-2026-10-19/h4/run_live.py'
-CODE = '8af7574b'
-CAP_USD = 0.08
-TAG = 'ra1'
+CODE = '59ebf9f1'
+CAP_USD = 0.03
+TAG = 'ra2'
 SETS = {'j1': LOGS / 'jev-guard-2026-10-27/j1/items.json', 'j2': LOGS / 'jev-guard-2026-10-27/j2/items.json',
         'j3': LOGS / 'jev-j3-2026-10-27/j3/items.json', 'j4': LOGS / 'jev-j4-2026-10-27/j4/items.json', 'j5': LOGS / 'jev-j5-2026-10-28/j5/items.json'}
-ITEMS = {'target': [('j5', 'W40'), ('j1', 'J46')], 'control': [('j5', 'W18'), ('j4', 'S14'), ('j3', 'R21')]}
+ITEMS = {'target': [('j5', 'W40'), ('j1', 'J46')]}
 
 
 def write(path, value):
