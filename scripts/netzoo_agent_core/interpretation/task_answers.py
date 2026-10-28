@@ -15,11 +15,24 @@ import re
 from ..contracts.capability_check import full_gap
 from ..contracts.task_state import MAX_ROUNDS, TaskState
 
-__all__ = ["EXHAUSTED_NOTE", "answered_check", "clarification_rounds", "exhausted", "fold"]
+__all__ = ["EXHAUSTED_NOTE", "answered_check", "clarification_rounds", "exhausted", "exhausted_body", "fold"]
 
 EXHAUSTED_NOTE = ("I have asked about this request twice already, so I will not ask again. Below is what is still "
                   "missing; tell me when you know it, or describe a new request. Nothing was ruled out for this, and "
                   "nothing runs until then.")
+
+
+_ASKING = (("Before I choose a workflow, please tell me:", "Still missing:"),
+           ("No workflow has been selected and nothing runs before you answer.", "No workflow has been selected."))
+
+
+def exhausted_body(content: str) -> str:
+    """exhausted-wording-2026-10-28: an ASK body under EXHAUSTED_NOTE says what is missing, never asks it again (j5
+    W18 turn 3: "I will not ask again" and then "please tell me" the same question). As the reply that answers
+    nothing already does (`engine.task_updates`: "Still missing:")."""
+    for asking, saying in _ASKING:
+        content = content.replace(asking, saying)
+    return content
 
 
 def fold(text: str) -> str:
