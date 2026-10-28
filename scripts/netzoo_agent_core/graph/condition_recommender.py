@@ -228,6 +228,46 @@ def recommend_from_claims(
     ), rejected
 
 
+_DEFAULT_LINE = " If none of these applies: "
+
+
+def checked_default_line(question: str, credited: set[str]) -> str:
+    """checked-default-line-2026-10-28: the question's default line with only the workflows the check credited.
+
+    The line is written in routing, before the capability check, from the routing candidates (gu1 W01: "rather
+    than any per-sample networks", yet "If none of these applies: PANDA, LIONESS-PANDA"). Dropped when none is
+    credited; unchanged when the check credited no result or the question has no default line."""
+    if not credited or _DEFAULT_LINE not in (question or ""):
+        return question
+    head, tail = question.split(_DEFAULT_LINE, 1)
+    listed, _, rest = tail.partition(".")
+    names = [name.strip() for name in listed.split(",")]
+    kept = [name for name in names if name in credited]
+    if kept == names:
+        return question
+    return head + (_DEFAULT_LINE + ", ".join(kept) + "." if kept else "") + rest
+
+
+def with_checked_default_line(context, state, result):
+    """The router result with its tie question's default line checked (`checked_default_line`) once the capability
+    check is attached; recorded as `routing.default_line_checked`."""
+    from dataclasses import replace
+
+    from ..capability_sheet import entry
+
+    decision = result.decision
+    check = decision.capability_check
+    if check is None or not decision.clarification_question:
+        return result
+    credited = {entry(key).workflow for item in check.results() for key in item.delivered_by}
+    question = checked_default_line(decision.clarification_question, credited)
+    if question == decision.clarification_question:
+        return result
+    record_event(context, state, "routing.default_line_checked", "classify", {
+        "before": decision.clarification_question, "after": question, "credited": sorted(credited)})
+    return replace(result, decision=decision.model_copy(update={"clarification_question": question}))
+
+
 def separating_question(
     options: list[ConditionOption],
     candidates: list[str] | None = None,
@@ -252,7 +292,7 @@ def separating_question(
     text = f"{lead}; to choose, tell me: {numbered}"
     uncovered = [a for a in (candidates or []) if a not in covered]
     if uncovered:
-        text += " If none of these applies: " + ", ".join(_workflow_name(a) for a in uncovered) + "."
+        text += _DEFAULT_LINE + ", ".join(_workflow_name(a) for a in uncovered) + "."
     return text
 
 
