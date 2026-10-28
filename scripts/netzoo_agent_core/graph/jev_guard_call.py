@@ -430,6 +430,47 @@ def asked_sentences(task_state) -> set[str]:
             if str(item.get("what", "")).startswith("jev:")}
 
 
+R1_UNSURE = "R1 the check did not read these words as the user being unsure"
+
+
+def agreed_fact_core(core: CoreDecision, read: dict, task: str, decision, policy,
+                     asked: set[str] = frozenset()) -> tuple[CoreDecision, str]:
+    """r1-jev-agreement-2026-10-28: a fact-agent question rejected only because the check did not read its words as a
+    doubt is asked when Jev's ASK read picks the sentence holding those words (two readers agree on the doubt; Jev's
+    kind confidence is not used). j5 W40: "I'm not sure whether the variant matrix ... somatic ... or germline" -- the
+    check typed no doubt, R1 rejected the right question, Jev said ASK at 0.63, the call was DO SAMBAR.
+
+    The proposal is re-checked by the fact check's own rules with Jev's sentence as an uncertain quote, so any other
+    rule still rejects it. Asked as a fact-agent fact (basis `jev_agent`): its answer goes the normal way, never the
+    guard's answer read."""
+    if core.kind not in _KINDS:
+        return core, "not_acting"
+    sentence = read.get("sentence") if read.get("kind") == "ASK" else None
+    found = getattr(decision, "fact_check", None)
+    if not sentence or found is None or policy is None:
+        return core, "no_sentence"
+    if sentence in asked:
+        return core, "already_asked"
+    from ..contracts.fact_check import FactProposals
+    from ..interpretation.fact_check import _overlaps, kept_facts
+
+    rejected = [item.proposal for item in found.rejected
+                if item.rule == R1_UNSURE and _overlaps(item.proposal.get("user_quote", ""), sentence)]
+    if not rejected:
+        return core, "no_rejected_agreement"
+    check = decision.capability_check
+    widened = decision.model_copy(update={"capability_check": check.model_copy(update={
+        "uncertain_quotes": [*(check.uncertain_quotes or []), sentence]})}) if check is not None else decision
+    kept = kept_facts(task, FactProposals(facts=rejected), widened, policy).accepted
+    if not kept:
+        return core, "other_rule_rejects"
+    evidence = {**core.evidence, "jev_agent": {"kind_before": core.kind, "basis_before": core.basis,
+                                               "jev": read["kind"], "confidence": read["confidence"],
+                                               "sentence": sentence}}
+    return CoreDecision(kind="ASK", basis="jev_agent", facts=kept, workflows=list(kept[0].workflows),
+                        evidence=evidence), "ask"
+
+
 def guarded_core(core: CoreDecision, read: dict, clarify, asked: set[str] = frozenset()) -> tuple[CoreDecision, str]:
     """(the call after the guard, what it did). `clarify` builds the CLARIFY view when needed; `asked` holds the
     sentences already asked in this task, never asked again."""
@@ -632,6 +673,15 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
         record_event(context, state, "core.jev_guard", "classify",
                      {"status": f"not_run:{type(exc).__name__}", "mode": mode, "kind_before": core.kind})
         return core
+
+    policy = getattr(context, "project_policy", None)
+    after, action = agreed_fact_core(core, read, user_task, decision, policy, asked_sentences(state.get("task_state")))
+    if action not in ("not_acting", "no_sentence"):
+        record_event(context, state, "core.jev_agent", "classify", {
+            "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
+            "would_have": {"kind": after.kind, "basis": after.basis}, "sentence": read.get("sentence")})
+    if after is not core:
+        return after if mode == "on" else core
 
     def clarify():
         from ..interpretation.core_decision import _clarify_need
