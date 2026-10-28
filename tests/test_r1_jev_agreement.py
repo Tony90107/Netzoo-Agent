@@ -58,3 +58,18 @@ def test_a_jev_agent_ask_is_shown_as_its_question_and_clears_the_run():
     reply = ask_result({"decision": shown.model_dump(mode="json")}, lambda content, kind: {"content": content})
     assert reply is not None and "Does the variant matrix contain somatic calls from tumour-normal pairs?" in \
         reply["content"]
+
+
+def test_a_doubt_the_task_asked_or_the_user_answered_is_not_revived():
+    """jev-agent-once-2026-10-29 (j6 X02, X22): an agent question on the sentence, pending or answered, stops it."""
+    from netzoo_agent_core.graph.jev_guard_call import agent_doubts
+
+    sentence = W40["jev"]["sentence"]
+    for key, item in (("pending", {"source": "agent", "status": "asked"}),
+                      ("facts", {"source": "agent", "status": "known", "value": "yes"})):
+        state = {key: [{**item, "user_quote": sentence.rstrip(".")}]}
+        assert agreed_fact_core(DO, W40["jev"], W40["task"], _decision(), load_project_policy(),
+                                agent_asked=agent_doubts(state))[1] == "already_asked"
+    other = {"pending": [{"source": "dimension", "user_quote": sentence}]}
+    assert agreed_fact_core(DO, W40["jev"], W40["task"], _decision(), load_project_policy(),
+                            agent_asked=agent_doubts(other))[1] == "ask"
