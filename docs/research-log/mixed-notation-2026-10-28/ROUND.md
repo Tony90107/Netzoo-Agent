@@ -28,3 +28,10 @@ a result row of its own (R35's second blocker) is not touched in this round.
   blocker may remain).
 
 Stop rule: M0 or M1 fails -> withdraw; no gate is changed afterwards. Live only after the user agrees.
+
+## Live addendum (declared 2026-10-28 before the run, user "跑 live")
+
+`run_live.py` (tag mn1): R35, R22 (targets) and J40, W39 (one-notation controls), turn 1, 1 rep, cap US$0.10.
+- **N1** no target reading keeps a digit/word candidate fact (before: R35 2/2, R22 2/2 recorded readings did).
+- **N2** both controls keep their sample-count candidates (J40 25/30, W39 2/4) as unsure facts.
+- Reported, not gated: whether R35 waits on 200 / 600 (depends on the reading typing the doubt `feature_count`).
