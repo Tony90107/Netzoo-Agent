@@ -63,3 +63,29 @@ def test_the_reread_takes_the_compact_schema_over_the_limit(monkeypatch):
     passages = [f"Passage {index} asks for a network." for index in range(1, 9)]
     call.request_capability_reread(context, {}, " ".join(passages), passages, LLMUsage(budget_tokens=30000), [])
     assert seen and seen[0] <= 1000
+
+
+# --- check-reserve-2026-10-28 (ROUND.md): the check model's output cap fits gpt-4o-mini ---------------------------
+
+def test_the_output_cap_is_4000_for_gpt4o_and_unchanged_otherwise(monkeypatch):
+    from netzoo_agent_core.graph.required_check_budget import capability_max_tokens, check_output_reserve
+
+    monkeypatch.delenv("OPENROUTER_CAPABILITY_MAX_TOKENS", raising=False)
+    assert capability_max_tokens("openai/gpt-4o-mini-2024-07-18") == 4000
+    assert capability_max_tokens("nvidia/nemotron-3-super-120b-a12b:free") == 16000
+    monkeypatch.setenv("OPENROUTER_CAPABILITY_MAX_TOKENS", "9000")
+    assert capability_max_tokens("openai/gpt-4o-mini-2024-07-18") == 9000
+    monkeypatch.delenv("OPENROUTER_CAPABILITY_MAX_TOKENS")
+    monkeypatch.setenv("OPENROUTER_CAPABILITY_MODEL", "openai/gpt-4o-mini-2024-07-18")
+    context = SimpleNamespace(study_purpose_llm=object(), router_max_tokens=1200)
+    assert check_output_reserve(context, object()) == 4000
+    assert check_output_reserve(context, context.study_purpose_llm) == 1200
+
+
+def test_the_own_llm_is_built_with_the_same_cap(monkeypatch):
+    built = []
+    monkeypatch.delenv("OPENROUTER_CAPABILITY_MAX_TOKENS", raising=False)
+    monkeypatch.setenv("OPENROUTER_CAPABILITY_MODEL", "openai/gpt-4o-mini-2024-07-18")
+    monkeypatch.setattr(call, "_own_llm", lambda model, tokens: built.append(tokens) or object())
+    call._check_model(SimpleNamespace(study_purpose_llm=object(), semantic_model_name="openai/gpt-4o-mini"))
+    assert built == [4000]
