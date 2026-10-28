@@ -33,3 +33,9 @@ Offline, the recorded rejected readings re-validated with each turn's recorded u
 
 Live only after the user agrees (turn 1 of W01, P29, J45; about US$0.03).
 Stop rule: a failed gate -> withdraw; no gate is changed afterwards.
+
+## Live addendum (declared 2026-10-28 after the offline pass, before any run)
+
+`run_live.py` (tag gu1): W01, P29, J45, turn 1, 1 rep, cap US$0.10.
+- **V1** none of the three ends with the interpreter failure ("Semantic routing unavailable" / routing_failed).
+- Reported: each call; W01's gold is DO (PANDA / OTTER / GIRAFFE run once per group).

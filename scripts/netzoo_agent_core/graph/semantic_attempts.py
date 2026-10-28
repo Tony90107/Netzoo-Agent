@@ -72,6 +72,38 @@ __all__ = ["MAX_SEMANTIC_ATTEMPTS", "invoke_semantic_interpreter"]
 # it was meant to fix survived. Overall passes were unchanged, so it bought an
 # extra call and nothing else. See tests/test_semantic_attempt_bound.py.
 MAX_SEMANTIC_ATTEMPTS = 2
+_CONTRADICTED_GRANULARITY = "granularity_contradicts_request:"
+
+
+def granularity_left_unknown(user_task: str, interpretation, validation):
+    """granularity-unknown-2026-10-28: on the last attempt, a hypothesis whose only issues are a granularity the
+    request's words seem to contradict keeps its reading with granularity `unknown`, and is validated again.
+
+    j5 W01 ("one network for the tumours, built from all tumour samples together ... rather than any per-sample
+    networks") read `aggregate`; the code witness took "per-sample networks" for the request's scale, and the whole
+    reading was discarded (8 recorded turns ended "Semantic routing unavailable"). `unknown` claims neither scale.
+    Returns (interpretation, validation, the hypothesis indices changed); unchanged when any other issue remains."""
+    by_index: dict[int, list[str]] = {}
+    for issue in validation.issues:
+        head, _, rest = str(issue).partition("].")
+        if not head.startswith("hypothesis[") or not rest:
+            return interpretation, validation, []
+        by_index.setdefault(int(head[len("hypothesis["):]), []).append(rest)
+    changed = [index for index, issues in by_index.items()
+               if issues and all(issue.startswith(_CONTRADICTED_GRANULARITY) for issue in issues)]
+    if not changed or len(changed) != len(by_index):
+        return interpretation, validation, []
+    hypotheses = list(interpretation.outcome_hypotheses)
+    for index in changed:
+        hypothesis = hypotheses[index]
+        hypotheses[index] = hypothesis.model_copy(update={
+            "outcome": hypothesis.outcome.model_copy(update={"granularity": "unknown"}),
+            "evidence": [item for item in hypothesis.evidence if item.dimension != "granularity"]})
+    after = interpretation.model_copy(update={"outcome_hypotheses": hypotheses})
+    revalidated = validate_outcome_hypotheses(user_task, after.outcome_hypotheses, after.request_mode)
+    if not revalidated.valid:
+        return interpretation, validation, []
+    return after, revalidated, changed
 
 
 def invoke_semantic_interpreter(
@@ -586,6 +618,11 @@ def invoke_semantic_interpreter(
                 context, state, user_task, interpretation, validation, attempt,
                 primary=patched_index if patch is not None else None,
                 invalid_before_sibling_repair=(invalid_before_sibling_repair if patch is not None else frozenset()))
+            if not validation.valid:
+                interpretation, validation, unknown = granularity_left_unknown(user_task, interpretation, validation)
+                if unknown:
+                    record_event(context, state, "routing.granularity_left_unknown", "classify", {
+                        "attempt": attempt + 1, "hypotheses": unknown})
         duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
         if not validation.valid:
             usage = append_llm_usage(
