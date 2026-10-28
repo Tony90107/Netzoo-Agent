@@ -43,3 +43,18 @@ def test_no_ask_read_another_sentence_asked_or_another_rule_leave_the_call():
     assert agreed_fact_core(DO, W40["jev"], W40["task"], _decision(other), policy)[1] == "no_rejected_agreement"
     ask = CoreDecision(kind="ASK", basis="fact_agent", workflows=["SAMBAR"])
     assert agreed_fact_core(ask, W40["jev"], W40["task"], _decision(), policy)[1] == "not_acting"
+
+
+def test_a_jev_agent_ask_is_shown_as_its_question_and_clears_the_run():
+    """jev-guard review: the basis must be registered where an ASK becomes the reply (ra1 W40 showed DO guidance)."""
+    from netzoo_agent_core.interpretation.ask_facts import ask_result
+    from netzoo_agent_core.interpretation.core_decision import with_core
+
+    after, _ = agreed_fact_core(DO, W40["jev"], W40["task"], _decision(), load_project_policy())
+    run = _decision().model_copy(update={"action": "run_sambar", "should_execute": True,
+                                         "execution_requested": True, "matched_actions": ["run_sambar"]})
+    shown = with_core(run, after)
+    assert (shown.action, shown.should_execute, shown.matched_actions) == ("no_tool", False, [])
+    reply = ask_result({"decision": shown.model_dump(mode="json")}, lambda content, kind: {"content": content})
+    assert reply is not None and "Does the variant matrix contain somatic calls from tumour-normal pairs?" in \
+        reply["content"]

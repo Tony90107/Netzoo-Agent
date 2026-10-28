@@ -18,3 +18,14 @@ Honest reading: Jev did not read ASK on any of the three controls in this run, s
 as offline, the precision side is shown by no misfire, not by a control the rule saw and rejected. The controls'
 ASK comes from the fact agent asking their irrelevant doubt directly (the W18 problem, jev-relevance withdrawn), not
 from this change.
+
+## Correction (jev-guard review, same day): G4b was scored on the call's kind, not on what the user saw
+
+`jev_agent` was not registered where an ASK becomes the reply (`core_decision.with_core`, `ask_facts.ask_result`,
+`semantic_goal`). In ra1 W40 the core was ASK/jev_agent, but `ask_result` returned None and another renderer answered:
+stdout is the DO guidance for SAMBAR ("Selected path: **SAMBAR**"); the somatic/germline question was never shown, and
+`with_core` did not clear the run fields. So ra1 does **not** show the fix working; the KEPT above is void until the
+rerun below.
+
+Fixed: `jev_agent` added to the three basis tuples; `tests/test_r1_jev_agreement.py` now checks that `with_core` clears
+the run and `ask_result` shows the fact's question. Tests 5151 passed (2 known failures), replay 0 of 1388.

@@ -47,3 +47,11 @@ Stop rule: a failed gate -> withdraw; no gate is changed afterwards.
 `run_live.py` (tag ra1): W40, J46 (targets), W18, S14, R21 (controls), turn 1, cap US$0.08.
 - **G4a (hard):** no control ends turn 1 with a `jev_agent` ask.
 - **G4b:** W40 and J46 end turn 1 ASK (any basis); reported which.
+
+## Amendment 2 (after ra1, before the rerun)
+
+- G4b is judged on the reply text: W40's and J46's turn-1 stdout must show the fact agent's question and name no
+  "Selected path". A rerun `ra2` (W40, J46, turn 1, cap US$0.03) replaces ra1 for G4b; G4a stands from ra1 (controls
+  untouched by the rule).
+- Known limit, left as is: `asked_sentences` covers only `jev:` questions, so a revived agent question is not
+  remembered as asked; Jev may revive it next turn, bounded at two rounds by the P3 cap.
