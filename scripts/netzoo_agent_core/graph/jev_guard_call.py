@@ -433,8 +433,17 @@ def asked_sentences(task_state) -> set[str]:
 R1_UNSURE = "R1 the check did not read these words as the user being unsure"
 
 
+def agent_doubts(task_state) -> list[str]:
+    """jev-agent-once-2026-10-29: the user words of every agent question this task asked (pending) or the user answered
+    (facts). j6 X02: the "yes" bound, and `agreed_fact_core` asked the same doubt again; X22: it revived another
+    proposal on a doubt the fact agent had already asked."""
+    state = task_state or {}
+    return [item.get("user_quote", "") for key in ("pending", "facts") for item in state.get(key) or []
+            if item.get("source") == "agent" and item.get("user_quote")]
+
+
 def agreed_fact_core(core: CoreDecision, read: dict, task: str, decision, policy,
-                     asked: set[str] = frozenset()) -> tuple[CoreDecision, str]:
+                     asked: set[str] = frozenset(), agent_asked=()) -> tuple[CoreDecision, str]:
     """r1-jev-agreement-2026-10-28: a fact-agent question rejected only because the check did not read its words as a
     doubt is asked when Jev's ASK read picks the sentence holding those words (two readers agree on the doubt; Jev's
     kind confidence is not used). j5 W40: "I'm not sure whether the variant matrix ... somatic ... or germline" -- the
@@ -449,10 +458,11 @@ def agreed_fact_core(core: CoreDecision, read: dict, task: str, decision, policy
     found = getattr(decision, "fact_check", None)
     if not sentence or found is None or policy is None:
         return core, "no_sentence"
-    if sentence in asked:
-        return core, "already_asked"
     from ..contracts.fact_check import FactProposals
     from ..interpretation.fact_check import _overlaps, kept_facts
+
+    if sentence in asked or any(_overlaps(sentence, quote) for quote in agent_asked):
+        return core, "already_asked"
 
     rejected = [item.proposal for item in found.rejected
                 if item.rule == R1_UNSURE and _overlaps(item.proposal.get("user_quote", ""), sentence)]
@@ -675,7 +685,8 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
         return core
 
     policy = getattr(context, "project_policy", None)
-    after, action = agreed_fact_core(core, read, user_task, decision, policy, asked_sentences(state.get("task_state")))
+    after, action = agreed_fact_core(core, read, user_task, decision, policy, asked_sentences(state.get("task_state")),
+                                     agent_doubts(state.get("task_state")))
     if action not in ("not_acting", "no_sentence"):
         record_event(context, state, "core.jev_agent", "classify", {
             "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
