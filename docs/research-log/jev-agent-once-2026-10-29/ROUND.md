@@ -28,3 +28,11 @@ asked (pending) or the user answered (facts). Nothing else changes; turn 1 (no t
   its final may be DO, a false accept, rather than the gold DECLINE; this round does not claim it).
 
 Stop rule: a failed gate -> withdraw; no gate is changed afterwards.
+
+## Live addendum O4 (declared after the offline pass, before any run)
+
+`run_live.py` (tag ao1): X02, X22 up to 3 turns; `run_live_w40.py` (tag ao2): W40 turn 1. Cap US$0.07 in all.
+- **O4a (hard):** X02 ends DO, with no second `jev_agent` ask after the "yes".
+- **O4b:** X22 asks no second `jev_agent` question after the answer; its final is reported (the fact answer is not
+  applied in code -- W16 / R01 -- so DO, a false accept, is possible and is not claimed fixed).
+- **O4c:** W40 turn 1 still shows the somatic question (reply text).
