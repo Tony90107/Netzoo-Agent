@@ -464,6 +464,63 @@ def asked_contract_question(task_state) -> dict | None:
     return None
 
 
+CONFIRM_INSTRUCTIONS = (
+    "The assistant asked the user to confirm a fact about their data, and the user replied. Does the reply confirm "
+    "the fact as the question states it?"
+)
+CONFIRM_CRITERIA = {
+    "yes": "The reply says the data really is as the question describes: it confirms the fact.",
+    "no": "The reply says the data is not as the question describes.",
+    "not_answer": "The reply does not settle it: it hedges, says they do not know, or is about something else.",
+}
+REASK = "I need a yes or no to go on: "
+
+
+def judge_confirm(question: str, quote: str, contract: str, reply: str) -> dict:
+    """jev-confirm-2026-10-28 layer 1: Jev's read of a reply the code did not bind, on a closed menu. Withdrawn
+    offline (L1 6/22, L2, L3 failed); kept for the offline record only, not called on the live path."""
+    state = (f"The assistant's question:\n{question}\n\n"
+             + (f"The user's earlier sentence it quoted:\n{quote}\n\n" if quote else "")
+             + f"Contract line:\n{contract}\n\nThe user's reply:\n{reply}")
+    out = _decide(state, {"confirm": {"type": "choice", "instructions": CONFIRM_INSTRUCTIONS,
+                                      "criteria": CONFIRM_CRITERIA}})
+    judged = out["answers"]["confirm"]
+    return {"answer": judged["choice"], "confidence": judged["confidence"],
+            "cost": (out.get("usage") or {}).get("cost", 0)}
+
+
+def pending_condition(task_state) -> dict | None:
+    """The data confirm still waiting for an answer (not bound by the code this turn)."""
+    for item in (task_state or {}).get("pending") or []:
+        if item.get("what") == "jev:condition" and item.get("status", "asked") == "asked" \
+                and (item.get("labels") or {}).get("contract"):
+            return item
+    return None
+
+
+def confirmed_core(core: CoreDecision, waiting: dict, reply: str, read: dict) -> tuple[CoreDecision, str]:
+    """jev-confirm-2026-10-28: a confident `yes` declines (on a DO), a confident `no` leaves the call; anything else is
+    unsettled, and an unsettled data confirm never releases a DO (layer 2): the same question is asked again."""
+    sure = read.get("confidence", 0) >= THRESHOLD
+    if sure and read.get("answer") == "yes":
+        if core.kind != "DO":
+            return core, "yes_not_on_do"
+        return answered_core(core, waiting, reply, {"answer": "fails", "confidence": read["confidence"],
+                                                    "by": "jev_confirm"})
+    if sure and read.get("answer") == "no":
+        return core, "answer_no"
+    if core.kind != "DO":
+        return core, "unsettled_not_do"
+    question = waiting.get("question", "")
+    fact = FactQuestion(question=question if question.startswith(REASK) else REASK + question,
+                        user_quote=waiting.get("user_quote", ""), workflows=list(waiting.get("workflows") or []),
+                        contract_quote=waiting["labels"]["contract"], uncertainty="said_unknown",
+                        depends_on="jev:condition")
+    evidence = {**core.evidence, "jev_confirm": {"kind_before": core.kind, "basis_before": core.basis, **read}}
+    return CoreDecision(kind="ASK", basis="jev_condition", facts=[fact], workflows=list(fact.workflows),
+                        evidence=evidence), "reask"
+
+
 def condition_answer(task_state) -> dict | None:
     """FIXES.md B: the data confirm's answer bound in code this turn (`bind_answers`: yes or no), else None."""
     state = task_state or {}
@@ -511,6 +568,20 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
             "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
             "would_have": {"kind": after.kind, "basis": after.basis}, "judged": {"by": "code", "value": bound["value"]},
             "contract": (bound.get("labels") or {}).get("contract", "")})
+        if after is not core:
+            return after if mode == "on" else core
+    waiting = pending_condition(state.get("task_state")) if bound is None else None
+    if waiting is not None:  # jev-confirm-2026-10-28: the code bound no yes/no, so the confirm is unsettled
+        from ..llm import latest_user_message
+
+        reply = latest_user_message(state.get("messages") or [])
+        # Layer 1 (a Jev read of the reply) was withdrawn offline (L1 6/22, L2, L3): only layer 2 runs -- an
+        # unsettled data confirm is asked again, never a DO.
+        read = {"answer": "unread", "confidence": 0.0}
+        after, action = confirmed_core(core, waiting, reply, read)
+        record_event(context, state, "core.jev_confirm", "classify", {
+            "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
+            "would_have": {"kind": after.kind, "basis": after.basis}, "read": read})
         if after is not core:
             return after if mode == "on" else core
     question = asked_contract_question(state.get("task_state"))
