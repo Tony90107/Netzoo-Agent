@@ -33,11 +33,11 @@ any code.
 ## Population (`scan.py`, `population-raw.json`)
 
 Every recorded answer turn after an ASK `fact_agent` with a contract quote: 67 turns. The step can change only those
-whose call is DO: 30 turns, 16 items. Labels (one labeller, me, with the item golds where the set has them):
+whose call is DO: 31 turns, 16 items. Labels (one labeller, me, with the item golds where the set has them):
 - the answer fails the contract line, gold DECLINE (3 turns, 2 items): j1u J09; j3f R01, j3g R01.
-- the answer meets it, or is no answer (a restated request), gold DO (27 turns): J19, J29, Q21, R21, R23, R37, S11 x2,
-  S13 x2, S14 x2, S15 x2, p5 M01 x6, M03 x4, M06 (S08), M09 x2.
-The other 37 turns (ASK, CLARIFY, DECLINE, no call) cannot change by construction; reported.
+- the answer meets it, or is no answer (a restated request), gold DO (28 turns): J19, J29, Q21, R21, R23, R37, S11 x2,
+  S13 x2, S14 x2, S15 x2, p5 M01 x6, M03 x4, M06 x2 (p3live S08, p5r2 E2), M09 x2.
+The other 36 turns (ASK, CLARIFY, DECLINE, no call) cannot change by construction; reported.
 
 ## Measurement
 
@@ -50,7 +50,7 @@ The hook and the labels are covered by unit tests.
 - A0, off = no change: with the flag off the step reads nothing; flags-off harness replay 0 of 1388 changed vs
   `replay-frozen.json`; the test suite has no new failures beyond the two known ones (env-dependent supervisor test;
   `test_planning_model_dump_is_characterized[explicit_panda]`, failing on main df806e15 too).
-- A1, precision (hard): 0 of the 27 gold-DO answer turns become DECLINE.
+- A1, precision (hard): 0 of the 28 gold-DO answer turns become DECLINE.
 - A2, recall: >= 2 of the 3 fails turns become DECLINE `jev_answer`, both items.
 - A3, shape: every changed call is DO -> DECLINE `jev_answer` whose line quotes the reply and the contract clause; no
   other change.
@@ -58,3 +58,8 @@ The hook and the labels are covered by unit tests.
   DECLINE `full_gap`).
 
 Stop rule: if A1 fails, the change is withdrawn as declared.
+
+## Amendment before measuring (2026-10-28)
+
+The first count missed the second M06 turn (p5r2 M06-E2, bound by a dimension answer). Corrected before any Jev read:
+31 DO turns, 28 gold-DO, 36 others (`population.json`).
