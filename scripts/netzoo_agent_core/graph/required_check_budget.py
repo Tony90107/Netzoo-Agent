@@ -30,10 +30,21 @@ def retryable_check_error(error: BaseException) -> bool:
     })
 
 
+def capability_max_tokens(model) -> int:
+    """The check model's output cap: OPENROUTER_CAPABILITY_MAX_TOKENS when set; else 4,000 for OpenAI's gpt-4o family
+    and 16,000 for any other model (sized for nemotron's reasoning, up to 12,906, Log 414). check-reserve (2026-10-28):
+    gpt-4o-mini's largest of 840 checks was 2,258, and the 16,000 reserve refused 65 optional calls."""
+    given = os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS")
+    if given:
+        return int(given)
+    return 4000 if str(model or "").startswith("openai/gpt-4o") else 16000
+
+
 def check_output_reserve(context, llm) -> int:
     """Match the output cap actually bound by the check-model factory."""
-    if llm is not getattr(context, "study_purpose_llm", None) and os.environ.get("OPENROUTER_CAPABILITY_MODEL"):
-        return int(os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS", "16000"))
+    own = os.environ.get("OPENROUTER_CAPABILITY_MODEL")
+    if llm is not getattr(context, "study_purpose_llm", None) and own:
+        return capability_max_tokens(own)
     return context.router_max_tokens
 
 
@@ -72,5 +83,5 @@ def required_fact_check_reserve(context, user_task: str, decision, proposal=None
     own = os.environ.get("OPENROUTER_CAPABILITY_MODEL")
     if (fact_llm is None and os.environ.get("NETZOO_FACT_MODEL", "router") == "check"
             and own and own != getattr(context, "semantic_model_name", None)):
-        output_reserve = int(os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS", "16000"))
+        output_reserve = capability_max_tokens(own)
     return _estimated_tokens(text) + output_reserve

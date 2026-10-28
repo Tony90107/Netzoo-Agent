@@ -581,7 +581,7 @@ def test_the_check_has_its_own_allowance_but_never_reopens_a_spent_turn(monkeypa
                               router_max_tokens=1000, task_token_budget=30000, price_catalog=None)
     proposal, usage, _, status = call.request_capability_check(context, {}, SPLICING, LLMUsage(budget_tokens=30000), [])
     assert proposal is None and status == "failed"
-    assert budgets == [60000, 60000]  # the allowance (M2: 30k), and one retry after an undecodable reply
+    assert budgets == [75000, 75000]  # the allowance (check-allowance-2026-10-28: 45k), and one retry after an undecodable reply
     spent = LLMUsage(budget_tokens=30000, total_tokens=30000)  # A3: routing spent the turn budget
     spent.budget_exhausted = True
     assert call.request_capability_check(context, {}, SPLICING, spent, [])[3] == "blocked"

@@ -16,7 +16,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 __all__ = ["ANSWER_VALUES", "BIND", "FORM_DIMENSIONS", "NEUTRAL", "QUESTIONS", "THRESHOLD", "answer_question",
-           "answer_state", "answer_value", "bind_form_answers", "doubted", "forms_doubts", "limiting_forms", "state_text"]
+           "answer_state", "answer_value", "bind_form_answers", "condition_doubts", "doubted", "forms_doubts",
+           "limiting_forms", "state_text"]
 
 # Frozen with the stability check (jev-forms-2026-10-27/forms_q.py); never reworded after a run.
 QUESTIONS = {
@@ -123,6 +124,21 @@ def forms_doubts(task, result, attrs, read, credited, applicable, doubted_forms,
         added = [(attr, result, None) for attr in found if attr not in waits]
         return [*applicable, *added], [*doubted_forms, *(attr for attr in found if attr != "group_membership")]
     return applicable, [*doubted_forms, *(attr for attr in found if attr in _FORM_REASON_ATTRS)]
+
+
+def condition_doubts(task, rows, reader, overlap_reader):
+    """jev-conditions-2026-10-28 (J01): a form condition stated apart from every ask has a row of its own, credited to
+    nothing (`requirement_split.condition_requirements`). A form Jev doubts there is only not said, as on an ask's row
+    credited to nothing; status, credits and waits do not change."""
+    out = []
+    for row in rows:
+        found = [attr for attr, options in limiting_forms(row.attrs, [])
+                 if reader is not None and reader(task, row.quote, attr, options)]
+        if (row.attrs.get("group_membership") == "several_groups" and overlap_reader is not None
+                and overlap_reader(task, row.quote)):
+            found.append("group_membership")
+        out.append(row.model_copy(update={"doubted_forms": [*row.doubted_forms, *found]}) if found else row)
+    return out
 
 
 _FORM_REASON_ATTRS = ("time_model", "spatial", "group_membership")
