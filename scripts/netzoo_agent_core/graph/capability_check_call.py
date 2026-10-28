@@ -302,7 +302,10 @@ def _enum_limited(model, llm, fallback_llm) -> bool:
 # M2 live m2a (user decision 2026-10-14): the check now reads ~12.5k tokens and nemotron writes ~5-6k with its
 # reasoning, the re-read ~9k, so the condition check was blocked in 5 of 26 turns and the study purpose in 5. The
 # reading calls are mostly the free check model's; the allowance grows to 30k, the turn budget stays 30k.
-CHECK_EXTRA_TOKENS = 30_000
+# check-allowance-2026-10-28: with gpt-4o-mini as the check model the family reads more (839 recorded turns: p99 33.1k,
+# max 40.6k) and a long routing path plus a long check refused the second opinion and the fact check (ca1 J34:
+# UNCHECKED at 57.3k of 58.5k). The allowance covers the family's recorded maximum plus the 4,000 output reserve.
+CHECK_EXTRA_TOKENS = 45_000
 
 
 def with_reading_allowance(context, usage=None):
