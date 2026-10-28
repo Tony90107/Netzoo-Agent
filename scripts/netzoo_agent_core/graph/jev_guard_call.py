@@ -334,14 +334,18 @@ RESULT_NONE = {"none_registered": "the user asks for a concrete result that none
 
 @lru_cache(maxsize=1)
 def result_menu() -> dict[str, str]:
-    """RESULTS.md (steps 2/4): one option per workflow, generated from its contract's output capability."""
+    """RESULTS.md (steps 2/4): one option per workflow, generated from its contract's output capability.
+
+    jev-menu-2026-10-28: with the contract's produced artifacts too (j5 W45: GIRAFFE's TF-by-sample activity was its
+    `tf_activity_matrix`, absent from the option, and Jev picked LIONESS-PANDA)."""
     menu = {}
     for path in sorted(WORKFLOWS.glob("*.yaml")):
         spec = yaml.safe_load(path.read_text())
         cap = spec.get("output_capability") or {}
         regulators = f"; regulators {', '.join(cap['regulator_types'])}" if cap.get("regulator_types") else ""
+        produced = f" Produces: {', '.join(cap['produced_artifacts'])}." if cap.get("produced_artifacts") else ""
         menu[spec["workflow"]] = (f"{spec['description'].strip()} Result: {cap.get('artifact_type')} "
-                                  f"({', '.join(cap.get('granularities') or [])}{regulators}).")
+                                  f"({', '.join(cap.get('granularities') or [])}{regulators}).{produced}")
     return menu | RESULT_NONE
 
 

@@ -266,6 +266,11 @@ def test_the_result_menu_is_generated_for_every_workflow():
     assert len(menu) == 15 and set(jev_guard_call.RESULT_NONE) <= set(menu) and "Result: " in menu["DRAGON"]
 
 
+def test_the_result_menu_lists_each_contracts_produced_artifacts():
+    # jev-menu-2026-10-28 (j5 W45): GIRAFFE's TF activity matrix is in its contract, so it is in its option.
+    assert "Produces: regulatory_network, tf_activity_matrix." in jev_guard_call.result_menu()["GIRAFFE"]
+
+
 # PLAN-J2.md step 1'': typed data checks on a DO turn it into a confirm, never a decline.
 
 def test_typed_fields_rule_a_workflow_out():
