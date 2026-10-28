@@ -286,6 +286,12 @@ _ENUM_LIMIT = 1_000
 """OpenAI strict mode: enum values per schema, references expanded (the backup model is gpt-4o-mini)."""
 
 
+def _enum_limited(model, llm, fallback_llm) -> bool:
+    """Whether the call's provider counts enum values: the backup, or a model routed to OpenAI. check-enum-limit
+    (2026-10-28): since the check's own model became gpt-4o-mini, every 5+-sentence check failed on the limit."""
+    return llm is fallback_llm or str(model or "").startswith("openai/")
+
+
 # Log 394: the safety check gets its own allowance on top of the turn's token budget, because
 # routing-heavy turns (retries, sibling repairs, a review) spent 26.6k of 30k tokens before it and
 # the budget skipped exactly the check (heldout3 KU9 x2: both answered with a workflow menu).
@@ -381,7 +387,7 @@ def request_capability_check(
     input_text = _serialized_structured_input(messages, schema)
     budget_context = reading = with_reading_allowance(context)
     for attempt in (1, 2):
-        if llm is fallback_llm and expanded_enum_values(schema.model_json_schema()) > _ENUM_LIMIT:
+        if _enum_limited(model, llm, fallback_llm) and expanded_enum_values(schema.model_json_schema()) > _ENUM_LIMIT:
             schema, compacted = proposal_model(count, compact=True, version=version), True
         input_text = _serialized_structured_input(messages, schema)
         if spent(usage):
@@ -455,6 +461,9 @@ def request_capability_reread(context, state, user_task: str, passages: list[str
         return None, usage, budget_warnings
     messages = build_reread_messages(user_task, passages)
     schema = reread_model(min(len(passages), MAX_SENTENCES), version=schema_version())
+    if (_enum_limited(model, llm, getattr(context, "study_purpose_llm", None))
+            and expanded_enum_values(schema.model_json_schema()) > _ENUM_LIMIT):  # check-enum-limit
+        schema = reread_model(min(len(passages), MAX_SENTENCES), compact=True, version=schema_version())
     input_text = _serialized_structured_input(messages, schema)
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(
