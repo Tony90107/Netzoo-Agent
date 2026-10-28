@@ -94,13 +94,13 @@ def core_view(context, state, reply) -> dict | None:
     core = decision.core
     if core.kind == "DO":
         return None
-    from .task_answers import EXHAUSTED_NOTE, exhausted
+    from .task_answers import EXHAUSTED_NOTE, exhausted, exhausted_body
 
     if core.kind in ("ASK", "CLARIFY") and exhausted(core):  # harness repair P3: a third round is not asked
         asking = reply
 
         def reply(content, kind):  # noqa: F811 -- the same reply, opened by the note
-            return asking(f"{EXHAUSTED_NOTE}\n\n{content}", kind)
+            return asking(f"{EXHAUSTED_NOTE}\n\n{exhausted_body(content) if core.kind == 'ASK' else content}", kind)
     if core.kind == "CLARIFY":
         return clarify_result(state, reply)
     if core.kind == "ASK":
