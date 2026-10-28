@@ -29,3 +29,21 @@ doubt; Jev's kind confidence is not used). Every other R1 / R2 rule still applie
   doubt; must not newly ask), turn 1, about US$0.05.
 
 Stop rule: a failed gate -> withdraw; no gate is changed afterwards.
+
+## Amendment (jev-guard's constraints, before any code)
+
+- Precondition stated exactly: Jev's sentence exists only when its kind is ASK (`_read`), so the rule is "Jev kind ASK
+  at any confidence + Jev's sentence holds the proposal's user words + the proposal was rejected by that R1 rule".
+  R1-only is strict: the proposal is re-run through the fact check's own rules (`kept_facts`) with Jev's sentence
+  added to the uncertain quotes; any other rule (R2 workflow / contract words, R3, R4 stated, R6, R7) still rejects it.
+- The question is the proposal's own, asked as a fact-agent fact (basis `jev_agent`, `depends_on` unchanged, not
+  `jev:`), so its answer goes the normal way and the guard's answer read (which can decline) does not apply.
+- Its own function, called in `apply_jev_guard` before `guarded_core`, only when the call is DO or DECLINE; it keeps
+  `asked_sentences`; a `core.jev_agent` event is recorded in shadow mode too.
+- G4 controls must include non-ASK doubts Jev reads as ASK; W18, S14, R21 are the three required.
+
+## Live addendum G4 (declared after the offline pass, before any run)
+
+`run_live.py` (tag ra1): W40, J46 (targets), W18, S14, R21 (controls), turn 1, cap US$0.08.
+- **G4a (hard):** no control ends turn 1 with a `jev_agent` ask.
+- **G4b:** W40 and J46 end turn 1 ASK (any basis); reported which.
