@@ -30,7 +30,9 @@ def exhausted_body(content: str) -> str:
     """exhausted-wording-2026-10-28: an ASK body under EXHAUSTED_NOTE says what is missing, never asks it again (j5
     W18 turn 3: "I will not ask again" and then "please tell me" the same question). As the reply that answers
     nothing already does (`engine.task_updates`: "Still missing:")."""
-    for asking, saying in _ASKING:
+    from .ask_facts import CONFIRM_ASKING  # the guard's data confirm, said as missing too (j4 S35 re-ask)
+
+    for asking, saying in (*_ASKING, *CONFIRM_ASKING):
         content = content.replace(asking, saying)
     return content
 

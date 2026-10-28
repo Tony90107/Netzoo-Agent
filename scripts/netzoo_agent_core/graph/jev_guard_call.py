@@ -19,6 +19,7 @@ from pathlib import Path
 import yaml
 
 from ..contracts.core_decision import CoreDecision, DeclinedPart, FactQuestion
+from ..interpretation.ask_facts import CONFIRM_PLACED, CONFIRM_UNPLACED, REASK, YES_OR_NO
 from ..jev_client import decide
 from .context import record_event
 
@@ -361,10 +362,9 @@ def check_result(task: str) -> dict:
 def condition_question(typed: dict, line: str) -> str:
     """FIXES.md A: the confirm for a violation no sentence states -- the typed fact itself, in the closed menu's words."""
     if line == SAME_SAMPLE_LINE:
-        return ("Before I go ahead, please confirm: were the two data layers measured on different samples or "
-                "individuals? (yes or no)")
+        return f"{CONFIRM_UNPLACED}were the two data layers measured on different samples or individuals?{YES_OR_NO}"
     kind = (typed.get("data") or ("",))[0]
-    return f"Before I go ahead, please confirm: is the data you will use {DATA_CRITERIA.get(kind, kind)}? (yes or no)"
+    return f"{CONFIRM_UNPLACED}is the data you will use {DATA_CRITERIA.get(kind, kind)}?{YES_OR_NO}"
 
 
 def condition_asked(task_state) -> bool:
@@ -388,7 +388,7 @@ def conditioned_core(core: CoreDecision, typed: dict, asked: set[str] = frozense
     if already or (sentence and sentence in asked):
         return core, "already_asked"
     workflow = typed.get("workflow") or core.workflows[0]
-    question = ("Before I go ahead, could you confirm this about your data? (yes or no)" if sentence
+    question = (f"{CONFIRM_PLACED}{YES_OR_NO}" if sentence
                 else condition_question(typed, line))
     fact = FactQuestion(question=question, user_quote=sentence,
                         workflows=[workflow, *(w for w in core.workflows if w != workflow)],
@@ -477,7 +477,6 @@ CONFIRM_CRITERIA = {
     "no": "The reply says the data is not as the question describes.",
     "not_answer": "The reply does not settle it: it hedges, says they do not know, or is about something else.",
 }
-REASK = "I need a yes or no to go on: "
 
 
 def judge_confirm(question: str, quote: str, contract: str, reply: str) -> dict:
