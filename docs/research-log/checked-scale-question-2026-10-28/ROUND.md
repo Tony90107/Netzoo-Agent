@@ -28,3 +28,9 @@ credited result's scale is `unstated`, or the check credited no result.
   question), plus the sorghum request (unstated; the question stays); about US$0.03.
 
 Stop rule: a failed gate -> withdraw; no gate is changed afterwards.
+
+## Live addendum (declared after the offline pass, before any run)
+
+`run_live.py` (tag cs1): W01, Q06 (targets), C53 (control), turn 1, cap US$0.05.
+- **T1** neither W01 nor Q06 ends with the scale question.
+- Reported: C53's reply (its scale is unstated, so the question may stay).
