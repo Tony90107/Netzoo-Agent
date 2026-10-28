@@ -1,0 +1,781 @@
+{
+  "version": 1,
+  "session_id": "hb-ad1-X02-1",
+  "profile_id": "hb-ad1-X02-1",
+  "auto_generated": false,
+  "created_at": 1793207188.748985,
+  "updated_at": 1793207214.859945,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want COBRA to show how gene co-expression in our 90 bovine milk samples (about 18,000 genes) is associated with lactation stage and sequencing batch. The expression matrix is labelled gene-by-sample. I'm not sure we still have the table with each sample's batch and lactation stage coded as numbers; it may have been lost in the server migration."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Do you have the table with each sample's batch and lactation stage coded as numbers?\n  You wrote: \"I'm not sure we still have the table with each sample's batch and lactation stage coded as numbers; it may have been lost in the server migration\". COBRA's contract: \"Design rows must use exactly the expression sample IDs and numeric covariates\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: I want COBRA to show how gene co-expression in our 90 bovine milk samples (about 18,000 genes) is associated with lactation stage and sequencing batch. The expression matrix is labelled gene-by-sample. I'm not sure we still have the table with each sample's batch and lactation stage coded as numbers; it may have been lost in the server migration.\nUser follow-up: Yes, we still have the table with batch and lactation stage coded numerically for all 90 samples."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I want COBRA to show how gene co-expression in our 90 bovine milk samples (about 18,000 genes) is associated with lactation stage and sequencing batch.\" -- available from COBRA.\n\nSelected path: **COBRA**.\n\nYour question asks for a cohort-level co-expression network. **COBRA** fits that result and scale.\n\n**COBRA** — Model covariate-associated gene co-expression with COBRA. COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `design_file`: sample covariate design matrix\n\nOutputs:\n\n- `coexpression_network`: Inferred gene-to-gene associations.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_cobra",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_cobra"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I want COBRA to show how gene co-expression in our 90 bovine milk samples...",
+              "rationale": "The user wants to analyze gene co-expression."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user confirmed they still have the table with batch and lactation stage coded numerically for all 90 samples."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user wants to analyze gene co-expression, which corresponds to a coexpression network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The analysis is intended to assess gene co-expression across all samples collectively, indicating aggregate granularity."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "workflow_name",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_cobra"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want COBRA to show how gene co-expression in our 90 bovine milk samples (about 18,000 genes) is associated with lactation stage and sequencing batch.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "COBRA",
+              "named_quote": "COBRA",
+              "samples": 90,
+              "samples_quote": "90 bovine milk samples",
+              "features": 18000,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  97,
+                  115,
+                  18000
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@73-95",
+              "feature_count@97-115"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "90 bovine milk samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "about 18,000 genes",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "The expression matrix is labelled gene-by-sample.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "I'm not sure we still have the table with each sample's batch and lactation stage coded as numbers; it may have been lost in the server migration.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "Yes, we still have the table with batch and lactation stage coded numerically for all 90 samples.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want COBRA to show how gene co-expression in our 90 bovine milk samples (about 18,000 genes) is associated with lactation stage and sequencing batch.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "COBRA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@73-95",
+            "property": "sample_count",
+            "name": "",
+            "value": "90",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "90 bovine milk samples",
+            "span": [
+              73,
+              95
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "90 bovine milk samples",
+                "span": [
+                  73,
+                  95
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "90 bovine milk samples",
+                "span": [
+                  73,
+                  95
+                ],
+                "result": "I want COBRA to show how gene co-expression in our 90 bovine milk samples (about 18,000 genes) is associated with lactation stage and sequencing batch.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@97-115",
+            "property": "feature_count",
+            "name": "",
+            "value": "18000",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "about 18,000 genes",
+            "span": [
+              97,
+              115
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "about 18,000 genes",
+                "span": [
+                  97,
+                  115
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "about 18,000 genes",
+                "span": [
+                  97,
+                  115
+                ],
+                "result": "I want COBRA to show how gene co-expression in our 90 bovine milk samples (about 18,000 genes) is associated with lactation stage and sequencing batch.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want COBRA to show how gene co-expression in our 90 bovine milk samples (about 18,000 genes) is associated with lactation stage and sequencing batch."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure we still have the table with each sample's batch and lactation stage coded as numbers; it may have been lost in the server migration.",
+              "uncertainty": "said_unknown",
+              "workflow": "COBRA",
+              "contract_quote": "Design rows must use exactly the expression sample IDs and numeric covariates.",
+              "question": "Do you have the table with batch and lactation stage coded numerically for all 90 samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 43453,
+    "output_tokens": 1463,
+    "total_tokens": 44916,
+    "calls": [
+      {
+        "call_id": "ee24166a-1e52-498e-8014-43f0d31250ee",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793207190-BRTBvZrGUybkJX7eTj68",
+        "input_tokens": 920,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 962,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 163,
+        "price_snapshot": null,
+        "duration_ms": 1117,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "21b1a756-45a3-4acf-8e95-393ce87dbcad",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793207191-VUlS4N6kMkymNfZiljbF",
+        "input_tokens": 1659,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1675,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 258,
+        "price_snapshot": null,
+        "duration_ms": 1042,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "505cd93e-8d8a-4763-952f-f1459d88997a",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793207193-n6bCQr8nOGDxSZDOz3vg",
+        "input_tokens": 5386,
+        "output_tokens": 135,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5521,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 524,
+        "price_snapshot": null,
+        "duration_ms": 2132,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "abd6d897-f26e-41dd-8df0-011bde8eae6f",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793207195-wq0d7vyXm6ENTx8ss2HJ",
+        "input_tokens": 6142,
+        "output_tokens": 269,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6411,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 785,
+        "price_snapshot": null,
+        "duration_ms": 4025,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "023a54fa-bf79-40b1-8dc9-7599b1271462",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 706,
+        "output_tokens": 51,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 757,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 137,
+        "price_snapshot": {
+          "snapshot_id": "2e80cabd-a957-52cc-9f72-c834486ecc0a",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-28T17:05:55.257091Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1133,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "856b13c5-cb2b-44ea-b21e-347ba6d4e612",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793207200-qbyjWr7ckNCB83tXQjco",
+        "input_tokens": 21694,
+        "output_tokens": 565,
+        "cache_read_tokens": 11136,
+        "cache_write_tokens": 0,
+        "total_tokens": 22259,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2758,
+        "price_snapshot": null,
+        "duration_ms": 7021,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "cbb86686-a9ee-4eb9-8daa-0175b74909f5",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793207207-Ijt6cWRopxlYsutzATRZ",
+        "input_tokens": 609,
+        "output_tokens": 69,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 678,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 133,
+        "price_snapshot": null,
+        "duration_ms": 1726,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "749eaaaa-660d-46f6-916f-6a70dd28f4ea",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793207209-CodKpRFRpE1THeLKVZGS",
+        "input_tokens": 5359,
+        "output_tokens": 194,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5553,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 555,
+        "price_snapshot": null,
+        "duration_ms": 2592,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6e917cce-98c2-43c4-84ce-462ab30260b7",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793207211-J6gp3Pjjn0JVw7uKLI0N",
+        "input_tokens": 978,
+        "output_tokens": 122,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1100,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 220,
+        "price_snapshot": null,
+        "duration_ms": 2421,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "bc4e9c09-df49-4904-b873-c014ab050905",
+  "task_state": {
+    "version": 1,
+    "task_id": "9455c958",
+    "revision": 3,
+    "goal": "I want COBRA to show how gene co-expression in our 90 bovine milk samples (about 18,000 genes) is associated with lactation stage and sequencing batch. The expression matrix is labelled gene-by-sample. I'm not sure we still have the table with each sample's batch and lactation stage coded as numbers; it may have been lost in the server migration.",
+    "pending": [],
+    "facts": [
+      {
+        "question_id": "agent:COBRA:e85ae50eca",
+        "source": "agent",
+        "what": "COBRA",
+        "question": "Do you have the table with each sample's batch and lactation stage coded as numbers?",
+        "user_quote": "I'm not sure we still have the table with each sample's batch and lactation stage coded as numbers; it may have been lost in the server migration.",
+        "options": {},
+        "labels": {},
+        "value": "yes",
+        "answer_quote": "Yes, we still have the table with batch and lactation stage coded numerically for all 90 samples.",
+        "turn": 1,
+        "status": "known"
+      }
+    ],
+    "rounds": 1,
+    "status": "closed",
+    "turns": 2
+  }
+}
