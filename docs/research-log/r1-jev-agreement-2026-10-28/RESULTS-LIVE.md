@@ -29,3 +29,12 @@ rerun below.
 
 Fixed: `jev_agent` added to the three basis tuples; `tests/test_r1_jev_agreement.py` now checks that `with_core` clears
 the run and `ask_result` shows the fact's question. Tests 5151 passed (2 known failures), replay 0 of 1388.
+
+## Rerun ra2 (code 59ebf9f1, W40 + J46, turn 1, US$0.007): G4b PASS on the reply text -> KEPT
+
+| item | call | reply |
+|---|---|---|
+| W40 | ASK/jev_agent | "Before I choose a workflow, please tell me: - Does the variant matrix contain somatic calls from tumour-normal pairs? You wrote: ... SAMBAR's contract: ..." -- no "Selected path" |
+| J46 | ASK/jev_agent | "... - Is the file a labeled symmetric square gene-by-gene matrix? You wrote: ... OTTER's contract: ..." -- no "Selected path" |
+
+G4a stands from ra1 (no control reached the rule). Both targets now show the fact agent's question to the user.
