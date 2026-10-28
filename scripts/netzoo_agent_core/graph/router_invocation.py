@@ -33,7 +33,7 @@ from ..interpretation.ruled_out import without_ruled_out, without_unbuilt_networ
 from .continuation_invocation import compare_workflows, continue_workflow
 from .intent_invocation import _invoke_intent_router
 from .invocation_types import RouterInvocation as _RouterInvocation
-from .condition_recommender import invoke_condition_recommender, unrecommended_question
+from .condition_recommender import invoke_condition_recommender, unrecommended_question, with_checked_default_line
 from .request_concerns import invoke_concern_matcher
 from .study_purpose_call import invoke_study_purpose
 from .capability_check_call import (
@@ -208,6 +208,7 @@ def invoke_router(
         result = _with_checked_match(context, state, result)
         result = _with_requested_run(context, state, user_task, result)
         result = _with_verdict_plan(context, state, result)
+        result = with_checked_default_line(context, state, result)
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
