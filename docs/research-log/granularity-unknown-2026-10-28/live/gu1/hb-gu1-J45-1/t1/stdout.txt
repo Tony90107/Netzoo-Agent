@@ -1,0 +1,33 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.71s)
+● Matching registered workflows…
+✓ Workflow — PANDA → LIONESS-PANDA
+✓ Guidance prepared
+What I understood you are asking for:
+1. "I'd like LIONESS-PANDA to give each of the three samples its own TF-to-gene network, kept separate from the aggregate one." -- available from LIONESS-PANDA.
+
+I matched your goal to an aggregate and a sample-specific workflow. They use the same biological inputs:
+
+1. **PANDA**
+   - **Inputs**:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+   - **Output**: Aggregate workflow output (`output_file`).
+
+2. **LIONESS-PANDA**
+   - **Inputs**:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+   - **Outputs**:
+     - Aggregate workflow output (`output_file`).
+     - Sample-specific LIONESS output (`lioness_output`).
+
+Use PANDA when you only need the aggregate result. Use LIONESS-PANDA directly when you need the sample-specific result; it also produces its aggregate output, so running the aggregate workflow first is unnecessary.
+
+Cost: LIONESS runs PANDA once on all samples and once more without each sample, so N samples take N+1 PANDA runs and give N network files. Plan the runtime and disk space, and filter edges before downstream statistics.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+No files were inspected and no analysis ran.

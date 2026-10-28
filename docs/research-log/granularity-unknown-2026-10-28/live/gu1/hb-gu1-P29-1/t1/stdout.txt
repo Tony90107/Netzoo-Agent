@@ -1,0 +1,17 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.82s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "the leave-one-out co-expression network for sample R17 in a 45-sample root microbiome expression cohort" -- available from LIONESS-COEXPRESSION.
+2. "Can LIONESS-COEXPRESSION retain its sample identity and keep that result separate from the aggregate?" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set. LIONESS-COEXPRESSION gives: one gene-gene co-expression network per sample, plus the aggregate.
+
+Several registered methods fit this result; they differ in their modeling assumptions:
+
+- **LIONESS-COEXPRESSION** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. Needs expression matrix.
+- **COBRA** — COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Needs expression matrix and sample covariate design matrix.
+- **BONOBO** — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. Needs expression matrix.
+
+Should the result be aggregate or sample-specific?
+
+No files were inspected and no analysis ran.
