@@ -1,0 +1,764 @@
+{
+  "version": 1,
+  "session_id": "hb-ca1-Q25-1",
+  "profile_id": "hb-ca1-Q25-1",
+  "auto_generated": false,
+  "created_at": 1793165366.278118,
+  "updated_at": 1793165366.278162,
+  "messages": [
+    {
+      "role": "user",
+      "content": "A clinical collaborator asked me to look at gene interactions in her 15 sepsis samples. All she gave me is the gene-by-sample expression table; there are no motif or PPI files."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"A clinical collaborator asked me to look at gene interactions in her 15 sepsis samples.\" -- available from LIONESS-COEXPRESSION, COBRA, DRAGON or LIONESS-DRAGON. Not stated in your request: COBRA needs more genes than samples; LIONESS-DRAGON's output is capped at 20,000,000 values (features x (features - 1) / 2 x samples) -- checked against your files before any run.\n2. \"All she gave me is the gene-by-sample expression table; there are no motif or PPI files.\" -- available from LIONESS-COEXPRESSION, COBRA, DRAGON or LIONESS-DRAGON. Not stated in your request: COBRA needs more genes than samples; LIONESS-DRAGON's output is capped at 20,000,000 values (features x (features - 1) / 2 x samples) -- checked against your files before any run.\n\nSeveral registered methods fit this result; they differ in their modeling assumptions:\n\n- **LIONESS-COEXPRESSION** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. Needs expression matrix.\n- **COBRA** — COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Needs expression matrix and sample covariate design matrix.\n- **BONOBO** — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. Needs expression matrix.\n\nShould the result be aggregate or sample-specific?\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is for guidance on analyzing gene interactions, which falls under the category of answer requests rather than execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request is for guidance on analyzing gene interactions, which falls under the category of answer requests rather than execution.",
+      "candidate_actions": [
+        "run_lioness_coexpression",
+        "run_cobra",
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [
+          "gene",
+          "sample"
+        ],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "coexpression"
+        ],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [
+              "gene",
+              "sample"
+            ],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "coexpression"
+            ],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "look at gene interactions in her 15 sepsis samples.",
+              "rationale": "The user wants to analyze gene interactions based on expression data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "look at gene interactions in her 15 sepsis samples.",
+              "rationale": "The user is interested in gene interactions, which are typically represented as a coexpression network."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "gene-by-sample expression table.",
+              "rationale": "The analysis focuses on gene interactions, which involve gene entities."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "coexpression",
+              "source": "explicit",
+              "text_span": "look at gene interactions in her 15 sepsis samples.",
+              "rationale": "The user is interested in gene interactions, which are typically represented as a coexpression network."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_lioness_coexpression",
+        "run_cobra",
+        "run_bonobo"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Should the result be aggregate or sample-specific?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "A clinical collaborator asked me to look at gene interactions in her 15 sepsis samples.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_coexpression.per_sample_networks",
+              "lioness_coexpression.comparisons",
+              "cobra.covariate_components",
+              "cobra.adjusted_input_to_regulation",
+              "dragon.two_layer_network",
+              "dragon.edge_pvalues",
+              "dragon.group_comparison",
+              "lioness_dragon.per_sample_networks",
+              "lioness_dragon.association_tests"
+            ],
+            "not_by": [
+              "panda.no_complexes",
+              "panda.no_sign",
+              "panda.no_motif_discovery",
+              "panda.no_dynamics",
+              "puma.no_lncrna_cerna",
+              "puma.no_mirna_expression_use",
+              "lioness.no_single_cell",
+              "lioness_panda.no_sign",
+              "lioness_panda.no_complexes",
+              "lioness_puma.no_single_cell",
+              "lioness_puma.no_lncrna_cerna",
+              "otter.no_per_sample",
+              "otter.no_global_optimum",
+              "otter.no_complexes",
+              "otter.no_sign",
+              "giraffe.no_protein_level",
+              "giraffe.no_per_sample_wiring",
+              "dragon.no_flux_or_pathway_activity",
+              "dragon.no_more_layers",
+              "lioness_dragon.no_pvalues",
+              "lioness_dragon.no_flux_or_pathway_activity",
+              "lioness_dragon.no_single_cell",
+              "coexpression.no_regulation",
+              "lioness_coexpression.no_single_cell",
+              "bonobo.no_regulation",
+              "bonobo.no_single_cell",
+              "cobra.no_differential_expression",
+              "cobra.no_pair_significance",
+              "condor.no_two_network_comparison",
+              "condor.no_variant_mapping",
+              "sambar.no_expression_subtypes",
+              "sambar.no_driver_calls"
+            ],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": true,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 15,
+              "samples_quote": "15 sepsis samples"
+            },
+            "limits": [
+              "You said \"there are no motif\"; PANDA needs a TF motif prior and no registered workflow or tool provides it",
+              "You said \"there are no motif\"; PUMA needs a TF motif prior and no registered workflow or tool provides it",
+              "You said \"there are no motif\"; LIONESS-PANDA needs a TF motif prior and no registered workflow or tool provides it",
+              "You said \"there are no motif\"; LIONESS-PUMA needs a TF motif prior and no registered workflow or tool provides it",
+              "You said \"there are no motif\"; OTTER needs a TF motif prior and no registered workflow or tool provides it",
+              "You said \"there are no motif\"; GIRAFFE needs a TF motif prior and no registered workflow or tool provides it",
+              "CONDOR needs a regulator-gene network; every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have: you said \"there are no motif\"; OTTER needs a TF motif prior and no registered workflow or tool provides it"
+            ],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@69-86"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "All she gave me is the gene-by-sample expression table; there are no motif or PPI files.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_coexpression.per_sample_networks",
+              "lioness_coexpression.comparisons",
+              "cobra.covariate_components",
+              "cobra.adjusted_input_to_regulation",
+              "dragon.two_layer_network",
+              "dragon.edge_pvalues",
+              "dragon.group_comparison",
+              "lioness_dragon.per_sample_networks",
+              "lioness_dragon.association_tests"
+            ],
+            "not_by": [
+              "panda.no_complexes",
+              "panda.no_sign",
+              "panda.no_motif_discovery",
+              "panda.no_dynamics",
+              "puma.no_lncrna_cerna",
+              "puma.no_mirna_expression_use",
+              "lioness.no_single_cell",
+              "lioness_panda.no_sign",
+              "lioness_panda.no_complexes",
+              "lioness_puma.no_single_cell",
+              "lioness_puma.no_lncrna_cerna",
+              "otter.no_per_sample",
+              "otter.no_global_optimum",
+              "otter.no_complexes",
+              "otter.no_sign",
+              "giraffe.no_protein_level",
+              "giraffe.no_per_sample_wiring",
+              "dragon.no_flux_or_pathway_activity",
+              "dragon.no_more_layers",
+              "lioness_dragon.no_pvalues",
+              "lioness_dragon.no_flux_or_pathway_activity",
+              "lioness_dragon.no_single_cell",
+              "coexpression.no_regulation",
+              "lioness_coexpression.no_single_cell",
+              "bonobo.no_regulation",
+              "bonobo.no_single_cell",
+              "cobra.no_differential_expression",
+              "cobra.no_pair_significance",
+              "condor.no_two_network_comparison",
+              "condor.no_variant_mapping",
+              "sambar.no_expression_subtypes",
+              "sambar.no_driver_calls"
+            ],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": true,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 15,
+              "samples_quote": "15 sepsis samples"
+            },
+            "limits": [
+              "You said \"there are no motif\"; PANDA needs a TF motif prior and no registered workflow or tool provides it",
+              "You said \"there are no motif\"; PUMA needs a TF motif prior and no registered workflow or tool provides it",
+              "You said \"there are no motif\"; LIONESS-PANDA needs a TF motif prior and no registered workflow or tool provides it",
+              "You said \"there are no motif\"; LIONESS-PUMA needs a TF motif prior and no registered workflow or tool provides it",
+              "You said \"there are no motif\"; OTTER needs a TF motif prior and no registered workflow or tool provides it",
+              "You said \"there are no motif\"; GIRAFFE needs a TF motif prior and no registered workflow or tool provides it",
+              "CONDOR needs a regulator-gene network; every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have: you said \"there are no motif\"; OTTER needs a TF motif prior and no registered workflow or tool provides it"
+            ],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@69-86"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "look at gene interactions in her 15 sepsis samples.",
+        "ruled_out": {
+          "motif_prior": "there are no motif",
+          "ppi": "there are no motif or PPI files"
+        },
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@69-86",
+            "property": "sample_count",
+            "name": "",
+            "value": "15",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "15 sepsis samples",
+            "span": [
+              69,
+              86
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "15 sepsis samples",
+                "span": [
+                  69,
+                  86
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "15 sepsis samples",
+                "span": [
+                  69,
+                  86
+                ],
+                "result": "A clinical collaborator asked me to look at gene interactions in her 15 sepsis samples.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "15 sepsis samples",
+                "span": [
+                  69,
+                  86
+                ],
+                "result": "All she gave me is the gene-by-sample expression table; there are no motif or PPI files.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "LIONESS-COEXPRESSION",
+          "COBRA",
+          "DRAGON",
+          "LIONESS-DRAGON"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "look at gene interactions in her 15 sepsis samples."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-COEXPRESSION",
+          "COBRA",
+          "DRAGON",
+          "LIONESS-DRAGON"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "there are no motif or PPI files",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-COEXPRESSION",
+              "contract_quote": "LIONESS co-expression consumes a gene-by-sample expression matrix and produces sample-specific co-expression networks.",
+              "question": "Do you have a gene-by-sample expression matrix?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "All she gave me is the gene-by-sample expression table",
+              "uncertainty": "said_unknown",
+              "workflow": "COBRA",
+              "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+              "question": "Does your gene-by-sample expression matrix have more genes than samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "there are no motif or PPI files",
+              "uncertainty": "said_unknown",
+              "workflow": "DRAGON",
+              "contract_quote": "The verified API has no sample_metadata, motif, PPI, expression-matrix, or three-layer argument.",
+              "question": "Do you have a valid sample-by-feature continuous omics table?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 44908,
+    "output_tokens": 2303,
+    "total_tokens": 47211,
+    "calls": [
+      {
+        "call_id": "33e50bce-7353-48aa-a4cb-26b05eb9a886",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793165335-kWQxaWinT6PUTPJwLnx7",
+        "input_tokens": 5318,
+        "output_tokens": 296,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5614,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 611,
+        "price_snapshot": null,
+        "duration_ms": 3670,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f934e4b0-9d82-49d3-bc28-fa639e7e7df0",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793165339-ownTJnP2Faert5lTazYK",
+        "input_tokens": 5628,
+        "output_tokens": 234,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5862,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 687,
+        "price_snapshot": null,
+        "duration_ms": 2720,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "cb95b321-143e-4c7e-9727-b24ec102a698",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793165342-Qmh6Zef5f20Gewrq1Ezs",
+        "input_tokens": 1125,
+        "output_tokens": 198,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1323,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 288,
+        "price_snapshot": null,
+        "duration_ms": 2423,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "50f50e11-e927-43ab-b6cb-f4ab35470cee",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 641,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 686,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 1165,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "a40d2336-c73c-44ed-99bb-2a8be253cbfb",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793165345-ooKpwyLjl832gKX133bQ",
+        "input_tokens": 1657,
+        "output_tokens": 46,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1703,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 161,
+        "price_snapshot": null,
+        "duration_ms": 1190,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "cd3b2b5f-2749-45e4-8d1d-98da79c50d70",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793165346-ypS6ZPbUnkGJRPTExmlN",
+        "input_tokens": 15187,
+        "output_tokens": 274,
+        "cache_read_tokens": 14080,
+        "cache_write_tokens": 0,
+        "total_tokens": 15461,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1386,
+        "price_snapshot": null,
+        "duration_ms": 3423,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "be5dbccb-ec58-4460-b97d-cfe81e775796",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793165350-AV443CDZiuzZFragmFOT",
+        "input_tokens": 541,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 552,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 88,
+        "price_snapshot": null,
+        "duration_ms": 837,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6740f803-dcad-462d-acb0-f1a167fa53c6",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793165351-210rN0IMdIY1LpXOIQ0q",
+        "input_tokens": 8378,
+        "output_tokens": 787,
+        "cache_read_tokens": 8192,
+        "cache_write_tokens": 0,
+        "total_tokens": 9165,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1115,
+        "price_snapshot": null,
+        "duration_ms": 8943,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "739b5806-e0a4-4e56-97b6-afb9fe09b846",
+        "role": "capability_second_opinion",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793165360-BunIdkJgJBnpjt5XfNl4",
+        "input_tokens": 4034,
+        "output_tokens": 121,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 4155,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 678,
+        "price_snapshot": null,
+        "duration_ms": 2087,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d995d047-c53c-4f80-ab4a-e108cf405834",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793165362-W85Szkgwlhsoyu4cFdTP",
+        "input_tokens": 2399,
+        "output_tokens": 291,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2690,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 534,
+        "price_snapshot": null,
+        "duration_ms": 3432,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 60000,
+    "budget_exhausted": false
+  },
+  "run_id": "34043e0e-956a-4abb-8de6-d9ead8f6a18d",
+  "task_state": null
+}

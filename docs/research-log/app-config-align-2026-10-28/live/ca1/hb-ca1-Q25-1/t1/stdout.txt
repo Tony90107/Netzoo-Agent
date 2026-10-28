@@ -1,0 +1,17 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.72s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "A clinical collaborator asked me to look at gene interactions in her 15 sepsis samples." -- available from LIONESS-COEXPRESSION, COBRA, DRAGON or LIONESS-DRAGON. Not stated in your request: COBRA needs more genes than samples; LIONESS-DRAGON's output is capped at 20,000,000 values (features x (features - 1) / 2 x samples) -- checked against your files before any run.
+2. "All she gave me is the gene-by-sample expression table; there are no motif or PPI files." -- available from LIONESS-COEXPRESSION, COBRA, DRAGON or LIONESS-DRAGON. Not stated in your request: COBRA needs more genes than samples; LIONESS-DRAGON's output is capped at 20,000,000 values (features x (features - 1) / 2 x samples) -- checked against your files before any run.
+
+Several registered methods fit this result; they differ in their modeling assumptions:
+
+- **LIONESS-COEXPRESSION** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. Needs expression matrix.
+- **COBRA** — COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Needs expression matrix and sample covariate design matrix.
+- **BONOBO** — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. Needs expression matrix.
+
+Should the result be aggregate or sample-specific?
+
+No files were inspected and no analysis ran.
