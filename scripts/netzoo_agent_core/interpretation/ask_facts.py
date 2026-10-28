@@ -7,9 +7,19 @@ workflow's own input check could settle is asked too (ROUND-21, user decision: R
 
 from __future__ import annotations
 
-__all__ = ["ASK_KIND", "ask_result", "contract_clause"]
+__all__ = ["ASK_KIND", "CONFIRM_ASKING", "CONFIRM_PLACED", "CONFIRM_UNPLACED", "REASK", "YES_OR_NO", "ask_result",
+           "contract_clause"]
 
 ASK_KIND = "ask_facts"
+
+# The guard's data confirm (graph.jev_guard_call): the words its questions are built from, kept here so an exhausted
+# reply (task_answers.exhausted_body) lists the same question as a missing confirmation, never asks it a third time.
+CONFIRM_PLACED = "Before I go ahead, could you confirm this about your data?"
+CONFIRM_UNPLACED = "Before I go ahead, please confirm: "
+YES_OR_NO = " (yes or no)"
+REASK = "I need a yes or no to go on: "
+CONFIRM_ASKING = ((REASK, ""), (YES_OR_NO, ""), (CONFIRM_PLACED, "A confirmation about your data."),
+                  (CONFIRM_UNPLACED, "A confirmation: "))
 
 
 def contract_clause(workflow: str, line: str) -> str:
