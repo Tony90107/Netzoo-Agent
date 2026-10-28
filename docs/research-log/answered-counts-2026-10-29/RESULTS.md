@@ -13,4 +13,4 @@ not available with the reason and the user's answer when nothing fits. `router_i
 
 Added before live (jev-guard review, tests only, code unchanged): a superseded "400" with a known "150" refits to 550
 (available); the refusal line is `method_fitting`'s limit holding both 20,000,000 and 31,960,000, followed by the
-user's answer quoted; the "150" control stays available. `test_answered_counts.py` 5/5.
+user's answer quoted; the "150" control stays available. `test_answered_counts.py` 4/4.
