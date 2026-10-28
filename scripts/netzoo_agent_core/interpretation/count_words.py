@@ -47,6 +47,13 @@ def _beside(gap: str) -> bool:
     return bool(_NO_WORD.fullmatch(gap) or _ONE_WORD.fullmatch(gap))
 
 
+def _mixed(text: str, run) -> bool:
+    """mixed-notation-2026-10-28: digits beside a number word are a label and a count ("layer one being 300
+    proteins", "the full one has 1,500 transcripts"), never candidates; a user gives candidates for one count in one
+    notation ("two or four", "10 or 15"). Every such run in the recorded checks (4 of 19) was a label."""
+    return len({any(ch.isdigit() for ch in text[start:end]) for _value, start, end in run}) > 1
+
+
 def side_by_side_values(text: str, value: float, numbers=None) -> list[float]:
     """Every number standing in one run of side-by-side numbers with this one, in order ([] when it stands alone).
 
@@ -62,7 +69,7 @@ def side_by_side_values(text: str, value: float, numbers=None) -> list[float]:
         runs.append(run)
     for run in runs:
         values = list(dict.fromkeys(found for found, _start, _end in run))
-        if value in values and len(values) >= 2:
+        if value in values and len(values) >= 2 and not _mixed(text, run):
             return values
     return []
 
@@ -90,6 +97,7 @@ def candidate_runs(text: str) -> list[tuple[list[float], int, int]]:
     found = []
     for run in runs:
         values = sorted({value for value, _start, _end in run})
-        if len(values) >= 2 and all(value >= 1 and value == int(value) for value in values):
+        if (len(values) >= 2 and all(value >= 1 and value == int(value) for value in values)
+                and not _mixed(text, run)):
             found.append((values, run[0][1], run[-1][2]))
     return found
