@@ -276,8 +276,8 @@ def _recorded_about(value):
 
 
 UnknownAbout = Literal["data_unit", "input_network", "samples_matched", "sample_alignment", "regulator_kinds",
-                       "omics_layers", "scale", "sample_count", "mutation_origin", "value_type", "mirna_driver",
-                       "other"]
+                       "omics_layers", "scale", "sample_count", "feature_count", "mutation_origin", "value_type",
+                       "mirna_driver", "other"]
 """Core decision phase 2: `other` keeps any other uncertainty with its words -- the second reader that rule R1 asks
 the fact agent's words to agree with (the fixed dimensions above still drive only the legacy asks)."""
 
@@ -321,7 +321,7 @@ def conditions_model(compact: bool = False, version: int = 1) -> type[BaseModel]
     unknown = create_model(
         "UnknownFact", __config__=ConfigDict(extra="forbid"),
         count_kind=(Literal["choices", "range", "unspecified"], Field(default="unspecified", description=(
-            "For an unknown sample/layer count: choices means only the listed discrete alternatives; range means "
+            "For an unknown sample, layer or feature count: choices means only the listed discrete alternatives; range means "
             "every integer between two bounds; unspecified means no bounds or alternatives are stated."))),
         count_values=(list[int], Field(default_factory=list, description=(
             "Only numeric alternatives or two range bounds stated in the unknown's quote; exclude unrelated counts. Empty if unspecified."))),
@@ -334,7 +334,8 @@ def conditions_model(compact: bool = False, version: int = 1) -> type[BaseModel]
             "existing network links regulators to genes or genes to genes. samples_matched: whether different omics "
             "data types come from the same biological subjects/samples (not file order or ID alignment). sample_alignment: whether file IDs or their order align. regulator_kinds: whether the regulators or prior include "
             "miRNAs. omics_layers: how many omics data types there are. scale: one result for all samples together "
-            "or one per sample. sample_count: how many independent samples there are. mutation_origin: somatic "
+            "or one per sample. sample_count: how many independent samples there are. feature_count: how many genes, "
+            "proteins, metabolites or other features of one data type there are. mutation_origin: somatic "
             "or germline mutations. value_type: continuous measurements or binary indicators. mirna_driver: whether "
             "miRNA links must use a target prior or measured miRNA expression. other: anything else about the "
             "user's data or the wanted result that the user says they do not know or have not decided."))))

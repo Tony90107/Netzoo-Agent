@@ -269,7 +269,8 @@ class FactRecord:
         ids += self._read_side_by_side(proposal)
         ids += self._read_context_candidates(proposal, sentences)
         for unknown in getattr(getattr(proposal, "conditions", None), "unknown_facts", None) or ():
-            self._read_unknown_count(unknown)
+            if (found := self._read_unknown_count(unknown)) and self.facts[found].property == "feature_count":
+                ids.append(found)  # feature-count-doubts: no other path judges it, so it is a candidate count
         self.alternative_ids = list(dict.fromkeys(ids))
         return [self.alternative(fact_id) for fact_id in self.alternative_ids]
 
@@ -427,23 +428,27 @@ class FactRecord:
         return self._add(RequestFact(id=f"{prop}@{span[0]}-{span[1]}:candidates", property=prop, values=values,
                                      state="unsure", quote=words, span=list(span)), evidence)
 
-    def _read_unknown_count(self, unknown) -> None:
-        """An unknown sample count with its candidates (`count_kind` choices), kept when its words state each one.
+    def _read_unknown_count(self, unknown) -> str | None:
+        """An unknown sample or feature count with its candidates (`count_kind` choices), kept when its words state
+        each one; returns the fact's id.
 
-        It is a second place the reading writes the same doubt; `reconcile_unknown_counts` prevents that quantity
-        from being judged twice when a dedicated candidate reading already owns it."""
+        A sample count is a second place the reading writes the same doubt; `reconcile_unknown_counts` prevents that
+        quantity from being judged twice when a dedicated candidate reading already owns it. feature-count-doubts
+        (j2 Q42, j3 R35): before `feature_count` was a type, a feature doubt was written as a sample count or not at
+        all; its candidates are judged like `count_alternatives` (`read_alternatives`)."""
+        about = getattr(unknown, "about", "")
         values = sorted(set(getattr(unknown, "count_values", None) or ()))
-        if getattr(unknown, "about", "") != "sample_count" or getattr(unknown, "count_kind", "") != "choices" \
+        if about not in ("sample_count", "feature_count") or getattr(unknown, "count_kind", "") != "choices" \
                 or len(values) < 2:
-            return
+            return None
         span = _span(self.task, unknown.quote) if (unknown.quote or "").strip() else None
         if span is None:
-            return
+            return None
         words = self.task[span[0]:span[1]]
         if any(value <= 0 or value not in stated_numbers(words) for value in values):
-            return
+            return None
         evidence = FactEvidence(reader="unknown_facts", quote=words, span=list(span), role="alternative")
-        self._add_unsure("sample_count", [str(value) for value in values], span, words, evidence)
+        return self._add_unsure(about, [str(value) for value in values], span, words, evidence)
 
     def alternative(self, fact_id: str) -> dict:
         fact = self.facts[fact_id]
