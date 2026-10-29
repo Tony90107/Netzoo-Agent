@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 __all__ = ["MAX_ROUNDS", "TASK_STATE_VERSION", "PendingQuestion", "TaskFact", "TaskState", "TaskStateError",
            "load_task_state"]
 
-TASK_STATE_VERSION = 1
+TASK_STATE_VERSION = 2
 MAX_ROUNDS = 2
 """Spec 7.2: at most two rounds of scientific clarification (goal or deciding facts) per task."""
 
@@ -69,6 +69,9 @@ class TaskState(BaseModel):
     """The request that opened the task, without the follow-up wrapping."""
     pending: list[PendingQuestion] = Field(default_factory=list)
     facts: list[TaskFact] = Field(default_factory=list)
+    asked: list[PendingQuestion] = Field(default_factory=list)
+    """asked-history-2026-10-29 (version 2): questions this task asked that a later round replaced unanswered (j8 Z22:
+    a Jev question asked at turn 1 was asked again at turn 3). A version-1 state loads with none."""
     rounds: int = 0
     """Turns of this task that ended in ASK or CLARIFY."""
     status: Literal["active", "exhausted", "closed"] = "active"
