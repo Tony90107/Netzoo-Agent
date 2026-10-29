@@ -16,7 +16,7 @@ from ..contracts.capability_check import full_gap
 from ..contracts.task_state import MAX_ROUNDS, TaskState
 
 __all__ = ["EXHAUSTED_NOTE", "answered_check", "clarification_rounds", "exhausted", "exhausted_body", "fold",
-           "settled_quotes", "without_settled"]
+           "follow_up_reply", "settled_quotes", "without_settled"]
 
 EXHAUSTED_NOTE = ("I have asked about this request twice already, so I will not ask again. Below is what is still "
                   "missing; tell me when you know it, or describe a new request. Nothing was ruled out for this, and "
@@ -51,6 +51,13 @@ def without_settled(stated: list[str], task_state) -> list[str]:
     """The stated conditions less those that repeat a settled answer (`settled_quotes`)."""
     settled = settled_quotes(task_state)
     return [quote for quote in stated if not any(_overlap(quote, answer) for answer in settled)]
+
+
+def follow_up_reply(text: str) -> str:
+    """The user's own reply on an answer turn: the words after the last "User follow-up:" of the resolved task text
+    ("Previous NetZoo goal: ...\nUser follow-up: ..."), else the text itself, trimmed. A decline that quotes the user's
+    answer quotes only this (agent-answer-anchor aa1: "You answered "Previous NetZoo goal: ...")."""
+    return (text or "").rsplit("User follow-up:", 1)[-1].strip()
 
 
 def fold(text: str) -> str:

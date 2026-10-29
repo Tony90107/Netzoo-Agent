@@ -496,3 +496,37 @@ def test_layer_one_is_withdrawn_an_unbound_reply_is_never_read_by_jev(monkeypatc
              "messages": [HumanMessage(content="I checked: it's the COBRA batch-adjusted co-expression matrix.")]}
     after = jev_guard_call.apply_jev_guard(None, state, None, do(), TASK, done(read("DO")))
     assert (after.kind, after.basis) == ("ASK", "jev_condition") and seen[-1]["action"] == "reask"
+
+
+# agent-answer-anchor aa1: on an answer turn the latest message is "Previous NetZoo goal: ...\nUser follow-up: ...";
+# the guard reads and quotes only the reply.
+
+@pytest.mark.parametrize("text,reply", [
+    ("Previous NetZoo goal: run PANDA on expr.tsv\nUser follow-up: It's the COBRA matrix.", "It's the COBRA matrix."),
+    ("Previous NetZoo goal: a\nUser follow-up: b\nUser follow-up:  No, raw counts.  ", "No, raw counts."),
+    ("  Yes, it is.  ", "Yes, it is."), ("", "")])
+def test_follow_up_reply_keeps_only_the_users_reply(text, reply):
+    from netzoo_agent_core.interpretation.task_answers import follow_up_reply
+
+    assert follow_up_reply(text) == reply
+
+
+def test_the_answer_read_and_its_decline_use_only_the_reply_not_the_previous_goal(monkeypatch):
+    from netzoo_agent_core.contracts import HumanMessage
+
+    monkeypatch.setenv("NETZOO_JEV_GUARD", "on")
+    seen = []
+    monkeypatch.setattr(jev_guard_call, "record_event", lambda *a: None)
+    monkeypatch.setattr(jev_guard_call, "judge_answer",
+                        lambda contract, quote, question, answer: seen.append(answer) or
+                        {"answer": "fails", "confidence": 0.95})
+    question = {**_question(), "what": "jev:data_property"}
+    message = ("Previous NetZoo goal: per-sample TF networks with LIONESS-PANDA\n"
+               "User follow-up: It's the COBRA adjusted co-expression matrix.")
+    state = {"task_state": {"pending": [question], "facts": [], "turns": 1}, "messages": [HumanMessage(content=message)]}
+    after = jev_guard_call.apply_jev_guard(None, state, None, do(), TASK, done(read("DO")))
+    assert seen == ["It's the COBRA adjusted co-expression matrix."]
+    assert (after.kind, after.basis) == ("DECLINE", "jev_answer")
+    line = after.declined[0].line
+    assert line.startswith('You answered "It\'s the COBRA adjusted co-expression matrix."')
+    assert "Previous NetZoo goal" not in line and "User follow-up" not in line

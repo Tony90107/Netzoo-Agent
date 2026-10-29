@@ -629,9 +629,10 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
             return after if mode == "on" else core
     waiting = pending_condition(state.get("task_state")) if bound is None else None
     if waiting is not None:  # jev-confirm-2026-10-28: the code bound no yes/no, so the confirm is unsettled
+        from ..interpretation.task_answers import follow_up_reply
         from ..llm import latest_user_message
 
-        reply = latest_user_message(state.get("messages") or [])
+        reply = follow_up_reply(latest_user_message(state.get("messages") or []))
         # Layer 1 (a Jev read of the reply) was withdrawn offline (L1 6/22, L2, L3): only layer 2 runs -- an
         # unsettled data confirm is asked again, never a DO.
         read = {"answer": "unread", "confidence": 0.0}
@@ -643,9 +644,10 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
             return after if mode == "on" else core
     question = asked_contract_question(state.get("task_state"))
     if question is not None:  # the answer turn: Jev reads the answer against the line the question quoted
+        from ..interpretation.task_answers import follow_up_reply
         from ..llm import latest_user_message
 
-        answer = latest_user_message(state.get("messages") or [])
+        answer = follow_up_reply(latest_user_message(state.get("messages") or []))  # the reply, not the old goal
         try:
             judged = judge_answer(question["labels"]["contract"], question.get("user_quote", ""),
                                   question.get("question", ""), answer)
