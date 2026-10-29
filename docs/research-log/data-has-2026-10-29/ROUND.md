@@ -34,3 +34,13 @@ the new has-read; `ruled_out` for each gold workflow.
 
 Pass -> build it in the guard (jev-guard session agreed first), replay + tests, then live. Fail -> stop.
 No gate is changed after the run.
+
+## Addendum after the offline measurement, before the code (jev-guard review)
+
+- The confirm names the kind that ruled the workflow out: `check_typed_data` records `ruled_by` ("data" / "has") and
+  the confirm question is built from that read's kind; the contract line is `ruled_out`'s, unchanged.
+- **D3 chains (reported, then controls)**: count the 348 items whose gold is a registered chain or handoff (e.g.
+  PANDA -> CONDOR from expression) and what the union does to them; if none, 2-3 such requests become declared live
+  controls (hard: no chain control ends in a confirm-then-decline).
+- **D4 stability (hard)**: the has-read 10x on j2 Q18 and on two gold-DO controls: Q18 >= 0.7 on expression in >= 8 of
+  10; the controls never rule out their gold workflow.
