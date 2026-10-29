@@ -63,6 +63,10 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     from .jev_forms_call import apply_data_first
 
     core = apply_data_first(context, state, core, user_task)
+    # agent-answer-anchor: an answer to an agent question on a code-anchored contract line, read by Jev.
+    from .agent_answer_call import apply_agent_answer
+
+    core = apply_agent_answer(context, state, core, user_task)
     # Harness repair P3: a third round of clarification is not asked (spec 7.2).
     from ..interpretation.task_answers import clarification_rounds
 
