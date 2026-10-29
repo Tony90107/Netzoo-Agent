@@ -42,7 +42,8 @@ def apply_agent_answer(context, state, core, user_task: str):
     question = asked_agent_question(state.get("task_state")) if mode != "off" and core.kind == "DO" else None
     if question is None:
         return core
-    answer = latest_user_message(state.get("messages") or [])
+    # Only the reply: a follow-up turn's message also carries the previous goal (live aa1: the line quoted it all).
+    answer = latest_user_message(state.get("messages") or []).rsplit("User follow-up:", 1)[-1].strip()
     try:
         judged = judge_answer(question["labels"]["contract"], question.get("user_quote", ""),
                               question.get("question", ""), answer)

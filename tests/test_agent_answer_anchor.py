@@ -64,6 +64,10 @@ def test_off_shadow_on(run, monkeypatch):
     assert go("shadow").kind == "DO" and events[-1]["would_have"]["kind"] == "DECLINE"
     after = go("on")
     assert after.kind == "DECLINE" and after.basis == "jev_answer" and "OTTER's contract" in after.declined[0].line
+    monkeypatch.setattr("netzoo_agent_core.llm.latest_user_message", lambda messages: (
+        "Previous NetZoo goal: Run OTTER for sheep.\nUser follow-up: There is no TF-TF table."))
+    line = go("on").declined[0].line
+    assert line.startswith('You answered "There is no TF-TF table."') and "Previous NetZoo goal" not in line  # aa1
     ask = CoreDecision(kind="ASK", basis="fact_agent", workflows=["OTTER"], evidence={})
     assert go("on", ask) is ask  # only a DO changes
     state["task_state"]["pending"][0]["labels"]["contract"] = LAMBDA
