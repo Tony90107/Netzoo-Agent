@@ -1,0 +1,521 @@
+{
+  "version": 1,
+  "session_id": "hb-pg1-W20-1",
+  "profile_id": "hb-pg1-W20-1",
+  "auto_generated": false,
+  "created_at": 1793244335.477103,
+  "updated_at": 1793244335.4771378,
+  "messages": [
+    {
+      "role": "user",
+      "content": "In a dietary intervention we took blood from 15 volunteers at baseline, week 4 and week 12, measuring both transcripts and metabolites on each sample. I'd like one two-layer partial-correlation network per time point, each using all 15 samples from that visit, not networks for individual volunteers."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like one two-layer partial-correlation network per time point, each using all 15 samples from that visit, not networks for individual volunteers.\" -- available from LIONESS-DRAGON. Not stated in your request: LIONESS-DRAGON's output is capped at 20,000,000 values (features x (features - 1) / 2 x samples) -- checked against your files before any run.\n\nSelected path: **LIONESS-DRAGON**.\n\n**LIONESS-DRAGON** — Infer one sample-specific two-layer multi-omic partial-correlation network per sample with LIONESS-DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.\n\nRequired workflow inputs:\n\n- `omics_layer_1`: DRAGON omics layer 1\n- `omics_layer_2`: DRAGON omics layer 2\n\nCost: LIONESS runs DRAGON once on all samples and once more without each sample, so N samples take N+1 DRAGON runs and give N network files. Plan the runtime and disk space, and filter edges before downstream statistics.\n\nOutputs:\n\n- `multi_omic_network`: Inferred associations between omics features.\n\nWorkflow-specific scientific notes:\n\n- LIONESS-DRAGON estimates DRAGON's two shrinkage values once on all samples, then derives each sample's network from the all-sample network and the network refitted without that sample.\n- Each sample's network is an undirected partial-correlation graph across both layers; like DRAGON's, it is an association graph, not a causal one.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited LIONESS-DRAGON for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "The capability check credited LIONESS-DRAGON for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "run_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_lioness_dragon"
+      ],
+      "requested_outcome": null,
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_lioness_dragon"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like one two-layer partial-correlation network per time point, each using all 15 samples from that visit, not networks for individual volunteers.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_dragon.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_group",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 15,
+              "samples_quote": "15 volunteers"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@45-58"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "blood from 15 volunteers",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "measuring both transcripts and metabolites on each sample",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "one two-layer partial-correlation network per time point, each using all 15 samples from that visit, not networks for individual volunteers.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "one two-layer partial-correlation network"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@45-58",
+            "property": "sample_count",
+            "name": "",
+            "value": "15",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "15 volunteers",
+            "span": [
+              45,
+              58
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "15 volunteers",
+                "span": [
+                  45,
+                  58
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "15 volunteers",
+                "span": [
+                  45,
+                  58
+                ],
+                "result": "I'd like one two-layer partial-correlation network per time point, each using all 15 samples from that visit, not networks for individual volunteers.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "LIONESS-DRAGON"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": null,
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "one two-layer partial-correlation network per time point, each using all 15 samples from that visit, not networks for individual volunteers."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-DRAGON",
+          "DRAGON"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "each using all 15 samples from that visit, not networks for individual volunteers.",
+              "uncertainty": "two_versions",
+              "workflow": "LIONESS-DRAGON",
+              "contract_quote": "Require at least three samples.",
+              "question": "Do you have at least three samples for each time point?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'd like one two-layer partial-correlation network per time point",
+              "uncertainty": "said_unknown",
+              "workflow": "DRAGON",
+              "contract_quote": "Require at least three samples in each layer before execution.",
+              "question": "Do you have at least three samples for each time point?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 29120,
+    "output_tokens": 1068,
+    "total_tokens": 30188,
+    "calls": [
+      {
+        "call_id": "310b9005-bcd3-4856-a5c0-0c1e4cf8e40f",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793244317-3Gjhp5hJYrjk8fvPZ0He",
+        "input_tokens": 5338,
+        "output_tokens": 244,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 5582,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 947,
+        "price_snapshot": null,
+        "duration_ms": 4910,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "fa2f6f27-83ca-4847-a15f-86402c9a2af8",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793244321-oPrN4DBBeK7oxRgza4sY",
+        "input_tokens": 4808,
+        "output_tokens": 77,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 4885,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 556,
+        "price_snapshot": null,
+        "duration_ms": 1542,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3234dc9f-a627-40b5-92a7-493ab9637693",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 659,
+        "output_tokens": 48,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 707,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 128,
+        "price_snapshot": {
+          "snapshot_id": "41015353-f637-5d15-a823-b1b30c8f37c7",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T03:25:14.159420Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 986,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "4979b6be-63ce-4c18-a924-08bec42750f8",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793244324-luwSVCAV8IPi5ROBwfYB",
+        "input_tokens": 306,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 310,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 48,
+        "price_snapshot": null,
+        "duration_ms": 656,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "525144b3-6cf7-445e-b2dd-34ba426a5f2f",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793244325-dSl9l58qgKMlAKksU1Qb",
+        "input_tokens": 15341,
+        "output_tokens": 433,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 15774,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2561,
+        "price_snapshot": null,
+        "duration_ms": 5484,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8facc266-e584-4305-81c5-4bd019146c71",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793244330-PnFx3pldeAKkMaac1Onz",
+        "input_tokens": 561,
+        "output_tokens": 81,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 642,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 133,
+        "price_snapshot": null,
+        "duration_ms": 1223,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ce60f102-d441-4c1f-b148-d4721de29a46",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793244331-OEsbkHE2c8FoZWxRx4CH",
+        "input_tokens": 2107,
+        "output_tokens": 181,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2288,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 425,
+        "price_snapshot": null,
+        "duration_ms": 3095,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "f7528d88-28ce-4c78-b9b3-cf7686621843",
+  "task_state": null
+}

@@ -11,6 +11,7 @@
 Offline all gates pass. Whether gpt-4o-mini picks per_group for X30-like wording -- and keeps per_sample on the
 controls -- is P4 live, not run yet.
 
-Correction (not a gate): ROUND.md's "about US$0.05" for P4 is wrong. The j5/j6 runs recorded `spent_usd` 0.14-0.27
-for each of these seven sessions (sum 1.40), so P4 is about US$1.4 by that count. The seven prompts were checked:
-X10, W20, W30 ask one result per tissue/visit; X14, W13, W35 one per patient.
+Correction (not a gate), withdrawn: an earlier note here said P4 would cost about US$1.4, read from the j5/j6
+`spent_usd` fields. Those fields are cumulative over each run, not per session (sa1-sa3 cost US$0.0035 a session).
+ROUND.md's "about US$0.05" was right; P4 spent US$0.032. The seven prompts were checked: X10, W20, W30 ask one result
+per tissue/visit; X14, W13, W35 one per patient.
