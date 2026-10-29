@@ -631,6 +631,23 @@ def answered_core(core: CoreDecision, question: dict, answer: str, judged: dict)
                         declined=[DeclinedPart(quote=answer.strip(), reasons=[line], line=line)]), "declined"
 
 
+def confirmed_violation_core(core: CoreDecision, bound: dict) -> tuple[CoreDecision, str]:
+    """A data confirm the user answered "yes": a DO declines with the confirmed contract line (FIXES.md B). confirmed-
+    reason-2026-10-30: so does a turn already DECLINE `full_gap` -- its "couldn't match" reason is replaced by the
+    verified line (j2 Q18 hi1: the user confirmed the expression matrix, the re-reading had lost the SAMBAR link). The
+    kind never changes there; `kind_before` / `basis_before` keep the real call."""
+    answer, judged = bound.get("answer_quote", ""), {"answer": "fails", "confidence": 1.0, "by": "code"}
+    if core.kind != "DECLINE" or core.basis != "full_gap":
+        return answered_core(core, bound, answer, judged)
+    workflow = (bound.get("labels") or {}).get("workflow") or (bound.get("workflows") or [None])[0]
+    if not workflow:
+        return core, "answer_not_on_do"
+    after, _action = answered_core(core.model_copy(update={"kind": "DO", "workflows": [workflow]}), bound, answer,
+                                   judged)
+    record = {**after.evidence.get("jev_answer", {}), "kind_before": core.kind, "basis_before": core.basis}
+    return after.model_copy(update={"evidence": {**after.evidence, "jev_answer": record}}), "reason_confirmed"
+
+
 def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str, pending: Future | None):
     """The call after the guard (shadow: the call as it came, with what the guard would have done recorded)."""
     mode = jev_mode()
@@ -639,8 +656,7 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
     bound = condition_answer(state.get("task_state"))
     if bound is not None:  # FIXES.md B: the data confirm's yes/no, bound in code this turn; no Jev read
         if bound["value"] == "yes":
-            after, action = answered_core(core, bound, bound.get("answer_quote", ""),
-                                          {"answer": "fails", "confidence": 1.0, "by": "code"})
+            after, action = confirmed_violation_core(core, bound)
         else:
             after, action = core, f"answer_{bound['value']}"
         record_event(context, state, "core.jev_answer", "classify", {
