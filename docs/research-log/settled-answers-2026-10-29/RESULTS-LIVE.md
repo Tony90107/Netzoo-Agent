@@ -16,3 +16,7 @@ Run sa1: code 4f26bca1, app settings, gpt-4o-mini, X06 up to 3 turns, 1 rep. Spe
 `run_live_sa2.py`, `run_live_sa3.py`: the same X06 conversation, code 4f26bca1, tags sa2 / sa3, cap US$0.05 each.
 Reported: for each run, whether the bound-answer path is reached (a form answer bound and then a stated condition
 repeating it), whether the condition check is skipped for it, and the final call (S4: not a refusal).
+
+Results: sa2 and sa3 both ended **DO/run at turn 1** (US$0.0035 each). With sa1, X06 was read right on turn 1 in 3 of
+3 runs on this code, against the misread of j6a (1 of 4 recorded runs). The bound-answer path was not reached in
+any live run; the fix's evidence stays the offline S2 rebuild. S4 (no refusal) holds in all three.
