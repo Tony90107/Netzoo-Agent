@@ -7,3 +7,9 @@
 | H2 clean-env tests | 5183 passed; the 2 known env-dependent failures only. |
 
 H3 live not run yet.
+
+## Second review fix (jev-guard, before any live run)
+
+Case: confirm replaced -> re-asked -> answered "no" -> the task stays open -> a later round found the old copy in
+`asked` and would re-ask an answered confirm. `after_turn` now drops from `asked` every question that is back in
+pending or answered (a fact), and keeps one copy per question. Test added (5/5). Full suite re-run: below.
