@@ -365,7 +365,7 @@ def _fitting(keys: list[str], item) -> list[str]:
             return bool(method_fitting(method, [key])[0])
         return True
     keys = [key for key in keys if data_fits(key)]
-    want = {"per_sample": "sample_specific", "whole_cohort": "aggregate"}.get(item.scale)
+    want = {"per_sample": "sample_specific", "per_group": "aggregate", "whole_cohort": "aggregate"}.get(item.scale)
     return [k for k in keys if want is None or want in known[k].granularity]
 
 
