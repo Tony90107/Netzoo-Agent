@@ -1,0 +1,30 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.49s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "Could you build a PANDA network" -- available from PANDA.
+2. "then use CONDOR to find communities of TFs and target genes in it" -- available from CONDOR.
+
+Your request has 2 steps, one after the other: each step uses the result of the one before. Each step is listed with the registered workflows that fit it, their algorithmic premises and inputs:
+
+**Step 1 -- "build a PANDA network"**
+Result: regulatory networks (aggregate), from expression matrix.
+- TF-only regulatory network:
+  - **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Needs expression matrix, motif/prior and PPI network.
+  - **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.
+- TF-only signed regulatory-effect network:
+  - **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.
+- TF/miRNA regulatory network:
+  - **PUMA** — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Needs expression matrix, motif/prior, PPI network and miRNA list.
+
+**Step 2 -- "find communities of TFs and target genes"**
+Result: community assignments (aggregate), from the regulatory networks of the previous step.
+No single registered workflow produces this from the stated inputs; a registered handoff does, in two steps:
+- **PANDA → CONDOR** — PANDA infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).
+- **OTTER → CONDOR** — OTTER infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).
+  - Method premise: find communities in a two-mode network; return network modules or community membership
+
+Should we start with step 1 (PANDA or PUMA or OTTER or GIRAFFE)? Each step is planned and approved on its own. Step 2 has no registered workflow; what to do instead is described above.
+
+No files were inspected and no analysis ran.

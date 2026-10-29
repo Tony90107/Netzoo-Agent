@@ -1,0 +1,785 @@
+{
+  "version": 1,
+  "session_id": "hb-hi1-S32-1",
+  "profile_id": "hb-hi1-S32-1",
+  "auto_generated": false,
+  "created_at": 1793291245.4597461,
+  "updated_at": 1793291284.728259,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We have bulk RNA-seq expression in TPM for 200 ovarian tumours, plus gene lengths, a cancer gene list and Hallmark pathways. I'd like SAMBAR to subtype these tumours from that expression matrix, testing 2 to 4 groups."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Did you mean SAMBAR's result? SAMBAR's contract: \"Subtype somatic-mutation samples through pathway mutation scores with SAMBAR\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: We have bulk RNA-seq expression in TPM for 200 ovarian tumours, plus gene lengths, a cancer gene list and Hallmark pathways. I'd like SAMBAR to subtype these tumours from that expression matrix, testing 2 to 4 groups.\nUser follow-up: Yes, it's TPM expression from RNA-seq."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Before I go ahead, please confirm: is the data you will use a gene-by-sample expression table (counts, TPM, microarray intensities)? (yes or no) SAMBAR's contract lists expression_matrix among the inputs it cannot take.\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "sample_cluster_assignment",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "TPM expression from RNA-seq.",
+              "rationale": "The user specifies using TPM expression from RNA-seq for analysis."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "sample_cluster_assignment",
+              "source": "explicit",
+              "text_span": "subtype these tumours from that expression matrix, testing 2 to 4 groups.",
+              "rationale": "The user wants to subtype tumors into groups, which corresponds to sample cluster assignments."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The artifact type 'sample_cluster_assignment' restricts granularity to 'aggregate' as it represents a cohort-wide clustering result."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [
+        {
+          "action": "run_sambar",
+          "workflow": "SAMBAR",
+          "reason_code": "incompatible_input",
+          "input_artifacts": [
+            "expression_matrix"
+          ],
+          "accepted_input_artifacts": [
+            "mutation_matrix"
+          ],
+          "reason": "The registered SAMBAR input contract does not accept expression_matrix for this analysis; it accepts mutation_matrix."
+        }
+      ],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Before I go ahead, please confirm: is the data you will use a gene-by-sample expression table (counts, TPM, microarray intensities)? (yes or no)",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like SAMBAR to subtype these tumours from that expression matrix, testing 2 to 4 groups.",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_group",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "several_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "group_membership",
+            "outcomes": {
+              "one_group": [
+                "sambar.subtypes"
+              ],
+              "several_groups": []
+            },
+            "unknown_quote": "I'd like SAMBAR to subtype these tumours from that expression matrix, testing 2 to 4 groups.",
+            "file_checked": null,
+            "method": {
+              "named": "SAMBAR",
+              "named_quote": "SAMBAR",
+              "samples": 200,
+              "samples_quote": "200 ovarian tumours"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@65-84"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "bulk RNA-seq expression in TPM for 200 ovarian tumours",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "gene lengths",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a cancer gene list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "Hallmark pathways",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "TPM expression from RNA-seq",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like SAMBAR to subtype these tumours from that expression matrix, testing 2 to 4 groups.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "SAMBAR"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@65-84",
+            "property": "sample_count",
+            "name": "",
+            "value": "200",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "200 ovarian tumours",
+            "span": [
+              65,
+              84
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "200 ovarian tumours",
+                "span": [
+                  65,
+                  84
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "200 ovarian tumours",
+                "span": [
+                  65,
+                  84
+                ],
+                "result": "I'd like SAMBAR to subtype these tumours from that expression matrix, testing 2 to 4 groups.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Before I go ahead, please confirm: is the data you will use a gene-by-sample expression table (counts, TPM, microarray intensities)? (yes or no)",
+            "user_quote": "",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "SAMBAR incompatible_input_artifacts: expression_matrix",
+            "depends_on": "jev:condition",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": ""
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "jev_condition",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "sample_cluster_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like SAMBAR to subtype these tumours from that expression matrix, testing 2 to 4 groups."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [
+            "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?"
+          ],
+          "legacy_kept": true,
+          "jev_condition": {
+            "kind_before": "ASK",
+            "basis_before": "needs_fact",
+            "data": [
+              "expression_matrix",
+              1
+            ],
+            "same_samples": null,
+            "form_questions": [
+              "group_membership"
+            ]
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'd like SAMBAR to subtype these tumours from that expression matrix, testing 2 to 4 groups.",
+              "uncertainty": "two_versions",
+              "workflow": "SAMBAR",
+              "contract_quote": "cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.",
+              "question": "Do you want to test 2 to 4 groups for subtyping?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "2 groups",
+                "4 groups"
+              ]
+            }
+          }
+        ],
+        "legacy": [
+          {
+            "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+            "user_quote": "I'd like SAMBAR to subtype these tumours from that expression matrix, testing 2 to 4 groups.",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "",
+            "depends_on": "group_membership",
+            "outcomes": {
+              "one_group": [
+                "SAMBAR"
+              ],
+              "several_groups": []
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "dimension:group_membership@147-239"
+          }
+        ],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 32870,
+    "output_tokens": 1097,
+    "total_tokens": 33967,
+    "calls": [
+      {
+        "call_id": "b40f0022-b0ca-42c4-bcd5-544fb6757f74",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291256-9JG0iGpT0CLNi39htsg9",
+        "input_tokens": 872,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 917,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 158,
+        "price_snapshot": null,
+        "duration_ms": 10836,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b80047b3-f648-47d3-b495-ba6828bafbb4",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291258-XEaNxSYwvapjfanWGcFz",
+        "input_tokens": 5348,
+        "output_tokens": 164,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5512,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 536,
+        "price_snapshot": null,
+        "duration_ms": 3002,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "194eef7b-3ff3-4a29-9380-054fed7496e3",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291262-F5sHOeGAfEKgdADRFbeW",
+        "input_tokens": 5573,
+        "output_tokens": 244,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5817,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 685,
+        "price_snapshot": null,
+        "duration_ms": 4575,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6e06e0f6-fa7d-4912-af70-829200ea3548",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 733,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 774,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 135,
+        "price_snapshot": {
+          "snapshot_id": "c82bc591-22e3-5e47-a206-486e7ecdbfe6",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T16:25:50.760575Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 3826,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "0c4cb3f5-5bab-44aa-b209-4c90516882a0",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793291270-rW6zR22F30JbJ6WQ3SdB",
+        "input_tokens": 18562,
+        "output_tokens": 445,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 19007,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1679,
+        "price_snapshot": null,
+        "duration_ms": 8279,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "dbc36f70-61ef-4bc1-a5af-9d92f7aa1534",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291278-nNIT0fUQzjIilwf1aIbO",
+        "input_tokens": 571,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 613,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 111,
+        "price_snapshot": null,
+        "duration_ms": 2315,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "00ad9f8e-1dab-4508-bc99-9bd371d20f28",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291281-3hWbytiiCjVcZGefPA34",
+        "input_tokens": 1211,
+        "output_tokens": 116,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1327,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 251,
+        "price_snapshot": null,
+        "duration_ms": 2134,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "e8babb5d-536d-4ac0-a86d-43a20db95eb0",
+  "task_state": {
+    "version": 2,
+    "task_id": "3fd1542d",
+    "revision": 2,
+    "goal": "We have bulk RNA-seq expression in TPM for 200 ovarian tumours, plus gene lengths, a cancer gene list and Hallmark pathways. I'd like SAMBAR to subtype these tumours from that expression matrix, testing 2 to 4 groups.",
+    "pending": [
+      {
+        "question_id": "dimension:jev:condition:e3b0c44298",
+        "source": "dimension",
+        "what": "jev:condition",
+        "question": "Before I go ahead, please confirm: is the data you will use a gene-by-sample expression table (counts, TPM, microarray intensities)? (yes or no)",
+        "user_quote": "",
+        "workflows": [
+          "SAMBAR"
+        ],
+        "options": {},
+        "labels": {
+          "contract": "SAMBAR incompatible_input_artifacts: expression_matrix",
+          "workflow": "SAMBAR"
+        },
+        "yes_no": true,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "asked": [
+      {
+        "question_id": "dimension:jev_link:SAMBAR:e3b0c44298",
+        "source": "dimension",
+        "what": "jev_link:SAMBAR",
+        "question": "Did you mean SAMBAR's result?",
+        "user_quote": "",
+        "workflows": [
+          "SAMBAR"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      },
+      {
+        "question_id": "dimension:group_membership:6b1c79f0a1",
+        "source": "dimension",
+        "what": "group_membership",
+        "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+        "user_quote": "I'd like SAMBAR to subtype these tumours from that expression matrix, testing 2 to 4 groups.",
+        "workflows": [
+          "SAMBAR"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": false,
+        "status": "queued"
+      }
+    ],
+    "rounds": 2,
+    "status": "active",
+    "turns": 2
+  }
+}

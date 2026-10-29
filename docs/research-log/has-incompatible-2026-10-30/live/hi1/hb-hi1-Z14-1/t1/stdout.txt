@@ -1,0 +1,48 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.43s)
+● Matching registered workflows…
+✓ Workflow — OTTER → CONDOR
+✓ Guidance prepared
+What I understood you are asking for:
+1. "PANDA to build the TF-to-gene network" -- available from PANDA.
+2. "CONDOR to break it into modules of regulators and their targets" -- available from CONDOR.
+
+Do not use **CONDOR** with the current `expression_matrix` input. The registered CONDOR input contract does not accept expression_matrix for this analysis; it accepts regulatory_network. This restriction concerns this registered workflow and these inputs, not every possible use of the method.
+
+Selected path: **OTTER**.
+
+Your question asks for a cohort-level regulatory network. **OTTER** fits that result and scale. OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression.
+
+Why this recommendation:
+
+Method suitability depends on the current input and the requested result, not on using the same tool as a previous analysis. Changing a file's format does not change its scientific modality; a patient-indexed score matrix is not an individually inferred network. Use the compatible pathway for the current goal.
+
+**OTTER**: Infer an aggregate TF-to-gene regulatory network with OTTER by solving a continuous-relaxation graph-matching optimization with an explicit objective and gamma regularization that balances motif/PPI priors with co-expression constraints.
+
+Routing-level input modality: expression matrix, coexpression network.
+
+Method premise: continuous relaxed graph-matching; explicit objective/loss, gradient descent, convergence; not heuristic message passing.
+
+OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+
+Required workflow inputs:
+
+- `motif_file`: motif/prior
+- `ppi_file`: PPI network
+
+Required alternative (provide one):
+
+- `expression_file`: expression matrix
+- `coexpression_file`: adjusted co-expression matrix
+
+Other declared controls (not matched to this request; defaults apply unless you set them): `output_format`=matrix, `computing`=cpu, `precision`=double, `lam`=0.035, `gamma`=0.335, `iterations`=60, `eta`=1e-05, `bexp`=1.0.
+
+Runtime limits:
+
+- `computing`: current runtime unavailable: gpu; use `computing=cpu`.
+
+Distinct declared output artifacts (availability depends on workflow options):
+
+- `regulatory_network`: Inferred regulator-to-target associations.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

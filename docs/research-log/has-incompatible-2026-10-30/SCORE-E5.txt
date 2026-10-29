@@ -1,0 +1,17 @@
+Q18 gold DECLINE sent ['prompt', 'confirm'] | t1 ASK/jev_condition ; t2 DECLINE/full_gap | final DECLINE -> right
+     line: "I'd like to subtype our 300 ovarian cancer samples by how strongly each biological pathway is hit by mutations, normalized for gene length." -- I couldn't match this to anything a registered NetZoo workflow produces or 
+Q37 gold DO sent ['prompt', 'restate'] | t1 ASK/jev_link ; t2 DECLINE/full_gap | final DECLINE -> FR
+     line: "I want to sort 200 tumors into groups according to which biological pathways are hit by mutations, correcting for longer genes collecting more mutations." -- I couldn't match this to anything a registered NetZoo workflo
+S08 gold DO sent ['prompt'] | t1 DO/results_given | final DO -> right
+     typed ('t1', ['expression_matrix', 1], ['expression_matrix', 1], {}, '')
+S32 gold DECLINE sent ['prompt', 'confirm', 'confirm'] | t1 ASK/jev_link ; t2 ASK/jev_condition ; t3 DECLINE/jev_answer | final DECLINE -> right
+     line: You answered "Yes, it's TPM expression from RNA-seq.". SAMBAR's contract lists expression_matrix among the inputs it cannot take. So SAMBAR cannot do this as you asked.
+S42 gold DECLINE sent ['prompt', 'confirm'] | t1 ASK/jev_condition ; t2 DECLINE/jev_answer | final DECLINE -> right
+     typed ('t1', ['mutation_matrix', 0.91], None, {'PANDA': 'data'}, 'PANDA incompatible_input_artifacts: mutation_matrix')
+     line: You answered "Right, the matrix holds mutation counts from tumour sequencing, not expression." about "We'd like to use that matrix as the expression input to PANDA to build an aggregate TF-to-gene regulatory network". PA
+W17 gold DO sent ['prompt'] | t1 DO/results_given | final DO -> right
+     typed ('t1', ['expression_matrix', 0.72], ['expression_matrix', 0.51], {'CONDOR': 'data'}, '')
+W36 gold DO sent ['prompt'] | t1 DO/run | final DO -> right
+     typed ('t1', ['mutation_matrix', 1], ['mutation_matrix', 0.93], {}, '')
+Z14 gold DO sent ['prompt'] | t1 DO/results_given | final DO -> right
+     typed ('t1', ['expression_matrix', 0.43], ['several', 0.57], {}, '')
