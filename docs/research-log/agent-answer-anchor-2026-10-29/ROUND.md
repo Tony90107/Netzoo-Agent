@@ -46,3 +46,13 @@ only calls the step can change). Labels: R01's own, else the item file's gold fo
 - Jev cost cap US$0.05 (R01's cache reused where the inputs are identical).
 
 Stop rule: a failed hard gate -> withdraw. Live only after the user agrees. No gate is changed after the run.
+
+## Live gates (added after the offline results, before any live call; user "跑 live")
+
+Run aa1: code b6a68489, the app's settings plus `NETZOO_AGENT_ANSWERS=on`, gpt-4o-mini, up to 3 turns with the j4-j7
+reply rule, 1 rep. Targets (gold DECLINE after the fact reply): j1 J09, j3 R01, j5 W16, j7 Y14. Controls (gold DO
+after their reply): j1 J19, j2 Q21, j3 R23, j4 S11, j4 S13, j6 X29.
+- **L1 (hard)**: no control ends in DECLINE `jev_answer`, and none ends worse than its gold call.
+- **L2**: >= 3 of the 4 targets end DECLINE.
+- Reported: per item whether the step was reached (an anchored agent question asked, then a DO on the answer turn),
+  Jev's read, and the line. Cap US$0.10.
