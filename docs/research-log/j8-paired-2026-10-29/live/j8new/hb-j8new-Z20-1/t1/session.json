@@ -1,0 +1,778 @@
+{
+  "version": 1,
+  "session_id": "hb-j8new-Z20-1",
+  "profile_id": "hb-j8new-Z20-1",
+  "auto_generated": false,
+  "created_at": 1793279869.518305,
+  "updated_at": 1793279869.5183349,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns. The sequencing core will send the filtered expression matrix next week. I'm not sure whether their variance filter keeps 150 genes or 400 genes."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 150 or 400?\n  You wrote: \"I'm not sure whether their variance filter keeps 150 genes or 400 genes\".\n  - 150: no registered workflow can do this as asked -- COBRA requires more genes than samples; the request has 150 genes and 220 samples\n  - 400: COBRA can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_cobra",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "hospital_effect_assessment"
+        ],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "hospital_effect_assessment"
+            ],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples.",
+              "rationale": "The user wants to separate co-expression associated with collection site from the rest."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "the sequencing core will send the filtered expression matrix next week.",
+              "rationale": "The user mentions that the sequencing core will send the filtered expression matrix."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "Co-expression networks involve genes as nodes."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The analysis involves serum samples."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples.",
+              "rationale": "The user wants to separate co-expression associated with collection site from the rest, indicating a coexpression network is the desired output."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "hospital_effect_assessment",
+              "source": "explicit",
+              "text_span": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples.",
+              "rationale": "The user wants to separate co-expression associated with collection site, which relates to assessing hospital or site effects."
+            }
+          ],
+          "assumptions": [
+            "The filtered expression matrix will be received as planned next week.",
+            "The variance filter applied by the sequencing core will affect the number of genes retained."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "registry_features",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these is right: 150 or 400?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns.",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "feature_count",
+            "outcomes": {
+              "150": [],
+              "400": [
+                "cobra.covariate_components"
+              ]
+            },
+            "unknown_quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+            "file_checked": null,
+            "method": {
+              "samples": 220,
+              "samples_quote": "220 serum samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": true,
+            "outcome_notes": {
+              "150": "COBRA requires more genes than samples; the request has 150 genes and 220 samples"
+            },
+            "fact_ids": [
+              "sample_count@90-107",
+              "feature_count@250-322:candidates"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "question",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 220,
+              "samples_quote": "220 serum samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@90-107"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {
+          "I'm not sure whether their variance filter keeps 150 genes or 400 genes.": []
+        },
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [
+          {
+            "of": "features",
+            "quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+            "values": [
+              150,
+              400
+            ]
+          }
+        ],
+        "uncertain_quotes": [
+          "I'm not sure whether their variance filter keeps 150 genes or 400 genes."
+        ],
+        "stated_quotes": [
+          "separate the co-expression associated with collection site from the rest"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@90-107",
+            "property": "sample_count",
+            "name": "",
+            "value": "220",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "220 serum samples",
+            "span": [
+              90,
+              107
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "220 serum samples",
+                "span": [
+                  90,
+                  107
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "220 serum samples",
+                "span": [
+                  90,
+                  107
+                ],
+                "result": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "220 serum samples",
+                "span": [
+                  90,
+                  107
+                ],
+                "result": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@250-322:candidates",
+            "property": "feature_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "150",
+              "400"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+            "span": [
+              250,
+              322
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "unknown_facts",
+                "quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+                "span": [
+                  250,
+                  322
+                ],
+                "result": "",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which of these is right: 150 or 400?",
+            "user_quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+            "workflows": [
+              "COBRA"
+            ],
+            "contract_quote": "",
+            "depends_on": "feature_count",
+            "outcomes": {
+              "150": [],
+              "400": [
+                "COBRA"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": true,
+            "notes": {
+              "150": "COBRA requires more genes than samples; the request has 150 genes and 220 samples"
+            },
+            "fact_key": "count:feature_count@250-322"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "count_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "result",
+              "not_available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "obligations": [
+            {
+              "fact_key": "count:feature_count@250-322",
+              "source": "count",
+              "question": "Which of these is right: 150 or 400?",
+              "user_quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+              "workflows": [
+                "COBRA"
+              ],
+              "status": "asked",
+              "asked_as": ""
+            },
+            {
+              "fact_key": "agent:COBRA@250-322",
+              "source": "agent",
+              "question": "Does the filtered expression matrix have more than 400 genes?",
+              "user_quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+              "workflows": [
+                "COBRA"
+              ],
+              "status": "asked",
+              "asked_as": "count:feature_count@250-322"
+            }
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA"
+        ],
+        "accepted": [
+          {
+            "question": "Does the filtered expression matrix have more than 400 genes?",
+            "user_quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+            "workflows": [
+              "COBRA"
+            ],
+            "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:COBRA@250-322"
+          }
+        ],
+        "queued": [],
+        "rejected": [],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 46247,
+    "output_tokens": 1954,
+    "total_tokens": 48201,
+    "calls": [
+      {
+        "call_id": "8e60089b-4e03-4e34-90bb-d29cc5cc9e5c",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279833-NNb0kAW4FUdXNAebuldz",
+        "input_tokens": 1617,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1659,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 268,
+        "price_snapshot": null,
+        "duration_ms": 1814,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "077507bf-2690-45fd-9e54-3c94d1272cc4",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279835-nc7HEIBoeeCBQGqehHUX",
+        "input_tokens": 5344,
+        "output_tokens": 560,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5904,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 773,
+        "price_snapshot": null,
+        "duration_ms": 9014,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "90d69d90-a78c-4051-b75f-7926b1423665",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279847-h8igyl3JwMr1JYO1Qf3K",
+        "input_tokens": 5831,
+        "output_tokens": 211,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6042,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 704,
+        "price_snapshot": null,
+        "duration_ms": 3768,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "799cb0c6-1d93-4c44-a444-454721365c30",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279844-PtlnhkFXrvgVsR5cnj97",
+        "input_tokens": 6143,
+        "output_tokens": 197,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6340,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 742,
+        "price_snapshot": null,
+        "duration_ms": 7021,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b12b74f1-a1e4-40d4-ae96-0de010503dad",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279851-ZK4oc9MmHqy8fm7BuUl1",
+        "input_tokens": 1235,
+        "output_tokens": 80,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1315,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 233,
+        "price_snapshot": null,
+        "duration_ms": 2311,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "322471b6-5b24-4a6c-b703-c3c15dcf2956",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 662,
+        "output_tokens": 64,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 726,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 138,
+        "price_snapshot": {
+          "snapshot_id": "521849d0-3a10-5e4f-9a86-20465c10ae7e",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T13:06:18.465358Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1903,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "740ff688-f5fc-4a96-be0f-290e8a4e3ac2",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793279855-vckEs86XOlpGbf64919d",
+        "input_tokens": 18554,
+        "output_tokens": 500,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 19054,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1710,
+        "price_snapshot": null,
+        "duration_ms": 6619,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "91f0e6c2-3b8b-439c-9e98-aa2eaac610dc",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279862-5hpHsUMDicNoJ0tJkHHp",
+        "input_tokens": 567,
+        "output_tokens": 49,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 616,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 114,
+        "price_snapshot": null,
+        "duration_ms": 2497,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6637fc19-394b-4782-a92a-a8af10ba1d0b",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793279864-dhppiskglmS4KvJam83y",
+        "input_tokens": 5358,
+        "output_tokens": 145,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5503,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 507,
+        "price_snapshot": null,
+        "duration_ms": 2632,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6c12207a-215f-4d2a-81ca-9780b21ca712",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279867-T3LJMi1FgQvfWW40yrhr",
+        "input_tokens": 936,
+        "output_tokens": 106,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1042,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 204,
+        "price_snapshot": null,
+        "duration_ms": 2149,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "2aefbd2d-bd07-4acd-beff-c37f7c5eb27b",
+  "task_state": {
+    "version": 1,
+    "task_id": "de04c150",
+    "revision": 1,
+    "goal": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns. The sequencing core will send the filtered expression matrix next week. I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+    "pending": [
+      {
+        "question_id": "count:feature_count:61b26c70ac",
+        "source": "count",
+        "what": "feature_count",
+        "question": "Which of these is right: 150 or 400?",
+        "user_quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+        "workflows": [
+          "COBRA"
+        ],
+        "options": {
+          "150": [],
+          "400": [
+            "COBRA"
+          ]
+        },
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}

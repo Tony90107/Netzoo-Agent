@@ -1,0 +1,794 @@
+{
+  "version": 1,
+  "session_id": "hb-j8new-Z20-1",
+  "profile_id": "hb-j8new-Z20-1",
+  "auto_generated": false,
+  "created_at": 1793279869.518305,
+  "updated_at": 1793279903.0498,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns. The sequencing core will send the filtered expression matrix next week. I'm not sure whether their variance filter keeps 150 genes or 400 genes."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 150 or 400?\n  You wrote: \"I'm not sure whether their variance filter keeps 150 genes or 400 genes\".\n  - 150: no registered workflow can do this as asked -- COBRA requires more genes than samples; the request has 150 genes and 220 samples\n  - 400: COBRA can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns. The sequencing core will send the filtered expression matrix next week. I'm not sure whether their variance filter keeps 150 genes or 400 genes.\nUser follow-up: The core confirmed the filtered matrix keeps 400 genes."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Did you mean COBRA's result? COBRA's contract: \"Model covariate-associated gene co-expression with COBRA\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_cobra",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "covariate_association"
+        ],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "covariate_association"
+            ],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples.",
+              "rationale": "The user wants to separate co-expression associated with collection site from the rest."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "The sequencing core will send the filtered expression matrix next week.",
+              "rationale": "The user mentions a filtered expression matrix will be provided by the sequencing core."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The analysis involves genes in the co-expression network."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The analysis involves serum samples."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples.",
+              "rationale": "The user wants to separate co-expression associated with collection site from the rest in our 220 serum samples."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "covariate_association",
+              "source": "explicit",
+              "text_span": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples.",
+              "rationale": "The user wants to separate co-expression associated with collection site, which indicates an interest in estimating how sample covariates change co-expression."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "registry_features",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Did you mean COBRA's result?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 220,
+              "samples_quote": "220 serum samples",
+              "features": 400,
+              "feature_counts": 1,
+              "feature_items": [
+                [
+                  380,
+                  415,
+                  400
+                ]
+              ]
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@112-129",
+              "feature_count@380-415"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_cobra"
+        ],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns.",
+        "claim_sentences": {},
+        "count_alternatives": [
+          {
+            "of": "samples",
+            "quote": "design table with site coded 1-4 and age as numeric columns",
+            "values": [
+              1,
+              4
+            ],
+            "unless_stated": true
+          }
+        ],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@112-129",
+            "property": "sample_count",
+            "name": "",
+            "value": "220",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "220 serum samples",
+            "span": [
+              112,
+              129
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "220 serum samples",
+                "span": [
+                  112,
+                  129
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "220 serum samples",
+                "span": [
+                  112,
+                  129
+                ],
+                "result": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@380-415",
+            "property": "feature_count",
+            "name": "",
+            "value": "400",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "the filtered matrix keeps 400 genes",
+            "span": [
+              380,
+              415
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "the filtered matrix keeps 400 genes",
+                "span": [
+                  380,
+                  415
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "the filtered matrix keeps 400 genes",
+                "span": [
+                  380,
+                  415
+                ],
+                "result": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@168-171:candidates",
+            "property": "sample_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "1",
+              "4"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "design table with site coded 1-4 and age as numeric columns",
+            "span": [
+              168,
+              171
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "context_candidates",
+                "quote": "design table with site coded 1-4 and age as numeric columns",
+                "span": [
+                  168,
+                  171
+                ],
+                "result": "",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Did you mean COBRA's result?",
+            "user_quote": "",
+            "workflows": [
+              "COBRA"
+            ],
+            "contract_quote": "Model covariate-associated gene co-expression with COBRA.",
+            "depends_on": "jev_link:COBRA",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": ""
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "jev_link",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "jev_link": {
+            "kind_before": "CLARIFY",
+            "basis_before": "goal_open",
+            "result": "COBRA",
+            "confidence": 0.72,
+            "cost": 4.851e-05
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+              "uncertainty": "said_unknown",
+              "workflow": "COBRA",
+              "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+              "question": "Does the filtered expression matrix have more than 400 genes?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "150 genes",
+                "400 genes"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 53166,
+    "output_tokens": 1455,
+    "total_tokens": 54621,
+    "calls": [
+      {
+        "call_id": "eca5ec69-106b-470f-9e2c-2af6d65ff5a6",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279871-ihu4yKRpwFRjTNBHex5J",
+        "input_tokens": 892,
+        "output_tokens": 38,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 930,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 157,
+        "price_snapshot": null,
+        "duration_ms": 1658,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2e94767c-6887-4bbc-9573-2a6a0f591363",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279873-aot5TD6QgXPXQBbXGDkz",
+        "input_tokens": 1637,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1653,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 255,
+        "price_snapshot": null,
+        "duration_ms": 1339,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2ee6e6e4-6bda-4f6f-85de-e470c4cac34d",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279874-2Pz24iBY7stto9r7L4xl",
+        "input_tokens": 5364,
+        "output_tokens": 273,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5637,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 604,
+        "price_snapshot": null,
+        "duration_ms": 5249,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "4ec048b9-182c-4d3d-a35a-64898c5a2034",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279880-pjmdGeYeT8HJpm3wPskt",
+        "input_tokens": 4520,
+        "output_tokens": 59,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 4579,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 502,
+        "price_snapshot": null,
+        "duration_ms": 1712,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d5d831ce-a871-4ced-b66e-b31eb2a5f3e2",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279881-cefL1SddYFBLEylTARM4",
+        "input_tokens": 1228,
+        "output_tokens": 88,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1316,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 237,
+        "price_snapshot": null,
+        "duration_ms": 2234,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9744f9e2-0ad5-4095-9576-261c4ffa6eb6",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 691,
+        "output_tokens": 59,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 750,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 139,
+        "price_snapshot": {
+          "snapshot_id": "521849d0-3a10-5e4f-9a86-20465c10ae7e",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T13:06:18.465358Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1548,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "e2361de3-1009-4149-863c-8445c066f12d",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793279885-n48K14bGLJhWUUrvYLR6",
+        "input_tokens": 21795,
+        "output_tokens": 498,
+        "cache_read_tokens": 21376,
+        "cache_write_tokens": 0,
+        "total_tokens": 22293,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1965,
+        "price_snapshot": null,
+        "duration_ms": 6964,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "37b8e1a8-4316-42ef-bc1b-d0d7331e0fd0",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279892-2LX3kbxOuj55nXShS5fk",
+        "input_tokens": 587,
+        "output_tokens": 58,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 645,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 123,
+        "price_snapshot": null,
+        "duration_ms": 1618,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ef9ab76d-6f19-4e39-bb14-27613072848e",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793279894-FGDZWV0p7cOV569lztXC",
+        "input_tokens": 14688,
+        "output_tokens": 206,
+        "cache_read_tokens": 11136,
+        "cache_write_tokens": 0,
+        "total_tokens": 14894,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1492,
+        "price_snapshot": null,
+        "duration_ms": 3286,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e86b7faf-3ddb-4c26-9f4f-75e7e5f5225b",
+        "role": "capability_second_opinion",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793279897-vuSdEbqbFqFa6oVHczQU",
+        "input_tokens": 433,
+        "output_tokens": 6,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 439,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 69,
+        "price_snapshot": null,
+        "duration_ms": 1482,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "03ebbfed-e62d-4e71-a340-88422cc5c58e",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279899-gNxgbyK7ensM132qdDSA",
+        "input_tokens": 956,
+        "output_tokens": 106,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1062,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 207,
+        "price_snapshot": null,
+        "duration_ms": 1933,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d6c6493b-5228-4970-8151-003c0a12d79a",
+        "role": "goal_read",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793279900-DjZHZ7UyyV1wzLcAz1QE",
+        "input_tokens": 375,
+        "output_tokens": 48,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 423,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 85,
+        "price_snapshot": null,
+        "duration_ms": 1569,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "c0c6c5d0-ed4a-4b2d-875a-28f1b8179d35",
+  "task_state": {
+    "version": 1,
+    "task_id": "de04c150",
+    "revision": 3,
+    "goal": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns. The sequencing core will send the filtered expression matrix next week. I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+    "pending": [
+      {
+        "question_id": "dimension:jev_link:COBRA:e3b0c44298",
+        "source": "dimension",
+        "what": "jev_link:COBRA",
+        "question": "Did you mean COBRA's result?",
+        "user_quote": "",
+        "workflows": [
+          "COBRA"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [
+      {
+        "question_id": "count:feature_count:61b26c70ac",
+        "source": "count",
+        "what": "feature_count",
+        "question": "Which of these is right: 150 or 400?",
+        "user_quote": "I'm not sure whether their variance filter keeps 150 genes or 400 genes.",
+        "options": {
+          "150": [],
+          "400": [
+            "COBRA"
+          ]
+        },
+        "labels": {},
+        "value": "400",
+        "answer_quote": "The core confirmed the filtered matrix keeps 400 genes.",
+        "turn": 1,
+        "status": "known"
+      }
+    ],
+    "rounds": 2,
+    "status": "active",
+    "turns": 2
+  }
+}

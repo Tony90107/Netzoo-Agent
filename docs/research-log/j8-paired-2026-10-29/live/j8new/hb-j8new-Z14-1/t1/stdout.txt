@@ -1,0 +1,27 @@
+● Classifying requested outcome…
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "PANDA to build the TF-to-gene network" -- available from PANDA.
+2. "CONDOR to break it into modules of regulators and their targets" -- available from CONDOR.
+
+Your request has 2 steps, one after the other: each step uses the result of the one before. Each step is listed with the registered workflows that fit it, their algorithmic premises and inputs:
+
+**Step 1 -- "TF-to-gene network"**
+Result: regulatory networks, from expression matrix.
+- TF-only regulatory network:
+  - **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.
+  - **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.
+- TF-only signed regulatory-effect network:
+  - **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.
+
+**Step 2 -- "modules of regulators and their targets"**
+Result: community assignments (aggregate), from the regulatory networks of the previous step.
+No single registered workflow produces this from the stated inputs; a registered handoff does, in two steps:
+- **PANDA → CONDOR** — PANDA infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).
+- **OTTER → CONDOR** — OTTER infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).
+  - Method premise: find communities in a two-mode network; return network modules or community membership
+
+Should we start with step 1 (PANDA or LIONESS-PANDA or OTTER or GIRAFFE)? Each step is planned and approved on its own. Step 2 has no registered workflow; what to do instead is described above.
+
+No files were inspected and no analysis ran.

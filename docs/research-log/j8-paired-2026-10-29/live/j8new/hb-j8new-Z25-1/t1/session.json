@@ -1,0 +1,808 @@
+{
+  "version": 1,
+  "session_id": "hb-j8new-Z25-1",
+  "profile_id": "hb-j8new-Z25-1",
+  "auto_generated": false,
+  "created_at": 1793279708.0231922,
+  "updated_at": 1793279708.023228,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Our bladder cancer cohort has whole-exome somatic mutation calls for 140 tumours, and I also have gene exon lengths, a list of cancer driver genes and a GMT file of pathways. I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.\" -- the request does not say whether one item may belong to several groups at once: if one group each: SAMBAR; if several groups at once: no registered workflow gives this.\n\nBefore I choose a workflow, please tell me: Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A result waits on a fact the user said they do not know; nothing is selected before it is known.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A result waits on a fact the user said they do not know; nothing is selected before it is known.",
+      "candidate_actions": [
+        "run_sambar",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [
+          "mutation_matrix"
+        ],
+        "artifact_type": "sample_cluster_assignment",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "mutation_matrix"
+            ],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "sample_cluster_assignment",
+              "source": "explicit",
+              "text_span": "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated.",
+              "rationale": "The user is interested in clustering patients based on mutation data."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The clustering is intended to provide a single result for the cohort rather than individual patient clusters."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "mutation_matrix",
+              "source": "explicit",
+              "text_span": "whole-exome somatic mutation",
+              "rationale": "The user provided whole-exome somatic mutation calls as current input for the analysis."
+            },
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The selected artifact ontology uniquely defines the canonical scientific operation."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_sambar"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "sambar.subtypes"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_group",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "several_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "somatic",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "group_membership",
+            "outcomes": {
+              "one_group": [
+                "sambar.subtypes"
+              ],
+              "several_groups": []
+            },
+            "unknown_quote": "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.",
+            "file_checked": null,
+            "method": {
+              "settings": [
+                {
+                  "name": "SAMBAR.kmin",
+                  "quote": "testing between 2 and 6 clusters",
+                  "value": "2",
+                  "span": [
+                    286,
+                    318
+                  ],
+                  "at": 302
+                },
+                {
+                  "name": "SAMBAR.kmax",
+                  "quote": "testing between 2 and 6 clusters",
+                  "value": "6",
+                  "span": [
+                    286,
+                    318
+                  ],
+                  "at": 308
+                }
+              ],
+              "samples": 140,
+              "samples_quote": "140 tumours"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "setting:SAMBAR.kmin@286-318",
+              "setting:SAMBAR.kmax@286-318",
+              "sample_count@69-80"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "whole-exome somatic mutation calls for 140 tumours",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "gene exon lengths",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a list of cancer driver genes",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a GMT file of pathways",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@69-80",
+            "property": "sample_count",
+            "name": "",
+            "value": "140",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "140 tumours",
+            "span": [
+              69,
+              80
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "140 tumours",
+                "span": [
+                  69,
+                  80
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "140 tumours",
+                "span": [
+                  69,
+                  80
+                ],
+                "result": "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:SAMBAR.kmin@286-318",
+            "property": "setting",
+            "name": "SAMBAR.kmin",
+            "value": "2",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "testing between 2 and 6 clusters",
+            "span": [
+              286,
+              318
+            ],
+            "value_quote": "2",
+            "value_span": [
+              302,
+              303
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "result",
+                "quote": "testing between 2 and 6 clusters",
+                "span": [
+                  286,
+                  318
+                ],
+                "result": "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "setting:SAMBAR.kmax@286-318",
+            "property": "setting",
+            "name": "SAMBAR.kmax",
+            "value": "6",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "testing between 2 and 6 clusters",
+            "span": [
+              286,
+              318
+            ],
+            "value_quote": "6",
+            "value_span": [
+              308,
+              309
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "result",
+                "quote": "testing between 2 and 6 clusters",
+                "span": [
+                  286,
+                  318
+                ],
+                "result": "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "SAMBAR"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+            "user_quote": "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "",
+            "depends_on": "group_membership",
+            "outcomes": {
+              "one_group": [
+                "SAMBAR"
+              ],
+              "several_groups": []
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "dimension:group_membership@175-319"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "needs_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "sample_cluster_assignment",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [
+            "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?"
+          ],
+          "legacy_kept": true
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "SAMBAR"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.",
+              "uncertainty": "two_versions",
+              "workflow": "SAMBAR",
+              "contract_quote": "cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.",
+              "question": "Do you want to test between 2 and 6 clusters?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "2 clusters",
+                "3 clusters",
+                "4 clusters",
+                "5 clusters",
+                "6 clusters"
+              ]
+            }
+          }
+        ],
+        "legacy": [
+          {
+            "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+            "user_quote": "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.",
+            "workflows": [
+              "SAMBAR"
+            ],
+            "contract_quote": "",
+            "depends_on": "group_membership",
+            "outcomes": {
+              "one_group": [
+                "SAMBAR"
+              ],
+              "several_groups": []
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "dimension:group_membership@175-319"
+          }
+        ],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 29019,
+    "output_tokens": 1093,
+    "total_tokens": 30112,
+    "calls": [
+      {
+        "call_id": "da3c416a-998a-438c-b091-186b91bbc028",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279686-61di9Wa13dj9tlq7iIEG",
+        "input_tokens": 5347,
+        "output_tokens": 206,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5553,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 561,
+        "price_snapshot": null,
+        "duration_ms": 4428,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "92fbcd61-d6ab-4eff-9f26-2cd0457fa200",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279690-pigGj9y4zjY05G40uUgD",
+        "input_tokens": 5586,
+        "output_tokens": 192,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5778,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 656,
+        "price_snapshot": null,
+        "duration_ms": 2830,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "734f2466-9675-4781-a303-c9ec9558ad0c",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 657,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 698,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 123,
+        "price_snapshot": {
+          "snapshot_id": "521849d0-3a10-5e4f-9a86-20465c10ae7e",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T13:06:18.465358Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1498,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "812bd5b1-d406-45ef-9ce8-c1f2cab117a8",
+        "role": "request_concerns",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279694-kI107sHtMoMDT3uPgvXt",
+        "input_tokens": 290,
+        "output_tokens": 4,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 294,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 46,
+        "price_snapshot": null,
+        "duration_ms": 1292,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6fe66d65-ea68-4ed6-902f-dc1d1b7c0675",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793279696-t45S02DlxnFX8q6jMB98",
+        "input_tokens": 15359,
+        "output_tokens": 482,
+        "cache_read_tokens": 15104,
+        "cache_write_tokens": 0,
+        "total_tokens": 15841,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1460,
+        "price_snapshot": null,
+        "duration_ms": 6594,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f3c13bb7-e996-43f8-a757-5e60bbb5fe05",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279702-K61rkcnQiCDUY57xbIUn",
+        "input_tokens": 570,
+        "output_tokens": 37,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 607,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 108,
+        "price_snapshot": null,
+        "duration_ms": 1452,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d5a54287-9cf6-4070-9f93-6076183acbac",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793279705-XWgkehjpR41z9WOwZI56",
+        "input_tokens": 1210,
+        "output_tokens": 131,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1341,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 260,
+        "price_snapshot": null,
+        "duration_ms": 2422,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "6bbfaa27-678c-4e16-a4e6-25a7c01ffa39",
+  "task_state": {
+    "version": 1,
+    "task_id": "e4b0e0a2",
+    "revision": 1,
+    "goal": "Our bladder cancer cohort has whole-exome somatic mutation calls for 140 tumours, and I also have gene exon lengths, a list of cancer driver genes and a GMT file of pathways. I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.",
+    "pending": [
+      {
+        "question_id": "dimension:group_membership:8c24017d3e",
+        "source": "dimension",
+        "what": "group_membership",
+        "question": "Should each gene, regulator or sample belong to one group only (one group each), or may one belong to several groups at once?",
+        "user_quote": "I'd like to see which clusters of patients emerge when tumours are compared by how their pathways are mutated, testing between 2 and 6 clusters.",
+        "workflows": [
+          "SAMBAR"
+        ],
+        "options": {
+          "one_group": [
+            "SAMBAR"
+          ],
+          "several_groups": []
+        },
+        "labels": {
+          "one_group": "one group each",
+          "several_groups": "several groups at once"
+        },
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}
