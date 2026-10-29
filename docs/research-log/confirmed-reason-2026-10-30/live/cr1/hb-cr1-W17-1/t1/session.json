@@ -1,0 +1,865 @@
+{
+  "version": 1,
+  "session_id": "hb-cr1-W17-1",
+  "profile_id": "hb-cr1-W17-1",
+  "auto_generated": false,
+  "created_at": 1793291822.4770958,
+  "updated_at": 1793291822.4771469,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I have bulk RNA-seq from 64 human placentas as a gene-by-sample matrix, along with a TF motif prior and a TF-TF PPI table. Could you build a PANDA network and then use CONDOR to find communities of TFs and target genes in it? I want to see which regulators hang together with which gene sets."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Could you build a PANDA network\" -- available from PANDA.\n2. \"then use CONDOR to find communities of TFs and target genes in it\" -- available from CONDOR.\n\nDo not use **CONDOR** with the current `expression_matrix` input. The registered CONDOR input contract does not accept expression_matrix for this analysis; it accepts regulatory_network. This restriction concerns this registered workflow and these inputs, not every possible use of the method.\n\nNo compatible workflow has been selected for execution.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request involves building a PANDA network and using CONDOR, but the execution cannot proceed because CONDOR requires a regulatory network as input, not an expression matrix. Therefore, I will provide guidance on how to proceed with the PANDA network construction and the subsequent steps.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request involves building a PANDA network and using CONDOR, but the execution cannot proceed because CONDOR requires a regulatory network as input, not an expression matrix. Therefore, I will provide guidance on how to proceed with the PANDA network construction and the subsequent steps.",
+      "candidate_actions": [
+        "run_panda",
+        "run_puma",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Could you build a PANDA network",
+              "rationale": "The user requests to build a PANDA network, which involves inferring a regulatory network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "build a PANDA network",
+              "rationale": "The PANDA network is a type of regulatory network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The request implies a single network for the entire dataset rather than separate networks for each sample."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user mentions a TF motif prior, indicating that transcription factors are involved as regulators."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The goal is to find communities of TFs and target genes, indicating that genes are the targets."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user provides RNA-seq data as a gene-by-sample matrix, which is necessary for building the PANDA network."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [
+        {
+          "action": "run_condor",
+          "workflow": "CONDOR",
+          "reason_code": "unsupported_input",
+          "input_artifacts": [
+            "expression_matrix"
+          ],
+          "accepted_input_artifacts": [
+            "regulatory_network"
+          ],
+          "reason": "The registered CONDOR input contract does not accept expression_matrix for this analysis; it accepts regulatory_network."
+        }
+      ],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_panda",
+        "run_puma",
+        "run_otter",
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "These all fit; to choose, tell me: (1) Do the regulators include miRNAs, short non-coding RNAs that repress or degrade their target transcripts after transcription? (yes → PUMA) (2) Is the network large enough that memory or runtime is a concern? (yes → OTTER) If none of these applies: PANDA.",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a TF motif prior and a TF-TF PPI table",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF motif prior and a TF-TF PPI table",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_puma",
+          "status": "insufficient_information",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF motif prior and a TF-TF PPI table",
+              "source": "model"
+            },
+            {
+              "kind": "mirna",
+              "state": "unstated",
+              "quote": "",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF motif prior and a TF-TF PPI table",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF motif prior and a TF-TF PPI table",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "question",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a TF motif prior and a TF-TF PPI table",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Could you build a PANDA network",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "panda.tf_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "PANDA",
+              "named_quote": "PANDA",
+              "samples": 64,
+              "samples_quote": "64"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@25-27"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "then use CONDOR to find communities of TFs and target genes in it",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "condor.communities"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "CONDOR",
+              "named_quote": "CONDOR",
+              "samples": 64,
+              "samples_quote": "64"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@25-27"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "bulk RNA-seq from 64 human placentas as a gene-by-sample matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a TF motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a TF-TF PPI table",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "build a PANDA network and then use CONDOR to find communities of TFs and target genes in it",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "PANDA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@25-27",
+            "property": "sample_count",
+            "name": "",
+            "value": "64",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "64",
+            "span": [
+              25,
+              27
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "64",
+                "span": [
+                  25,
+                  27
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "64",
+                "span": [
+                  25,
+                  27
+                ],
+                "result": "Could you build a PANDA network",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "64",
+                "span": [
+                  25,
+                  27
+                ],
+                "result": "then use CONDOR to find communities of TFs and target genes in it",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "PANDA",
+          "CONDOR"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "build a PANDA network and then use CONDOR to find communities of TFs and target genes in it"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "PANDA",
+          "CONDOR",
+          "PUMA",
+          "OTTER"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want to see which regulators hang together with which gene sets.",
+              "uncertainty": "said_unknown",
+              "workflow": "CONDOR",
+              "contract_quote": "CONDOR consumes a weighted source-target bipartite edge list made from a validated regulator-gene network and returns community assignments with regulator-side and gene-side partitions.",
+              "question": "Do you have a validated regulator-gene network ready for CONDOR?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "which regulators hang together with which gene sets"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want to see which regulators hang together with which gene sets.",
+              "uncertainty": "said_unknown",
+              "workflow": "PANDA",
+              "contract_quote": "PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors, or a validated adjusted gene-by-gene co-expression matrix through coexpression_file.",
+              "question": "Do you have a gene-by-sample expression matrix and compatible motif and PPI identifiers?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want to see which regulators hang together with which gene sets.",
+              "uncertainty": "said_unknown",
+              "workflow": "PANDA",
+              "contract_quote": "PANDA does not silently perform them.",
+              "question": "Have you performed batch correction, normalization, and identifier harmonization on your data?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 39930,
+    "output_tokens": 1894,
+    "total_tokens": 41824,
+    "calls": [
+      {
+        "call_id": "68858a8a-99d3-4fe9-86d3-e951f1a9ab0e",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291786-F5gukJvdXqvIISNHnbmn",
+        "input_tokens": 5351,
+        "output_tokens": 273,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 5624,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 966,
+        "price_snapshot": null,
+        "duration_ms": 5172,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "4594d144-4e05-49bf-be9d-7729c87ec07d",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291791-1AkHyVlftQo0a9aRJ5ph",
+        "input_tokens": 5627,
+        "output_tokens": 179,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5806,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 654,
+        "price_snapshot": null,
+        "duration_ms": 3223,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4a4aaeeb-c062-487b-9935-cee5820de392",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291794-ImbgsW6vdXuEa2FDpWLk",
+        "input_tokens": 1396,
+        "output_tokens": 150,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1546,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 299,
+        "price_snapshot": null,
+        "duration_ms": 2600,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "556b2e14-a48b-4795-be25-7340e5d5c1bd",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 775,
+        "output_tokens": 85,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 860,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 167,
+        "price_snapshot": {
+          "snapshot_id": "d37b3826-19bb-5dd5-a6f5-e37b6c47973a",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T16:36:23.654081Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1871,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "80a62652-5916-44ad-84c8-fe0e1fa6de25",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291799-2urUVcVboTT4ySYiVOkf",
+        "input_tokens": 1748,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1764,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 272,
+        "price_snapshot": null,
+        "duration_ms": 1373,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4685fd78-686b-4506-943b-ad3c1968dbb7",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291800-prCFoO7hkZ44WP71iRua",
+        "input_tokens": 2850,
+        "output_tokens": 202,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 3052,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 549,
+        "price_snapshot": null,
+        "duration_ms": 3114,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "24cf0082-5da9-45ef-a753-cc1eeb4a92e8",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793291804-KabCktKuy45FfmnjDAVW",
+        "input_tokens": 18568,
+        "output_tokens": 575,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 19143,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1757,
+        "price_snapshot": null,
+        "duration_ms": 8747,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "beda19a0-1989-4e66-a6b8-b6dfa957133c",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291812-EKu1Ig2tUONMbbAEGZsu",
+        "input_tokens": 574,
+        "output_tokens": 31,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 605,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 105,
+        "price_snapshot": null,
+        "duration_ms": 1249,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4f3fd361-39f9-4932-9e07-126ab085442d",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291813-gVVzWRgJCNuA2Ymit2Lm",
+        "input_tokens": 563,
+        "output_tokens": 48,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 611,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 113,
+        "price_snapshot": null,
+        "duration_ms": 1571,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c2322d97-91ae-4d11-8afb-46beae1eacd8",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793291815-6WXgMRjicwpRyOxu1EPX",
+        "input_tokens": 2478,
+        "output_tokens": 335,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2813,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 573,
+        "price_snapshot": null,
+        "duration_ms": 5618,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "c0b3c381-c4a9-41a2-ac5d-50325a7d85be",
+  "task_state": null
+}

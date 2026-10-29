@@ -1,0 +1,12 @@
+Q18 gold DECLINE sent ['prompt', 'confirm'] | t1 ASK/jev_condition ; t2 DECLINE/jev_answer | final DECLINE/jev_answer -> right | hi1 right | answer [('t2', 'reason_confirmed')]
+     line: You answered "Yes, the matrix is RNA-seq expression, not mutation calls." about "What we have is a bulk RNA-seq expression matrix, genes by samples, plus a gene-length file, a cancer-gene list and an MSigDB GMT file". SAMBAR's con
+Q37 gold DO sent ['prompt'] | t1 DECLINE/full_gap | final DECLINE/full_gap -> FR | hi1 FR | answer []
+     line: "sort 200 tumors into groups according to which biological pathways are hit by mutations, correcting for longer genes collecting more mutations" -- I couldn't match this to anything a registered NetZoo workflow produces or lets yo
+S08 gold DO sent ['prompt'] | t1 DO/results_given | final DO/results_given -> right | hi1 right | answer []
+S32 gold DECLINE sent ['prompt', 'confirm', 'confirm'] | t1 ASK/jev_link ; t2 ASK/jev_condition ; t3 DECLINE/jev_answer | final DECLINE/jev_answer -> right | hi1 right | answer [('t3', 'answer_not_on_do')]
+     line: You answered "Yes, it's TPM expression from RNA-seq.". SAMBAR's contract lists expression_matrix among the inputs it cannot take. So SAMBAR cannot do this as you asked.
+S42 gold DECLINE sent ['prompt', 'confirm', 'confirm'] | t1 ASK/jev_link ; t2 ASK/jev_condition ; t3 DECLINE/jev_answer | final DECLINE/jev_answer -> right | hi1 right | answer [('t3', 'declined')]
+     line: You answered "Right, the matrix holds mutation counts from tumour sequencing, not expression.". PANDA's contract lists mutation_matrix among the inputs it cannot take. So PANDA cannot do this as you asked.
+W17 gold DO sent ['prompt'] | t1 DO/results_given | final DO/results_given -> right | hi1 right | answer []
+W36 gold DO sent ['prompt'] | t1 DO/run | final DO/run -> right | hi1 right | answer []
+Z14 gold DO sent ['prompt'] | t1 DO/results_given | final DO/results_given -> right | hi1 right | answer []
