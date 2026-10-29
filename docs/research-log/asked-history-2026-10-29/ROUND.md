@@ -28,3 +28,14 @@ Nothing else reads it; binding and the pending list are unchanged.
   Z22 asks no question twice. About US$0.06.
 
 Stop rule: a failed hard gate -> withdraw. No gate is changed after the run.
+
+## Addendum before the code (jev-guard session's review, agreed)
+
+- `asked` items count as already asked (never re-asked) for `jev_fact`, `jev_agent`, `jev_link`: `asked_sentences`
+  reads `asked` except `jev:condition`; `asked_doubts` reads all of `asked` (not goal).
+- **A replaced data confirm (`jev:condition`) stays open** (S35: an unsettled confirm never releases a DO; today a
+  replaced unanswered confirm vanishes, a pre-existing hole): `pending_condition` also returns a `jev:condition` from
+  `asked`, so the guard asks it again (capped by the rounds); `condition_asked` does not count it as settled.
+- A state saved by version 1 (no `asked`) still loads with `asked = []`; `clarification_rounds` unchanged.
+- Added to **H1**: the confirm case -- t1 confirm asked, t2 restate replaced by a fact-agent ASK, t3 DO -> the confirm
+  is asked again, not DO.
