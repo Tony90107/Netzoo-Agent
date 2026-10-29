@@ -12,3 +12,9 @@ LIONESS-PANDA -- the exact behaviour this round changes on purpose (ROUND.md Q1)
 panda.tf_gene_network; the whole_cohort assertion beside it is unchanged.
 
 Offline all gates pass. Q4 live not run yet.
+
+Open item (jev-guard, not this round's scope): a per_group run uses one group's samples, but nothing ties the
+checked sample_count to the group. On the four live per_group rows (pg1/pg2) the counted number was already the
+per-group one (X30 12, X10 30, W20 15, W30 20), so none was a false accept. A request stating only a total ("48
+samples across 4 stages") would be checked against 48. Proposed later as its own round: a typed group size for the
+count checks, or a reply line saying the limits apply per group.
