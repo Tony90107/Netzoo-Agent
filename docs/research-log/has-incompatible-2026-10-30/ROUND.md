@@ -28,3 +28,11 @@ today. The confirm names the kind that ruled the workflow out (`ruled_by`), its 
   settings + the flag; hard: no control ends in a confirm-then-decline; Q18 ends DECLINE with the incompatible line.
 
 Stop rule: a failed hard gate -> withdraw. No gate is changed after the run.
+
+## E5 controls, declared before the live run
+
+The 3 gold-DO data controls: the first three (by set, id) gold-DO items whose recorded has-read is one kind at >= 0.9
+and whose gold workflow has a non-empty incompatible list (the ones the restricted rule could touch): j2 Q37 (SAMBAR,
+mutations), j4 S08 (LIONESS-COEXPRESSION, expression), j5 W36 (SAMBAR, mutations). Run hi1: code bf2835c6, app
+settings + NETZOO_JEV_DATA_HAS=on, up to 3 turns, 1 rep; targets j2 Q18, j4 S32, j4 S42; chain controls j5 W17,
+j8 Z14. Cap US$0.15.
