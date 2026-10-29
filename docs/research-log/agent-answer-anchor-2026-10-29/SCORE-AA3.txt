@@ -1,0 +1,10 @@
+J09 ['prompt', 'fact'] | t1 ASK/jev_agent ; t2 DECLINE/jev_answer [aa declined 1] | final DECLINE []
+   line: You answered "No, nobody ever built a PPI file for sorghum." about "I'm not sure whether anyone in the lab ever built a TF-TF protein interaction file for sorghum". GIRAFFE's contract: "GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a TF-by-TF PPI matrix after explicit labelled-file conversion". So GIR
+R01 ['prompt', 'fact'] | t1 ASK/jev_agent ; t2 DECLINE/jev_answer [aa declined 1] | final DECLINE []
+   line: You answered "No, it was never centered; it's just log2 values." about "I don't know whether anyone centered the genes after the log transform". BONOBO's contract: "the agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression". So BONOBO cannot do this
+R23 ['prompt', 'fact'] | t1 ASK/jev_agent ; t2 DO/results_given [aa answer_meets 1] | final DO ['BONOBO']
+S11 ['prompt', 'fact'] | t1 ASK/fact_agent ; t2 DO/results_given [aa answer_meets 1] | final DO ['BONOBO']
+W16 ['prompt', 'fact'] | t1 ASK/fact_agent ; t2 DECLINE/jev_answer [aa declined 1] | final DECLINE []
+   line: You answered "It'll be the raw counts file." about "I'm not sure which of them I'll be handing over". BONOBO's contract: "The agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression". So BONOBO cannot do this as you asked.
+Y14 ['prompt', 'fact'] | t1 ASK/jev_agent ; t2 DECLINE/jev_answer [aa declined 0.98] | final DECLINE []
+   line: You answered "I asked around and there is no TF-TF protein interaction table for sheep in the group." about "I don't know whether anyone in the group ever put together a TF-TF protein interaction table for sheep". OTTER's contract: "ppi_file must be a TF-TF edge list. Its identifier set must equal the TF identifier set in motif_

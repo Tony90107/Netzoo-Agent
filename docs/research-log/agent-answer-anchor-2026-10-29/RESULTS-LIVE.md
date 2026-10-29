@@ -24,3 +24,12 @@ The lines quoted the whole turn message -- "You answered "Previous NetZoo goal: 
 an answer turn's message carries the previous goal. The step now passes Jev and the line only the text after "User
 follow-up:" (as `goal_evidence` does); unit test added. The offline measurement already used the reply alone
 (`scan.py` splits the same way). Verified in aa3 below.
+
+## aa3: code 72744e90 (the quoting fix), same settings; J09, R01, W16, Y14, R23, S11 -- US$0.048
+
+All 4 targets end DECLINE `jev_answer` (Jev fails 1.0 / 1.0 / 1.0 / 0.98), each line now "You answered "<the reply
+only>" about "<the uncertain sentence>". <WORKFLOW>'s contract: "<anchored line>". So <WORKFLOW> cannot do this as you
+asked." Controls R23, S11: Jev meets 1.0, DO kept. `SCORE-AA3.txt`.
+
+Total live spend aa1-aa3: US$0.14. Same-family note for the jev-guard session: its own answer path
+(`apply_jev_guard`, `asked_contract_question`) also reads `latest_user_message` whole; not changed here.
