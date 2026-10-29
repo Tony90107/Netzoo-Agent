@@ -34,6 +34,7 @@ def asked_agent_question(task_state) -> dict | None:
 
 
 def apply_agent_answer(context, state, core, user_task: str):
+    from ..interpretation.task_answers import follow_up_reply
     from ..llm import latest_user_message
     from .context import record_event
     from .jev_guard_call import answered_core, judge_answer
@@ -43,7 +44,7 @@ def apply_agent_answer(context, state, core, user_task: str):
     if question is None:
         return core
     # Only the reply: a follow-up turn's message also carries the previous goal (live aa1: the line quoted it all).
-    answer = latest_user_message(state.get("messages") or []).rsplit("User follow-up:", 1)[-1].strip()
+    answer = follow_up_reply(latest_user_message(state.get("messages") or []))
     try:
         judged = judge_answer(question["labels"]["contract"], question.get("user_quote", ""),
                               question.get("question", ""), answer)
