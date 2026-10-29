@@ -310,9 +310,26 @@ def check_typed_data(task: str, workflows) -> dict:
     reasons = {name: ruled_out(name, data, same) for name in workflows}
     result = {"violated": None, "data": data, "same_samples": same, "ruled_out": reasons,
               "cost": (out.get("usage") or {}).get("cost", 0)}
+    ruled_by = {name: "data" for name, reason in reasons.items() if reason}
+    from ..interpretation.data_has import HAS_INSTRUCTIONS, data_has_mode
+
+    if data_has_mode() == "on" and workflows and not all(reasons.values()):
+        # has-incompatible-2026-10-30: what the user says they have, ruling out only through an explicit
+        # incompatible_input_artifacts entry (j2 Q18: "What we have is a bulk RNA-seq expression matrix" for SAMBAR).
+        has_out = _decide(f"User request:\n{task}", {"has": {"type": "choice", "instructions": HAS_INSTRUCTIONS,
+                                                             "criteria": DATA_CRITERIA}})
+        has = (has_out["answers"]["has"]["choice"], has_out["answers"]["has"]["confidence"])
+        result["cost"] += (has_out.get("usage") or {}).get("cost", 0)
+        for name in workflows:
+            if not reasons[name] and has[1] >= THRESHOLD \
+                    and has[0] in (_typed_contracts().get(name) or {}).get("incompatible", ()):
+                reasons[name], ruled_by[name] = f"{name} incompatible_input_artifacts: {has[0]}", "has"
+        result |= {"has": has}
+    result["ruled_by"] = ruled_by
     sentences = request_sentences(task)
     if workflows and all(reasons.values()) and sentences:
         name, line = workflows[0], reasons[workflows[0]]
+        result["ruled_kind"] = (result.get("has") if ruled_by.get(name) == "has" else data)[0]  # the confirm's kind
         options = {f"s{i}": text for i, text in enumerate(sentences, 1)} | {"none": "no sentence states it"}
         picked = _decide(f"User request:\n{task}\n\nContract:\n{line}", {"sentence": {
             "type": "choice", "instructions": BREAKING_INSTRUCTIONS, "criteria": options}})
@@ -363,7 +380,7 @@ def condition_question(typed: dict, line: str) -> str:
     """FIXES.md A: the confirm for a violation no sentence states -- the typed fact itself, in the closed menu's words."""
     if line == SAME_SAMPLE_LINE:
         return f"{CONFIRM_UNPLACED}were the two data layers measured on different samples or individuals?{YES_OR_NO}"
-    kind = (typed.get("data") or ("",))[0]
+    kind = typed.get("ruled_kind") or (typed.get("data") or ("",))[0]  # has-incompatible: the read that ruled out
     return f"{CONFIRM_UNPLACED}is the data you will use {DATA_CRITERIA.get(kind, kind)}?{YES_OR_NO}"
 
 
