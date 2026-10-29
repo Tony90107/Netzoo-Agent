@@ -15,7 +15,8 @@ import re
 from ..contracts.capability_check import full_gap
 from ..contracts.task_state import MAX_ROUNDS, TaskState
 
-__all__ = ["EXHAUSTED_NOTE", "answered_check", "clarification_rounds", "exhausted", "exhausted_body", "fold"]
+__all__ = ["EXHAUSTED_NOTE", "answered_check", "clarification_rounds", "exhausted", "exhausted_body", "fold",
+           "settled_quotes", "without_settled"]
 
 EXHAUSTED_NOTE = ("I have asked about this request twice already, so I will not ask again. Below is what is still "
                   "missing; tell me when you know it, or describe a new request. Nothing was ruled out for this, and "
@@ -35,6 +36,21 @@ def exhausted_body(content: str) -> str:
     for asking, saying in (*_ASKING, *CONFIRM_ASKING):
         content = content.replace(asking, saying)
     return content
+
+
+def settled_quotes(task_state) -> list[str]:
+    """settled-answers-2026-10-29: the reply words of every known form or count answer -- settled in code against the
+    contract's typed outcome, so never a new stated condition for the model condition check (j6 X06: "Every TF and
+    every gene should end up in exactly one module" bound as one_group, then judged "violates" for CONDOR)."""
+    state = _state(task_state)
+    return [] if state is None else [fact.answer_quote for fact in state.known()
+                                     if fact.source in ("dimension", "count") and fact.answer_quote.strip()]
+
+
+def without_settled(stated: list[str], task_state) -> list[str]:
+    """The stated conditions less those that repeat a settled answer (`settled_quotes`)."""
+    settled = settled_quotes(task_state)
+    return [quote for quote in stated if not any(_overlap(quote, answer) for answer in settled)]
 
 
 def fold(text: str) -> str:
