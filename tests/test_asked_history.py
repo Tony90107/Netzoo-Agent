@@ -38,7 +38,7 @@ def test_a_replaced_jev_question_counts_as_asked():
     dumped = state.model_dump()
     assert WHICH in asked_sentences(dumped) and WHICH in asked_doubts(dumped)
     state = after_turn(state, _ask(_jev("jev:which_file", WHICH)), "task")  # asked again only if something re-asks
-    assert len(state.asked) == 2  # the agent question joins; the jev question is not duplicated
+    assert [q.what for q in state.asked] == ["LIONESS-DRAGON"]  # back in pending, it leaves `asked`; the agent joins
 
 
 def test_an_answered_question_is_not_kept_as_asked_and_a_closed_task_starts_clean():
@@ -69,3 +69,18 @@ def test_a_version_1_state_still_loads():
     old.pop("asked")
     old["version"] = 1
     assert load_task_state({"task_state": old}).asked == []
+
+
+def test_a_re_asked_and_answered_confirm_is_not_found_again():
+    """jev-guard review: replaced -> re-asked -> answered "no" -> a later round: `pending_condition` finds nothing."""
+    from netzoo_agent_core.engine.task_updates import bind_answers
+
+    confirm = _jev("jev:condition", DATA, contract_quote=LINE, question="Is your data raw counts? Yes or no.")
+    state = after_turn(None, _ask(confirm), "task")
+    state = after_turn(state, _ask(AGENT), "task")  # replaced
+    state = after_turn(state, _ask(confirm), "task")  # the guard re-asks it
+    assert state.asked[0].source == "agent" and pending_condition(state.model_dump())["what"] == "jev:condition"
+    state, bound, _ = bind_answers(state, "No, they are not.")
+    assert [fact.value for fact in bound] == ["no"]
+    state = after_turn(state, _ask(AGENT), "task")  # the task stays open on another question
+    assert pending_condition(state.model_dump()) is None

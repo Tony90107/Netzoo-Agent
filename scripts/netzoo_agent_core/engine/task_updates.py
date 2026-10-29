@@ -88,10 +88,13 @@ def after_turn(state: TaskState | None, result: dict, task: str) -> TaskState | 
     if kind in ("ASK", "CLARIFY"):
         exhausted = ((core.get("evidence") or {}).get("clarification") or {}).get("status") == "exhausted"
         pending = _pending(core)
-        kept = {question.question_id for question in [*pending, *state.asked]}
-        replaced = [question for question in state.pending if question.question_id not in kept]  # asked-history
+        # asked-history: a question replaced unanswered is kept; one asked again (back in pending) or answered (a
+        # fact) leaves it, so a re-asked and answered data confirm is never found there again (jev-guard review).
+        current = {question.question_id for question in pending} | {fact.question_id for fact in state.facts}
+        asked = [question for question in [*state.asked, *state.pending] if question.question_id not in current]
+        asked = list({question.question_id: question for question in asked}.values())
         return state.model_copy(update={
-            "pending": pending, "asked": [*state.asked, *replaced], "rounds": state.rounds + 1,
+            "pending": pending, "asked": asked, "rounds": state.rounds + 1,
             "status": "exhausted" if exhausted else "active", "revision": state.revision + 1, "turns": state.turns + 1})
     return state.model_copy(update={"pending": [], "status": "closed", "revision": state.revision + 1,
                                     "turns": state.turns + 1})
