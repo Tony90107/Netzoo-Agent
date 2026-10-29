@@ -498,8 +498,10 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
 
     reader = overlap_reader()  # jev-overlap: Jev's overlap read, passed in; None when the flag is off
     forms = forms_reader()  # jev-forms: Jev's reads of time_model, spatial and input_network; None when off
-    check, rejected = build_capability_check(user_task, proposal, claims, counted, overlap_reader=reader,
-                                             forms_reader=forms)
+    from .jev_links_first_call import jev_linked  # jev-links-first: Jev's confident link per ask, when on
+
+    check, rejected = build_capability_check(user_task, jev_linked(context, state, user_task, proposal), claims,
+                                             counted, overlap_reader=reader, forms_reader=forms)
     record_event(context, state, "routing.capability_checked", "classify", {
         "proposal": proposal.model_dump(), "rejected": rejected, "check": check.model_dump(),
     })
