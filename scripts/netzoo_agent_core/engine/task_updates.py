@@ -87,9 +87,12 @@ def after_turn(state: TaskState | None, result: dict, task: str) -> TaskState | 
         return state.model_copy(update={"turns": state.turns + 1})
     if kind in ("ASK", "CLARIFY"):
         exhausted = ((core.get("evidence") or {}).get("clarification") or {}).get("status") == "exhausted"
+        pending = _pending(core)
+        kept = {question.question_id for question in [*pending, *state.asked]}
+        replaced = [question for question in state.pending if question.question_id not in kept]  # asked-history
         return state.model_copy(update={
-            "pending": _pending(core), "rounds": state.rounds + 1, "status": "exhausted" if exhausted else "active",
-            "revision": state.revision + 1, "turns": state.turns + 1})
+            "pending": pending, "asked": [*state.asked, *replaced], "rounds": state.rounds + 1,
+            "status": "exhausted" if exhausted else "active", "revision": state.revision + 1, "turns": state.turns + 1})
     return state.model_copy(update={"pending": [], "status": "closed", "revision": state.revision + 1,
                                     "turns": state.turns + 1})
 

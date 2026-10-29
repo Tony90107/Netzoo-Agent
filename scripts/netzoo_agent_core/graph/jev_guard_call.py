@@ -426,8 +426,11 @@ def asked_sentences(task_state) -> set[str]:
     """The sentences a Jev question already asked in this task (pending or answered): arm A J20/J48 asked one again
     after the user answered it, since an option-free answer is never bound."""
     state = task_state or {}
-    return {item.get("user_quote", "") for key in ("pending", "facts") for item in state.get(key) or []
-            if str(item.get("what", "")).startswith("jev:")}
+    # asked-history-2026-10-29: also a question a later round replaced unanswered -- except a data confirm, which
+    # stays open (`pending_condition`).
+    return {item.get("user_quote", "") for key in ("pending", "facts", "asked") for item in state.get(key) or []
+            if str(item.get("what", "")).startswith("jev:")
+            and not (key == "asked" and item.get("what") == "jev:condition")}
 
 
 R1_UNSURE = "R1 the check did not read these words as the user being unsure"
@@ -441,7 +444,7 @@ def asked_doubts(task_state) -> list[str]:
     DECLINE with the verified limit), and the rule revived a fact-agent proposal on it, overriding the DECLINE."""
     state = task_state or {}
     # A CLARIFY's goal quote (source "goal") can hold most of the request, so it would block genuine doubts inside it.
-    return [item.get("user_quote", "") for key in ("pending", "facts") for item in state.get(key) or []
+    return [item.get("user_quote", "") for key in ("pending", "facts", "asked") for item in state.get(key) or []
             if item.get("user_quote") and item.get("source") != "goal"]
 
 
@@ -547,8 +550,10 @@ def judge_confirm(question: str, quote: str, contract: str, reply: str) -> dict:
 
 
 def pending_condition(task_state) -> dict | None:
-    """The data confirm still waiting for an answer (not bound by the code this turn)."""
-    for item in (task_state or {}).get("pending") or []:
+    """The data confirm still waiting for an answer (not bound by the code this turn); asked-history-2026-10-29: also
+    one a later round replaced unanswered -- an unsettled confirm never releases a DO (S35)."""
+    state = task_state or {}
+    for item in [*(state.get("pending") or []), *(state.get("asked") or [])]:
         if item.get("what") == "jev:condition" and item.get("status", "asked") == "asked" \
                 and (item.get("labels") or {}).get("contract"):
             return item
