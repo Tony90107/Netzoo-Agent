@@ -26,7 +26,8 @@ def test_the_reading_schema_offers_per_group():
 
 def test_a_result_per_group_is_credited_to_aggregate_workflows_only():
     keys = [OTTER, LIONESS]  # LIONESS-PANDA also writes the cohort network, so it carries both scales
-    assert _fitting(keys, _ask(scale="per_group")) == _fitting(keys, _ask(scale="whole_cohort")) == keys
+    assert _fitting(keys, _ask(scale="whole_cohort")) == keys
+    assert _fitting(keys, _ask(scale="per_group")) == [OTTER, "panda.tf_gene_network"]  # per-group-base-2026-10-29
     assert _fitting(keys, _ask(scale="per_sample")) == [LIONESS]
     assert _fitting([OTTER], _ask(scale="per_group")) == [OTTER]
     assert _fitting([OTTER], _ask(scale="per_sample")) == []
