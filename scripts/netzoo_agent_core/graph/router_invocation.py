@@ -521,8 +521,11 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         record_event(context, state, "core.jev_overlap", "classify", {"reads": overlap_reads})
     if form_reads := take_form_reads(user_task):  # jev-forms-2026-10-27: Jev's reads of the other limiting forms
         record_event(context, state, "core.jev_forms", "classify", {"reads": form_reads})
-    stated = [] if provisional else stated_requirements(user_task, proposal, check)
-    own = [] if provisional else stated_requirements(user_task, proposal, check, own_sentence=True)
+    from ..interpretation.task_answers import without_settled  # settled-answers: a bound answer is no new condition
+
+    stated = [] if provisional else without_settled(stated_requirements(user_task, proposal, check), state.get("task_state"))
+    own = [] if provisional else without_settled(stated_requirements(user_task, proposal, check, own_sentence=True),
+                                                 state.get("task_state"))
     pairs_to_check = condition_pairs(check, stated)
     own_pairs = condition_pairs(check, own)
     if pairs_to_check or own_pairs:
