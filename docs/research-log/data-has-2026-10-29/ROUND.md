@@ -44,3 +44,6 @@ No gate is changed after the run.
   controls (hard: no chain control ends in a confirm-then-decline).
 - **D4 stability (hard)**: the has-read 10x on j2 Q18 and on two gold-DO controls: Q18 >= 0.7 on expression in >= 8 of
   10; the controls never rule out their gold workflow.
+- D3 count (no Jev call): 2 of the 348 are gold chains listing CONDOR beside PANDA -- j5 W17 (has expression 0.67, data
+  0.69) and j8 Z14 (several); the union rules neither out. **D4 controls are these two** (W17 is the closest to the
+  threshold): each must never rule out CONDOR in 10 has-reads.
