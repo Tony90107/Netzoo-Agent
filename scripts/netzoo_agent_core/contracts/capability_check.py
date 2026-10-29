@@ -191,9 +191,12 @@ def _ask_model(compact: bool = False, version: int = 1) -> type[BaseModel]:
             "NOT PRODUCED entries that describe what the quote asks for; may be empty."))),
         # Log 388: code checks these against each entry's granularity and layers (Log 387 G5:
         # a per-patient network credited to OTTER, a three-layer network to DRAGON).
-        scale=(Literal["per_sample", "whole_cohort", "unstated"], Field(description=(
-            "per_sample: one result for each sample, patient or individual. whole_cohort: one result for all "
-            "the samples together. unstated: the request does not say."))),
+        # per-group-scale-2026-10-29 (j6 X30): "one network per stage, each built from all 12 samples of that stage"
+        # had no value but per_sample, which ruled out OTTER.
+        scale=(Literal["per_sample", "per_group", "whole_cohort", "unstated"], Field(description=(
+            "per_sample: one result for each sample, patient or individual. per_group: one result for each group, "
+            "condition, stage or time point, built from all that group's samples together. whole_cohort: one "
+            "result for all the samples together. unstated: the request does not say."))),
         omics_layers=(int, Field(description=(
             "How many different omics data types the asked-for result must model together; 0 when it is not a "
             "multi-omic result."))),

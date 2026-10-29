@@ -249,7 +249,7 @@ def checked_default_line(question: str, credited: set[str]) -> str:
 
 
 SCALE_QUESTION = "Should the result be aggregate or sample-specific?"
-_STATED_SCALES = ("per_sample", "whole_cohort")
+_STATED_SCALES = ("per_sample", "per_group", "whole_cohort")
 
 
 def checked_scale_question(question: str | None, scales: list) -> str | None:
