@@ -55,6 +55,10 @@ def guidance_interaction(decision: TaskDecision) -> GuidanceInteraction | None:
             "is clear; the captured inputs will be carried forward, and nothing will run yet.", question,
         )
     if not decision.recommended_actions and not decision.matched_actions:
+        if decision.core is not None and decision.core.kind in ("DO", "DECLINE"):
+            # decided-no-unavailable-2026-10-29: a decided call is its own reply (ac1 X22 t2: a code-verified DECLINE
+            # was shown with "Semantic routing unavailable ... Retry this request"; 44 recorded replies did this).
+            return None
         return GuidanceInteraction(
             "routing_unavailable", "! Semantic routing unavailable",
             "The system could not validate its interpretation. This is not evidence that your question is unclear.",
