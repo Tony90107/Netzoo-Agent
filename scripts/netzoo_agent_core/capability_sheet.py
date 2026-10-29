@@ -63,6 +63,9 @@ class SheetEntry:
     """one_group when the result puts each node or sample in exactly one group (Log 413); None otherwise."""
     inputs: tuple[str, ...] = ()
     """What the result is computed from, as the sheet lists it (Log 414: shown to the condition check)."""
+    aggregate_entry: str | None = None
+    """per-group-base-2026-10-29: the base entry whose result is the aggregate network this per-sample entry also
+    writes; a result asked once per group is credited to it (`per_group_entries`)."""
 
 
 def _resolve(raw: dict, by_id: dict[str, dict]) -> dict:
@@ -132,9 +135,14 @@ def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
             regulators=None if regulators is None else frozenset(regulators), signed=resolved.get("signed"),
             input_network=resolved.get("input_network"), groups=resolved.get("groups"),
             inputs=tuple(str(value) for value in resolved.get("inputs") or ()),
+            aggregate_entry=resolved.get("aggregate_entry"),
         )
         if kind == "registry_wide" and not entries[item["id"]].claim:
             raise ValueError(f"capability sheet: registry-wide entry {item['id']} must name its claim")
+    for item in entries.values():
+        base = entries.get(item.aggregate_entry or "")
+        if item.aggregate_entry and (base is None or base.kind != "produces" or base.granularity != {"aggregate"}):
+            raise ValueError(f"capability sheet: {item.id} names a bad aggregate_entry {item.aggregate_entry!r}")
     covered = {item.action for item in entries.values() if item.kind == "produces"}
     missing = sorted(set(RUN_ACTIONS) - covered)
     if missing:
@@ -174,6 +182,15 @@ def produced_text(action: str) -> str:
     texts = [item.text for item in sheet_entries().values()
              if item.kind == "produces" and item.action == action and item.level == "direct"]
     return " ".join(texts[:2])
+
+
+def per_group_entries(keys: list[str], scale: str | None) -> list[str]:
+    """per-group-base-2026-10-29 (live pg1 X10, W20): for one result per group, each per-sample entry's base entry
+    (`aggregate_entry`) in its place -- the base method run once per group gives it, without per-sample networks
+    nobody asked for. Any other scale is left alone (Log 397: a cohort-level ask fits LIONESS too)."""
+    if scale != "per_group":
+        return keys
+    return list(dict.fromkeys(entry(key).aggregate_entry or key for key in keys))
 
 
 def entry(key: str) -> SheetEntry:

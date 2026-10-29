@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 from types import SimpleNamespace
 
-from ..capability_sheet import data_units, entry, result_forms, sheet_entries
+from ..capability_sheet import data_units, entry, per_group_entries, result_forms, sheet_entries
 from .needed_facts import (
     applicable_unknowns, check_unknowns, fact_line, fact_update, file_checked_note, needed_fact_reply, resolve_unknowns,
     verified_unknown_domains, verified_unknown_scopes, verified_unknowns,
@@ -364,7 +364,7 @@ def _fitting(keys: list[str], item) -> list[str]:
             method = {**getattr(item, "_method", {}), "samples": samples}
             return bool(method_fitting(method, [key])[0])
         return True
-    keys = [key for key in keys if data_fits(key)]
+    keys = [key for key in per_group_entries(keys, item.scale) if data_fits(key)]
     want = {"per_sample": "sample_specific", "per_group": "aggregate", "whole_cohort": "aggregate"}.get(item.scale)
     return [k for k in keys if want is None or want in known[k].granularity]
 
