@@ -1,0 +1,785 @@
+{
+  "version": 1,
+  "session_id": "hb-pc1-X30-1",
+  "profile_id": "hb-pc1-X30-1",
+  "auto_generated": false,
+  "created_at": 1793245647.303351,
+  "updated_at": 1793245647.303394,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Our human cardiomyocyte differentiation has three stages (mesoderm, progenitor, beating cardiomyocyte) with 12 bulk RNA-seq samples per stage. We have a motif prior and a TF-TF PPI list whose TFs match the prior. With OTTER, I want one TF-to-gene network per stage, each built from all 12 samples of that stage."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I want one TF-to-gene network per stage, each built from all 12 samples of that stage.\" -- available from OTTER.\n\nI can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\nThese all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE)\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The request is for guidance on obtaining TF-to-gene networks, which falls under answer requests rather than execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The request is for guidance on obtaining TF-to-gene networks, which falls under answer requests rather than execution.",
+      "candidate_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I want one TF-to-gene network per stage, each built from all 12 samples of that stage.",
+              "rationale": "The user wants to construct a regulatory network from the provided samples."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "one TF-to-gene network per stage",
+              "rationale": "The user specifies the desired output as a TF-to-gene network."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user specifies RNA-seq data as the current input for constructing the regulatory networks."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE)",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a motif prior and a TF-TF PPI list",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior and a TF-TF PPI list",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior and a TF-TF PPI list",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior and a TF-TF PPI list",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior and a TF-TF PPI list",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a motif prior and a TF-TF PPI list",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want one TF-to-gene network per stage, each built from all 12 samples of that stage.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "otter.tf_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_group",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "one_group",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "OTTER",
+              "named_quote": "OTTER",
+              "samples": 12,
+              "samples_quote": "12"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@108-110"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "three stages (mesoderm, progenitor, beating cardiomyocyte)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "12 bulk RNA-seq samples per stage",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a TF-TF PPI list whose TFs match the prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want one TF-to-gene network per stage, each built from all 12 samples of that stage.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "OTTER"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@108-110",
+            "property": "sample_count",
+            "name": "",
+            "value": "12",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "12",
+            "span": [
+              108,
+              110
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "result",
+                "quote": "12",
+                "span": [
+                  108,
+                  110
+                ],
+                "result": "I want one TF-to-gene network per stage, each built from all 12 samples of that stage.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "OTTER"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want one TF-to-gene network per stage, each built from all 12 samples of that stage."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "OTTER",
+          "PANDA",
+          "LIONESS-PANDA",
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want one TF-to-gene network per stage, each built from all 12 samples of that stage.",
+              "uncertainty": "two_versions",
+              "workflow": "OTTER",
+              "contract_quote": "output is aggregate, not sample-specific.",
+              "question": "Do you want the output to be aggregate or specific to each sample?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "OTTER",
+              "about": "wanted_result",
+              "alternatives": [
+                "one TF-to-gene network per stage, each built from all 12 samples of that stage",
+                "aggregate TF-to-gene network"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 40981,
+    "output_tokens": 1369,
+    "total_tokens": 42350,
+    "calls": [
+      {
+        "call_id": "d9540cf1-a707-4a19-a8a2-7c695b0aa876",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793245622-hzsa6N73433JVrxkVPZj",
+        "input_tokens": 5357,
+        "output_tokens": 227,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5584,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 575,
+        "price_snapshot": null,
+        "duration_ms": 3890,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "f44a2697-df44-45e0-b73d-d97036acfc99",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793245626-GaxZvUbCKoW4EhW2uvvU",
+        "input_tokens": 5555,
+        "output_tokens": 172,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5727,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 639,
+        "price_snapshot": null,
+        "duration_ms": 2546,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bedc5415-78fd-4bf9-bffd-0f0584fc35db",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793245629-riuFiw75jGpaHmWwZgVt",
+        "input_tokens": 1370,
+        "output_tokens": 72,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1442,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 249,
+        "price_snapshot": null,
+        "duration_ms": 2704,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "4ac57555-3909-45d0-9dcd-6978da48352a",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 682,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 723,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 127,
+        "price_snapshot": {
+          "snapshot_id": "2e4e0ea3-c727-5457-83c6-f1fa99963fb1",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T03:46:28.015927Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1191,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "64550aa4-d4e1-470f-8074-3651c66d4382",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793245632-pUoiC8m5mZ6YVbhMaqh0",
+        "input_tokens": 1754,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1770,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 273,
+        "price_snapshot": null,
+        "duration_ms": 1185,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3edb1963-5d73-4681-b73c-de9f27a096d0",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793245634-WeLRvWubKgumZbIDVnqR",
+        "input_tokens": 2770,
+        "output_tokens": 126,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2896,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 491,
+        "price_snapshot": null,
+        "duration_ms": 1841,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3ef42f15-b60b-4ddc-97e8-f8845b32ee76",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793245636-o5bhcZLqvMC1DyRjfdVX",
+        "input_tokens": 18840,
+        "output_tokens": 465,
+        "cache_read_tokens": 8064,
+        "cache_write_tokens": 0,
+        "total_tokens": 19305,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2500,
+        "price_snapshot": null,
+        "duration_ms": 5335,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9461d909-8ef0-46f1-b5f4-9fbab71d9b7d",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793245641-WwWRiRGCOvdk5kdlqVhk",
+        "input_tokens": 580,
+        "output_tokens": 39,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 619,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 110,
+        "price_snapshot": null,
+        "duration_ms": 1019,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5a90e54b-b671-48da-8923-de1f05e97218",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793245642-ZsiP8Nk75ATV9eBe1bi9",
+        "input_tokens": 569,
+        "output_tokens": 46,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 615,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 113,
+        "price_snapshot": null,
+        "duration_ms": 1068,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "af7f52cb-32a8-4358-a879-a3e89a5fde69",
+        "role": "settings_read",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793245643-90d39RgzkB9aMjAmAXIF",
+        "input_tokens": 588,
+        "output_tokens": 35,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 623,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 109,
+        "price_snapshot": null,
+        "duration_ms": 1231,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2198d73a-16d5-4791-bec8-a860dbace007",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793245644-bBXsKywwDamUzsQA9MuL",
+        "input_tokens": 2916,
+        "output_tokens": 130,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 3046,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 515,
+        "price_snapshot": null,
+        "duration_ms": 2006,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "09515a5c-a08a-42bd-916f-7ecdd22efddc",
+  "task_state": null
+}
