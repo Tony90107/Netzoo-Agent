@@ -1,0 +1,906 @@
+{
+  "version": 1,
+  "session_id": "hb-j7off-Y21-1",
+  "profile_id": "hb-j7off-Y21-1",
+  "auto_generated": false,
+  "created_at": 1793274380.332491,
+  "updated_at": 1793274380.3325272,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Please run PUMA on our cervical cancer expression matrix of 64 samples, with the TF and miRNA motif prior, the TF PPI table and the miRNA ID list I've prepared. I'd like it run on our GPU node so it finishes faster. The aggregate TF and miRNA to gene network is what I need."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"Please run PUMA on our cervical cancer expression matrix of 64 samples, with the TF and miRNA motif prior, the TF PPI table and the miRNA ID list I've prepared.\" -- available from PUMA.\n2. \"The aggregate TF and miRNA to gene network is what I need.\" -- available from PUMA.\n\nNo tool was executed because the Planner requires additional input.\n\nPlease provide the next missing input. The CLI wizard will ask for each unresolved field one at a time."
+    }
+  ],
+  "plan": {
+    "workflow": "PUMA",
+    "objective": "The user has explicitly requested to run PUMA on the cervical cancer expression matrix with the provided inputs.",
+    "decision": {
+      "action": "run_puma",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "run_analysis",
+      "confidence": 1.0,
+      "reason": "The user has explicitly requested to run PUMA on the cervical cancer expression matrix with the provided inputs.",
+      "candidate_actions": [
+        "run_puma",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_puma"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "mirna",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf",
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "mirna",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf",
+              "mirna"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like it run on our GPU node so it finishes faster.",
+              "rationale": "The user requests to run PUMA to obtain a regulatory network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "The aggregate TF and miRNA to gene network is what I need.",
+              "rationale": "The user specifies the desired output as an aggregate TF and miRNA to gene network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "The aggregate TF and miRNA to gene network is what I need.",
+              "rationale": "The user specifies that they want an aggregate network."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "with the TF and miRNA motif prior.",
+              "rationale": "The user mentions using TF motif prior."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "mirna",
+              "source": "explicit",
+              "text_span": "with the TF and miRNA motif prior.",
+              "rationale": "The user mentions using miRNA motif prior."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "The aggregate TF and miRNA to gene network is what I need.",
+              "rationale": "The user is interested in a network that connects regulators to genes."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user specifies the current input as an expression matrix of 64 samples."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_puma"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "operation_authorization": {
+        "requested": [
+          "run"
+        ],
+        "forbidden": [],
+        "explain_only": null,
+        "preview_requested": false,
+        "blocked_action": null
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "Please run PUMA on our cervical cancer expression matrix of 64 samples, with the TF and miRNA motif prior, the TF PPI table and the miRNA ID list I've prepared.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "puma.regulator_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "PUMA",
+              "named_quote": "PUMA",
+              "samples": 64,
+              "samples_quote": "64 samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@60-70"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "The aggregate TF and miRNA to gene network is what I need.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "puma.regulator_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "PUMA",
+              "named_quote": "PUMA",
+              "samples": 64,
+              "samples_quote": "64 samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@60-70"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "cervical cancer expression matrix of 64 samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "TF and miRNA motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "TF PPI table",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "miRNA ID list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "GPU node",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "The aggregate TF and miRNA to gene network is what I need.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "PUMA",
+          "on our GPU node",
+          "GPU"
+        ],
+        "facts": [
+          {
+            "id": "setting:OTTER.computing@177-192",
+            "property": "setting",
+            "name": "OTTER.computing",
+            "value": "GPU",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "on our GPU node",
+            "span": [
+              177,
+              192
+            ],
+            "value_quote": "GPU",
+            "value_span": [
+              184,
+              187
+            ],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "on our GPU node",
+                "span": [
+                  177,
+                  192
+                ],
+                "result": "",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@60-70",
+            "property": "sample_count",
+            "name": "",
+            "value": "64",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "64 samples",
+            "span": [
+              60,
+              70
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "64 samples",
+                "span": [
+                  60,
+                  70
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "64 samples",
+                "span": [
+                  60,
+                  70
+                ],
+                "result": "Please run PUMA on our cervical cancer expression matrix of 64 samples, with the TF and miRNA motif prior, the TF PPI table and the miRNA ID list I've prepared.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "64 samples",
+                "span": [
+                  60,
+                  70
+                ],
+                "result": "The aggregate TF and miRNA to gene network is what I need.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "execution_requested": true,
+      "run_verdict": {
+        "action": "run_puma",
+        "verdict": "agrees",
+        "request_sha256": "8a6d47f7c0b6e7849eb844e4a48d15fc16a5cfbfa1ac8e40b871c40ae1e810cc",
+        "held": false,
+        "named": true,
+        "credited": [
+          "run_puma"
+        ],
+        "results": [
+          {
+            "quote": "Please run PUMA on our cervical cancer expression matrix of 64 samples, with the TF and miRNA motif prior, the TF PPI table and the miRNA ID list I've prepared.",
+            "status": "available",
+            "credited": [
+              "run_puma"
+            ]
+          },
+          {
+            "quote": "The aggregate TF and miRNA to gene network is what I need.",
+            "status": "available",
+            "credited": [
+              "run_puma"
+            ]
+          }
+        ],
+        "unchecked": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "PUMA"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": true,
+        "basis": "run",
+        "evidence": {
+          "action": "run_puma",
+          "match_status": "exact",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "The aggregate TF and miRNA to gene network is what I need."
+          ],
+          "run_verdict": {
+            "verdict": "agrees",
+            "held": false
+          },
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "PUMA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "the TF and miRNA motif prior",
+              "uncertainty": "said_unknown",
+              "workflow": "PUMA",
+              "contract_quote": "PUMA consumes a gene-by-sample expression matrix plus motif, PPI, and miRNA priors",
+              "question": "Do you have the TF and miRNA motif prior ready?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "the TF PPI table",
+              "uncertainty": "said_unknown",
+              "workflow": "PUMA",
+              "contract_quote": "PUMA consumes a gene-by-sample expression matrix plus motif, PPI, and miRNA priors",
+              "question": "Do you have the TF PPI table ready?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "the miRNA ID list I've prepared",
+              "uncertainty": "said_unknown",
+              "workflow": "PUMA",
+              "contract_quote": "PUMA consumes a gene-by-sample expression matrix plus motif, PPI, and miRNA priors",
+              "question": "Do you have the miRNA ID list ready?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [
+        "expression_file",
+        "motif_file",
+        "ppi_file"
+      ],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": "motif",
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": "outputs/sessions/hb-j7off-Y21-1/puma.tsv",
+      "lioness_output": null,
+      "network_file": "what",
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [
+      {
+        "field": "expression_file",
+        "status": "missing",
+        "value": null,
+        "reason": "No single complete validated dataset bundle contains every remaining required input.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "motif_file",
+        "status": "missing",
+        "value": null,
+        "reason": "No single complete validated dataset bundle contains every remaining required input.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "ppi_file",
+        "status": "missing",
+        "value": null,
+        "reason": "No single complete validated dataset bundle contains every remaining required input.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "mirna_file",
+        "status": "provided",
+        "value": "motif",
+        "reason": "Explicitly provided by the user or the intent parser.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      },
+      {
+        "field": "output_file",
+        "status": "defaulted",
+        "value": "outputs/sessions/hb-j7off-Y21-1/puma.tsv",
+        "reason": "The output location is reversible and does not overwrite an input, so the Planner used the project default.",
+        "candidates": [],
+        "candidate_bundle_ids": [],
+        "bundle_id": null
+      }
+    ],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [
+      "expression_file",
+      "motif_file",
+      "ppi_file"
+    ],
+    "status": "needs_input",
+    "question": "Please provide the next missing input. The CLI wizard will ask for each unresolved field one at a time.",
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [
+      "Validated workflow specification PUMA under project policy cf89ad9eddd6.",
+      "Require one miRNA identifier per line and require every miRNA in prior column one.",
+      "A header repair may be attempted only through the code-enforced bounded recovery.",
+      "When coexpression_file is supplied, its labeled gene IDs, square dimensions, and symmetry must match PUMA's filtered gene axis."
+    ],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 31770,
+    "output_tokens": 1513,
+    "total_tokens": 33283,
+    "calls": [
+      {
+        "call_id": "02e9ecd0-01e9-4ea9-9821-0f96fe3fb650",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274357-D4p3bjpwde7tWw6YP0VK",
+        "input_tokens": 5343,
+        "output_tokens": 350,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 5693,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1011,
+        "price_snapshot": null,
+        "duration_ms": 5602,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "a1d21491-1033-4b8e-ad3c-f54a96ef2501",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274362-YJf9GZMuhDSeWbvOTKRZ",
+        "input_tokens": 5695,
+        "output_tokens": 184,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5879,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 667,
+        "price_snapshot": null,
+        "duration_ms": 3388,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0add260d-90d4-4d2e-b0fd-8a0479877423",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 651,
+        "output_tokens": 40,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 691,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 122,
+        "price_snapshot": {
+          "snapshot_id": "af89057f-f82b-5981-bf28-753da8210d43",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T11:45:54.395286Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1212,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "7ed75261-c491-4f51-8294-e680514ff58d",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793274367-wsufNFgfz7zKkPjsyu2e",
+        "input_tokens": 18552,
+        "output_tokens": 627,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 19179,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 3159,
+        "price_snapshot": null,
+        "duration_ms": 7579,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2211154e-23b5-447d-88aa-f695f647010e",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274375-l7lGlLmiVJez8KTIEons",
+        "input_tokens": 566,
+        "output_tokens": 34,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 600,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 105,
+        "price_snapshot": null,
+        "duration_ms": 1020,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f40c7a45-d8a2-4373-baea-170031d03f50",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274376-scaXUcPdHTImj0o9ywAo",
+        "input_tokens": 963,
+        "output_tokens": 278,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1241,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 311,
+        "price_snapshot": null,
+        "duration_ms": 3518,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "05bc9a71-c567-4cde-9684-4a2e6ca247e5",
+  "task_state": null
+}

@@ -1,0 +1,810 @@
+{
+  "version": 1,
+  "session_id": "hb-j7off-Y13-1",
+  "profile_id": "hb-j7off-Y13-1",
+  "auto_generated": false,
+  "created_at": 1793274584.5058088,
+  "updated_at": 1793274619.267649,
+  "messages": [
+    {
+      "role": "user",
+      "content": "My PI asked me to do something with networks on our liver biopsy data before the next group meeting. We have RNA-seq from 30 biopsies, plus a TF motif prior and a TF protein interaction table that a previous student left. I honestly don't know what she expects to see."
+    },
+    {
+      "role": "assistant",
+      "content": "I can't tell yet which result you want, so I have not chosen a workflow.\n\nThe registered workflows give these results:\n- One weighted TF-to-gene regulatory network across all the samples given (PANDA)\n- One weighted network of how TFs and miRNAs regulate genes, across all samples (PUMA)\n- One TF-gene network per sample, plus the aggregate network (LIONESS-PANDA)\n- One TF/miRNA-gene network per sample, plus the aggregate network (LIONESS-PUMA)\n- One gene-gene co-expression network per sample, plus the aggregate (LIONESS-COEXPRESSION)\n- Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity (CONDOR)\n- The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix (COBRA)\n- Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them... (SAMBAR)\n- One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples (DRAGON)\n- One two-layer partial-correlation network per sample, plus the aggregate (LIONESS-DRAGON)\n- One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression (OTTER)\n- A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples (GIRAFFE)\n- One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample (BONOBO)\n\nWhich of these results do you want, or what question should the analysis answer? And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, or a second omics layer)?\n\nNothing was selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: My PI asked me to do something with networks on our liver biopsy data before the next group meeting. We have RNA-seq from 30 biopsies, plus a TF motif prior and a TF protein interaction table that a previous student left. I honestly don't know what she expects to see.\nUser follow-up: Let's go with one TF-to-gene regulatory network covering all 30 biopsies together."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"one TF-to-gene regulatory network covering all 30 biopsies together.\" -- available from PANDA.\n\nI can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\nUnconfirmed assumptions in these interpretations (please correct me if needed):\n- The RNA-seq data from the 30 biopsies is suitable for constructing a regulatory network.\n- The TF motif prior and TF protein interaction table can be integrated into the analysis.\n\nThese all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The user is seeking guidance on constructing a TF-to-gene regulatory network, which falls under the category of answer requests rather than execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The user is seeking guidance on constructing a TF-to-gene regulatory network, which falls under the category of answer requests rather than execution.",
+      "candidate_actions": [
+        "run_panda",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Let's go with one TF-to-gene regulatory network covering all 30 biopsies together.",
+              "rationale": "The user wants to construct a regulatory network from the provided data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "one TF-to-gene regulatory network",
+              "rationale": "The user specified the desired output as a TF-to-gene regulatory network."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user provided RNA-seq data as input for constructing the regulatory network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "explicit",
+              "text_span": "Let's go with one TF-to-gene regulatory network covering all 30 biopsies together.",
+              "rationale": "The user specified a single regulatory network covering all biopsies, indicating aggregate granularity."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": [
+            "The RNA-seq data from the 30 biopsies is suitable for constructing a regulatory network.",
+            "The TF motif prior and TF protein interaction table can be integrated into the analysis."
+          ]
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_panda",
+        "run_otter",
+        "run_giraffe"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA.",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a TF motif prior and a TF protein interaction table that a previous student left",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF motif prior and a TF protein interaction table that a previous student left",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF motif prior and a TF protein interaction table that a previous student left",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF motif prior and a TF protein interaction table that a previous student left",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a TF motif prior and a TF protein interaction table that a previous student left",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "one TF-to-gene regulatory network covering all 30 biopsies together.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "panda.tf_gene_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 30,
+              "samples_quote": "30 biopsies"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@144-155"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "RNA-seq from 30 biopsies",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "TF motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "TF protein interaction table",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "one TF-to-gene regulatory network covering all 30 biopsies together.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "one TF-to-gene regulatory network covering all 30 biopsies together."
+        ],
+        "facts": [
+          {
+            "id": "sample_count@144-155",
+            "property": "sample_count",
+            "name": "",
+            "value": "30",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "30 biopsies",
+            "span": [
+              144,
+              155
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "30 biopsies",
+                "span": [
+                  144,
+                  155
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "30 biopsies",
+                "span": [
+                  144,
+                  155
+                ],
+                "result": "one TF-to-gene regulatory network covering all 30 biopsies together.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "PANDA"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "one TF-to-gene regulatory network covering all 30 biopsies together."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "PANDA",
+          "OTTER",
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I honestly don't know what she expects to see.",
+              "uncertainty": "said_unknown",
+              "workflow": "PANDA",
+              "contract_quote": "PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors, or a validated adjusted gene-by-gene co-expression matrix through coexpression_file.",
+              "question": "Do you have a gene-by-sample expression matrix and compatible motif and PPI identifiers?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Let's go with one TF-to-gene regulatory network covering all 30 biopsies together.",
+              "uncertainty": "said_unknown",
+              "workflow": "OTTER",
+              "contract_quote": "OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI projection P, and either a gene-by-sample expression matrix (from which C is computed) or a validated labeled gene-by-gene co-expression matrix.",
+              "question": "Do you have an OTTER seed/prior TF-by-gene edge list and a TF-TF PPI projection?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "one TF-to-gene regulatory network covering all 30 biopsies together"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 49372,
+    "output_tokens": 1816,
+    "total_tokens": 51188,
+    "calls": [
+      {
+        "call_id": "468e60f8-62ae-43dd-8348-e986093d1720",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274586-rLQl82BmKARai16TeLl3",
+        "input_tokens": 909,
+        "output_tokens": 51,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 960,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 167,
+        "price_snapshot": null,
+        "duration_ms": 1421,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7b127d3d-d0a4-4186-92e7-6d573ee086ee",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274587-yeWA2O7IAJQKXLCvdq1W",
+        "input_tokens": 5363,
+        "output_tokens": 215,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5578,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 569,
+        "price_snapshot": null,
+        "duration_ms": 3915,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "0855372e-df84-4329-a551-053df6690c40",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274591-nlaMIg11DH7wzNWYsEeN",
+        "input_tokens": 5801,
+        "output_tokens": 233,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6034,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 712,
+        "price_snapshot": null,
+        "duration_ms": 4203,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "982fea45-fde7-41f9-b72a-da0083ff1755",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274595-Nk0Vs3EkvDT8PWTyUSvU",
+        "input_tokens": 1398,
+        "output_tokens": 109,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1507,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 275,
+        "price_snapshot": null,
+        "duration_ms": 1856,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1d98a32a-88d1-4240-b9ad-034f5fbbc6e0",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 722,
+        "output_tokens": 49,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 771,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 138,
+        "price_snapshot": {
+          "snapshot_id": "af89057f-f82b-5981-bf28-753da8210d43",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T11:45:54.395286Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 2832,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "96481a28-3c99-4f78-98a9-9b1fe52ae386",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274600-SRCxSELt1djI8dcLTXlQ",
+        "input_tokens": 1760,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1776,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 274,
+        "price_snapshot": null,
+        "duration_ms": 1557,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8d6162f9-883b-4983-b95f-1091db316516",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274602-N6QaZGeAireGg0Bg8GZe",
+        "input_tokens": 2390,
+        "output_tokens": 149,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2539,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 448,
+        "price_snapshot": null,
+        "duration_ms": 2131,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "4c1d84fc-a935-470e-9211-e049e5c0b554",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793274604-9cfS2QKtbNBQisxJHGxR",
+        "input_tokens": 21793,
+        "output_tokens": 459,
+        "cache_read_tokens": 21248,
+        "cache_write_tokens": 0,
+        "total_tokens": 22252,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1951,
+        "price_snapshot": null,
+        "duration_ms": 5673,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0e0dcde2-141d-4666-8c3e-0ac23ef0ea0f",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274610-AYLofx1oBHlf3f2zwwDu",
+        "input_tokens": 586,
+        "output_tokens": 38,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 624,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 111,
+        "price_snapshot": null,
+        "duration_ms": 1516,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "802b99ff-d4dc-462f-a85d-ab11356f8817",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274611-KPeI09yFO1E2VdTv6AsQ",
+        "input_tokens": 575,
+        "output_tokens": 50,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 625,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 116,
+        "price_snapshot": null,
+        "duration_ms": 1248,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "667d707c-961d-442c-9219-0e458e4da2ea",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793274612-kI3MHVYq4Ui9bNOkVJ3f",
+        "input_tokens": 5368,
+        "output_tokens": 163,
+        "cache_read_tokens": 5120,
+        "cache_write_tokens": 0,
+        "total_tokens": 5531,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 519,
+        "price_snapshot": null,
+        "duration_ms": 2478,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "817d2728-35af-4834-aedf-f7eaf846556f",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274615-tN4cfaWAGoltlfmAa5Yo",
+        "input_tokens": 2707,
+        "output_tokens": 284,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2991,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 576,
+        "price_snapshot": null,
+        "duration_ms": 3172,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "2a3409f4-59c6-43c9-9e6c-968b8a8524e9",
+  "task_state": {
+    "version": 1,
+    "task_id": "17984845",
+    "revision": 2,
+    "goal": "My PI asked me to do something with networks on our liver biopsy data before the next group meeting. We have RNA-seq from 30 biopsies, plus a TF motif prior and a TF protein interaction table that a previous student left. I honestly don't know what she expects to see.",
+    "pending": [],
+    "facts": [],
+    "rounds": 1,
+    "status": "closed",
+    "turns": 2
+  }
+}

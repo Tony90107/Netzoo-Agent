@@ -1,0 +1,818 @@
+{
+  "version": 1,
+  "session_id": "hb-j7off-Y16-1",
+  "profile_id": "hb-j7off-Y16-1",
+  "auto_generated": false,
+  "created_at": 1793274416.1266,
+  "updated_at": 1793274416.126644,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Our zebrafish fin regeneration time course has RNA-seq at 0, 2, 4 and 7 days post amputation, six fish per time point, so 24 samples in one expression matrix. I also have a motif prior that includes miRNA-target pairs, a TF PPI table and a file listing the miRNA IDs one per line. I'd like a separate TF and miRNA to gene network for every one of the 24 samples so I can compare the samples between days."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like a separate TF and miRNA to gene network for every one of the 24 samples so I can compare the samples between days.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n\nI couldn't match this to a result any registered NetZoo workflow produces, so none is offered.\n\nRegistered workflows that take the kind of data you described: PANDA, PUMA, LIONESS-PANDA, LIONESS-PUMA, LIONESS-COEXPRESSION, COBRA, DRAGON, LIONESS-DRAGON, OTTER, GIRAFFE, BONOBO. Tell me if one of them gives what you meant, or which result you need.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_lioness_panda",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like a separate TF and miRNA to gene network for every one of the 24 samples.",
+              "rationale": "The user wants to construct networks based on the provided RNA-seq data for each sample."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "I'd like a separate TF and miRNA to gene network for every one of the 24 samples.",
+              "rationale": "The user is requesting a TF to gene network as part of their analysis."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "I'd like a separate TF and miRNA to gene network for every one of the 24 samples.",
+              "rationale": "The user specified that they want separate networks for each sample."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "I'd like a separate TF and miRNA to gene network for every one of the 24 samples.",
+              "rationale": "The user mentioned TFs in their request for the network."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user provided RNA-seq data as input for constructing the networks."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The role is inferred from the structured TF-gene outcome; it is not a quoted user claim."
+            }
+          ],
+          "assumptions": [
+            "The RNA-seq data is suitable for constructing regulatory networks.",
+            "The motif prior and TF PPI table are compatible with the analysis."
+          ]
+        }
+      ],
+      "capability_match_status": "unsupported",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a motif prior that includes miRNA-target pairs, a TF PPI table",
+        "mirna": "stated",
+        "mirna_quote": "a file listing the miRNA IDs one per line"
+      },
+      "applicability": [
+        {
+          "action": "run_lioness_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior that includes miRNA-target pairs, a TF PPI table",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior that includes miRNA-target pairs, a TF PPI table",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a motif prior that includes miRNA-target pairs, a TF PPI table",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like a separate TF and miRNA to gene network for every one of the 24 samples so I can compare the samples between days.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf",
+                "mirna"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 24,
+              "samples_quote": "24 samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@122-132"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "zebrafish fin regeneration time course",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "RNA-seq at 0, 2, 4 and 7 days post amputation",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "six fish per time point",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "24 samples in one expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "motif prior that includes miRNA-target pairs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "TF PPI table",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "file listing the miRNA IDs one per line",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_lioness_panda",
+          "run_panda"
+        ],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like a separate TF and miRNA to gene network for every one of the 24 samples so I can compare the samples between days.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@122-132",
+            "property": "sample_count",
+            "name": "",
+            "value": "24",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "24 samples",
+            "span": [
+              122,
+              132
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "24 samples",
+                "span": [
+                  122,
+                  132
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "24 samples",
+                "span": [
+                  122,
+                  132
+                ],
+                "result": "I'd like a separate TF and miRNA to gene network for every one of the 24 samples so I can compare the samples between days.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DECLINE",
+        "partial": false,
+        "workflows": [],
+        "declined": [
+          {
+            "quote": "I'd like a separate TF and miRNA to gene network for every one of the 24 samples so I can compare the samples between days.",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"I'd like a separate TF and miRNA to gene network for every one of the 24 samples so I can compare the samples between days.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "full_gap",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like a separate TF and miRNA to gene network for every one of the 24 samples so I can compare the samples between days."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PANDA",
+          "PANDA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'd like a separate TF and miRNA to gene network for every one of the 24 samples so I can compare the samples between days.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "When a patient or sample identifier is supplied, produce sample-specific networks for all available samples, select the requested sample afterward, and keep it separate from the aggregate network.",
+              "question": "Do you want to produce sample-specific networks for all 24 samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "separate TF and miRNA to gene networks for every one of the 24 samples"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": "IDs",
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 35226,
+    "output_tokens": 1476,
+    "total_tokens": 36702,
+    "calls": [
+      {
+        "call_id": "7306a9a6-ae8f-43e0-80df-b7d7decb175d",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274391-XN0k8wSb7FDiOsmmdVEk",
+        "input_tokens": 5380,
+        "output_tokens": 335,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5715,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 643,
+        "price_snapshot": null,
+        "duration_ms": 5956,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "09d0377b-b5ce-42ec-8d84-b8bfae7484e3",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274397-J5y8k0GK9s8qDSmK3TkH",
+        "input_tokens": 5980,
+        "output_tokens": 238,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6218,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 742,
+        "price_snapshot": null,
+        "duration_ms": 3577,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "dae43740-1169-4052-b5c9-5f7553f1ec64",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 684,
+        "output_tokens": 53,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 737,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 134,
+        "price_snapshot": {
+          "snapshot_id": "af89057f-f82b-5981-bf28-753da8210d43",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T11:45:54.395286Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1076,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "67cdf2cc-de15-4672-a673-7384c5dd5f3c",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274402-61BD5vNcrmNUqGW7mIuH",
+        "input_tokens": 1700,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1716,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 265,
+        "price_snapshot": null,
+        "duration_ms": 1178,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ef952f17-277f-410c-9b93-5ba3d84f6bf7",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793274403-S0J48jPWB1FOI9kpcpko",
+        "input_tokens": 18626,
+        "output_tokens": 506,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 19132,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1725,
+        "price_snapshot": null,
+        "duration_ms": 6077,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7c24e3b5-a846-4faf-b6bd-861e1ced5efc",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274409-szxGI6Haflf7OL6N9ocP",
+        "input_tokens": 603,
+        "output_tokens": 74,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 677,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 135,
+        "price_snapshot": null,
+        "duration_ms": 1472,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "be693ca5-9ab4-4764-9a55-c320ad4098e3",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274411-3o5FaJgcJ2ND9hloRzbx",
+        "input_tokens": 592,
+        "output_tokens": 62,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 654,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 126,
+        "price_snapshot": null,
+        "duration_ms": 1425,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7b873efd-108b-440d-bbd3-ed1b6213ce53",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274412-El3GQRHZAJWY1N1gNVrl",
+        "input_tokens": 1270,
+        "output_tokens": 154,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1424,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 283,
+        "price_snapshot": null,
+        "duration_ms": 2330,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ddcf0346-ec44-424c-beba-8e94740ed527",
+        "role": "goal_read",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793274414-Kd8P4CDELf3Drj2FIKjl",
+        "input_tokens": 391,
+        "output_tokens": 38,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 429,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 81,
+        "price_snapshot": null,
+        "duration_ms": 1296,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "70e9a990-9183-4aa0-b29d-285de95f0af0",
+  "task_state": null
+}

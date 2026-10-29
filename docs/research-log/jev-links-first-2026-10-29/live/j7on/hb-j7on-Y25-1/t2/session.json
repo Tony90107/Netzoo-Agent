@@ -1,0 +1,857 @@
+{
+  "version": 1,
+  "session_id": "hb-j7on-Y25-1",
+  "profile_id": "hb-j7on-Y25-1",
+  "auto_generated": false,
+  "created_at": 1793274965.577281,
+  "updated_at": 1793274996.964627,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I'd like to see how gene-gene co-expression in blood shifts with age and BMI across our 150 participants, using an expression matrix and a design file of numeric covariates with the same sample IDs. The expression comes from a targeted panel, and I'm not sure whether it was the 120-gene or the 400-gene version."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Is the expression matrix labeled and does it have more genes than samples?\n  You wrote: \"I'm not sure whether it was the 120-gene or the 400-gene version\". COBRA's contract: \"Expression must be a labeled gene-by-sample matrix with more genes than samples\".\n- Do you want results for each time point that can be compared (each time point separately), or a model of how the system changes from one time point to the next (a dynamic model)?\n  You wrote: \"I'd like to see how gene-gene co-expression in blood shifts with age and BMI across our 150 participants, using an expression matrix and a design file of numeric covariates with the same sample IDs\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: I'd like to see how gene-gene co-expression in blood shifts with age and BMI across our 150 participants, using an expression matrix and a design file of numeric covariates with the same sample IDs. The expression comes from a targeted panel, and I'm not sure whether it was the 120-gene or the 400-gene version.\nUser follow-up: Again, I want to know how blood co-expression changes with age and BMI in my 150 participants."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Is the expression matrix labeled and does it have more genes than samples?\n  You wrote: \"I'm not sure whether it was the 120-gene or the 400-gene version\". COBRA's contract: \"Expression must be a labeled gene-by-sample matrix with more genes than samples\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_lioness_coexpression",
+        "run_cobra",
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "how blood co-expression changes with age and BMI",
+              "rationale": "The user is interested in examining changes in co-expression, which requires analysis of existing data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "how blood co-expression changes with age and BMI",
+              "rationale": "The user specifically mentions gene-gene co-expression, which corresponds to a coexpression network."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user explicitly stated the use of an expression matrix for the analysis."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Is the expression matrix labeled and does it have more genes than samples?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like to see how gene-gene co-expression in blood shifts with age and BMI across our 150 participants",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_group",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 150,
+              "samples_quote": "150 participants"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@110-126"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "how blood co-expression changes with age and BMI in my 150 participants",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_group",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 150,
+              "samples_quote": "150 participants"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@110-126"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "design file of numeric covariates with the same sample IDs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "expression comes from a targeted panel",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {
+          "I'm not sure whether it was the 120-gene or the 400-gene version": []
+        },
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "how blood co-expression changes with age and BMI in my 150 participants.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [
+          {
+            "of": "features",
+            "quote": "I'm not sure whether it was the 120-gene or the 400-gene version",
+            "values": [
+              120,
+              400
+            ]
+          }
+        ],
+        "uncertain_quotes": [
+          "I'm not sure whether it was the 120-gene or the 400-gene version"
+        ],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@110-126",
+            "property": "sample_count",
+            "name": "",
+            "value": "150",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "150 participants",
+            "span": [
+              110,
+              126
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "150 participants",
+                "span": [
+                  110,
+                  126
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "150 participants",
+                "span": [
+                  110,
+                  126
+                ],
+                "result": "I'd like to see how gene-gene co-expression in blood shifts with age and BMI across our 150 participants",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "150 participants",
+                "span": [
+                  110,
+                  126
+                ],
+                "result": "how blood co-expression changes with age and BMI in my 150 participants",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@269-333:candidates",
+            "property": "feature_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "120",
+              "400"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "I'm not sure whether it was the 120-gene or the 400-gene version",
+            "span": [
+              269,
+              333
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "unknown_facts",
+                "quote": "I'm not sure whether it was the 120-gene or the 400-gene version",
+                "span": [
+                  269,
+                  333
+                ],
+                "result": "",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Is the expression matrix labeled and does it have more genes than samples?",
+            "user_quote": "I'm not sure whether it was the 120-gene or the 400-gene version.",
+            "workflows": [
+              "COBRA"
+            ],
+            "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:COBRA@269-334"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "fact_agent",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "how blood co-expression changes with age and BMI in my 150 participants."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "obligations": [
+            {
+              "fact_key": "agent:COBRA@269-334",
+              "source": "agent",
+              "question": "Is the expression matrix labeled and does it have more genes than samples?",
+              "user_quote": "I'm not sure whether it was the 120-gene or the 400-gene version.",
+              "workflows": [
+                "COBRA"
+              ],
+              "status": "asked",
+              "asked_as": ""
+            }
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA",
+          "LIONESS-COEXPRESSION",
+          "BONOBO"
+        ],
+        "accepted": [
+          {
+            "question": "Is the expression matrix labeled and does it have more genes than samples?",
+            "user_quote": "I'm not sure whether it was the 120-gene or the 400-gene version.",
+            "workflows": [
+              "COBRA"
+            ],
+            "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+            "depends_on": "",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "said_unknown",
+            "if_yes": "supported",
+            "if_no": "not_supported",
+            "by_code": false,
+            "notes": {},
+            "fact_key": "agent:COBRA@269-334"
+          }
+        ],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R6 the same words already ask a fact",
+            "proposal": {
+              "user_quote": "I'm not sure whether it was the 120-gene or the 400-gene version.",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "Expression data must be numeric, finite, complete, gene-by-sample, and have at least three total samples so each leave-one-out background has at least two samples.",
+              "question": "Is the expression data numeric, finite, complete, and gene-by-sample with at least three samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 48342,
+    "output_tokens": 1769,
+    "total_tokens": 50111,
+    "calls": [
+      {
+        "call_id": "75b2cf0e-1e05-47d1-a345-b073ff071a81",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274967-A16v0QWXjQRdhttcc2tq",
+        "input_tokens": 947,
+        "output_tokens": 35,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 982,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 163,
+        "price_snapshot": null,
+        "duration_ms": 1519,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5317dfa1-007d-4944-8c36-9f32879bbb13",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274969-xLcq2DsdosY6IQVTeCpN",
+        "input_tokens": 1651,
+        "output_tokens": 16,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1667,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 142,
+        "price_snapshot": null,
+        "duration_ms": 1290,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a8893d33-a554-4a06-9d2f-cca575ea10a6",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274970-gmgsFX8hhsuxgj6GCbjK",
+        "input_tokens": 5378,
+        "output_tokens": 217,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5595,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 572,
+        "price_snapshot": null,
+        "duration_ms": 3323,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "0d80b719-5cb3-427c-b68a-03ec6f29a2ab",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274974-GJhlfpRBjlvfGL4qlvZY",
+        "input_tokens": 5613,
+        "output_tokens": 169,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5782,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 646,
+        "price_snapshot": null,
+        "duration_ms": 2450,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "147bdcad-dccc-4fb3-b46b-5a586aeb26ec",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274976-WRUSRNLKtm3kYYWx8RZy",
+        "input_tokens": 1129,
+        "output_tokens": 61,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1190,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 206,
+        "price_snapshot": null,
+        "duration_ms": 1590,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c547381a-d17e-4d3f-9d03-ba1a33bab9d3",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 716,
+        "output_tokens": 50,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 766,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 137,
+        "price_snapshot": {
+          "snapshot_id": "1c86d56f-ad40-5c9d-9a96-5e6521ebd9a3",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T11:52:51.879044Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1071,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "8c6efbc9-f335-4ff3-b772-14199b52bbd3",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793274979-GlM5S4L6XOiMKgJso2ID",
+        "input_tokens": 18622,
+        "output_tokens": 605,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 19227,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1784,
+        "price_snapshot": null,
+        "duration_ms": 7210,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "fcf6115f-6061-43a8-bd1e-a32149c47a39",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274986-MvzT89d0OKj4q2t8YFzo",
+        "input_tokens": 601,
+        "output_tokens": 36,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 637,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 112,
+        "price_snapshot": null,
+        "duration_ms": 1072,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ac9083bd-caa6-4f8e-8ce4-cc7565cdd8a7",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793274989-ftpXYeleQpR02eHYTwZK",
+        "input_tokens": 11558,
+        "output_tokens": 349,
+        "cache_read_tokens": 11136,
+        "cache_write_tokens": 0,
+        "total_tokens": 11907,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1108,
+        "price_snapshot": null,
+        "duration_ms": 5840,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9e468613-406f-4e70-943a-050f566749a3",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274994-t92a57qCFxfH4701h5XB",
+        "input_tokens": 2127,
+        "output_tokens": 231,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2358,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 458,
+        "price_snapshot": null,
+        "duration_ms": 2923,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "639b586e-8178-4545-b440-fc12e0ff3f0e",
+  "task_state": {
+    "version": 1,
+    "task_id": "be4ce5d5",
+    "revision": 3,
+    "goal": "I'd like to see how gene-gene co-expression in blood shifts with age and BMI across our 150 participants, using an expression matrix and a design file of numeric covariates with the same sample IDs. The expression comes from a targeted panel, and I'm not sure whether it was the 120-gene or the 400-gene version.",
+    "pending": [
+      {
+        "question_id": "agent:COBRA:be636baaa8",
+        "source": "agent",
+        "what": "COBRA",
+        "question": "Is the expression matrix labeled and does it have more genes than samples?",
+        "user_quote": "I'm not sure whether it was the 120-gene or the 400-gene version.",
+        "workflows": [
+          "COBRA"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": true,
+        "status": "asked"
+      }
+    ],
+    "facts": [
+      {
+        "question_id": "dimension:time_model:f2766b6bcd",
+        "source": "dimension",
+        "what": "time_model",
+        "question": "Do you want results for each time point that can be compared (each time point separately), or a model of how the system changes from one time point to the next (a dynamic model)?",
+        "user_quote": "I'd like to see how gene-gene co-expression in blood shifts with age and BMI across our 150 participants, using an expression matrix and a design file of numeric covariates with the same sample IDs.",
+        "options": {
+          "not_dynamic": [
+            "COBRA"
+          ],
+          "dynamic": []
+        },
+        "labels": {
+          "not_dynamic": "each time point separately",
+          "dynamic": "a dynamic model"
+        },
+        "value": "not_dynamic",
+        "answer_quote": "Again, I want to know how blood co-expression changes with age and BMI in my 150 participants.",
+        "turn": 1,
+        "status": "known"
+      }
+    ],
+    "rounds": 2,
+    "status": "active",
+    "turns": 2
+  }
+}

@@ -1,0 +1,812 @@
+{
+  "version": 1,
+  "session_id": "hb-j7off-Y26-1",
+  "profile_id": "hb-j7off-Y26-1",
+  "auto_generated": false,
+  "created_at": 1793274615.999729,
+  "updated_at": 1793274615.9997718,
+  "messages": [
+    {
+      "role": "user",
+      "content": "For our Arabidopsis drought study I have these files: an expression table with genes in rows and 36 samples in columns, with a header; a TF-to-gene prior as a three-column regulator, gene, weight list; a TF-TF interaction list; and a sample sheet saying which plants were watered or stressed. I want, for every sample, how active each TF is, alongside signed regulatory effects of TFs on genes (activation vs repression)."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"how active each TF is\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n2. \"signed regulatory effects of TFs on genes (activation vs repression)\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n\nI couldn't match these to a result any registered NetZoo workflow produces, so none is offered.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 1.0,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "tf_activity_matrix",
+        "entity_types": [
+          "sample",
+          "tf"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "tf_activity_matrix",
+            "entity_types": [
+              "sample",
+              "tf"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "how active each TF is",
+              "rationale": "The user wants to compute TF activity for each sample."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "tf_activity_matrix",
+              "source": "explicit",
+              "text_span": "how active each TF is",
+              "rationale": "The user specifies the desired output as TF activity."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The artifact type 'tf_activity_matrix' restricts granularity to 'aggregate'."
+            }
+          ],
+          "assumptions": []
+        },
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "signed_regulatory_effect_network",
+            "entity_types": [
+              "gene",
+              "tf"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "signed regulatory effects of TFs on genes",
+              "rationale": "The user wants to compute signed regulatory effects of TFs on genes."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "signed_regulatory_effect_network",
+              "source": "explicit",
+              "text_span": "signed regulatory effects of TFs on genes",
+              "rationale": "The user specifies the desired output as signed regulatory effects."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "unsupported",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "addressed_concerns": [
+        {
+          "action": "run_giraffe",
+          "concern": "downstream_use",
+          "text_span": "how active each TF is, alongside signed regulatory effects of TFs on genes"
+        }
+      ],
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a TF-to-gene prior as a three-column regulator, gene, weight list; a TF-TF interaction list",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF-to-gene prior as a three-column regulator, gene, weight list; a TF-TF interaction list",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a TF-to-gene prior as a three-column regulator, gene, weight list; a TF-TF interaction list",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "how active each TF is",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 36,
+              "samples_quote": "36 samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@97-107"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "signed regulatory effects of TFs on genes (activation vs repression)",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 36,
+              "samples_quote": "36 samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@97-107"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "an expression table with genes in rows and 36 samples in columns, with a header",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a TF-to-gene prior as a three-column regulator, gene, weight list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a TF-TF interaction list",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a sample sheet saying which plants were watered or stressed",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_giraffe"
+        ],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "how active each TF is, alongside signed regulatory effects of TFs on genes (activation vs repression",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "how active each TF is, alongside signed regulatory effects of TFs on genes (activation vs repression"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@97-107",
+            "property": "sample_count",
+            "name": "",
+            "value": "36",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "36 samples",
+            "span": [
+              97,
+              107
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "36 samples",
+                "span": [
+                  97,
+                  107
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "36 samples",
+                "span": [
+                  97,
+                  107
+                ],
+                "result": "how active each TF is",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "36 samples",
+                "span": [
+                  97,
+                  107
+                ],
+                "result": "signed regulatory effects of TFs on genes (activation vs repression)",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DECLINE",
+        "partial": false,
+        "workflows": [],
+        "declined": [
+          {
+            "quote": "how active each TF is",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"how active each TF is\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+          },
+          {
+            "quote": "signed regulatory effects of TFs on genes (activation vs repression)",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"signed regulatory effects of TFs on genes (activation vs repression)\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "full_gap",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "tf_activity_matrix",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "how active each TF is, alongside signed regulatory effects of TFs on genes (activation vs repression"
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "how active each TF is, alongside signed regulatory effects of TFs on genes (activation vs repression)",
+              "uncertainty": "two_versions",
+              "workflow": "GIRAFFE",
+              "contract_quote": "GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a TF-by-TF PPI matrix after explicit labelled-file conversion.",
+              "question": "Do you have the required TF-by-gene motif/prior and TF-by-TF PPI matrix files?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "how active each TF is",
+                "signed regulatory effects of TFs on genes (activation vs repression)"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "how active each TF is, alongside signed regulatory effects of TFs on genes (activation vs repression)",
+              "uncertainty": "said_unknown",
+              "workflow": "GIRAFFE",
+              "contract_quote": "Require at least two expression samples before execution.",
+              "question": "Do you have at least two expression samples in your expression table?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": "a",
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "rows",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 31831,
+    "output_tokens": 1640,
+    "total_tokens": 33471,
+    "calls": [
+      {
+        "call_id": "d4e48b37-e7b9-456c-b7dd-d301c9b31ec3",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274592-GekkCuo7kRD2yR9rhxLY",
+        "input_tokens": 5371,
+        "output_tokens": 369,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5740,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 662,
+        "price_snapshot": null,
+        "duration_ms": 4702,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "1975282c-77a9-4fbe-86c9-8f581959061d",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274596-K8UANu375POwG9wD62pp",
+        "input_tokens": 5723,
+        "output_tokens": 171,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5894,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 663,
+        "price_snapshot": null,
+        "duration_ms": 2811,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "76839f07-bb23-45a8-af41-4299a1e6a021",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 693,
+        "output_tokens": 40,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 733,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 128,
+        "price_snapshot": {
+          "snapshot_id": "af89057f-f82b-5981-bf28-753da8210d43",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T11:45:54.395286Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1114,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "0a4e95c5-1661-46e7-91d6-8e8db1520085",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274600-D7WMXbHADrh6KlRRCLNZ",
+        "input_tokens": 1726,
+        "output_tokens": 43,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1769,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 170,
+        "price_snapshot": null,
+        "duration_ms": 1282,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "32bfd0c5-33b6-41e6-95eb-bdea548e34ea",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793274602-Tx9fSLmfJXJvqmygTpRc",
+        "input_tokens": 15407,
+        "output_tokens": 617,
+        "cache_read_tokens": 15104,
+        "cache_write_tokens": 0,
+        "total_tokens": 16024,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1548,
+        "price_snapshot": null,
+        "duration_ms": 6916,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b5dc88e5-df29-4a3c-b95a-4bde96568ccd",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274609-pKHtir4P4yxbcROzKZSD",
+        "input_tokens": 594,
+        "output_tokens": 50,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 644,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 119,
+        "price_snapshot": null,
+        "duration_ms": 1163,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "397ffd6d-4d4d-4245-84f5-83c5eba6eccd",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274610-E4BwDpsOA4p1VcgNhijL",
+        "input_tokens": 583,
+        "output_tokens": 59,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 642,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 123,
+        "price_snapshot": null,
+        "duration_ms": 1372,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3c03fb27-0981-4d0e-b6ce-5dc07c086bf8",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274611-LLDsk3YF2UON5pANuKRU",
+        "input_tokens": 1352,
+        "output_tokens": 253,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1605,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 355,
+        "price_snapshot": null,
+        "duration_ms": 3218,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8f72c756-589b-4601-93a8-13c5bc2bb914",
+        "role": "goal_read",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793274614-k1LGKO7HMtQTegCK2NAr",
+        "input_tokens": 382,
+        "output_tokens": 38,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 420,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 80,
+        "price_snapshot": null,
+        "duration_ms": 1079,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "647b0601-0413-4b96-a504-a393fbd7b97f",
+  "task_state": null
+}

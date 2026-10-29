@@ -1,0 +1,853 @@
+{
+  "version": 1,
+  "session_id": "hb-j7off-Y10-1",
+  "profile_id": "hb-j7off-Y10-1",
+  "auto_generated": false,
+  "created_at": 1793274692.465697,
+  "updated_at": 1793274692.4657578,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I have bulk RNA-seq from mouse cortex at five developmental stages (E14, E17, P0, P7, adult), eight animals per stage, 40 samples in total, together with a TF-to-gene motif prior and a TF-TF interaction table. I want an estimate of how active each transcription factor is in each sample, so I can plot TF activity by stage. Signed effects of each TF on its targets would be a bonus."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I want an estimate of how active each transcription factor is in each sample, so I can plot TF activity by stage.\" -- available from GIRAFFE.\n2. \"Signed effects of each TF on its targets would be a bonus.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n\n**GIRAFFE**. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.\n\nYou would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations; inferred transcription-factor-by-sample activity values.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_giraffe"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "tf_activity_matrix",
+        "entity_types": [
+          "sample",
+          "tf"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "tf_activity_matrix",
+            "entity_types": [
+              "sample",
+              "tf"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I want an estimate of how active each transcription factor is in each sample.",
+              "rationale": "The user wants to estimate TF activity, which requires inference from the provided data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "tf_activity_matrix",
+              "source": "explicit",
+              "text_span": "I want an estimate of how active each transcription factor is in each sample.",
+              "rationale": "The user specifically requests a TF activity matrix as the desired output."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "explicit",
+              "text_span": "40 samples in total.",
+              "rationale": "The user mentions having 40 samples, indicating that sample is a relevant entity."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "how active each transcription factor is.",
+              "rationale": "The user is interested in transcription factors, which are the focus of the activity estimation."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user provides RNA-seq data as input for estimating TF activity."
+            }
+          ],
+          "assumptions": [
+            "The TF-to-gene motif prior and TF-TF interaction table will be utilized in the analysis."
+          ]
+        },
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "signed_regulatory_effect_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.8,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "Signed effects of each TF on its targets would be a bonus.",
+              "rationale": "The user expresses interest in obtaining signed effects of TFs on their targets, which requires inference."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "signed_regulatory_effect_network",
+              "source": "explicit",
+              "text_span": "Signed effects of each TF on its targets would be a bonus.",
+              "rationale": "The user specifically mentions wanting signed effects, indicating this type of network is desired."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "Signed effects of each TF on its targets.",
+              "rationale": "The user is interested in transcription factors and their effects on targets."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "Signed effects of each TF on its targets.",
+              "rationale": "The user is interested in the targets of transcription factors, which are genes."
+            }
+          ],
+          "assumptions": [
+            "The analysis will consider the TF-to-gene motif prior and TF-TF interaction table for estimating signed effects."
+          ]
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_giraffe"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "TF-to-gene motif prior and a TF-TF interaction table",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "TF-to-gene motif prior and a TF-TF interaction table",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "TF-to-gene motif prior and a TF-TF interaction table",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I want an estimate of how active each transcription factor is in each sample, so I can plot TF activity by stage.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "giraffe.tf_activity"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 40,
+              "samples_quote": "40 samples in total"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@119-138"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "Signed effects of each TF on its targets would be a bonus.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "none",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 40,
+              "samples_quote": "40 samples in total"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@119-138"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "bulk RNA-seq from mouse cortex at five developmental stages (E14, E17, P0, P7, adult)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "eight animals per stage",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "40 samples in total",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a TF-to-gene motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "a TF-TF interaction table",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I want an estimate of how active each transcription factor is in each sample, so I can plot TF activity by stage.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@119-138",
+            "property": "sample_count",
+            "name": "",
+            "value": "40",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "40 samples in total",
+            "span": [
+              119,
+              138
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "40 samples in total",
+                "span": [
+                  119,
+                  138
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "40 samples in total",
+                "span": [
+                  119,
+                  138
+                ],
+                "result": "I want an estimate of how active each transcription factor is in each sample, so I can plot TF activity by stage.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "40 samples in total",
+                "span": [
+                  119,
+                  138
+                ],
+                "result": "Signed effects of each TF on its targets would be a bonus.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "GIRAFFE"
+        ],
+        "declined": [
+          {
+            "quote": "Signed effects of each TF on its targets would be a bonus.",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"Signed effects of each TF on its targets would be a bonus.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "tf_activity_matrix",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I want an estimate of how active each transcription factor is in each sample, so I can plot TF activity by stage."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I want an estimate of how active each transcription factor is in each sample, so I can plot TF activity by stage.",
+              "uncertainty": "said_unknown",
+              "workflow": "GIRAFFE",
+              "contract_quote": "Require at least two expression samples before execution.",
+              "question": "Do you have at least two expression samples?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "estimate of how active each transcription factor is in each sample",
+                "plot TF activity by stage"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "Signed effects of each TF on its targets would be a bonus.",
+              "uncertainty": "said_unknown",
+              "workflow": "GIRAFFE",
+              "contract_quote": "It returns the aggregate TF-by-gene R matrix and a TF-by-sample TFA matrix.",
+              "question": "Would you like to receive the signed effects of each TF on its targets?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "signed effects of each TF on its targets",
+                "no signed effects"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 36021,
+    "output_tokens": 2045,
+    "total_tokens": 38066,
+    "calls": [
+      {
+        "call_id": "62091084-c066-4ac9-9314-3fd632f4c0cd",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274664-UYDu9R1h998dZFy1mwsI",
+        "input_tokens": 5371,
+        "output_tokens": 670,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 6041,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 843,
+        "price_snapshot": null,
+        "duration_ms": 8248,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "462a5d5a-1b41-465e-9343-f4bf2a701f1d",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274673-bBsbgEPcbeItDgtBZmSh",
+        "input_tokens": 7111,
+        "output_tokens": 209,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 7320,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 894,
+        "price_snapshot": null,
+        "duration_ms": 3363,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "629aa22c-18df-41be-a07f-44660ec385fa",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 676,
+        "output_tokens": 55,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 731,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 134,
+        "price_snapshot": {
+          "snapshot_id": "af89057f-f82b-5981-bf28-753da8210d43",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T11:45:54.395286Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1148,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "98d40a26-497b-44be-bee3-33f2932e8e1c",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274677-ZHKPjXWJ6bWJsUQy28nI",
+        "input_tokens": 1726,
+        "output_tokens": 142,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1868,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 344,
+        "price_snapshot": null,
+        "duration_ms": 1938,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e25508f6-d1a5-43d1-bc59-72a0ed3a0346",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793274679-Ka72smOvIkUpCl1RwgOR",
+        "input_tokens": 18608,
+        "output_tokens": 628,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 19236,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1795,
+        "price_snapshot": null,
+        "duration_ms": 6406,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c8a791c7-45dd-4c77-8cf1-12e133bef3fb",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274686-CkoocC1vasxez83he8Fl",
+        "input_tokens": 594,
+        "output_tokens": 58,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 652,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 124,
+        "price_snapshot": null,
+        "duration_ms": 1293,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "55d2073e-75ae-4893-b516-23016300fcc7",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274687-mgf3h0NcRiqzy3YiRurT",
+        "input_tokens": 583,
+        "output_tokens": 49,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 632,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 117,
+        "price_snapshot": null,
+        "duration_ms": 1140,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "45318841-2080-4e0f-ae17-2121cbf27713",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793274688-IoQrgKdi3Ap9TjoOvGw8",
+        "input_tokens": 1352,
+        "output_tokens": 234,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1586,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 343,
+        "price_snapshot": null,
+        "duration_ms": 3399,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "18b0e0fc-b6e6-4c50-bb4b-6273f6c2c8f3",
+  "task_state": null
+}
