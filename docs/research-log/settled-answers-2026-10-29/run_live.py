@@ -1,5 +1,5 @@
 """S4 live for settled-answers (ROUND.md): j6 X06 (seen), up to 3 turns with the j4 reply rule, the app's
-settings, code b29b5d52. Adapted from run_j6.py. Cost cap US$0.05.
+settings, code 4f26bca1. Adapted from run_j6.py. Cost cap US$0.05.
 
 Usage: python3 run_live.py app      (tag sa1; never reruns)
 """
@@ -29,7 +29,7 @@ HARNESS = CHECKOUT / 'docs/research-log/closed-menu-hybrid-2026-10-19/h4/run_liv
 ITEMS = J6 / 'j6' / 'items.json'
 SEALED = J6 / 'j6' / 'SEALED.json'
 RUN = CHECKOUT
-COMMIT = 'b29b5d52'
+COMMIT = '4f26bca1'
 SNAPSHOT_MODIFIED: tuple = ()
 SNAPSHOT_NEW: tuple = ()
 MODELS = {'openai/gpt-4o-mini', 'openai/gpt-4o-mini-2024-07-18'}
