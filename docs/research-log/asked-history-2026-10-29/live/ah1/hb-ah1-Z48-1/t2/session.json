@@ -1,0 +1,863 @@
+{
+  "version": 1,
+  "session_id": "hb-ah1-Z48-1",
+  "profile_id": "hb-ah1-Z48-1",
+  "auto_generated": false,
+  "created_at": 1793281128.504956,
+  "updated_at": 1793281160.22019,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I'd like a TF-to-gene network for each patient with LIONESS-PANDA from our rare paediatric tumour RNA-seq, using a motif prior and a PPI table. The sequencing results come back on Friday. I'm not sure whether 2 or 5 of the patient samples will pass QC."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 2 or 5?\n  You wrote: \"I'm not sure whether 2 or 5 of the patient samples will pass QC\".\n  - 2: no registered workflow can do this as asked -- LIONESS-PANDA needs at least 3 samples; the request has 2\n  - 5: LIONESS-PANDA can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: I'd like a TF-to-gene network for each patient with LIONESS-PANDA from our rare paediatric tumour RNA-seq, using a motif prior and a PPI table. The sequencing results come back on Friday. I'm not sure whether 2 or 5 of the patient samples will pass QC.\nUser follow-up: Only 2 patient samples passed QC."
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like a TF-to-gene network for each patient with LIONESS-PANDA from our rare paediatric tumour RNA-seq, using a motif prior and a PPI table.\" -- not available here as asked. LIONESS-PANDA needs at least 3 samples; the request has 2.\n\nNo registered workflow can give this as you asked it (above), so none is offered as asked.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+      "candidate_actions": [
+        "run_lioness_panda",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "regulatory_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like a TF-to-gene network for each patient with LIONESS-PANDA.",
+              "rationale": "The user is requesting to construct a TF-to-gene network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "I'd like a TF-to-gene network for each patient.",
+              "rationale": "The user specifies the desired output as a TF-to-gene network."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "for each patient.",
+              "rationale": "The user mentions obtaining a network for each patient sample."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene network.",
+              "rationale": "The user specifies the regulatory role as transcription factors."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene network.",
+              "rationale": "The user specifies the target role as genes."
+            },
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "RNA-seq",
+              "rationale": "The user specifies RNA-seq data as the current input for analysis."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "unsupported",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a motif prior and a PPI table",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_lioness_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior and a PPI table",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior and a PPI table",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a motif prior and a PPI table",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like a TF-to-gene network for each patient with LIONESS-PANDA from our rare paediatric tumour RNA-seq, using a motif prior and a PPI table.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "one_group",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "named": "LIONESS-PANDA",
+              "named_quote": "LIONESS-PANDA",
+              "samples": 2,
+              "samples_quote": "Only 2 patient samples passed QC."
+            },
+            "limits": [
+              "LIONESS-PANDA needs at least 3 samples; the request has 2"
+            ],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@291-324"
+            ],
+            "blocks": [
+              "LIONESS-PANDA"
+            ],
+            "doubted_forms": []
+          },
+          {
+            "quote": "TF-to-gene network for each patient",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "LIONESS-PANDA",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "rare paediatric tumour RNA-seq",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "PPI table",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "sequencing results",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "Only 2 patient samples passed QC.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_lioness_panda",
+          "run_panda"
+        ],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like a TF-to-gene network for each patient with LIONESS-PANDA from our rare paediatric tumour RNA-seq, using a motif prior and a PPI table.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "LIONESS-PANDA"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@291-324",
+            "property": "sample_count",
+            "name": "",
+            "value": "2",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "Only 2 patient samples passed QC.",
+            "span": [
+              291,
+              324
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "Only 2 patient samples passed QC.",
+                "span": [
+                  291,
+                  324
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "Only 2 patient samples passed QC.",
+                "span": [
+                  291,
+                  324
+                ],
+                "result": "I'd like a TF-to-gene network for each patient with LIONESS-PANDA from our rare paediatric tumour RNA-seq, using a motif prior and a PPI table.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DECLINE",
+        "partial": false,
+        "workflows": [],
+        "declined": [
+          {
+            "quote": "I'd like a TF-to-gene network for each patient with LIONESS-PANDA from our rare paediatric tumour RNA-seq, using a motif prior and a PPI table.",
+            "reasons": [
+              "LIONESS-PANDA needs at least 3 samples; the request has 2"
+            ],
+            "alternatives": [],
+            "line": "\"I'd like a TF-to-gene network for each patient with LIONESS-PANDA from our rare paediatric tumour RNA-seq, using a motif prior and a PPI table.\" -- not available here as asked. LIONESS-PANDA needs at least 3 samples; the request has 2."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "full_gap",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like a TF-to-gene network for each patient with LIONESS-PANDA from our rare paediatric tumour RNA-seq, using a motif prior and a PPI table."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-PANDA",
+          "PANDA"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure whether 2 or 5 of the patient samples will pass QC.",
+              "uncertainty": "two_versions",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "Require at least three expression samples before execution.",
+              "question": "Will at least three patient samples pass QC?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "PANDA",
+              "about": "user_data",
+              "alternatives": [
+                "2",
+                "5"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 38365,
+    "output_tokens": 1524,
+    "total_tokens": 39889,
+    "calls": [
+      {
+        "call_id": "5a51503b-a512-4be3-aefa-b09ef8e9c9fd",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793281130-VM14Vu2uuHURZEf3U591",
+        "input_tokens": 894,
+        "output_tokens": 41,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 935,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 159,
+        "price_snapshot": null,
+        "duration_ms": 1701,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "b2a45ebf-16ab-4cb1-b3cf-e86a937e18f7",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793281132-Jbs31RZrmVu1M8gZmwo1",
+        "input_tokens": 1630,
+        "output_tokens": 16,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1646,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 254,
+        "price_snapshot": null,
+        "duration_ms": 1223,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7031d61a-45fc-48a0-9fb8-0a39283d75c5",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793281133-A7RmnpfYABPvDJcXSkdS",
+        "input_tokens": 5357,
+        "output_tokens": 293,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5650,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 615,
+        "price_snapshot": null,
+        "duration_ms": 4790,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "f0e17a7d-5e60-4c21-a994-e881035cf775",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793281138-uVLDiQOuz5lj0xvagok4",
+        "input_tokens": 5640,
+        "output_tokens": 263,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 5903,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 706,
+        "price_snapshot": null,
+        "duration_ms": 5168,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "de6c7d9d-685f-4094-8d44-cd67e9354ec9",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 667,
+        "output_tokens": 52,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 719,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 131,
+        "price_snapshot": {
+          "snapshot_id": "9117ac81-1f7d-5bc6-83aa-170f2209a3a4",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-29T13:36:37.294920Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1434,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "461b096c-e8d3-40e9-b5a2-3d7e5aafde0f",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793281145-nTUd5Bqlw6SiVq0JQpmQ",
+        "input_tokens": 21781,
+        "output_tokens": 654,
+        "cache_read_tokens": 21248,
+        "cache_write_tokens": 0,
+        "total_tokens": 22435,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 2066,
+        "price_snapshot": null,
+        "duration_ms": 7941,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "29d829ce-b52d-46ae-b9bc-eb823e56e5e3",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793281154-5TU19qekbTRExX0uIBhz",
+        "input_tokens": 580,
+        "output_tokens": 61,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 641,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 124,
+        "price_snapshot": null,
+        "duration_ms": 2841,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0022b898-91ad-4b05-9154-a33f64403b03",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793281155-NlvtW2utcoA3EXs8s7AB",
+        "input_tokens": 569,
+        "output_tokens": 43,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 612,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 111,
+        "price_snapshot": null,
+        "duration_ms": 2028,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e147731c-9657-4b60-9a99-6003fdf273f2",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793281157-0M9per8W5o8hdEVVqeYz",
+        "input_tokens": 1247,
+        "output_tokens": 101,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1348,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 248,
+        "price_snapshot": null,
+        "duration_ms": 2549,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "24ca8b0a-7fbc-4646-9571-31cc2e7d7247",
+  "task_state": {
+    "version": 2,
+    "task_id": "3c0a1515",
+    "revision": 3,
+    "goal": "I'd like a TF-to-gene network for each patient with LIONESS-PANDA from our rare paediatric tumour RNA-seq, using a motif prior and a PPI table. The sequencing results come back on Friday. I'm not sure whether 2 or 5 of the patient samples will pass QC.",
+    "pending": [],
+    "facts": [
+      {
+        "question_id": "count:sample_count:2c18bb82be",
+        "source": "count",
+        "what": "sample_count",
+        "question": "Which of these is right: 2 or 5?",
+        "user_quote": "I'm not sure whether 2 or 5 of the patient samples will pass QC.",
+        "options": {
+          "2": [],
+          "5": [
+            "LIONESS-PANDA"
+          ]
+        },
+        "labels": {},
+        "value": "2",
+        "answer_quote": "Only 2 patient samples passed QC.",
+        "turn": 1,
+        "status": "known"
+      }
+    ],
+    "asked": [],
+    "rounds": 1,
+    "status": "closed",
+    "turns": 2
+  }
+}
