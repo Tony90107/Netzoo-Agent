@@ -1,0 +1,950 @@
+[
+ {
+  "run": "j5a",
+  "id": "W01",
+  "group": "SA",
+  "gold": "DO",
+  "final": "UNCHECKED",
+  "verdict": "UNCHECKED",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "UNCHECKED/routing_failed",
+  "t1_linked": [
+   "GIRAFFE",
+   "OTTER",
+   "PANDA",
+   "PUMA"
+  ],
+  "t1_credited": [
+   "GIRAFFE",
+   "OTTER",
+   "PANDA",
+   "PUMA"
+  ],
+  "gold_wf": [
+   "GIRAFFE",
+   "OTTER",
+   "PANDA"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "One aggregate TF-to-gene network per group from expression, motif and PPI: PANDA (or OTTER / GIRAFFE's aggregate TF-by-gene matrix), run once per group.",
+  "prompt": "We have expression for 60 lung tumours and 40 matched normal lung samples, with a TF motif prior and PPI table. I want one regulatory network for the tumours, built from all tumour samples together, a"
+ },
+ {
+  "run": "j5a",
+  "id": "W11",
+  "group": "FD",
+  "gold": "DECLINE",
+  "final": "DO",
+  "verdict": "FA",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "DO/results_given",
+  "t1_linked": [
+   "DRAGON"
+  ],
+  "t1_credited": [
+   "DRAGON"
+  ],
+  "gold_wf": [
+   "LIONESS-PANDA",
+   "PANDA"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "No contract produces a time-lagged or dynamic model; the registered networks are aggregate or per sample, and time points can only be compared as separate netwo",
+  "prompt": "We have RNA-seq of Arabidopsis leaves every two hours across a 48-hour drought time course, plus a TF motif prior and a PPI table. I want a time-lagged regulatory model in which a TF's expression at o"
+ },
+ {
+  "run": "j5a",
+  "id": "W16",
+  "group": "U",
+  "gold": "DECLINE",
+  "final": "DO",
+  "verdict": "FA",
+  "sent": [
+   "prompt",
+   "fact"
+  ],
+  "turns": 2,
+  "path": "ASK/fact_agent ; DO/results_given",
+  "t1_linked": [
+   "LIONESS-COEXPRESSION"
+  ],
+  "t1_credited": [
+   "LIONESS-COEXPRESSION"
+  ],
+  "gold_wf": [
+   "BONOBO"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "Per-sample networks with edge p-values come only from BONOBO; whether the supplied matrix is log-transformed and centred decides whether BONOBO's declared input",
+  "prompt": "I'd like a gene co-expression network for each of our 20 liver biopsies, with a p-value saved for every edge, from the expression matrix in our project folder. There are two versions of that matrix in"
+ },
+ {
+  "run": "j5a",
+  "id": "W18",
+  "group": "TC",
+  "gold": "DO",
+  "final": "ASK",
+  "verdict": "extra questions",
+  "sent": [
+   "prompt",
+   "restate",
+   "restate"
+  ],
+  "turns": 3,
+  "path": "ASK/fact_agent ; ASK/fact_agent ; ASK/fact_agent",
+  "t1_linked": [
+   "OTTER"
+  ],
+  "t1_credited": [
+   "OTTER"
+  ],
+  "gold_wf": [
+   "OTTER"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "OTTER accepts either an expression matrix or a labelled gene-by-gene co-expression matrix together with motif and PPI; the lane question does not bear on any co",
+  "prompt": "For our rice root study I only have a precomputed gene-by-gene co-expression matrix, with the same gene IDs as our TF motif prior, plus a TF-TF PPI list. I'd like OTTER to build an aggregate TF-to-gen"
+ },
+ {
+  "run": "j5a",
+  "id": "W23",
+  "group": "MF",
+  "gold": "DO",
+  "final": "DECLINE",
+  "verdict": "FR",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "DECLINE/full_gap",
+  "t1_linked": [
+   "GIRAFFE"
+  ],
+  "t1_credited": [],
+  "gold_wf": [
+   "GIRAFFE"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "GIRAFFE takes expression, a motif edge list or matrix and a PPI matrix, and returns signed TF-gene effects plus a TF-by-sample activity matrix; the age sheet is",
+  "prompt": "My files are: a log-normalised expression table for 38 asthma airway brushings, a TF-to-gene motif prior as regulator, gene, weight, a TF-TF interaction matrix, and a spreadsheet of patient ages. I wa"
+ },
+ {
+  "run": "j5a",
+  "id": "W26",
+  "group": "U",
+  "gold": "DECLINE",
+  "final": "DO",
+  "verdict": "FA",
+  "sent": [
+   "prompt",
+   "fact"
+  ],
+  "turns": 2,
+  "path": "ASK/fact_agent ; DO/results_given",
+  "t1_linked": [
+   "LIONESS-DRAGON"
+  ],
+  "t1_credited": [
+   "LIONESS-DRAGON"
+  ],
+  "gold_wf": [
+   "LIONESS-DRAGON"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "F = 800, so 800*799/2 = 319,600 pairs; 60 samples give 19,176,000 values (under the limit), 70 give 22,372,000 (refused).",
+  "prompt": "We have 500 transcripts and 300 metabolites measured on the same plasma samples, and I want a separate two-layer partial-correlation network for each sample. I don't remember whether the final QC kept"
+ },
+ {
+  "run": "j5a",
+  "id": "W39",
+  "group": "U",
+  "gold": "ASK",
+  "final": "CLARIFY",
+  "verdict": "wrong question kind",
+  "sent": [
+   "prompt",
+   "restate",
+   "restate"
+  ],
+  "turns": 3,
+  "path": "ASK/count_fact ; ASK/jev_link ; CLARIFY/goal_unclear",
+  "t1_linked": [
+   "LIONESS-PANDA",
+   "OTTER"
+  ],
+  "t1_credited": [
+   "LIONESS-PANDA"
+  ],
+  "gold_wf": [
+   "LIONESS-PANDA"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "LIONESS-PANDA needs at least three samples: four passes, two fails.",
+  "prompt": "I'd like a TF-to-gene network for each mouse lung in our pilot, using our expression table, motif prior and PPI table. I'm not sure whether the sequencing core finished two lungs or four."
+ },
+ {
+  "run": "j5a",
+  "id": "W40",
+  "group": "U",
+  "gold": "ASK",
+  "final": "DO",
+  "verdict": "MA",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "DO/results_given",
+  "t1_linked": [
+   "SAMBAR"
+  ],
+  "t1_credited": [
+   "SAMBAR"
+  ],
+  "gold_wf": [
+   "SAMBAR"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "SAMBAR accepts somatic mutation data only, so the variant origin decides whether it can run.",
+  "prompt": "Please compute pathway-level mutation scores for each of our 85 tumours from the variant matrix, using the gene lengths, cancer gene list and GMT file we have. I'm not sure whether the variant matrix "
+ },
+ {
+  "run": "j5a",
+  "id": "W41",
+  "group": "V",
+  "gold": "DO",
+  "final": "DECLINE",
+  "verdict": "FR",
+  "sent": [
+   "prompt",
+   "result"
+  ],
+  "turns": 2,
+  "path": "CLARIFY/goal_unclear ; DECLINE/full_gap",
+  "t1_linked": [],
+  "t1_credited": [],
+  "gold_wf": [
+   "DRAGON"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "No concrete result is named; paired two-layer data could give an aggregate or per-sample multi-omic network.",
+  "prompt": "Our grant promised multi-omic modules from the 30 patients in whom we measured both proteins and metabolites on the same blood samples. Now I need to deliver something, but I haven't decided what exac"
+ },
+ {
+  "run": "j5a",
+  "id": "W42",
+  "group": "FN",
+  "gold": "DO",
+  "final": "ASK",
+  "verdict": "extra questions",
+  "sent": [
+   "prompt",
+   "form",
+   "form"
+  ],
+  "turns": 3,
+  "path": "ASK/needs_fact ; ASK/needs_fact ; ASK/needs_fact",
+  "t1_linked": [
+   "CONDOR"
+  ],
+  "t1_credited": [
+   "CONDOR"
+  ],
+  "gold_wf": [
+   "CONDOR"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "A regulator-to-gene edge list is CONDOR's input and its output is communities with regulator-side and gene-side partitions.",
+  "prompt": "From a previous study I have a regulatory network for colon tissue where each row is a TF, a gene it regulates, and an edge weight, all positive after filtering. I'd like to break this network into mo"
+ },
+ {
+  "run": "j5a",
+  "id": "W43",
+  "group": "V",
+  "gold": "DECLINE",
+  "final": "DO",
+  "verdict": "FA",
+  "sent": [
+   "prompt",
+   "result"
+  ],
+  "turns": 2,
+  "path": "CLARIFY/goal_unclear ; DO/results_given",
+  "t1_linked": [],
+  "t1_credited": [],
+  "gold_wf": [
+   "BONOBO",
+   "LIONESS-COEXPRESSION"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "No concrete result is named.",
+  "prompt": "I have expression profiles from two tumour samples, already log-transformed and centred. I'd love to find something interesting about gene interactions in them, but I have nothing specific in mind yet"
+ },
+ {
+  "run": "j5a",
+  "id": "W45",
+  "group": "N",
+  "gold": "DO",
+  "final": "DECLINE",
+  "verdict": "FR",
+  "sent": [
+   "prompt",
+   "restate"
+  ],
+  "turns": 2,
+  "path": "CLARIFY/goal_open ; DECLINE/full_gap",
+  "t1_linked": [
+   "GIRAFFE"
+  ],
+  "t1_credited": [],
+  "gold_wf": [
+   "GIRAFFE"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "GIRAFFE returns a TF-by-sample activity matrix and signed TF-gene effects (activation positive, repression negative).",
+  "prompt": "We want to know which transcription factors are actually switched on in each of our 32 endometriosis lesions, beyond what their own mRNA levels suggest, and whether each factor pushes its targets up o"
+ },
+ {
+  "run": "j6a",
+  "id": "X02",
+  "group": "U",
+  "gold": "DO",
+  "final": "ASK",
+  "verdict": "extra questions",
+  "sent": [
+   "prompt",
+   "fact",
+   "fact"
+  ],
+  "turns": 3,
+  "path": "ASK/jev_agent ; ASK/jev_agent ; ASK/jev_agent",
+  "t1_linked": [
+   "COBRA"
+  ],
+  "t1_credited": [
+   "COBRA"
+  ],
+  "gold_wf": [
+   "COBRA"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 2,
+  "gold_reason": "COBRA requires a design file of numeric covariates for the same samples; if it exists COBRA can run (18,000 genes > 90 samples), if not it cannot.",
+  "prompt": "I want COBRA to show how gene co-expression in our 90 bovine milk samples (about 18,000 genes) is associated with lactation stage and sequencing batch. The expression matrix is labelled gene-by-sample"
+ },
+ {
+  "run": "j6a",
+  "id": "X06",
+  "group": "GT",
+  "gold": "DO",
+  "final": "DECLINE",
+  "verdict": "FR",
+  "sent": [
+   "prompt",
+   "form",
+   "form"
+  ],
+  "turns": 3,
+  "path": "ASK/needs_fact ; ASK/needs_fact ; DECLINE/full_gap",
+  "t1_linked": [
+   "CONDOR"
+  ],
+  "t1_credited": [
+   "CONDOR"
+  ],
+  "gold_wf": [
+   "CONDOR"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "CONDOR takes a source-target-weight edge list built from a regulator-gene network and returns community assignments; the stated file matches that and the user d",
+  "prompt": "I exported our aggregate PANDA network for human airway epithelium as a CSV with source, target and weight columns, TFs as sources and genes as targets. I already thresholded it so every remaining wei"
+ },
+ {
+  "run": "j6a",
+  "id": "X07",
+  "group": "TC",
+  "gold": "DO",
+  "final": "ASK",
+  "verdict": "extra questions",
+  "sent": [
+   "prompt",
+   "restate",
+   "restate"
+  ],
+  "turns": 3,
+  "path": "ASK/count_fact ; ASK/count_fact ; ASK/count_fact",
+  "t1_linked": [
+   "LIONESS-DRAGON"
+  ],
+  "t1_credited": [
+   "LIONESS-DRAGON"
+  ],
+  "gold_wf": [
+   "LIONESS-DRAGON"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "Both layers come from the same samples; F = 500 features gives 500*499/2 = 124,750 pairs x 80 samples = 9,980,000 values, under the 20,000,000 limit, and 80 sam",
+  "prompt": "We measured plasma transcripts (300 features) and metabolites (200 features) on the same 80 type 2 diabetes patients, and both tables use identical patient IDs. I'd like LIONESS-DRAGON to give each pa"
+ },
+ {
+  "run": "j6a",
+  "id": "X22",
+  "group": "U",
+  "gold": "DECLINE",
+  "final": "ASK",
+  "verdict": "extra questions",
+  "sent": [
+   "prompt",
+   "fact",
+   "restate"
+  ],
+  "turns": 3,
+  "path": "ASK/fact_agent ; ASK/jev_agent ; ASK/jev_agent",
+  "t1_linked": [
+   "LIONESS-DRAGON"
+  ],
+  "t1_credited": [
+   "LIONESS-DRAGON"
+  ],
+  "gold_wf": [
+   "LIONESS-DRAGON"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "With 150 metabolites F = 550 gives 150,975 pairs x 100 = 15,097,500 values (allowed); with 400 F = 800 gives 319,600 x 100 = 31,960,000 (over 20,000,000, refuse",
+  "prompt": "We have 100 breast tumors with 400 transcript features and a metabolite panel measured on the same tumors, and we want LIONESS-DRAGON networks for every tumor. The transcript and metabolite tables sha"
+ },
+ {
+  "run": "j6a",
+  "id": "X30",
+  "group": "SA",
+  "gold": "DO",
+  "final": "DECLINE",
+  "verdict": "FR",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "DECLINE/full_gap",
+  "t1_linked": [
+   "OTTER"
+  ],
+  "t1_credited": [],
+  "gold_wf": [
+   "OTTER"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "OTTER builds an aggregate TF-to-gene network from expression, motif and PPI; one run per stage with 12 samples meets its two-sample minimum.",
+  "prompt": "Our human cardiomyocyte differentiation has three stages (mesoderm, progenitor, beating cardiomyocyte) with 12 bulk RNA-seq samples per stage. We have a motif prior and a TF-TF PPI list whose TFs matc"
+ },
+ {
+  "run": "j7off",
+  "id": "Y07",
+  "group": "FN",
+  "gold": "DO",
+  "final": "ASK",
+  "verdict": "extra questions",
+  "sent": [
+   "prompt",
+   "form",
+   "form"
+  ],
+  "turns": 3,
+  "path": "ASK/needs_fact ; ASK/needs_fact ; ASK/needs_fact",
+  "t1_linked": [
+   "CONDOR"
+  ],
+  "t1_credited": [
+   "CONDOR"
+  ],
+  "gold_wf": [
+   "CONDOR"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "The user's network is a regulator-to-gene edge list with source, target and weight columns, which the community workflow consumes.",
+  "prompt": "From ChIP-seq peaks in human hepatocytes we made a network where each link goes from a transcription factor to one of its target genes, saved as a CSV with source (TF), target (gene) and a numeric wei"
+ },
+ {
+  "run": "j7off",
+  "id": "Y12",
+  "group": "N",
+  "gold": "DECLINE",
+  "final": "DO",
+  "verdict": "FA",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "DO/results_given",
+  "t1_linked": [
+   "GIRAFFE"
+  ],
+  "t1_credited": [
+   "GIRAFFE"
+  ],
+  "gold_wf": [
+   "GIRAFFE"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "The matching workflow returns signed TF-gene effects and TF activity but requires at least two expression samples; one pooled library is a single sample.",
+  "prompt": "We want a map of which transcription factors switch which genes on or off, with a sign for activation versus repression, and an estimate of how active each factor is, to decide which factors to knock "
+ },
+ {
+  "run": "j7off",
+  "id": "Y14",
+  "group": "U",
+  "gold": "DECLINE",
+  "final": "DO",
+  "verdict": "FA",
+  "sent": [
+   "prompt",
+   "fact"
+  ],
+  "turns": 2,
+  "path": "ASK/jev_agent ; DO/results_given",
+  "t1_linked": [
+   "OTTER"
+  ],
+  "t1_credited": [
+   "OTTER"
+  ],
+  "gold_wf": [
+   "OTTER"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "OTTER requires a TF-TF PPI file; whether one exists decides whether the run is possible.",
+  "prompt": "I want to run OTTER to get a TF-to-gene network for sheep skeletal muscle, using our RNA-seq matrix of 30 animals and a TF motif prior. I don't know whether anyone in the group ever put together a TF-"
+ },
+ {
+  "run": "j7off",
+  "id": "Y16",
+  "group": "FT",
+  "gold": "DO",
+  "final": "DECLINE",
+  "verdict": "FR",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "DECLINE/full_gap",
+  "t1_linked": [
+   "LIONESS-PANDA"
+  ],
+  "t1_credited": [],
+  "gold_wf": [
+   "LIONESS-PUMA"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "LIONESS-PUMA builds one TF/miRNA-to-gene network per sample from expression, motif, PPI and a miRNA list; 24 samples is above the minimum of three, and comparin",
+  "prompt": "Our zebrafish fin regeneration time course has RNA-seq at 0, 2, 4 and 7 days post amputation, six fish per time point, so 24 samples in one expression matrix. I also have a motif prior that includes m"
+ },
+ {
+  "run": "j7off",
+  "id": "Y18",
+  "group": "N",
+  "gold": "DO",
+  "final": "DECLINE",
+  "verdict": "FR",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "DECLINE/full_gap",
+  "t1_linked": [],
+  "t1_credited": [],
+  "gold_wf": [
+   "SAMBAR"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "SAMBAR turns somatic mutations into gene-length- and burden-normalized pathway mutation scores, and can return the scores without clustering.",
+  "prompt": "For our melanoma exome cohort of 85 tumours I have the mutation matrix, exon lengths per gene, a cancer gene list and a pathway GMT file. I'd like, for each tumour, a score per biological pathway sayi"
+ },
+ {
+  "run": "j7off",
+  "id": "Y19",
+  "group": "V",
+  "gold": "DECLINE",
+  "final": "none",
+  "verdict": "other",
+  "sent": [
+   "prompt",
+   "result",
+   "restate"
+  ],
+  "turns": 3,
+  "path": "CLARIFY/goal_unclear ; ASK/jev_condition ; None/None",
+  "t1_linked": [],
+  "t1_credited": [],
+  "gold_wf": [
+   "PANDA"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "The user lists data and output-sounding words but asks what is possible rather than naming a result, so the assistant should ask which result they want.",
+  "prompt": "We have somatic mutation calls for 70 head and neck tumours as a gene-by-tumour matrix, and I keep hearing about networks, modules and pathway scores. What kinds of outputs could these mutation calls "
+ },
+ {
+  "run": "j7off",
+  "id": "Y22",
+  "group": "U",
+  "gold": "DECLINE",
+  "final": "DO",
+  "verdict": "FA",
+  "sent": [
+   "prompt",
+   "fact",
+   "restate"
+  ],
+  "turns": 3,
+  "path": "ASK/jev_agent ; CLARIFY/goal_unclear ; DO/results_given",
+  "t1_linked": [
+   "BONOBO"
+  ],
+  "t1_credited": [
+   "BONOBO"
+  ],
+  "gold_wf": [
+   "BONOBO"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "BONOBO requires the expression to be declared log-transformed and centered; whether it is log-transformed decides whether it can run.",
+  "prompt": "Please run BONOBO on our expression matrix from 25 human islet donors (genes in rows, donors in columns, labelled header) to get a co-expression network for each donor. The values have been centered g"
+ },
+ {
+  "run": "j7off",
+  "id": "Y25",
+  "group": "U",
+  "gold": "ASK",
+  "final": "DO",
+  "verdict": "MA",
+  "sent": [
+   "prompt",
+   "restate"
+  ],
+  "turns": 2,
+  "path": "ASK/fact_agent ; DO/results_given",
+  "t1_linked": [
+   "LIONESS-COEXPRESSION"
+  ],
+  "t1_credited": [
+   "LIONESS-COEXPRESSION"
+  ],
+  "gold_wf": [
+   "COBRA"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "COBRA needs more genes than samples; with 150 samples, 400 genes passes and 120 genes fails.",
+  "prompt": "I'd like to see how gene-gene co-expression in blood shifts with age and BMI across our 150 participants, using an expression matrix and a design file of numeric covariates with the same sample IDs. T"
+ },
+ {
+  "run": "j7off",
+  "id": "Y26",
+  "group": "MF",
+  "gold": "DO",
+  "final": "DECLINE",
+  "verdict": "FR",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "DECLINE/full_gap",
+  "t1_linked": [
+   "GIRAFFE"
+  ],
+  "t1_credited": [],
+  "gold_wf": [
+   "GIRAFFE"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "GIRAFFE takes expression, a TF-gene prior edge list and a TF PPI list and returns TF activity per sample plus signed effects; the sample sheet is harmless to it",
+  "prompt": "For our Arabidopsis drought study I have these files: an expression table with genes in rows and 36 samples in columns, with a header; a TF-to-gene prior as a three-column regulator, gene, weight list"
+ },
+ {
+  "run": "j8new",
+  "id": "Z03",
+  "group": "P",
+  "gold": "DO",
+  "final": "ASK",
+  "verdict": "extra questions",
+  "sent": [
+   "prompt",
+   "restate",
+   "restate"
+  ],
+  "turns": 3,
+  "path": "ASK/jev_link ; ASK/setting_unresolved ; ASK/setting_unresolved",
+  "t1_linked": [
+   "PANDA"
+  ],
+  "t1_credited": [
+   "PANDA"
+  ],
+  "gold_wf": [
+   "PANDA"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "PANDA runs with its own settings; its only exposed control is with_header, so alpha and an iteration cap cannot be set.",
+  "prompt": "Please run PANDA on our 52 kidney cortex samples with the motif prior and PPI table I uploaded. Set the update rate alpha to 0.25 and cap it at 500 iterations."
+ },
+ {
+  "run": "j8new",
+  "id": "Z04",
+  "group": "U",
+  "gold": "ASK",
+  "final": "UNCHECKED",
+  "verdict": "UNCHECKED",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "UNCHECKED/check_unconfirmed",
+  "t1_linked": [],
+  "t1_credited": [],
+  "gold_wf": [
+   "PUMA"
+  ],
+  "relink_lost": false,
+  "provider_error": true,
+  "answers_bound": 0,
+  "gold_reason": "PUMA needs miRNA targets in the prior and a miRNA list; without them no workflow models miRNA regulators.",
+  "prompt": "I want one regulatory network for our 40 zebrafish heart samples in which both transcription factors and miRNAs act as regulators of genes. I have the expression matrix, a TF motif prior and a PPI tab"
+ },
+ {
+  "run": "j8new",
+  "id": "Z05",
+  "group": "N",
+  "gold": "DO",
+  "final": "DECLINE",
+  "verdict": "FR",
+  "sent": [
+   "prompt",
+   "restate"
+  ],
+  "turns": 2,
+  "path": "CLARIFY/goal_open ; DECLINE/full_gap",
+  "t1_linked": [
+   "GIRAFFE"
+  ],
+  "t1_credited": [],
+  "gold_wf": [
+   "GIRAFFE"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "GIRAFFE jointly estimates per-sample TF activity and signed regulatory effects from expression, motif and PPI.",
+  "prompt": "We want to know which transcription factors are really switched on in each of our 36 tumour samples, apart from how much of each TF's own mRNA is there, and whether each TF pushes its targets up or do"
+ },
+ {
+  "run": "j8new",
+  "id": "Z08",
+  "group": "N",
+  "gold": "DO",
+  "final": "DECLINE",
+  "verdict": "FR",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "DECLINE/full_gap",
+  "t1_linked": [],
+  "t1_credited": [],
+  "gold_wf": [
+   "SAMBAR"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "SAMBAR produces pathway mutation scores with gene-length and mutation-burden normalization; clustering can be switched off.",
+  "prompt": "To prioritise pathways for a drug screen, I'd like a score for how heavily each biological pathway is hit by somatic mutations in each of our 90 head-and-neck tumours, corrected for gene length and ea"
+ },
+ {
+  "run": "j8new",
+  "id": "Z15",
+  "group": "FN",
+  "gold": "DO",
+  "final": "ASK",
+  "verdict": "extra questions",
+  "sent": [
+   "prompt",
+   "form",
+   "form"
+  ],
+  "turns": 3,
+  "path": "ASK/needs_fact ; ASK/needs_fact ; ASK/needs_fact",
+  "t1_linked": [
+   "CONDOR"
+  ],
+  "t1_credited": [
+   "CONDOR"
+  ],
+  "gold_wf": [
+   "CONDOR"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "CONDOR detects communities in a regulator-gene bipartite edge list with source and target columns; the weight column is optional.",
+  "prompt": "From ChIP-seq peaks in K562 cells I built a regulatory network: a two-column table where the first column is a transcription factor and the second is a target gene it binds near. I'd like to find modu"
+ },
+ {
+  "run": "j8new",
+  "id": "Z18",
+  "group": "V",
+  "gold": "CLARIFY",
+  "final": "DO",
+  "verdict": "MA",
+  "sent": [
+   "prompt"
+  ],
+  "turns": 1,
+  "path": "DO/results_given",
+  "t1_linked": [],
+  "t1_credited": [],
+  "gold_wf": [
+   "DRAGON",
+   "LIONESS-DRAGON"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "No concrete result is named; the assistant should ask which result is wanted.",
+  "prompt": "We have proteomics (400 proteins) and metabolomics (150 metabolites) from the same 25 mice in a high-fat diet experiment, with matching sample IDs and no missing values. I'd love to find something int"
+ },
+ {
+  "run": "j8new",
+  "id": "Z20",
+  "group": "U",
+  "gold": "DO",
+  "final": "DECLINE",
+  "verdict": "FR",
+  "sent": [
+   "prompt",
+   "fact",
+   "restate"
+  ],
+  "turns": 3,
+  "path": "ASK/count_fact ; ASK/jev_link ; DECLINE/full_gap",
+  "t1_linked": [
+   "COBRA"
+  ],
+  "t1_credited": [
+   "COBRA"
+  ],
+  "gold_wf": [
+   "COBRA"
+  ],
+  "relink_lost": true,
+  "provider_error": false,
+  "answers_bound": 1,
+  "gold_reason": "COBRA needs more genes than samples: 400 genes > 220 samples passes, 150 genes < 220 samples fails.",
+  "prompt": "I want to separate the co-expression associated with collection site from the rest in our 220 serum samples, using a design table with site coded 1-4 and age as numeric columns. The sequencing core wi"
+ },
+ {
+  "run": "j8new",
+  "id": "Z22",
+  "group": "U",
+  "gold": "DO",
+  "final": "ASK",
+  "verdict": "extra questions",
+  "sent": [
+   "prompt",
+   "restate",
+   "fact"
+  ],
+  "turns": 3,
+  "path": "ASK/jev_fact ; ASK/fact_agent ; ASK/jev_fact",
+  "t1_linked": [
+   "LIONESS-DRAGON"
+  ],
+  "t1_credited": [],
+  "gold_wf": [
+   "LIONESS-DRAGON"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "With 800 proteins the run is 1,800 features: 1,619,100 pairs x 10 = 16,191,000 values (allowed); with 3,000 proteins it is 4,000 features: 7,998,000 pairs x 10 ",
+  "prompt": "I want a separate RNA-protein partial-correlation network for each of our 10 kidney transplant biopsies with LIONESS-DRAGON, using a 1,000-gene RNA table as layer one; both layers come from the same 1"
+ },
+ {
+  "run": "j8new",
+  "id": "Z30",
+  "group": "V",
+  "gold": "DECLINE",
+  "final": "DO",
+  "verdict": "FA",
+  "sent": [
+   "prompt",
+   "result"
+  ],
+  "turns": 2,
+  "path": "CLARIFY/goal_unclear ; DO/results_given",
+  "t1_linked": [],
+  "t1_credited": [],
+  "gold_wf": [
+   "LIONESS-PANDA"
+  ],
+  "relink_lost": false,
+  "provider_error": false,
+  "answers_bound": 0,
+  "gold_reason": "The user asks what can be learned and names no concrete result; the assistant should ask which result is wanted.",
+  "prompt": "I have somatic mutation calls for 30 melanoma patients as a samples-by-genes matrix. What could modules or networks tell me about these patients?"
+ }
+]
