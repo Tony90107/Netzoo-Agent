@@ -23,3 +23,13 @@ DECLINE jev_answer with SAMBAR's line, all controls unchanged. Survey: 2 recorde
 W07), both gold DECLINE.
 
 Please rerun your tests on the branch tip and reply with objections or "ok"; the user decides the merge.
+
+## Review received (jev-guard, branch tip cfe6f834): ok, no blocking objections
+
+Reran clean: test_jev_guard + test_jev_* + test_has_incompatible + test_confirmed_reason + test_exhausted_wording,
+120 passed. Confirmed: the has-read adds only incompatible-list rule-outs and only when not all are already ruled out
+(accepted-input branch, W17/Z14 untouched); `ruled_kind` is set only on the asking path; `confirmed_violation_core`
+leaves a DO as before and touches only DECLINE full_gap with a code-bound yes. Non-blocking notes: (a) a call could be
+all ruled out by two different reads while the confirm names only workflows[0]'s kind -- 0 of 33 all-ruled calls in
+measure.json; (b) on full_gap the new line names only the confirmed workflow and drops "no registered workflow
+matched" -- narrower, not wrong.
