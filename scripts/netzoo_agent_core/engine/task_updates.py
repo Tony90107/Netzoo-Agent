@@ -127,6 +127,12 @@ def bind_answers(state: TaskState | None, reply: str) -> tuple[TaskState | None,
     first = text.split(" ", 1)[0].rstrip(".") if text else ""
     if not picks and len(asked) == 1 and asked[0].yes_no and first in _YES | _NO:
         picks = {asked[0].question_id: "yes" if first in _YES else "no"}
+    from .answer_buttons import buttons, buttons_mode  # answer-buttons: a clicked button binds what it shows
+
+    if buttons_mode() == "on" and len(asked) == 1:
+        clicked = [value for value, _label, answer in buttons(asked[0]) if _fold(answer) == text]
+        if len(clicked) == 1:
+            picks = {asked[0].question_id: clicked[0]}
     turn = state.turns
     bound = [TaskFact(question_id=question.question_id, source=question.source, what=question.what,
                       question=question.question, user_quote=question.user_quote, options=question.options,

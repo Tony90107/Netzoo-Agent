@@ -545,8 +545,10 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
                          points=["Asking again re-runs the check; restating the result you want usually helps."])
     if kind == "ask_facts" and decision.core is not None:  # core decision phase 2
         asked = [fact.question for fact in decision.core.facts]
+        from .answer_buttons import ask_choices  # answer-buttons: its one question's answers as buttons, when on
+
         return ReplyCard(kind="clarification", headline="One fact decides your request; please tell me first.",
-                         points=[clip(question, 300) for question in asked][:6])
+                         points=[clip(question, 300) for question in asked][:6], choices=ask_choices(decision.core))
     if kind == "clarify_goal" and decision.clarification_question:  # core decision phase 1
         return ReplyCard(kind="clarification",
                          headline="I need to know which result you want before choosing a workflow.",
