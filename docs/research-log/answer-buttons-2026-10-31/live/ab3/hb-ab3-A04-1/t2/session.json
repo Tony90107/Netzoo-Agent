@@ -1,0 +1,733 @@
+{
+  "version": 1,
+  "session_id": "hb-ab3-A04-1",
+  "profile_id": "hb-ab3-A04-1",
+  "auto_generated": false,
+  "created_at": 1793457844.4526248,
+  "updated_at": 1793457875.929722,
+  "messages": [
+    {
+      "role": "user",
+      "content": "I'd like a separate gene-gene co-expression network for each of 20 hypothalamus samples, with a p-value for every connection so I can keep only the significant ones. The values are centered per gene. I'm not sure whether our pipeline log-transformed them before export."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Was the expression data log-transformed before export?\n  You wrote: \"I'm not sure whether our pipeline log-transformed them before export\". BONOBO's contract: \"BONOBO requires it\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: I'd like a separate gene-gene co-expression network for each of 20 hypothalamus samples, with a p-value for every connection so I can keep only the significant ones. The values are centered per gene. I'm not sure whether our pipeline log-transformed them before export.\nUser follow-up: Yes"
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"I'd like a separate gene-gene co-expression network for each of 20 hypothalamus samples, with a p-value for every connection so I can keep only the significant ones.\" -- available from LIONESS-COEXPRESSION.\n\nBased on what you said — \"a p-value for every connection so I can keep only the significant ones.\" — **BONOBO** fits better: a confidence value (p-value) is needed for each connection in each sample.\n\nYour question asks for a per-sample co-expression network. **BONOBO** fits that result and scale.\n\n**BONOBO** (recommend) — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable. Needs expression matrix. Produces inferred gene-to-gene associations; p-value matrix paired with a sample-specific gene-gene co-expression result (one result per sample).\n\nConditional assumptions to confirm:\n- It also needs an expression matrix; no file for it is named yet.\n- The expression data is already log-transformed as confirmed by the user.\n\nOther compatible option(s):\n- **LIONESS-COEXPRESSION** — preferred when: dozens of samples or more; no sample covariates need to be separated or adjusted; approach: derive each sample network from all-sample and leave-one-out networks.\n\nShould I use BONOBO, or does another listed option fit your study better?\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The user is seeking guidance on how to obtain separate gene-gene co-expression networks, which indicates an answer request rather than an execution authorization.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The user is seeking guidance on how to obtain separate gene-gene co-expression networks, which indicates an answer request rather than an execution authorization.",
+      "candidate_actions": [
+        "run_lioness_coexpression",
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [
+          "gene",
+          "sample"
+        ],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "sparse_pvalue_coexpression"
+        ],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [
+              "gene",
+              "sample"
+            ],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "sparse_pvalue_coexpression"
+            ],
+            "granularity": "sample_specific",
+            "unresolved_dimensions": []
+          },
+          "confidence": 1.0,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "I'd like a separate gene-gene co-expression network for each of 20 hypothalamus samples.",
+              "rationale": "The user wants to construct a co-expression network from the data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "gene-gene co-expression network",
+              "rationale": "The user specifies the type of network they want to create."
+            },
+            {
+              "dimension": "granularity",
+              "value": "sample_specific",
+              "source": "explicit",
+              "text_span": "for each of 20 hypothalamus samples",
+              "rationale": "The user requests separate networks for each sample."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "gene-gene co-expression network",
+              "rationale": "The network involves gene interactions."
+            },
+            {
+              "dimension": "selection_tag",
+              "value": "sparse_pvalue_coexpression",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user wants to keep only significant connections, which aligns with the sparse p-value co-expression signal."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [
+        "run_lioness_coexpression",
+        "run_bonobo"
+      ],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Should I use BONOBO, or does another listed option fit your study better?",
+      "advisory_recommendation": {
+        "action": "run_bonobo",
+        "conditions": [
+          {
+            "axis": "per_edge_confidence",
+            "value": "needed",
+            "text_span": "a p-value for every connection so I can keep only the significant ones."
+          }
+        ],
+        "rationale": "BONOBO provides sample-specific gene-gene co-expression networks with Bayesian shrinkage estimation, allowing for the calculation of p-values for each connection. This aligns perfectly with your requirement to retain only significant connections. It consumes a gene-by-sample expression matrix and outputs a co-expression matrix for each sample along with matching p-value matrices, which is essential for your analysis.",
+        "supporting_spans": [
+          "a p-value for every connection so I can keep only the significant ones."
+        ],
+        "assumptions": [
+          "It also needs an expression matrix; no file for it is named yet.",
+          "The expression data is already log-transformed as confirmed by the user."
+        ]
+      },
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like a separate gene-gene co-expression network for each of 20 hypothalamus samples, with a p-value for every connection so I can keep only the significant ones.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "lioness_coexpression.per_sample_networks"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 20,
+              "samples_quote": "20"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@86-88"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "The values are centered per gene.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "I'm not sure whether our pipeline log-transformed them before export.",
+            "kind": "about_methods",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like a separate gene-gene co-expression network for each of 20 hypothalamus samples, with a p-value for every connection so I can keep only the significant ones.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "NetZoo"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@86-88",
+            "property": "sample_count",
+            "name": "",
+            "value": "20",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "20",
+            "span": [
+              86,
+              88
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "20",
+                "span": [
+                  86,
+                  88
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "20",
+                "span": [
+                  86,
+                  88
+                ],
+                "result": "I'd like a separate gene-gene co-expression network for each of 20 hypothalamus samples, with a p-value for every connection so I can keep only the significant ones.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": false,
+        "workflows": [
+          "LIONESS-COEXPRESSION"
+        ],
+        "declined": [],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "about_methods",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like a separate gene-gene co-expression network for each of 20 hypothalamus samples, with a p-value for every connection so I can keep only the significant ones."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "LIONESS-COEXPRESSION",
+          "BONOBO"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure whether our pipeline log-transformed them before export.",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "the agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression.",
+              "question": "Was the expression data log-transformed before export?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "log-transformed",
+                "not log-transformed"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure whether our pipeline log-transformed them before export.",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "the agent requires the caller to declare log_transformed=true and centered=true because BONOBO assumes log-transformed centered expression.",
+              "question": "Was the expression data centered before export?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "centered",
+                "not centered"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 46716,
+    "output_tokens": 2321,
+    "total_tokens": 49037,
+    "calls": [
+      {
+        "call_id": "03766796-3b90-486c-9c92-27ee13116add",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457846-gozUylzqZ6cgdGy6sp68",
+        "input_tokens": 871,
+        "output_tokens": 30,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 901,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 149,
+        "price_snapshot": null,
+        "duration_ms": 911,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "52c9b623-f9e5-44a2-8599-9583dc43a044",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457847-lD7lX0LdyYMpn9xDlB90",
+        "input_tokens": 1617,
+        "output_tokens": 46,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1663,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 155,
+        "price_snapshot": null,
+        "duration_ms": 1417,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "35bef970-9c03-4ca2-8f0c-9bcf7e338e49",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457848-76FQNDnl3e8Yg5mKRt4k",
+        "input_tokens": 5344,
+        "output_tokens": 288,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5632,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 581,
+        "price_snapshot": null,
+        "duration_ms": 3562,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "77a378ae-35d8-4e99-8965-c733aaa4b6a6",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457852-wt3BvhjluMY32n50eKrQ",
+        "input_tokens": 5651,
+        "output_tokens": 255,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5906,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 636,
+        "price_snapshot": null,
+        "duration_ms": 3163,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5a166800-7444-45e6-ab16-d4de3f3abefb",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457855-LJuIepAs8CzgndlHmT8k",
+        "input_tokens": 1136,
+        "output_tokens": 223,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1359,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 304,
+        "price_snapshot": null,
+        "duration_ms": 2269,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "b60a988a-6f75-4269-9493-19cd5926ce55",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 714,
+        "output_tokens": 52,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 766,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 138,
+        "price_snapshot": {
+          "snapshot_id": "3b37c530-9e13-50aa-9fa4-7c290fde9675",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-31T14:43:37.081862Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1175,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "880e17d9-8022-47cf-8da8-a3cfab9c6006",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457858-9sjaIkAmMorpKc0ceNmP",
+        "input_tokens": 1783,
+        "output_tokens": 213,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1996,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 395,
+        "price_snapshot": null,
+        "duration_ms": 2738,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c6fba591-24e6-43a9-9d9b-cd59fc47c521",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793457861-gwya4MjxsHEUUU1YbLP4",
+        "input_tokens": 21756,
+        "output_tokens": 485,
+        "cache_read_tokens": 21632,
+        "cache_write_tokens": 0,
+        "total_tokens": 22241,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1932,
+        "price_snapshot": null,
+        "duration_ms": 5082,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "21d8db27-8d1b-445b-8d92-90a456b2c40b",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457866-8zVlCQ26PNxV9lVKqTcI",
+        "input_tokens": 567,
+        "output_tokens": 57,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 624,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 119,
+        "price_snapshot": null,
+        "duration_ms": 972,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "bd1a4679-863b-4461-8faf-c193a5a3e030",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793457867-CZ98qSRICyoAvVwnR5PW",
+        "input_tokens": 5347,
+        "output_tokens": 452,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5799,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 680,
+        "price_snapshot": null,
+        "duration_ms": 5020,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1c838e40-82de-4d2b-aeb7-06305f25ec42",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457872-ixVKQfUsoIodjVMkHQgF",
+        "input_tokens": 1930,
+        "output_tokens": 220,
+        "cache_read_tokens": 1792,
+        "cache_write_tokens": 0,
+        "total_tokens": 2150,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 287,
+        "price_snapshot": null,
+        "duration_ms": 2569,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "b86c6ce5-3a40-4c29-a2af-0f4b2e03126c",
+  "task_state": {
+    "version": 2,
+    "task_id": "6838448b",
+    "revision": 3,
+    "goal": "I'd like a separate gene-gene co-expression network for each of 20 hypothalamus samples, with a p-value for every connection so I can keep only the significant ones. The values are centered per gene. I'm not sure whether our pipeline log-transformed them before export.",
+    "pending": [],
+    "facts": [
+      {
+        "question_id": "agent:BONOBO:f585211042",
+        "source": "agent",
+        "what": "BONOBO",
+        "question": "Was the expression data log-transformed before export?",
+        "user_quote": "I'm not sure whether our pipeline log-transformed them before export.",
+        "options": {},
+        "labels": {
+          "contract": "BONOBO requires it.",
+          "workflow": "BONOBO"
+        },
+        "value": "yes",
+        "answer_quote": "Yes",
+        "turn": 1,
+        "status": "known"
+      }
+    ],
+    "asked": [],
+    "rounds": 1,
+    "status": "closed",
+    "turns": 2
+  }
+}

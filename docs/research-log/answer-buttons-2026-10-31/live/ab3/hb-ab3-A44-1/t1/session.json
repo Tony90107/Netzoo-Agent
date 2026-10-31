@@ -1,0 +1,834 @@
+{
+  "version": 1,
+  "session_id": "hb-ab3-A44-1",
+  "profile_id": "hb-ab3-A44-1",
+  "auto_generated": false,
+  "created_at": 1793457856.0916429,
+  "updated_at": 1793457856.09168,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We have 400 plasma samples with numeric covariates (age, BMI and batch) in a sheet that uses the same sample IDs, and I'd like to know how each covariate is associated with gene co-expression. Our filtered gene panel is either the 350-gene or the 600-gene version. I can't recall which one went into the final expression matrix."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 350 or 600?\n  You wrote: \"either the 350-gene or the 600-gene version\".\n  - 350: no registered workflow can do this as asked -- COBRA requires more genes than samples; the request has 350 genes and 400 samples\n  - 600: COBRA can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_lioness_coexpression",
+        "run_cobra",
+        "run_bonobo",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "analyze",
+        "input_artifacts": [],
+        "artifact_type": "coexpression_network",
+        "entity_types": [
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [
+          "covariate_association"
+        ],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "analyze",
+            "input_artifacts": [],
+            "artifact_type": "coexpression_network",
+            "entity_types": [
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [
+              "covariate_association"
+            ],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "analyze",
+              "source": "explicit",
+              "text_span": "I'd like to know how each covariate is associated with gene co-expression.",
+              "rationale": "The user wants to know how covariates are associated with gene co-expression."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "coexpression_network",
+              "source": "explicit",
+              "text_span": "gene co-expression.",
+              "rationale": "The user is interested in gene co-expression."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The analysis involves samples as observations."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The analysis involves genes as the target entities."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Which of these is right: 350 or 600?",
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like to know how each covariate is associated with gene co-expression.",
+            "kind": "result",
+            "status": "needs_fact",
+            "delivered_by": [
+              "cobra.covariate_components"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "gene_gene",
+              "group_membership": "not_about_groups",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "continuous",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": "feature_count",
+            "outcomes": {
+              "350": [],
+              "600": [
+                "cobra.covariate_components"
+              ]
+            },
+            "unknown_quote": "either the 350-gene or the 600-gene version",
+            "file_checked": null,
+            "method": {
+              "samples": 400,
+              "samples_quote": "400 plasma samples"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": true,
+            "outcome_notes": {
+              "350": "COBRA requires more genes than samples; the request has 350 genes and 400 samples"
+            },
+            "fact_ids": [
+              "sample_count@8-26",
+              "feature_count@220-263:candidates"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "400 plasma samples",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "numeric covariates (age, BMI and batch)",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "the same sample IDs",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "filtered gene panel is either the 350-gene or the 600-gene version",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {
+          "either the 350-gene or the 600-gene version": []
+        },
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "how each covariate is associated with gene co-expression.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [
+          {
+            "of": "features",
+            "quote": "either the 350-gene or the 600-gene version",
+            "values": [
+              350,
+              600
+            ]
+          }
+        ],
+        "uncertain_quotes": [
+          "either the 350-gene or the 600-gene version"
+        ],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@8-26",
+            "property": "sample_count",
+            "name": "",
+            "value": "400",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "400 plasma samples",
+            "span": [
+              8,
+              26
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "400 plasma samples",
+                "span": [
+                  8,
+                  26
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "400 plasma samples",
+                "span": [
+                  8,
+                  26
+                ],
+                "result": "I'd like to know how each covariate is associated with gene co-expression.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "400 plasma samples",
+                "span": [
+                  8,
+                  26
+                ],
+                "result": "I'd like to know how each covariate is associated with gene co-expression.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "feature_count@220-263:candidates",
+            "property": "feature_count",
+            "name": "",
+            "value": "",
+            "values": [
+              "350",
+              "600"
+            ],
+            "state": "unsure",
+            "origin": "user_stated",
+            "quote": "either the 350-gene or the 600-gene version",
+            "span": [
+              220,
+              263
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "unknown_facts",
+                "quote": "either the 350-gene or the 600-gene version",
+                "span": [
+                  220,
+                  263
+                ],
+                "result": "",
+                "role": "alternative"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "COBRA"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Which of these is right: 350 or 600?",
+            "user_quote": "either the 350-gene or the 600-gene version",
+            "workflows": [
+              "COBRA"
+            ],
+            "contract_quote": "",
+            "depends_on": "feature_count",
+            "outcomes": {
+              "350": [],
+              "600": [
+                "COBRA"
+              ]
+            },
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": true,
+            "notes": {
+              "350": "COBRA requires more genes than samples; the request has 350 genes and 400 samples"
+            },
+            "fact_key": "count:feature_count@220-263"
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "count_fact",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "ambiguous",
+          "artifact_type": "coexpression_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "needs_fact"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "how each covariate is associated with gene co-expression."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "obligations": [
+            {
+              "fact_key": "count:feature_count@220-263",
+              "source": "count",
+              "question": "Which of these is right: 350 or 600?",
+              "user_quote": "either the 350-gene or the 600-gene version",
+              "workflows": [
+                "COBRA"
+              ],
+              "status": "asked",
+              "asked_as": ""
+            }
+          ]
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "COBRA",
+          "LIONESS-COEXPRESSION",
+          "BONOBO"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I can't recall which one went into the final expression matrix.",
+              "uncertainty": "said_unknown",
+              "workflow": "COBRA",
+              "contract_quote": "Expression must be a labeled gene-by-sample matrix with more genes than samples.",
+              "question": "Do you know which gene panel version was used in the final expression matrix?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "350-gene",
+                "600-gene"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I can't recall which one went into the final expression matrix.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-COEXPRESSION",
+              "contract_quote": "Require at least three samples and validate expression inside the execution wrapper.",
+              "question": "Do you have at least three samples in your expression matrix?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I can't recall which one went into the final expression matrix.",
+              "uncertainty": "said_unknown",
+              "workflow": "BONOBO",
+              "contract_quote": "Expression data must be numeric, finite, complete, gene-by-sample, and have at least three total samples so each leave-one-out background has at least two samples.",
+              "question": "Do you have at least three samples in your expression matrix?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": []
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 41154,
+    "output_tokens": 1813,
+    "total_tokens": 42967,
+    "calls": [
+      {
+        "call_id": "1f722ea5-ff17-414b-b9a1-9316649eab9c",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457833-QuNrtz3ITPVC9Pqib4F3",
+        "input_tokens": 5354,
+        "output_tokens": 259,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5613,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 565,
+        "price_snapshot": null,
+        "duration_ms": 3856,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6fb107af-830f-4060-8ecb-d70ca4b3917a",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457837-vcKBRQeXsUUTlbE5LSMl",
+        "input_tokens": 5657,
+        "output_tokens": 207,
+        "cache_read_tokens": 4864,
+        "cache_write_tokens": 0,
+        "total_tokens": 5864,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 608,
+        "price_snapshot": null,
+        "duration_ms": 2624,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "8cd75b52-9b67-41d5-87c1-1860196c6b06",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457839-7eUQFGDiMaGSvjxHOSsj",
+        "input_tokens": 1128,
+        "output_tokens": 103,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1231,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 231,
+        "price_snapshot": null,
+        "duration_ms": 1631,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "c75ddf6b-dea9-4951-9b4c-b4b0a9e9de10",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 687,
+        "output_tokens": 54,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 741,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 135,
+        "price_snapshot": {
+          "snapshot_id": "3b37c530-9e13-50aa-9fa4-7c290fde9675",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-31T14:43:37.081862Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 1134,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "3b06d0d9-0697-46c7-a8ed-1675ad267b89",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457842-7c2S1M7jcEEiXbCAoQmm",
+        "input_tokens": 1693,
+        "output_tokens": 73,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1766,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 298,
+        "price_snapshot": null,
+        "duration_ms": 1389,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e832cecd-2005-4263-9474-eba35183fdda",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793457844-3vAq1eAEZKoA9q54ILZm",
+        "input_tokens": 18574,
+        "output_tokens": 610,
+        "cache_read_tokens": 18432,
+        "cache_write_tokens": 0,
+        "total_tokens": 19184,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1770,
+        "price_snapshot": null,
+        "duration_ms": 5597,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "409802f3-7cea-4324-9867-4d87274b1e80",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457849-jP435WXoCUGN73UWS3zv",
+        "input_tokens": 577,
+        "output_tokens": 32,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 609,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 106,
+        "price_snapshot": null,
+        "duration_ms": 959,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "a010c519-87d9-412b-b69f-92665505069a",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793457850-riJEcyW1iEuD6tpgdD02",
+        "input_tokens": 5381,
+        "output_tokens": 159,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5540,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 509,
+        "price_snapshot": null,
+        "duration_ms": 2028,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2ca0c380-3044-4d6a-9212-fa3d5832fd0a",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793457852-uW89gAfehWMcuDcvF9fL",
+        "input_tokens": 2103,
+        "output_tokens": 316,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 2419,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 505,
+        "price_snapshot": null,
+        "duration_ms": 3327,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "ca8bfe45-cd03-4727-b8b4-f9d66706b921",
+  "task_state": {
+    "version": 2,
+    "task_id": "66115a7a",
+    "revision": 1,
+    "goal": "We have 400 plasma samples with numeric covariates (age, BMI and batch) in a sheet that uses the same sample IDs, and I'd like to know how each covariate is associated with gene co-expression. Our filtered gene panel is either the 350-gene or the 600-gene version. I can't recall which one went into the final expression matrix.",
+    "pending": [
+      {
+        "question_id": "count:feature_count:6af73e2169",
+        "source": "count",
+        "what": "feature_count",
+        "question": "Which of these is right: 350 or 600?",
+        "user_quote": "either the 350-gene or the 600-gene version",
+        "workflows": [
+          "COBRA"
+        ],
+        "options": {
+          "350": [],
+          "600": [
+            "COBRA"
+          ]
+        },
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "asked": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}
