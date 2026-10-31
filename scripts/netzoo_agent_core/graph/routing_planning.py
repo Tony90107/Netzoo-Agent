@@ -67,6 +67,9 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     from .agent_answer_call import apply_agent_answer
 
     core = apply_agent_answer(context, state, core, user_task)
+    from .count_answer_call import apply_count_answer  # count-answers: a No to 'at least N samples?'
+
+    core = apply_count_answer(context, state, core, user_task)
     # Harness repair P3: a third round of clarification is not asked (spec 7.2).
     from ..interpretation.task_answers import clarification_rounds
 

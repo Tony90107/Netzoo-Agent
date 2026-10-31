@@ -36,7 +36,7 @@ def decline_reply(core, options: str = "") -> str:
     closing."""
     if core.basis in ("algorithm_boundary", "cobra_boundary"):
         return core.declined[0].line if core.declined else ""
-    if core.basis == "jev_answer":  # ANSWERS.md: the user's answer and the contract line; nothing said of others
+    if core.basis in ("jev_answer", "count_answer"):  # ANSWERS.md: the user's answer and the contract line only
         return "\n\n".join(["\n".join(part.line for part in core.declined), _CLOSING])
     if core.basis == "contract_veto":  # hybrid spec 4: "cannot, because <contract words>", then the nearest options
         nearest = list(dict.fromkeys(w for part in core.declined for w in part.alternatives))
