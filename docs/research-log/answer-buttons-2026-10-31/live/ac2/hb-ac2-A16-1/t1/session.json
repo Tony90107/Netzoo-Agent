@@ -1,0 +1,796 @@
+{
+  "version": 1,
+  "session_id": "hb-ac2-A16-1",
+  "profile_id": "hb-ac2-A16-1",
+  "auto_generated": false,
+  "created_at": 1793458810.756612,
+  "updated_at": 1793458810.7566452,
+  "messages": [
+    {
+      "role": "user",
+      "content": "To find which regulators drive the inflammatory phenotype in 45 psoriasis skin biopsies, I'd like to estimate how active each transcription factor is in each biopsy, inferred from its targets rather than its own transcript level, along with whether it switches each target on or off. I have the expression, a TF-gene motif prior and TF-TF interactions."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Did you mean GIRAFFE's result? GIRAFFE's contract: \"Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen.",
+      "candidate_actions": [
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network_and_tf_activity",
+        "entity_types": [
+          "tf",
+          "gene",
+          "sample"
+        ],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network_and_tf_activity",
+            "entity_types": [
+              "tf",
+              "gene",
+              "sample"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "estimate how active each transcription factor is in each biopsy",
+              "rationale": "The user wants to estimate TF activity based on its targets."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network_and_tf_activity",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The user is interested in both TF activity and its regulatory effects on targets."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "which regulators drive the inflammatory phenotype",
+              "rationale": "Transcription factors are the regulators of interest."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "targets rather than its own transcript level",
+              "rationale": "Genes are the targets of the transcription factors."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "explicit",
+              "text_span": "in 45 psoriasis skin biopsies",
+              "rationale": "The analysis is conducted on samples from biopsies."
+            },
+            {
+              "dimension": "granularity",
+              "value": "aggregate",
+              "source": "inferred",
+              "text_span": null,
+              "rationale": "The artifact type 'regulatory_network_and_tf_activity' allows for aggregate granularity when estimating TF activity across samples."
+            }
+          ],
+          "assumptions": []
+        },
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "tf_activity_matrix",
+            "entity_types": [
+              "sample",
+              "tf"
+            ],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "aggregate",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.85,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "estimate how active each transcription factor is in each biopsy",
+              "rationale": "The user wants to estimate TF activity based on its targets."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "tf_activity_matrix",
+              "source": "explicit",
+              "text_span": "how active each transcription factor is in each biopsy",
+              "rationale": "The user is specifically interested in TF activity levels."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "which regulators drive the inflammatory phenotype",
+              "rationale": "Transcription factors are the regulators of interest."
+            },
+            {
+              "dimension": "entity_type",
+              "value": "sample",
+              "source": "explicit",
+              "text_span": "in 45 psoriasis skin biopsies",
+              "rationale": "The analysis is conducted on samples from biopsies."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "ambiguous",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": "Did you mean GIRAFFE's result?",
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a TF-gene motif prior and TF-TF interactions",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a TF-gene motif prior and TF-TF interactions",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a TF-gene motif prior and TF-TF interactions",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "I'd like to estimate how active each transcription factor is in each biopsy, inferred from its targets rather than its own transcript level, along with whether it switches each target on or off.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 45,
+              "samples_quote": "45 psoriasis skin biopsies"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@61-87"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "whether it switches each target on or off",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": true,
+              "input_network": "regulator_gene",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 45,
+              "samples_quote": "45 psoriasis skin biopsies"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@61-87"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "I have the expression, a TF-gene motif prior and TF-TF interactions.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_giraffe"
+        ],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "I'd like to estimate how active each transcription factor is in each biopsy, inferred from its targets rather than its own transcript level, along with whether it switches each target on or off.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "To find which regulators drive the inflammatory phenotype in 45 psoriasis skin biopsies, I'd like to estimate how active each transcription factor is in each biopsy, inferred from its targets rather than its own transcript level, along with whether it switches each target on or off.",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@61-87",
+            "property": "sample_count",
+            "name": "",
+            "value": "45",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "45 psoriasis skin biopsies",
+            "span": [
+              61,
+              87
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "45 psoriasis skin biopsies",
+                "span": [
+                  61,
+                  87
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "45 psoriasis skin biopsies",
+                "span": [
+                  61,
+                  87
+                ],
+                "result": "I'd like to estimate how active each transcription factor is in each biopsy, inferred from its targets rather than its own transcript level, along with whether it switches each target on or off.",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "45 psoriasis skin biopsies",
+                "span": [
+                  61,
+                  87
+                ],
+                "result": "whether it switches each target on or off",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "ASK",
+        "partial": false,
+        "workflows": [
+          "GIRAFFE"
+        ],
+        "declined": [],
+        "facts": [
+          {
+            "question": "Did you mean GIRAFFE's result?",
+            "user_quote": "",
+            "workflows": [
+              "GIRAFFE"
+            ],
+            "contract_quote": "Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.",
+            "depends_on": "jev_link:GIRAFFE",
+            "outcomes": {},
+            "settled_by_input_check": false,
+            "uncertainty": "",
+            "if_yes": "",
+            "if_no": "",
+            "by_code": false,
+            "notes": {},
+            "fact_key": ""
+          }
+        ],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "jev_link",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "regulatory_network_and_tf_activity",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "I'd like to estimate how active each transcription factor is in each biopsy, inferred from its targets rather than its own transcript level, along with whether it switches each target on or off."
+          ],
+          "run_verdict": null,
+          "legacy_facts": [],
+          "jev_link": {
+            "kind_before": "CLARIFY",
+            "basis_before": "goal_open",
+            "result": "GIRAFFE",
+            "confidence": 0.72,
+            "cost": 4.7628e-05
+          }
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "whether it switches each target on or off",
+              "uncertainty": "two_versions",
+              "workflow": "GIRAFFE",
+              "contract_quote": "entries of R are signed partial regulatory effects interpretable as linear-model coefficients: positive for activation and negative for repression.",
+              "question": "Do you want to know if the transcription factors activate or repress their targets?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "how active each transcription factor is in each biopsy",
+                "whether it switches each target on or off"
+              ]
+            }
+          },
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "how active each transcription factor is in each biopsy",
+              "uncertainty": "two_versions",
+              "workflow": "GIRAFFE",
+              "contract_quote": "It returns the aggregate TF-by-gene R matrix and a TF-by-sample TFA matrix.",
+              "question": "Do you want to estimate the activity of each transcription factor in the biopsies?",
+              "yes_outcome": "supported",
+              "yes_workflow": "",
+              "no_outcome": "not_supported",
+              "no_workflow": "",
+              "about": "wanted_result",
+              "alternatives": [
+                "how active each transcription factor is in each biopsy",
+                "whether it switches each target on or off"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 31835,
+    "output_tokens": 2047,
+    "total_tokens": 33882,
+    "calls": [
+      {
+        "call_id": "03a47675-0ca2-4975-9621-29230450e1f4",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793458786-5001nOaxrbWlXRgVJRyL",
+        "input_tokens": 5347,
+        "output_tokens": 562,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5909,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 746,
+        "price_snapshot": null,
+        "duration_ms": 6185,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "d6fadc41-3a6d-480d-a49a-f328c8a4b17a",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793458792-JorXavSPRVUovN95bWkb",
+        "input_tokens": 5944,
+        "output_tokens": 169,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6113,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 695,
+        "price_snapshot": null,
+        "duration_ms": 2298,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "0cb3b44a-7422-4d83-9a63-fbdb7223f4a6",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 668,
+        "output_tokens": 50,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 718,
+        "usage_provenance": "estimated",
+        "cost_provenance": "estimated",
+        "cost_micro_usd": 130,
+        "price_snapshot": {
+          "snapshot_id": "67c951a1-01d7-5ae3-a9ff-779dbe500fee",
+          "model": "openai/gpt-4o-mini",
+          "provenance": "estimated",
+          "effective_at": "2026-10-31T14:59:43.502487Z",
+          "input_micro_usd_per_million": 150000,
+          "output_micro_usd_per_million": 600000
+        },
+        "duration_ms": 814,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "fb5951fb-6a25-4d62-8d73-28de446f29f4",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793458795-wxffuoKKRU5O6QWyvbQL",
+        "input_tokens": 1702,
+        "output_tokens": 248,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1950,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 404,
+        "price_snapshot": null,
+        "duration_ms": 2907,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "37dccd90-9159-401a-8f63-13e49cb603ae",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793458798-fLj9wvyf7ZMOwf1KMrHj",
+        "input_tokens": 15359,
+        "output_tokens": 595,
+        "cache_read_tokens": 15232,
+        "cache_write_tokens": 0,
+        "total_tokens": 15954,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1518,
+        "price_snapshot": null,
+        "duration_ms": 5534,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "672607cb-1fd3-4733-988e-312a4d28b123",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793458803-o8krgALcG8xNWyEzah60",
+        "input_tokens": 570,
+        "output_tokens": 70,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 640,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 128,
+        "price_snapshot": null,
+        "duration_ms": 1467,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "3667291a-7ffa-4d02-b9ea-f4a3d6cccb62",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793458805-2cXz5F11d1ctMxj6y9l4",
+        "input_tokens": 559,
+        "output_tokens": 47,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 606,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 112,
+        "price_snapshot": null,
+        "duration_ms": 1029,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "5deb5166-5746-418f-af42-d2931813cd0f",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793458806-5kfW357OWocrVdSJlfNQ",
+        "input_tokens": 1328,
+        "output_tokens": 244,
+        "cache_read_tokens": 1280,
+        "cache_write_tokens": 0,
+        "total_tokens": 1572,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 250,
+        "price_snapshot": null,
+        "duration_ms": 2739,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "e42289c0-e363-4e45-988f-e1a69e8571c1",
+        "role": "goal_read",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793458809-Ele6aApnKoUAyqxnWAom",
+        "input_tokens": 358,
+        "output_tokens": 62,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 420,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 91,
+        "price_snapshot": null,
+        "duration_ms": 1115,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "36e69f7b-fbc6-4cfc-9a6e-61a06dd4dae9",
+  "task_state": {
+    "version": 2,
+    "task_id": "3d3f5cb1",
+    "revision": 1,
+    "goal": "To find which regulators drive the inflammatory phenotype in 45 psoriasis skin biopsies, I'd like to estimate how active each transcription factor is in each biopsy, inferred from its targets rather than its own transcript level, along with whether it switches each target on or off. I have the expression, a TF-gene motif prior and TF-TF interactions.",
+    "pending": [
+      {
+        "question_id": "dimension:jev_link:GIRAFFE:e3b0c44298",
+        "source": "dimension",
+        "what": "jev_link:GIRAFFE",
+        "question": "Did you mean GIRAFFE's result?",
+        "user_quote": "",
+        "workflows": [
+          "GIRAFFE"
+        ],
+        "options": {},
+        "labels": {},
+        "yes_no": false,
+        "status": "asked"
+      }
+    ],
+    "facts": [],
+    "asked": [],
+    "rounds": 1,
+    "status": "active",
+    "turns": 1
+  }
+}
