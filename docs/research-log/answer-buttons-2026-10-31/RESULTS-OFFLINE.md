@@ -34,3 +34,9 @@ boolean setting (with_header) 6, input exists 4, network given 1.
 Live: at most 20 recorded conversations whose typed answer was not bound or went wrong, rerun with the flag on and
 the scripted user clicking the gold answer's button; L1 (hard) none ends worse, L2 (target) >= 70% end at the gold
 call. About US$0.10, cap US$0.20.
+
+## User decision (2026-10-31)
+
+"Pass, run live": B1 is counted as passed (the 6 two-question ASKs stay typed-only, as today). The live run's clicks
+are fixed in `CLICKS.json` before it starts: 12 conversations (j9 A16 x2, A42 x3, A04 x2, A44 x2; j10 B12 x3), the
+recorded current-system runs whose first question gets buttons and that ended wrong.
