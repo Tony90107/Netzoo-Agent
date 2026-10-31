@@ -5,7 +5,7 @@ from __future__ import annotations
 from ..engine.answer_buttons import buttons, buttons_mode
 from .contracts import MAX_OPTIONS, ReplyChoices, ReplyOption
 
-__all__ = ["ask_choices"]
+__all__ = ["ask_choices", "family_choices"]
 
 
 def ask_choices(core) -> ReplyChoices | None:
@@ -23,3 +23,22 @@ def ask_choices(core) -> ReplyChoices | None:
                for index, (_value, label, answer) in enumerate(found, 1)]
     return ReplyChoices(header="Answer", question=clip(asked[0].question, 400), options=options, allow_other=True,
                         ordering="In the order the question names them.")
+
+
+def family_choices(core) -> ReplyChoices | None:
+    """clarify-menu-2026-11-01: on a CLARIFY, every result family as a button, with the row for the user's own words;
+    None when NETZOO_CLARIFY_MENU is off or the call is not a CLARIFY."""
+    import os
+
+    from ..interpretation.result_families import families
+    from .phrases import clip
+
+    if os.environ.get("NETZOO_CLARIFY_MENU", "off").strip().lower() != "on" or core is None or core.kind != "CLARIFY":
+        return None
+    options = [ReplyOption(key=f"family-{item['key']}", label=clip(item["text"][:1].upper() + item["text"][1:], 80),
+                           description=clip(", ".join(item["workflows"]), 260),
+                           answer=clip(f"I want {item['text']}.", 600))
+               for item in families()[:MAX_OPTIONS]]
+    return ReplyChoices(header="Result", question="Which kind of result do you want?", options=options,
+                        allow_other=True, ordering="Every kind of result the registered workflows give, in a fixed "
+                                                   "order; not a recommendation.")

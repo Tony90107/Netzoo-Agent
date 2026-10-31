@@ -552,9 +552,11 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
         return ReplyCard(kind="clarification", headline="One fact decides your request; please tell me first.",
                          points=[clip(question, 300) for question in asked][:6], choices=ask_choices(decision.core))
     if kind == "clarify_goal" and decision.clarification_question:  # core decision phase 1
+        from .answer_buttons import family_choices  # clarify-menu: every kind of result, as buttons, when on
+
         return ReplyCard(kind="clarification",
                          headline="I need to know which result you want before choosing a workflow.",
-                         points=[clip(decision.clarification_question, 300)])
+                         points=[clip(decision.clarification_question, 300)], choices=family_choices(decision.core))
     if kind == "unresolved":
         return ReplyCard(
             kind="unresolved",
