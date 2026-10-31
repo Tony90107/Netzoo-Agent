@@ -498,9 +498,11 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
     if kind == "needs_fact" and decision.capability_check is not None:
         # Verdict layer step 2: one fact about the user's data decides the workflow; nothing is planned before it.
         from ..interpretation.needed_facts import fact_questions
+        from .answer_buttons import ask_choices
 
         return ReplyCard(kind="clarification", headline="One fact about your data decides which workflow applies.",
-                         points=[clip(question, 300) for question in fact_questions(decision.capability_check)][:4])
+                         points=[clip(question, 300) for question in fact_questions(decision.capability_check)][:4],
+                         choices=ask_choices(decision.core))  # answer-buttons round 2
     if kind == "run_held" and decision.run_verdict is not None:
         # Items 1-2 (2026-10-14): the run the check did not approve; each offered workflow is a planning step.
         name = workflow_name(policy, decision.run_verdict.action)
