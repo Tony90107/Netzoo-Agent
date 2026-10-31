@@ -63,6 +63,9 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     from .jev_forms_call import apply_data_first
 
     core = apply_data_first(context, state, core, user_task)
+    from .declined_conditions_call import apply_declined_conditions  # declined-conditions: off by default
+
+    core = apply_declined_conditions(context, state, core, user_task)
     # agent-answer-anchor: an answer to an agent question on a code-anchored contract line, read by Jev.
     from .agent_answer_call import apply_agent_answer
 
