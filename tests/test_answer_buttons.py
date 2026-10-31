@@ -72,3 +72,16 @@ def test_two_questions_get_no_buttons(monkeypatch):
     monkeypatch.setenv("NETZOO_ANSWER_BUTTONS", "on")
     core = CoreDecision(kind="ASK", basis="needs_fact", facts=[CONFIRM, GROUPS], workflows=["DRAGON"])
     assert ask_choices(core) is None
+
+
+def test_number_buttons_name_what_they_count(monkeypatch):
+    monkeypatch.setenv("NETZOO_ANSWER_BUTTONS", "on")
+    count = FactQuestion(question="Which of these is right: 2 or 5?", workflows=["LIONESS-COEXPRESSION"],
+                         outcomes={"2": [], "5": ["LIONESS-COEXPRESSION"]}, by_code=True, depends_on="sample_count")
+    choices = ask_choices(_ask(count))
+    assert [o.label for o in choices.options] == ["2 samples", "5 samples"]
+    assert [o.answer for o in choices.options] == ["2", "5"]
+    state = _state(_ask(count))
+    for option, value in zip(choices.options, ("2", "5")):
+        _after, bound, _ = bind_answers(state, option.answer)
+        assert [b.value for b in bound] == [value]
