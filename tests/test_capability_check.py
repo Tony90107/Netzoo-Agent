@@ -92,8 +92,9 @@ def test_sheet_fails_closed_on_a_produces_entry_without_a_granularity(tmp_path):
 def test_sheet_fails_closed_on_a_run_action_without_produces(tmp_path):
     partial = tmp_path / "sheet.yaml"
     partial.write_text(
+        "result_families:\n  - {key: f, text: a network}\n"  # clarify-menu: every produces entry names a family
         "workflows:\n  PANDA:\n    action: run_panda\n    produces:\n"
-        "      - {id: p.x, result: A network., source: paper, granularity: aggregate}\n", encoding="utf-8")
+        "      - {id: p.x, family: f, result: A network., source: paper, granularity: aggregate}\n", encoding="utf-8")
     with pytest.raises(ValueError, match="without a produces entry"):
         load_sheet(partial)
 
