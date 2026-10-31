@@ -35,3 +35,17 @@ def test_card(monkeypatch):
     assert len(choices.options) == len(result_families()) and choices.allow_other
     assert choices.options[-1].answer == "I want patient subtypes from somatic mutations."
     assert family_choices(CoreDecision(kind="DO", basis="results_given", workflows=["PANDA"])) is None
+
+
+def test_the_sheet_rejects_a_produces_entry_without_a_family(tmp_path):
+    import pytest
+
+    from netzoo_agent_core.capability_sheet import load_sheet
+
+    partial = tmp_path / "sheet.yaml"
+    partial.write_text(
+        "result_families:\n  - {key: f, text: a network}\n"
+        "workflows:\n  PANDA:\n    action: run_panda\n    produces:\n"
+        "      - {id: p.x, result: A network., source: paper, granularity: aggregate}\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="needs a family"):
+        load_sheet(partial)
