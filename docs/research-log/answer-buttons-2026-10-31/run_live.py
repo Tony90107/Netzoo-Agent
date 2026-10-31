@@ -4,7 +4,8 @@ in CLICKS.json for the item, the scripted user clicks that button: it sends the 
 label (from the turn's cards.json). Any other turn uses the j10 reply rule. Adapted from jev-scale run_step0.py.
 Cap US$0.20 for the three tags together.
 
-Usage: python3 run_live.py ab1|ab2|ab3
+Usage: python3 run_live.py ab1|ab2|ab3   (round 1)
+       python3 run_live.py ac1|ac2|ac3   (round 2, ROUND-2.md; cap US$0.10)
 """
 
 from __future__ import annotations
@@ -41,7 +42,7 @@ PICKED: list = []  # set by main from CLICKS.json
 FLAGS = ('NETZOO_ANSWER_BUTTONS',)
 RUN = CHECKOUT
 COMMIT = '8f60b653'  # set by main per arm
-ARMS = {tag: (None, None) for tag in ('ab1', 'ab2', 'ab3')}
+ARMS = {tag: (None, None) for tag in ('ab1', 'ab2', 'ab3', 'ac1', 'ac2', 'ac3')}
 SNAPSHOT_MODIFIED: tuple = ()
 SNAPSHOT_NEW: tuple = ()
 MODELS = {'openai/gpt-4o-mini', 'openai/gpt-4o-mini-2024-07-18'}
@@ -303,7 +304,7 @@ def setup(tag: str) -> Runner:
                 'PYTHONUNBUFFERED': '1'})
     for name in FLAGS:  # arm F turns both fixes on; arm M runs main as the app does
         env.pop(name, None)
-        if tag.startswith('ab'):
+        if tag.startswith(('ab', 'ac')):
             env[name] = 'on'
     env.pop('NETZOO_JEV_SETTINGS', None)
     for name in ('NETZOO_JEV_OVERLAP_CACHE', 'NETZOO_JEV_FORMS_CACHE', 'NETZOO_JEV_SETTINGS_CACHE'):
@@ -332,7 +333,9 @@ def main(mode: str):
     COMMIT = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=CHECKOUT, text=True).strip()
     RUN = WORKTREES / folder if folder else CHECKOUT
     tag = mode
-    TAGS[:] = ['ab1', 'ab2', 'ab3']  # the cap counts the three tags together
+    global CAP_USD
+    TAGS[:] = [f'{mode[:2]}{r}' for r in (1, 2, 3)]  # the cap counts a round's three tags together
+    CAP_USD = 0.10 if mode.startswith('ac') else 0.20  # ROUND-2.md: round 2 has its own cap
     PICKED[:] = list(CLICKS['reps'][mode])
     runner, todo, turns, workers = setup(tag), list(PICKED), range(1, 4), 3
     (HERE / 'live' / tag).mkdir(parents=True, exist_ok=False)
