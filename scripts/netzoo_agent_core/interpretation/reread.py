@@ -21,15 +21,16 @@ Now it is given only the words no quote covers, counted in any script, and every
 
 from __future__ import annotations
 
+import os
 import re
 from functools import lru_cache
 
 from ..capability_sheet import sheet_entries
 from ..contracts.capability_check import MAX_SENTENCES
-from .capability_check import _full_gap, request_sentences
+from .capability_check import _full_gap, _why_not, request_sentences
 from .request_facts import merge_facts
 
-__all__ = ["MIN_UNREAD_WORDS", "letter_runs", "merge_reread", "reread_passages", "unread_stretches"]
+__all__ = ["MIN_UNREAD_WORDS", "letter_runs", "merge_reread", "reread_passages", "tails_mode", "unread_stretches"]
 
 MIN_UNREAD_WORDS = 3
 """Unread words (`letter_runs`) a stretch beside a quoted result must hold to be read again, before or after it alike.
@@ -152,6 +153,25 @@ def _overlaps(task: str, quote: str, others) -> bool:
         for other in others)
 
 
+def tails_mode() -> str:
+    """NETZOO_REREAD_TAILS=on: drop re-read tail asks that match nothing (reread-tail-fragments-2026-10-31); off by
+    default."""
+    return "on" if os.environ.get("NETZOO_REREAD_TAILS", "off").strip().lower() == "on" else "off"
+
+
+def _unmatched_tail(task: str, item, whole, tails, reread) -> bool:
+    """A re-read ask in the tail of a sentence (never a whole sentence given to the re-read) that credits no workflow
+    and carries no reason the reply could give: on the recorded first turns of j1-j9 all such asks that were refused
+    were fragments ("so we can", "to shortlist candidate pathways"), and refusing them was the wrong reason."""
+    span = _span(task, item.quote)
+    if span is None or any(min(span[1], b) > max(span[0], a) for a, b in whole):
+        return False
+    if not any(min(span[1], b) > max(span[0], a) for a, b in tails):
+        return False
+    return (item.status == "not_available" and not item.delivered_by and not item.not_by and not item.limits
+            and not item.violations and not _why_not(item, reread))
+
+
 def merge_reread(task: str, check, reread, passages=(), rejected=()):
     """The check with the re-read's new results: those overlapping a result already read are dropped
     (heldout11 VP5q: the whole sentence re-read as one result would have hidden the TF activity
@@ -180,6 +200,8 @@ def merge_reread(task: str, check, reread, passages=(), rejected=()):
 
     new = [item for item in reread.results() if not _overlaps(task, item.quote, found)
            and (not passages or given(item.quote))]
+    if tails_mode() == "on":  # reread-tail-fragments-2026-10-31: a tail that matches nothing asks for nothing
+        new = [item for item in new if not _unmatched_tail(task, item, whole, tails, reread)]
     unchecked = list(check.unchecked) if rejected else [item for item in check.unchecked if item not in passages]
     if not new and unchecked == check.unchecked:
         return check
