@@ -48,6 +48,9 @@ def buttons(question) -> list[tuple[str, str, str]]:
             label = (labels.get(value) or value).strip()
             found.append((value, label[:1].upper() + label[1:], label[:1].upper() + label[1:]))
         return found
-    if getattr(question, "yes_no", False) or what.startswith(("jev:", "jev_link:")) or _boolean_setting(what):
+    if what.startswith("jev_link:"):  # round 2 (A16): the answer names the workflow, so the next reading can use it
+        name = what.split(":", 1)[1]
+        return [("yes", "Yes", f"Yes, I mean {name}'s result."), ("no", "No", f"No, not {name}'s result.")]
+    if getattr(question, "yes_no", False) or what.startswith("jev:") or _boolean_setting(what):
         return [("yes", "Yes", "Yes"), ("no", "No", "No")]
     return []
