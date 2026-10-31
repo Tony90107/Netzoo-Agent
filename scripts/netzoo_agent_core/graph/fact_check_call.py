@@ -13,7 +13,7 @@ from dataclasses import replace
 
 from pydantic import BaseModel
 
-from ..contracts.fact_check import FactCheck, FactProposals
+from ..contracts.fact_check import FactCheck, FactProposals, RejectedFact
 from ..interpretation.fact_check import fact_candidates, kept_facts
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
@@ -22,7 +22,7 @@ from .capability_check_call import _check_model, spent, with_reading_allowance
 from .context import preflight_budget, record_event
 from .required_check_budget import check_output_reserve, fact_check_input, retryable_check_error
 
-__all__ = ["apply_fact_check", "fact_model", "invoke_fact_agent", "request_fact_check"]
+__all__ = ["apply_fact_check", "fact_model", "invoke_fact_agent", "no_reask_mode", "request_fact_check"]
 
 
 def fact_model(context):
@@ -108,6 +108,35 @@ def apply_fact_check(context, state, user_task: str, result, decision, check):
     result = replace(result, usage=usage, budget_warnings=warnings)
     if facts.status == "checked":
         facts = facts.model_copy(update={"legacy": _facts(check, by_code=False, task=user_task)})
+        facts = _without_answered(context, state, facts)  # no-reask: an answered doubt is not asked again
     record_event(context, state, "core.fact_check", "classify", facts.model_dump(mode="json"))
     decision = decision.model_copy(update={"fact_check": facts})
     return replace(result, decision=decision), decision, check  # the run path reads result.decision
+
+
+def no_reask_mode() -> str:
+    mode = os.environ.get("NETZOO_NO_REASK", "off").strip().lower()
+    return mode if mode in ("shadow", "on") else "off"
+
+
+def _without_answered(context, state, facts: FactCheck) -> FactCheck:
+    """no-reask-2026-11-01: the fact check less its questions on a doubt an agent or count answer settled (on), or as
+    it came with the blocked ones recorded (shadow). `interpretation.answered_doubts` says which."""
+    from ..interpretation.answered_doubts import RULE, split_answered
+
+    mode = no_reask_mode()
+    if mode == "off":
+        return facts
+    accepted, blocked = split_answered(facts.accepted, state.get("task_state"))
+    queued, blocked_queued = split_answered(facts.queued, state.get("task_state"))
+    blocked += blocked_queued
+    if not blocked:
+        return facts
+    rejected = [RejectedFact(rule=RULE, proposal={**question.model_dump(mode="json"),
+                                                  "answered_by": {"question": fact.question, "value": fact.value}})
+                for question, fact in blocked]
+    record_event(context, state, "core.no_reask", "classify", {
+        "mode": mode, "blocked": [item.proposal for item in rejected]})
+    if mode != "on":
+        return facts
+    return facts.model_copy(update={"accepted": accepted, "queued": queued, "rejected": [*facts.rejected, *rejected]})
