@@ -4,8 +4,9 @@ what it would do, =on applies it.
 
 j9 A31 (DRAGON on layers from different patients), A39 (CONDOR on a gene-gene edge list): the capability check credits
 nothing and records no reason, so the turn is DECLINE `full_gap` with the layer-2 line only, while the guard's typed
-data check -- which names the real contract line -- runs only on a DO. Here, on such a DECLINE, the workflows the
-request names (else Jev's result pick) go through the guard's own `check_typed_data`; when it rules them all out, the
+data check -- which names the real contract line -- runs only on a DO. Here, on such a DECLINE, the workflow whose
+result the request asks for (Jev's result pick; round 2 -- never a name written only as the source of the user's file)
+goes through the guard's own `check_typed_data`; when it rules them all out, the
 turn becomes the guard's own data confirm (`conditioned_core`, built as for a DO). A bound "yes" then declines with the
 confirmed line through the merged answer path (confirmed-reason-2026-10-30); a "no" leaves the next turn to the
 pipeline. Code never writes the reason; nothing else changes; any failure leaves the DECLINE as it came.
@@ -50,15 +51,13 @@ def apply_declined_conditions(context, state, core: CoreDecision, user_task: str
         return core
     record = {"mode": mode, "kind_before": core.kind, "basis_before": core.basis}
     try:
-        candidates, source = named_candidates(user_task), "named"
-        if not candidates:
-            pick = check_result(user_task)
-            record["pick"] = pick
-            name = pick.get("result")
-            candidates = [name] if name in result_menu() and name not in RESULT_NONE \
-                and pick.get("confidence", 0) >= THRESHOLD else []
-            source = "jev_result"
-        record |= {"candidates": candidates, "source": source}
+        # Round 2: only the workflow whose result is asked (Jev's result pick) -- a name written in the request may be
+        # the workflow that produced the user's file (round 1: j2 Q34 DRAGON beside the asked CONDOR).
+        pick = check_result(user_task)
+        name = pick.get("result")
+        candidates = [name] if name in result_menu() and name not in RESULT_NONE \
+            and pick.get("confidence", 0) >= THRESHOLD else []
+        record |= {"pick": pick, "candidates": candidates, "source": "jev_result"}
         if not candidates:
             record["action"] = "no_candidate"
             record_event(context, state, "core.declined_conditions", "classify", record)

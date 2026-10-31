@@ -26,11 +26,21 @@ def _decline(line=f'"{ASKED}" -- {UNMATCHED}', basis="full_gap", kind="DECLINE")
     return CoreDecision(kind=kind, basis=basis, declined=[DeclinedPart(quote=ASKED, line=line)])
 
 
-def _on(monkeypatch, typed=VIOLATED):
+class _Events(list):
+    """Recorded events, plus the workflows each typed check was asked about (`checked`)."""
+
+
+def _on(monkeypatch, typed=VIOLATED, pick=("DRAGON", 0.9)):
     monkeypatch.setenv("NETZOO_DECLINED_CONDITIONS", "on")
-    events = []
+    events, checked = _Events(), []
     monkeypatch.setattr(dc, "record_event", lambda *a: events.append(a[2:]))
-    monkeypatch.setattr(dc, "check_typed_data", lambda task, workflows: {**typed, "checked": list(workflows)})
+    monkeypatch.setattr(dc, "check_result", lambda task: {"result": pick[0], "confidence": pick[1]})
+
+    def typed_check(task, workflows):
+        checked.append(list(workflows))
+        return {**typed, "checked": list(workflows)}
+    monkeypatch.setattr(dc, "check_typed_data", typed_check)
+    events.checked = checked
     return events
 
 
@@ -62,7 +72,7 @@ def test_on_a_typed_violation_becomes_the_guards_data_confirm(monkeypatch):
     assert fact.depends_on == "jev:condition" and fact.contract_quote == SAME_LINE
     assert fact.user_quote == VIOLATED["sentence"]
     assert after.evidence["jev_condition"]["kind_before"] == "DECLINE"
-    assert events[-1][0] == "core.declined_conditions" and events[-1][2]["source"] == "named"
+    assert events[-1][0] == "core.declined_conditions" and events[-1][2]["source"] == "jev_result"
 
 
 def test_on_no_violation_or_a_confirm_already_asked_leaves_the_decline(monkeypatch):
@@ -74,16 +84,24 @@ def test_on_no_violation_or_a_confirm_already_asked_leaves_the_decline(monkeypat
     assert dc.apply_declined_conditions(None, asked, core, TASK) is core
 
 
-def test_without_a_named_workflow_jevs_pick_is_used_only_when_confident(monkeypatch):
-    events = _on(monkeypatch)
+def test_the_candidate_is_only_jevs_confident_pick(monkeypatch):
+    events = _on(monkeypatch, pick=("CONDOR", 0.6))
     task = "I have a gene-gene co-expression edge list from 200 liver samples. I'd like it split into communities."
-    monkeypatch.setattr(dc, "check_result", lambda task: {"result": "CONDOR", "confidence": 0.6})
     core = _decline()
     assert dc.apply_declined_conditions(None, {}, core, task) is core
     assert events[-1][2]["action"] == "no_candidate"
-    monkeypatch.setattr(dc, "check_result", lambda task: {"result": "CONDOR", "confidence": 0.9})
+    events = _on(monkeypatch, pick=("CONDOR", 0.9))
     after = dc.apply_declined_conditions(None, {}, core, task)
     assert after.kind == "ASK" and events[-1][2]["source"] == "jev_result"
+
+
+def test_a_workflow_named_only_as_the_files_source_is_not_a_candidate(monkeypatch):
+    """Round 1's j2 Q34: DRAGON made the file, CONDOR is asked; only the asked result's workflow is checked."""
+    task = ("I already ran DRAGON on our methylation and expression layers and saved the partial-correlation matrix. "
+            "Now I want CONDOR to find communities directly in that DRAGON matrix.")
+    events = _on(monkeypatch, pick=("CONDOR", 0.95))
+    dc.apply_declined_conditions(None, {}, _decline(), task)
+    assert events.checked == [["CONDOR"]]
 
 
 def test_shadow_records_but_leaves_the_decline(monkeypatch):
