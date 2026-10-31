@@ -46,6 +46,19 @@ result_forms:
   # No workflow uses where samples sit in space or which are neighbours.
   spatial: [not_spatial]
 
+# clarify-menu-2026-11-01: the kinds of result the registry gives, in the user's words -- the menu a "which result
+# do you want?" reply offers. Every produces entry names its family (`family:`); a comparison or test entry is in the
+# family of the result it tests. The loader rejects a produces entry without a known family.
+result_families:
+  - {key: regulatory_all, text: "one regulatory network (TF or miRNA to gene) built from all the samples together"}
+  - {key: regulatory_per_sample, text: "a separate regulatory network (TF or miRNA to gene) for each sample"}
+  - {key: coexpression_per_sample, text: "a separate gene-gene co-expression network for each sample"}
+  - {key: covariate_coexpression, text: "how covariates such as group, batch or age change gene co-expression"}
+  - {key: tf_activity, text: "each transcription factor's activity in each sample"}
+  - {key: two_layer, text: "a network linking two kinds of omics data, such as RNA and methylation"}
+  - {key: communities, text: "modules or communities in a regulator-gene network"}
+  - {key: subtypes, text: "patient subtypes from somatic mutations"}
+
 registry_wide_not_produced:
   # Already live as UNSUPPORTED_CLAIMS; repeated so the sheet is complete.
   # `claim`: shown only when the study-purpose reader verified that claim (its cue-word witnesses).
@@ -77,6 +90,7 @@ workflows:
     files: ["-o: TF-gene regulatory network (one file)"]
     produces:
       - id: panda.tf_gene_network
+        family: regulatory_all
         regulators: [tf]
         signed: false
         level: direct
@@ -87,6 +101,7 @@ workflows:
         reading: Edge weights are integrated support scores from message passing, not probabilities, not signed effects, not evidence of physical binding.
         source: "Glass et al. 2013 PLoS ONE 8:e64832; [EXEC] docker/run-panda:4, scripts/run_panda_precomputed.py:79"
       - id: panda.targeting_scores
+        family: regulatory_all
         regulators: [tf]
         signed: false
         granularity: aggregate
@@ -95,6 +110,7 @@ workflows:
         step: Sum edge weights per TF or per gene from the written network; NetZoo does not compute it.
         source: "[REG] _AGGREGATE_TARGETING_NOTES; [EXEC] no degree computation in the agent (checked 2026-10-08)"
       - id: panda.condition_comparison
+        family: regulatory_all
         regulators: [tf]
         signed: false
         granularity: aggregate
@@ -126,6 +142,7 @@ workflows:
     files: ["-o: TF/miRNA-gene regulatory network (one file)"]
     produces:
       - id: puma.regulator_gene_network
+        family: regulatory_all
         regulators: [tf, mirna]
         signed: false
         level: direct
@@ -136,6 +153,7 @@ workflows:
         reading: miRNA edges come from agreement between predicted targets and target-gene co-expression; the miRNA's own expression is not used.
         source: "Kuijjer et al. 2020 Bioinformatics 36:4765; [EXEC] scripts/run_puma.py:115"
       - id: puma.targeting_scores
+        family: regulatory_all
         regulators: [tf, mirna]
         signed: false
         granularity: aggregate
@@ -158,6 +176,7 @@ workflows:
     files: ["-o: aggregate PANDA network", "-q: edge-by-sample table of single-sample networks"]
     produces:
       - id: lioness_panda.per_sample_networks
+        family: regulatory_per_sample
         aggregate_entry: panda.tf_gene_network
         regulators: [tf]
         signed: false
@@ -169,6 +188,7 @@ workflows:
         reading: Each sample's edges come from how leaving it out changes the cohort network; the networks are not statistically independent.
         source: "Kuijjer et al. 2019 iScience 14:226; [EXEC] docker/run-lioness:28-30"
       - id: lioness_panda.per_sample_targeting
+        family: regulatory_per_sample
         regulators: [tf]
         signed: false
         granularity: sample_specific
@@ -177,6 +197,7 @@ workflows:
         step: Sum edge weights per TF per sample from the edge-by-sample table; NetZoo does not compute it.
         source: "[REG] _LIONESS_TARGETING_NOTES"
       - id: lioness_panda.association_tests
+        family: regulatory_per_sample
         regulators: [tf]
         signed: false
         granularity: [aggregate, sample_specific]
@@ -197,6 +218,7 @@ workflows:
     files: ["-o: aggregate PUMA network", "-q: per-sample table (header regulator, gene, prior_weight, samples)"]
     produces:
       - id: lioness_puma.per_sample_networks
+        family: regulatory_per_sample
         aggregate_entry: puma.regulator_gene_network
         regulators: [tf, mirna]
         signed: false
@@ -206,8 +228,8 @@ workflows:
         regulators: [tf, mirna]
         inputs: [expression matrix, TF motif prior, PPI network, miRNA-target prior and miRNA list]
         source: "Kuijjer et al. 2019 iScience; Kuijjer et al. 2020; [EXEC] docker/run-lioness:50-53"
-      - {id: lioness_puma.per_sample_targeting, regulators: [tf, mirna], signed: false, granularity: sample_specific, level: with_step, see: lioness_panda.per_sample_targeting}
-      - {id: lioness_puma.association_tests, regulators: [tf, mirna], signed: false, granularity: [aggregate, sample_specific], level: with_step, see: lioness_panda.association_tests}
+      - {id: lioness_puma.per_sample_targeting, family: regulatory_per_sample, regulators: [tf, mirna], signed: false, granularity: sample_specific, level: with_step, see: lioness_panda.per_sample_targeting}
+      - {id: lioness_puma.association_tests, family: regulatory_per_sample, regulators: [tf, mirna], signed: false, granularity: [aggregate, sample_specific], level: with_step, see: lioness_panda.association_tests}
     near_misses:
       - {id: lioness_puma.no_single_cell, see: lioness.no_single_cell}
       - {id: lioness_puma.no_lncrna_cerna, see: puma.no_lncrna_cerna}
@@ -219,6 +241,7 @@ workflows:
     files: ["one file: TF-by-gene matrix, or source/target/weight edge list"]
     produces:
       - id: otter.tf_gene_network
+        family: regulatory_all
         regulators: [tf]
         signed: false
         level: direct
@@ -228,7 +251,7 @@ workflows:
         inputs: [TF motif prior, PPI network, expression matrix or co-expression]
         reading: Weights are on OTTER's own scale; compare only with OTTER networks built the same way. The optimization is non-convex.
         source: "Weighill et al. 2021 AAAI 35:10263; [EXEC] data/otter.py:317-350"
-      - {id: otter.targeting_scores, regulators: [tf], signed: false, granularity: aggregate, level: with_step, see: panda.targeting_scores}
+      - {id: otter.targeting_scores, family: regulatory_all, regulators: [tf], signed: false, granularity: aggregate, level: with_step, see: panda.targeting_scores}
     near_misses:
       - {id: otter.no_per_sample, result_asked: One network per sample., why_not: No per-sample OTTER is registered., instead_registered: run_lioness_panda, source: "[REG] CLAIM_SUPPORT run_otter"}
       - {id: otter.no_global_optimum, result_asked: A convex or globally optimal solution., why_not: "Non-convex objective; netZooPy takes fixed gradient steps.", source: "[REG] OUTSIDE_STEPS convex_guarantee"}
@@ -242,6 +265,7 @@ workflows:
     files: ["<out>: TF-by-gene regulatory matrix", "<stem>.tfa<ext>: TF-by-sample activity matrix"]
     produces:
       - id: giraffe.signed_regulation
+        family: regulatory_all
         regulators: [tf]
         signed: true
         level: direct
@@ -252,6 +276,7 @@ workflows:
         reading: Signs are fitted partial linear effects, not proof of direct binding or causality.
         source: "Micheletti et al. 2026 bioRxiv (GIRAFFE); [EXEC] data/giraffe.py:298-319"
       - id: giraffe.tf_activity
+        family: tf_activity
         regulators: [tf]
         signed: false
         level: direct
@@ -259,6 +284,7 @@ workflows:
         granularity: sample_specific
         source: "Micheletti et al. 2026; [EXEC] data/giraffe.py:298-319 (.tfa file)"
       - id: giraffe.activity_tests
+        family: tf_activity
         regulators: [tf]
         signed: false
         granularity: [aggregate, sample_specific]
@@ -280,6 +306,7 @@ workflows:
     files: ["node-by-node partial-correlation matrix plus <stem>.pvalues and <stem>.adj_pvalues, or one edge list with partial_correlation, precision, p_value, adj_p_value"]
     produces:
       - id: dragon.two_layer_network
+        family: two_layer
         layers: 2
         level: direct
         result: One undirected partial-correlation network within and between two matched omics layers (any two, e.g. expression and methylation), across all samples.
@@ -288,6 +315,7 @@ workflows:
         reading: Associations conditional on every other feature in both layers; adding or removing features changes them. Not directed, not causal.
         source: "Shutta et al. 2023 NAR 51:e15; [EXEC] execution.py:792-800"
       - id: dragon.edge_pvalues
+        family: two_layer
         layers: 2
         granularity: aggregate
         level: direct
@@ -295,6 +323,7 @@ workflows:
         reading: Not estimated when the features far outnumber the samples; the run then says so and writes the network alone.
         source: "Shutta et al. 2023; netZooPy dragon.estimate_p_values_dragon; [EXEC] execution.py run_dragon (Log 386: <stem>.pvalues / .adj_pvalues, or p_value / adj_p_value columns)"
       - id: dragon.group_comparison
+        family: two_layer
         layers: 2
         granularity: aggregate
         level: with_step
@@ -315,6 +344,7 @@ workflows:
     files: ["output_file: aggregate partial-correlation matrix", "lioness_output: edge-by-sample table"]
     produces:
       - id: lioness_dragon.per_sample_networks
+        family: two_layer
         aggregate_entry: dragon.two_layer_network
         layers: 2
         level: direct
@@ -324,6 +354,7 @@ workflows:
         reading: A sample's edges are relative to the cohort it was built from; not independent across samples.
         source: "Kuijjer et al. 2019 iScience; Shutta et al. 2023; [EXEC] execution_lioness_dragon.py:104-107"
       - id: lioness_dragon.association_tests
+        family: two_layer
         layers: 2
         granularity: [aggregate, sample_specific]
         level: with_step
@@ -343,13 +374,14 @@ workflows:
     files: ["-o: aggregate Pearson co-expression network", "-q: per-sample co-expression networks"]
     produces:
       - id: lioness_coexpression.per_sample_networks
+        family: coexpression_per_sample
         regulators: []
         level: direct
         result: One gene-gene co-expression network per sample, plus the aggregate.
         granularity: [aggregate, sample_specific]
         inputs: [expression matrix]
         source: "Kuijjer et al. 2019 iScience; [EXEC] docker/run-lioness:55-57"
-      - {id: lioness_coexpression.comparisons, regulators: [], granularity: [aggregate, sample_specific], level: with_step, result: Per-sample gene degree or edge weights compared across samples or groups., step: A test outside NetZoo., source: "[REG] DOWNSTREAM_ANALYSES run_lioness_coexpression"}
+      - {id: lioness_coexpression.comparisons, family: coexpression_per_sample, regulators: [], granularity: [aggregate, sample_specific], level: with_step, result: Per-sample gene degree or edge weights compared across samples or groups., step: A test outside NetZoo., source: "[REG] DOWNSTREAM_ANALYSES run_lioness_coexpression"}
     near_misses:
       - id: coexpression.no_regulation
         result_asked: Which regulator controls which gene, or edge direction.
@@ -366,6 +398,7 @@ workflows:
     files: ["bonobo_<sample>: gene-by-gene co-expression per sample", "pvals_<sample> (only with sparsify + save_pvals)", "manifest.json"]
     produces:
       - id: bonobo.per_sample_networks
+        family: coexpression_per_sample
         regulators: []
         level: direct
         result: One gene-gene co-expression network per sample, estimated with a Bayesian model; optionally per-edge p-values per sample.
@@ -383,6 +416,7 @@ workflows:
     files: ["components.npz", "summary.tsv", "adjusted_coexpression.tsv/.npz", "manifest.json"]
     produces:
       - id: cobra.covariate_components
+        family: covariate_coexpression
         regulators: []
         level: direct
         result: The part of each gene pair's co-expression associated with each covariate in a design matrix (e.g. group, batch), and a covariate-adjusted co-expression matrix.
@@ -390,7 +424,7 @@ workflows:
         inputs: [expression matrix, design matrix]
         reading: Component values can fall outside -1 to 1; they are contributions, not correlations.
         source: "Micheletti et al. 2024 Bioinformatics 40:btae531; [EXEC] scripts/run_cobra.py:48-92"
-      - {id: cobra.adjusted_input_to_regulation, regulators: [], granularity: aggregate, level: with_step, result: A regulatory network built from batch-adjusted co-expression., step: "Pass adjusted_coexpression to PANDA, PUMA or OTTER (registered handoff) after identifier checks.", source: "[REG] DOWNSTREAM_ANALYSES run_cobra"}
+      - {id: cobra.adjusted_input_to_regulation, family: regulatory_all, regulators: [], granularity: aggregate, level: with_step, result: A regulatory network built from batch-adjusted co-expression., step: "Pass adjusted_coexpression to PANDA, PUMA or OTTER (registered handoff) after identifier checks.", source: "[REG] DOWNSTREAM_ANALYSES run_cobra"}
     near_misses:
       - id: cobra.no_differential_expression
         result_asked: Differentially expressed genes, fold changes or p-values per gene.
@@ -408,6 +442,7 @@ workflows:
     files: ["<prefix>-edges.tsv", "<prefix>-reg_memb.tsv and -tar_memb.tsv: community memberships", "<prefix>-reg_qscores.tsv and -tar_qscores.tsv: core scores", "<prefix>-summary.txt (modularity)"]
     produces:
       - id: condor.communities
+        family: communities
         input_network: regulator_gene
         groups: one_group
         level: direct
@@ -416,13 +451,14 @@ workflows:
         inputs: [a regulator-gene (source-target-weight) network]
         source: "Platig et al. 2016 PLoS Comput Biol 12:e1005033; [EXEC] docker/run-condor:137-163"
       - id: condor.core_scores
+        family: communities
         input_network: regulator_gene
         groups: one_group
         granularity: aggregate
         level: direct
         result: Each regulator's and gene's core score -- its share of its community's modularity -- to pick out each community's core nodes.
         source: "Platig et al. 2016; [EXEC] docker/run-condor final_scores (Log 386: <prefix>-reg_qscores.tsv, -tar_qscores.tsv)"
-      - {id: condor.enrichment, input_network: regulator_gene, groups: one_group, granularity: aggregate, level: with_step, result: Pathway enrichment of each community's genes., step: A gene-set tool outside NetZoo., source: "[REG] DOWNSTREAM_ANALYSES run_condor"}
+      - {id: condor.enrichment, family: communities, input_network: regulator_gene, groups: one_group, granularity: aggregate, level: with_step, result: Pathway enrichment of each community's genes., step: A gene-set tool outside NetZoo., source: "[REG] DOWNSTREAM_ANALYSES run_condor"}
     near_misses:
       - {id: condor.no_two_network_comparison, result_asked: Differential module structure between two networks., why_not: One network at a time., source: "[REG] OUTSIDE_STEPS differential_modules (ALPACA)"}
       - id: condor.no_variant_mapping
@@ -437,13 +473,14 @@ workflows:
     files: ["mt_out.csv: gene mutation scores", "pt_out.csv: pathway mutation scores", "clustergroups.csv and dist_matrix.csv (clustering on)", "manifest.json"]
     produces:
       - id: sambar.subtypes
+        family: subtypes
         groups: one_group
         level: direct
         result: Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them -- with the scores, the cluster labels and the sample distance matrix.
         granularity: [aggregate, sample_specific]
         inputs: [mutation matrix, exon sizes, cancer genes, pathway sets]
         source: "Kuijjer et al. 2018 Br J Cancer 118:1492; [EXEC] scripts/run_sambar.py:43-90"
-      - {id: sambar.clinical_comparison, groups: one_group, granularity: [aggregate, sample_specific], level: with_step, result: Subtypes compared with clinical variables such as survival., step: A test outside NetZoo with a clinical table keyed by sample ID., source: "[REG] DOWNSTREAM_ANALYSES run_sambar"}
+      - {id: sambar.clinical_comparison, family: subtypes, groups: one_group, granularity: [aggregate, sample_specific], level: with_step, result: Subtypes compared with clinical variables such as survival., step: A test outside NetZoo with a clinical table keyed by sample ID., source: "[REG] DOWNSTREAM_ANALYSES run_sambar"}
     near_misses:
       - id: sambar.no_expression_subtypes
         result_asked: Subtypes from expression, methylation or other non-mutation data.
