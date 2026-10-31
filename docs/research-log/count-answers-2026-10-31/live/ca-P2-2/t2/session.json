@@ -1,0 +1,886 @@
+{
+  "version": 1,
+  "session_id": "ca-P2-2",
+  "profile_id": "ca-P2-2",
+  "auto_generated": false,
+  "created_at": 1793461504.134027,
+  "updated_at": 1793461530.059923,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We'd like a TF-to-gene regulatory network for each of our organoid lines, from an expression matrix with a motif prior and a PPI file. I'm not sure whether three lines or only two will pass QC."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Which of these is right: 2 or 3?\n  You wrote: \"I'm not sure whether three lines or only two will pass QC\".\n  - 2: no registered workflow can do this as asked\n  - 3: LIONESS-PANDA can do this\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: We'd like a TF-to-gene regulatory network for each of our organoid lines, from an expression matrix with a motif prior and a PPI file. I'm not sure whether three lines or only two will pass QC.\nUser follow-up: 2"
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"We'd like a TF-to-gene regulatory network for each of our organoid lines, from an expression matrix with a motif prior and a PPI file.\" -- not available here as asked. LIONESS-PANDA needs at least 3 samples; the request has 2. LIONESS-PUMA needs at least 3 samples; the request has 2.\n\nNo registered workflow can give this as you asked it (above), so none is offered as asked.\n\nNo files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The user is seeking guidance on constructing a TF-to-gene regulatory network, which falls under answer requests rather than execution.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The user is seeking guidance on constructing a TF-to-gene regulatory network, which falls under answer requests rather than execution.",
+      "candidate_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter",
+        "run_giraffe",
+        "no_tool"
+      ],
+      "recommended_actions": [],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [
+          "tf",
+          "gene"
+        ],
+        "display_entities": [],
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "entity_types": [
+              "tf",
+              "gene"
+            ],
+            "display_entities": [],
+            "regulator_types": [
+              "tf"
+            ],
+            "target_types": [
+              "gene"
+            ],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "artifact_type",
+              "value": "regulatory_network",
+              "source": "explicit",
+              "text_span": "TF-to-gene regulatory network",
+              "rationale": "The user is seeking a TF-to-gene regulatory network as the primary output."
+            },
+            {
+              "dimension": "regulator_type",
+              "value": "tf",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            },
+            {
+              "dimension": "target_type",
+              "value": "gene",
+              "source": "explicit",
+              "text_span": "TF-to-gene",
+              "rationale": "The request explicitly states the bounded regulator-to-target role."
+            }
+          ],
+          "assumptions": []
+        },
+        {
+          "outcome": {
+            "operation": "prepare",
+            "input_artifacts": [
+              "expression_matrix"
+            ],
+            "artifact_type": "expression_matrix",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "input_artifact",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The expression matrix is necessary for constructing the regulatory network."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "expression_matrix",
+              "source": "explicit",
+              "text_span": "expression matrix",
+              "rationale": "The user explicitly mentioned the need for an expression matrix in their request."
+            }
+          ],
+          "assumptions": []
+        }
+      ],
+      "capability_match_status": "unsupported",
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_facts": {
+        "source": "model",
+        "priors": "stated",
+        "priors_quote": "a motif prior and a PPI file",
+        "mirna": "unstated",
+        "mirna_quote": ""
+      },
+      "applicability": [
+        {
+          "action": "run_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior and a PPI file",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_lioness_panda",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior and a PPI file",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_otter",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior and a PPI file",
+              "source": "model"
+            }
+          ]
+        },
+        {
+          "action": "run_giraffe",
+          "status": "applicable",
+          "basis": [
+            {
+              "kind": "tf_priors",
+              "state": "stated",
+              "quote": "a motif prior and a PPI file",
+              "source": "model"
+            }
+          ]
+        }
+      ],
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": [
+          {
+            "kind": "tf_priors",
+            "state": "stated",
+            "source": "model",
+            "quote": "a motif prior and a PPI file",
+            "action": "none"
+          }
+        ]
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "We'd like a TF-to-gene regulatory network for each of our organoid lines, from an expression matrix with a motif prior and a PPI file.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "per_sample",
+              "omics_layers": 0,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [
+                "tf"
+              ],
+              "needs_sign": false,
+              "input_network": "regulator_gene",
+              "group_membership": "one_group",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 2,
+              "samples_quote": "2"
+            },
+            "limits": [
+              "LIONESS-PANDA needs at least 3 samples; the request has 2",
+              "LIONESS-PUMA needs at least 3 samples; the request has 2"
+            ],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@232-233"
+            ],
+            "blocks": [
+              "LIONESS-PANDA",
+              "LIONESS-PUMA"
+            ],
+            "doubted_forms": []
+          },
+          {
+            "quote": "expression matrix",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "motif prior",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "PPI file",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "I'm not sure whether three lines or only two will pass QC.",
+            "kind": "context",
+            "status": "not_checked",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {},
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": true,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [
+          "run_panda",
+          "run_lioness_panda",
+          "run_otter",
+          "run_giraffe"
+        ],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "We'd like a TF-to-gene regulatory network for each of our organoid lines, from an expression matrix with a motif prior and a PPI file.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [],
+        "facts": [
+          {
+            "id": "sample_count@232-233",
+            "property": "sample_count",
+            "name": "",
+            "value": "2",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "2",
+            "span": [
+              232,
+              233
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "request",
+                "quote": "2",
+                "span": [
+                  232,
+                  233
+                ],
+                "result": "",
+                "role": "value"
+              },
+              {
+                "reader": "result",
+                "quote": "2",
+                "span": [
+                  232,
+                  233
+                ],
+                "result": "We'd like a TF-to-gene regulatory network for each of our organoid lines, from an expression matrix with a motif prior and a PPI file.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DECLINE",
+        "partial": false,
+        "workflows": [],
+        "declined": [
+          {
+            "quote": "We'd like a TF-to-gene regulatory network for each of our organoid lines, from an expression matrix with a motif prior and a PPI file.",
+            "reasons": [
+              "LIONESS-PANDA needs at least 3 samples; the request has 2",
+              "LIONESS-PUMA needs at least 3 samples; the request has 2"
+            ],
+            "alternatives": [],
+            "line": "\"We'd like a TF-to-gene regulatory network for each of our organoid lines, from an expression matrix with a motif prior and a PPI file.\" -- not available here as asked. LIONESS-PANDA needs at least 3 samples; the request has 2. LIONESS-PUMA needs at least 3 samples; the request has 2."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "full_gap",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "unsupported",
+          "artifact_type": "regulatory_network",
+          "reason_code": "semantic_registry_intent",
+          "rows": [
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ],
+            [
+              "context",
+              "not_checked"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "We'd like a TF-to-gene regulatory network for each of our organoid lines, from an expression matrix with a motif prior and a PPI file."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "PANDA",
+          "LIONESS-PANDA",
+          "OTTER",
+          "GIRAFFE"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "I'm not sure whether three lines or only two will pass QC.",
+              "uncertainty": "said_unknown",
+              "workflow": "LIONESS-PANDA",
+              "contract_quote": "Require at least three expression samples before execution.",
+              "question": "Do you have at least three organoid lines that passed QC?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "PANDA",
+              "about": "user_data",
+              "alternatives": [
+                "two",
+                "three"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 47271,
+    "output_tokens": 1687,
+    "total_tokens": 48958,
+    "calls": [
+      {
+        "call_id": "c8ee456d-9e08-4f10-b540-05fc111be1dc",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461505-gkXKNB83iG0A4d2Xu429",
+        "input_tokens": 871,
+        "output_tokens": 36,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 907,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 152,
+        "price_snapshot": null,
+        "duration_ms": 1005,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "6023e492-2c60-48e4-abcd-44d8d7f2582d",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461506-NLsZlnmLvFhF5TjV9sty",
+        "input_tokens": 1606,
+        "output_tokens": 16,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1622,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 135,
+        "price_snapshot": null,
+        "duration_ms": 1017,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "9a7cdbd2-643f-4f96-a7b2-ea9a348d3f47",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461507-mqGtdOOu1EdgMCBYmjcg",
+        "input_tokens": 5333,
+        "output_tokens": 194,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5527,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 523,
+        "price_snapshot": null,
+        "duration_ms": 2606,
+        "status": "failed",
+        "estimated": false
+      },
+      {
+        "call_id": "bcb93a38-c0bb-470f-9f43-9dbb0fed2426",
+        "role": "semantic_sibling_repair",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461512-3smoVz79ekVf8BpvA7ZK",
+        "input_tokens": 5754,
+        "output_tokens": 246,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6000,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 713,
+        "price_snapshot": null,
+        "duration_ms": 2836,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "1b24d526-2ff8-439c-b0c2-f4a7efd2b7d4",
+        "role": "semantic_reviewer",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461510-KuTaTP9nugVuSvAeZvBN",
+        "input_tokens": 5920,
+        "output_tokens": 187,
+        "cache_read_tokens": 3968,
+        "cache_write_tokens": 0,
+        "total_tokens": 6107,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 703,
+        "price_snapshot": null,
+        "duration_ms": 5342,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "2eefed8f-8e78-436f-acb0-2c48d50c8270",
+        "role": "semantic_discriminator",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461515-kmc58moYQXjTlWebkjIU",
+        "input_tokens": 1420,
+        "output_tokens": 125,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1545,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 288,
+        "price_snapshot": null,
+        "duration_ms": 1609,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7f43ae00-4d01-491f-b483-ee76dcefed11",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 718,
+        "output_tokens": 45,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 763,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 950,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "229bf71d-1f86-4bfb-8dcc-1874fb4a8461",
+        "role": "selection_conditions",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461518-1ep5NYXjywfpw3IWbFUn",
+        "input_tokens": 2746,
+        "output_tokens": 47,
+        "cache_read_tokens": 2688,
+        "cache_write_tokens": 0,
+        "total_tokens": 2793,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 239,
+        "price_snapshot": null,
+        "duration_ms": 1065,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "f1cfec55-bc06-4859-a2a4-aa9ca2deb21d",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793461519-eoo1XdjQJj0tSwX9rDiq",
+        "input_tokens": 18533,
+        "output_tokens": 598,
+        "cache_read_tokens": 18432,
+        "cache_write_tokens": 0,
+        "total_tokens": 19131,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1756,
+        "price_snapshot": null,
+        "duration_ms": 6014,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "7633065b-aabf-413a-8a4b-333ceaff9716",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461525-FQr9QPlzev2hQi5V8jCt",
+        "input_tokens": 556,
+        "output_tokens": 42,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 598,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 109,
+        "price_snapshot": null,
+        "duration_ms": 1009,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "54548764-d452-4d0f-9c16-9b38d99654f7",
+        "role": "data_facts",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461526-2XW6bDlOhK11Lyjw3sJz",
+        "input_tokens": 545,
+        "output_tokens": 44,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 589,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 108,
+        "price_snapshot": null,
+        "duration_ms": 1111,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "219ecc3e-ea56-477b-8340-3228d7de59ab",
+        "role": "capability_second_opinion",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793461527-Gu37kLYFUBzwAkb3FTLm",
+        "input_tokens": 376,
+        "output_tokens": 6,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 382,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 60,
+        "price_snapshot": null,
+        "duration_ms": 862,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "06187392-48aa-4c05-b877-1853c626a571",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461528-luokUT6OWYz3fT66IgK6",
+        "input_tokens": 2893,
+        "output_tokens": 101,
+        "cache_read_tokens": 2816,
+        "cache_write_tokens": 0,
+        "total_tokens": 2994,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 283,
+        "price_snapshot": null,
+        "duration_ms": 1680,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "54b773d7-553f-48b2-8a4f-4460f0ca10c1",
+  "task_state": {
+    "version": 2,
+    "task_id": "08edf6a6",
+    "revision": 3,
+    "goal": "We'd like a TF-to-gene regulatory network for each of our organoid lines, from an expression matrix with a motif prior and a PPI file. I'm not sure whether three lines or only two will pass QC.",
+    "pending": [],
+    "facts": [
+      {
+        "question_id": "count:sample_count:f2fe70a4a7",
+        "source": "count",
+        "what": "sample_count",
+        "question": "Which of these is right: 2 or 3?",
+        "user_quote": "I'm not sure whether three lines or only two will pass QC.",
+        "options": {
+          "2": [],
+          "3": [
+            "LIONESS-PANDA"
+          ]
+        },
+        "labels": {},
+        "value": "2",
+        "answer_quote": "2",
+        "turn": 1,
+        "status": "known"
+      }
+    ],
+    "asked": [],
+    "rounds": 1,
+    "status": "closed",
+    "turns": 2
+  }
+}

@@ -1,0 +1,711 @@
+{
+  "version": 1,
+  "session_id": "ca-P4-3",
+  "profile_id": "ca-P4-3",
+  "auto_generated": false,
+  "created_at": 1793461642.009782,
+  "updated_at": 1793461684.79502,
+  "messages": [
+    {
+      "role": "user",
+      "content": "We'd like one partial-correlation network linking RNA expression and DNA methylation across our matched samples, but we may end up with only two matched samples, or perhaps five."
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Will you have at least three matched samples?\n  You wrote: \"we may end up with only two matched samples, or perhaps five\". DRAGON's contract: \"Require at least three samples in each layer before execution\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: We'd like one partial-correlation network linking RNA expression and DNA methylation across our matched samples, but we may end up with only two matched samples, or perhaps five.\nUser follow-up: Yes"
+    },
+    {
+      "role": "assistant",
+      "content": "Before I choose a workflow, please tell me:\n- Will you have at least three matched samples?\n  You wrote: \"we may end up with only two matched samples, or perhaps five\". DRAGON's contract: \"Require at least three samples in each layer before execution\".\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+    },
+    {
+      "role": "user",
+      "content": "Previous NetZoo goal: Previous NetZoo goal: We'd like one partial-correlation network linking RNA expression and DNA methylation across our matched samples, but we may end up with only two matched samples, or perhaps five.\nUser follow-up: Yes\nUser follow-up: Yes"
+    },
+    {
+      "role": "assistant",
+      "content": "What I understood you are asking for:\n1. \"We'd like one partial-correlation network linking RNA expression and DNA methylation across our matched samples, but we may end up with only two matched samples, or perhaps five.\" -- available from DRAGON.\n2. \"we may end up with only two matched samples, or perhaps five.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n3. \"we may end up with only two matched samples\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set.\n\nAssumptions behind this recommendation (not confirmed facts):\n\n- No scale was stated; DRAGON gives one result for the whole cohort; LIONESS-DRAGON gives one result per sample.\n\nSelected path: **DRAGON**.\n\nYour question asks for a multi-omic network. **DRAGON** fits that result.\n\n**DRAGON** — Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.\n\nRequired workflow inputs:\n\n- `omics_layer_1`: DRAGON omics layer 1\n- `omics_layer_2`: DRAGON omics layer 2\n\nOutputs:\n\n- `multi_omic_network`: Inferred associations between omics features.\n\nWorkflow-specific scientific notes:\n\n- DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.\n- DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.\n- The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+    }
+  ],
+  "plan": {
+    "workflow": "NO-TOOL",
+    "objective": "The capability check credited DRAGON for every result the request asks for that a registered workflow gives.",
+    "decision": {
+      "action": "no_tool",
+      "in_scope": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "confidence": 0.9,
+      "reason": "The capability check credited DRAGON for every result the request asks for that a registered workflow gives.",
+      "candidate_actions": [
+        "run_dragon",
+        "no_tool"
+      ],
+      "recommended_actions": [
+        "run_dragon"
+      ],
+      "requested_outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "multi_omic_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "unknown",
+        "unresolved_dimensions": []
+      },
+      "guidance_input_artifacts": [],
+      "outcome_hypotheses": [
+        {
+          "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "multi_omic_network",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "unknown",
+            "unresolved_dimensions": []
+          },
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "dimension": "operation",
+              "value": "infer",
+              "source": "explicit",
+              "text_span": "we'd like one partial-correlation network linking RNA expression and DNA methylation across our matched samples.",
+              "rationale": "The user is seeking to construct a network based on RNA expression and DNA methylation data."
+            },
+            {
+              "dimension": "artifact_type",
+              "value": "multi_omic_network",
+              "source": "explicit",
+              "text_span": "partial-correlation network linking RNA expression and DNA methylation.",
+              "rationale": "The requested output is a network that integrates multiple omics layers."
+            }
+          ],
+          "assumptions": [
+            "No scale was stated; DRAGON gives one result for the whole cohort; LIONESS-DRAGON gives one result per sample."
+          ]
+        }
+      ],
+      "capability_match_status": "exact",
+      "match_basis": "capability_check",
+      "rejected_methods": [],
+      "matched_actions": [
+        "run_dragon"
+      ],
+      "hypothesis_actions": [],
+      "alternative_actions": [],
+      "mismatch_dimensions": [],
+      "clarification_question": null,
+      "data_plan": {
+        "answerable": true,
+        "basis": "reading",
+        "needs": []
+      },
+      "capability_check": {
+        "requirements": [
+          {
+            "quote": "We'd like one partial-correlation network linking RNA expression and DNA methylation across our matched samples, but we may end up with only two matched samples, or perhaps five.",
+            "kind": "result",
+            "status": "available",
+            "delivered_by": [
+              "dragon.two_layer_network"
+            ],
+            "not_by": [],
+            "attrs": {
+              "scale": "whole_cohort",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": false,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {},
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "we may end up with only two matched samples, or perhaps five.",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 5,
+              "samples_quote": "five"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@217-221"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          },
+          {
+            "quote": "we may end up with only two matched samples",
+            "kind": "result",
+            "status": "not_available",
+            "delivered_by": [],
+            "not_by": [],
+            "attrs": {
+              "scale": "unstated",
+              "omics_layers": 2,
+              "data_unit": "bulk_samples",
+              "regulator_kinds": [],
+              "needs_sign": false,
+              "input_network": "not_stated",
+              "group_membership": "not_stated",
+              "time_model": "not_dynamic",
+              "spatial": "not_spatial",
+              "mutation_origin": "not_stated",
+              "value_type": "not_stated",
+              "mirna_driver": "not_stated",
+              "samples_matched": "not_stated"
+            },
+            "blank": true,
+            "second_opinion": false,
+            "asked_as": "request",
+            "violations": [],
+            "depends_on": null,
+            "outcomes": {},
+            "unknown_quote": "",
+            "file_checked": null,
+            "method": {
+              "samples": 2,
+              "samples_quote": "two"
+            },
+            "limits": [],
+            "instead": [],
+            "defaults": [],
+            "by_code": false,
+            "outcome_notes": {},
+            "fact_ids": [
+              "sample_count@80-83"
+            ],
+            "blocks": [],
+            "doubted_forms": []
+          }
+        ],
+        "unchecked": [],
+        "full_gap": false,
+        "unavailable": false,
+        "provisional": false,
+        "cleared": [],
+        "conditions": {},
+        "unknown_domains": {},
+        "unknown_scopes": {},
+        "unknowns": [],
+        "gap_unconfirmed": false,
+        "goal": "result_named",
+        "goal_quote": "one partial-correlation network linking RNA expression and DNA methylation across our matched samples, but we may end up with only two matched samples, or perhaps five.",
+        "ruled_out": {},
+        "only_inputs": [],
+        "only_inputs_quote": "",
+        "open_goal_quote": "",
+        "claim_sentences": {},
+        "count_alternatives": [],
+        "uncertain_quotes": [],
+        "stated_quotes": [
+          "one partial-correlation network linking RNA expression and DNA methylation"
+        ],
+        "facts": [
+          {
+            "id": "sample_count@217-221",
+            "property": "sample_count",
+            "name": "",
+            "value": "5",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "five",
+            "span": [
+              217,
+              221
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "result",
+                "quote": "five",
+                "span": [
+                  217,
+                  221
+                ],
+                "result": "we may end up with only two matched samples, or perhaps five.",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          },
+          {
+            "id": "sample_count@80-83",
+            "property": "sample_count",
+            "name": "",
+            "value": "2",
+            "values": [],
+            "state": "stated",
+            "origin": "user_stated",
+            "quote": "two",
+            "span": [
+              80,
+              83
+            ],
+            "value_quote": "",
+            "value_span": [],
+            "belongs_to": "",
+            "evidence": [
+              {
+                "reader": "result",
+                "quote": "two",
+                "span": [
+                  80,
+                  83
+                ],
+                "result": "we may end up with only two matched samples",
+                "role": "value"
+              }
+            ],
+            "derived_from": [],
+            "formula": "",
+            "applies_to": null,
+            "scope_unverified": false
+          }
+        ],
+        "fact_conflicts": []
+      },
+      "core": {
+        "kind": "DO",
+        "partial": true,
+        "workflows": [
+          "DRAGON"
+        ],
+        "declined": [
+          {
+            "quote": "we may end up with only two matched samples, or perhaps five.",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"we may end up with only two matched samples, or perhaps five.\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+          },
+          {
+            "quote": "we may end up with only two matched samples",
+            "reasons": [],
+            "alternatives": [],
+            "line": "\"we may end up with only two matched samples\" -- I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
+          }
+        ],
+        "facts": [],
+        "clarify": null,
+        "run_allowed": false,
+        "basis": "results_given",
+        "evidence": {
+          "action": "no_tool",
+          "match_status": "exact",
+          "artifact_type": "multi_omic_network",
+          "reason_code": "registry_guidance_fallback",
+          "rows": [
+            [
+              "result",
+              "available"
+            ],
+            [
+              "result",
+              "not_available"
+            ],
+            [
+              "result",
+              "not_available"
+            ]
+          ],
+          "check_unconfirmed": false,
+          "goal": [
+            "result_named",
+            "one partial-correlation network linking RNA expression and DNA methylation across our matched samples, but we may end up with only two matched samples, or perhaps five."
+          ],
+          "run_verdict": null,
+          "legacy_facts": []
+        }
+      },
+      "fact_check": {
+        "status": "checked",
+        "model": "openai/gpt-4o-mini",
+        "candidates": [
+          "DRAGON"
+        ],
+        "accepted": [],
+        "queued": [],
+        "rejected": [
+          {
+            "rule": "R1 the check did not read these words as the user being unsure",
+            "proposal": {
+              "user_quote": "we may end up with only two matched samples, or perhaps five.",
+              "uncertainty": "two_versions",
+              "workflow": "DRAGON",
+              "contract_quote": "Require at least three samples in each layer before execution.",
+              "question": "Will you have at least three matched samples?",
+              "yes_outcome": "not_supported",
+              "yes_workflow": "",
+              "no_outcome": "supported",
+              "no_workflow": "",
+              "about": "user_data",
+              "alternatives": [
+                "two matched samples",
+                "five matched samples"
+              ]
+            }
+          }
+        ],
+        "legacy": [],
+        "open_results": []
+      },
+      "missing_inputs": [],
+      "expression_file": null,
+      "design_file": null,
+      "motif_file": null,
+      "ppi_file": null,
+      "mirna_file": null,
+      "coexpression_file": null,
+      "taxon": null,
+      "output_file": null,
+      "lioness_output": null,
+      "network_file": null,
+      "mutation_file": null,
+      "exon_size_file": null,
+      "cancer_gene_file": null,
+      "pathway_file": null,
+      "omics_layer_1": null,
+      "omics_layer_2": null,
+      "output_dir": null,
+      "prefix": null,
+      "norm_patient": true,
+      "kmin": 2,
+      "kmax": 4,
+      "gmt_msigdb": true,
+      "subset_cancer_genes": true,
+      "distance": "binomial",
+      "linkage": "complete",
+      "cluster": true,
+      "with_header": false,
+      "bonobo_output_format": ".h5",
+      "sample_names": [],
+      "sparsify": false,
+      "bonobo_confidence": 0.05,
+      "save_pvals": false,
+      "keep_in_memory": false,
+      "delta": null,
+      "log_transformed": null,
+      "centered": null,
+      "genes_axis": "auto",
+      "output_format": "matrix",
+      "computing": "cpu",
+      "precision": "double",
+      "lam": 0.035,
+      "gamma": 0.335,
+      "iterations": 60,
+      "eta": 1e-05,
+      "bexp": 1.0,
+      "lambda1": null,
+      "lambda2": null,
+      "library_name": null,
+      "library_id": null,
+      "docs_query": null,
+      "web_query": null,
+      "preference_updates": []
+    },
+    "evidence": [],
+    "input_bundle_options": [],
+    "steps": [],
+    "missing_inputs": [],
+    "status": "respond_only",
+    "question": null,
+    "workflow_handoff": null,
+    "preference_proposals": [],
+    "memory_notes": [],
+    "policy_hash": "cf89ad9eddd6cf458f3e06c101b10c2c762814fe62b9e36d4149dfcb7a53f9c1",
+    "policy_notes": [],
+    "recovery_action": null,
+    "recovery_step_index": null,
+    "recovery_attempt": 0
+  },
+  "evaluation": null,
+  "tool_results": [],
+  "token_usage": {
+    "input_tokens": 38025,
+    "output_tokens": 1423,
+    "total_tokens": 39448,
+    "calls": [
+      {
+        "call_id": "bcd8ec0a-bb03-4c7f-b329-bf3a317b7ad6",
+        "role": "follow_up",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461663-c6fmia1RdAJx2HSON0pi",
+        "input_tokens": 860,
+        "output_tokens": 36,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 896,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 151,
+        "price_snapshot": null,
+        "duration_ms": 1726,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "cc00d4bd-32e1-4144-9e71-bf95ee32dfa7",
+        "role": "semantic_interpreter",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461665-ddEhz6Mo4ARosOKbzfiw",
+        "input_tokens": 5333,
+        "output_tokens": 240,
+        "cache_read_tokens": 5248,
+        "cache_write_tokens": 0,
+        "total_tokens": 5573,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 550,
+        "price_snapshot": null,
+        "duration_ms": 3042,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "c697869e-4596-4aa2-abde-c6c655075383",
+        "role": "intent_router",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": null,
+        "input_tokens": 655,
+        "output_tokens": 58,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 713,
+        "usage_provenance": "estimated",
+        "cost_provenance": "unavailable",
+        "cost_micro_usd": null,
+        "price_snapshot": null,
+        "duration_ms": 943,
+        "status": "success",
+        "estimated": true
+      },
+      {
+        "call_id": "6638e534-3595-4ba3-8ba1-3a9e87e192cb",
+        "role": "hypothesis_bases",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461669-xS2edZXqUivPf29s9rlf",
+        "input_tokens": 1651,
+        "output_tokens": 16,
+        "cache_read_tokens": 1536,
+        "cache_write_tokens": 0,
+        "total_tokens": 1667,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 142,
+        "price_snapshot": null,
+        "duration_ms": 973,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "443fafde-7787-4c9f-a42a-03e947e87a04",
+        "role": "capability_check",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793461670-M9Ej5biqU67lvgvDFB6o",
+        "input_tokens": 18533,
+        "output_tokens": 746,
+        "cache_read_tokens": 18304,
+        "cache_write_tokens": 0,
+        "total_tokens": 19279,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 1855,
+        "price_snapshot": null,
+        "duration_ms": 6731,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "ee22476f-1621-4d8a-b29c-7c2f8ec98f8b",
+        "role": "study_purpose",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461676-SVNsIE0ThI02asJUILQt",
+        "input_tokens": 556,
+        "output_tokens": 36,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 592,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 105,
+        "price_snapshot": null,
+        "duration_ms": 1017,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "58f2c9e6-5f0a-45e6-8a81-d1d50c9e8ca4",
+        "role": "capability_reread",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793461678-NuKbooMLjwym1IUXmwNw",
+        "input_tokens": 8427,
+        "output_tokens": 180,
+        "cache_read_tokens": 8320,
+        "cache_write_tokens": 0,
+        "total_tokens": 8607,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 748,
+        "price_snapshot": null,
+        "duration_ms": 2333,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "d25ca7ef-3170-4553-8cc0-06f80fef7843",
+        "role": "capability_second_opinion",
+        "model": "openai/gpt-4o-mini-2024-07-18",
+        "provider_request_id": "gen-1793461680-T2A6Jzxv0laMymlKym1s",
+        "input_tokens": 540,
+        "output_tokens": 11,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 551,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 88,
+        "price_snapshot": null,
+        "duration_ms": 862,
+        "status": "success",
+        "estimated": false
+      },
+      {
+        "call_id": "792ab9fa-8cfc-4139-946e-850d54b10520",
+        "role": "fact_check",
+        "model": "openai/gpt-4o-mini",
+        "provider_request_id": "gen-1793461681-996ivFXPNT0iEqWGv5pn",
+        "input_tokens": 1470,
+        "output_tokens": 100,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "total_tokens": 1570,
+        "usage_provenance": "actual",
+        "cost_provenance": "actual",
+        "cost_micro_usd": 281,
+        "price_snapshot": null,
+        "duration_ms": 2871,
+        "status": "success",
+        "estimated": false
+      }
+    ],
+    "budget_tokens": 75000,
+    "budget_exhausted": false
+  },
+  "run_id": "bd762691-fb60-421d-bc47-e49d65dee607",
+  "task_state": {
+    "version": 2,
+    "task_id": "2d595374",
+    "revision": 5,
+    "goal": "We'd like one partial-correlation network linking RNA expression and DNA methylation across our matched samples, but we may end up with only two matched samples, or perhaps five.",
+    "pending": [],
+    "facts": [
+      {
+        "question_id": "agent:DRAGON:3df321f3d6",
+        "source": "agent",
+        "what": "DRAGON",
+        "question": "Will you have at least three matched samples?",
+        "user_quote": "we may end up with only two matched samples, or perhaps five.",
+        "options": {},
+        "labels": {
+          "contract": "Require at least three samples in each layer before execution.",
+          "workflow": "DRAGON"
+        },
+        "value": "yes",
+        "answer_quote": "Yes",
+        "turn": 1,
+        "status": "known"
+      },
+      {
+        "question_id": "agent:DRAGON:3df321f3d6",
+        "source": "agent",
+        "what": "DRAGON",
+        "question": "Will you have at least three matched samples?",
+        "user_quote": "we may end up with only two matched samples, or perhaps five.",
+        "options": {},
+        "labels": {
+          "contract": "Require at least three samples in each layer before execution.",
+          "workflow": "DRAGON"
+        },
+        "value": "yes",
+        "answer_quote": "Yes",
+        "turn": 2,
+        "status": "known"
+      }
+    ],
+    "asked": [],
+    "rounds": 2,
+    "status": "closed",
+    "turns": 3
+  }
+}
