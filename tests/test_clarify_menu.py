@@ -10,7 +10,8 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.capability_sheet import sheet_entries  # noqa: E402
 from netzoo_agent_core.contracts.core_decision import ClarifyNeed, CoreDecision  # noqa: E402
-from netzoo_agent_core.interpretation.result_families import FAMILIES, families  # noqa: E402
+from netzoo_agent_core.capability_sheet import result_families  # noqa: E402
+from netzoo_agent_core.interpretation.result_families import families  # noqa: E402
 from netzoo_agent_core.reply_cards.answer_buttons import family_choices  # noqa: E402
 from netzoo_agent_core.reply_cards.contracts import MAX_OPTIONS  # noqa: E402
 
@@ -19,9 +20,9 @@ CLARIFY = CoreDecision(kind="CLARIFY", basis="goal_unclear", clarify=ClarifyNeed
 
 def test_every_produce_entry_in_exactly_one_family():
     produced = {e.id for e in sheet_entries().values() if e.kind == "produces"}
-    listed = Counter(entry for _key, _text, ids in FAMILIES for entry in ids)
+    listed = Counter(entry for item in families() for entry in item["entries"])
     assert set(listed) == produced and set(listed.values()) == {1}
-    assert len(FAMILIES) <= MAX_OPTIONS
+    assert len(result_families()) <= MAX_OPTIONS and all(item["entries"] for item in families())
     workflows = {w for item in families() for w in item["workflows"]}
     assert workflows == {e.workflow for e in sheet_entries().values() if e.kind == "produces"}
 
@@ -31,6 +32,6 @@ def test_card(monkeypatch):
     assert family_choices(CLARIFY) is None
     monkeypatch.setenv("NETZOO_CLARIFY_MENU", "on")
     choices = family_choices(CLARIFY)
-    assert len(choices.options) == len(FAMILIES) and choices.allow_other
+    assert len(choices.options) == len(result_families()) and choices.allow_other
     assert choices.options[-1].answer == "I want patient subtypes from somatic mutations."
     assert family_choices(CoreDecision(kind="DO", basis="results_given", workflows=["PANDA"])) is None

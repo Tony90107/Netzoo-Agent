@@ -28,7 +28,7 @@ import yaml
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
 __all__ = ["SheetEntry", "SHEET_PATH", "data_units", "result_forms", "RESULT_FORMS", "load_sheet", "sheet_entries",
-           "entry", "produced_text", "produces_ids", "not_produced_ids"]
+           "entry", "produced_text", "produces_ids", "not_produced_ids", "result_families"]
 
 SHEET_PATH = Path(__file__).resolve().parents[1] / "capability_sheet.yaml"
 
@@ -66,6 +66,8 @@ class SheetEntry:
     aggregate_entry: str | None = None
     """per-group-base-2026-10-29: the base entry whose result is the aggregate network this per-sample entry also
     writes; a result asked once per group is credited to it (`per_group_entries`)."""
+    family: str | None = None
+    """clarify-menu-2026-11-01: the result family (`result_families`) a produces entry belongs to."""
 
 
 def _resolve(raw: dict, by_id: dict[str, dict]) -> dict:
@@ -81,6 +83,7 @@ def _resolve(raw: dict, by_id: dict[str, dict]) -> dict:
 def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
     """Every entry by id, validated; raises ValueError on any malformed entry."""
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    family_keys = {item["key"] for item in data.get("result_families") or []}
     raw_items: list[tuple[str, str | None, str | None, dict]] = []
     for item in data.get("registry_wide_not_produced") or []:
         raw_items.append(("registry_wide", None, None, item))
@@ -122,6 +125,8 @@ def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
             raise ValueError(f"capability sheet: {item['id']} has unknown input_network {resolved['input_network']!r}")
         if resolved.get("groups") not in (None, "one_group"):
             raise ValueError(f"capability sheet: {item['id']} has unknown groups {resolved['groups']!r}")
+        if kind == "produces" and resolved.get("family") not in family_keys:
+            raise ValueError(f"capability sheet: {item['id']} needs a family from result_families")
         instead = resolved.get("instead_registered")
         if instead is not None and instead not in ACTION_DEFINITIONS:
             raise ValueError(f"capability sheet: {item['id']} names unknown action {instead!r}")
@@ -136,6 +141,7 @@ def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
             input_network=resolved.get("input_network"), groups=resolved.get("groups"),
             inputs=tuple(str(value) for value in resolved.get("inputs") or ()),
             aggregate_entry=resolved.get("aggregate_entry"),
+            family=resolved.get("family") if kind == "produces" else None,
         )
         if kind == "registry_wide" and not entries[item["id"]].claim:
             raise ValueError(f"capability sheet: registry-wide entry {item['id']} must name its claim")
@@ -153,6 +159,13 @@ def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
 @lru_cache(maxsize=1)
 def sheet_entries() -> dict[str, SheetEntry]:
     return load_sheet()
+
+
+@lru_cache(maxsize=1)
+def result_families() -> tuple[tuple[str, str], ...]:
+    """clarify-menu-2026-11-01: (key, the user's words) of every result family, in the sheet's order."""
+    data = yaml.safe_load(SHEET_PATH.read_text(encoding="utf-8"))
+    return tuple((item["key"], " ".join(str(item["text"]).split())) for item in data.get("result_families") or [])
 
 
 @lru_cache(maxsize=1)
