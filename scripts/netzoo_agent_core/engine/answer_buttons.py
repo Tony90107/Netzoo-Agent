@@ -11,9 +11,13 @@ Off by default: NETZOO_ANSWER_BUTTONS=on.
 from __future__ import annotations
 
 import os
+import re
 from functools import lru_cache
 
 __all__ = ["buttons", "buttons_mode"]
+
+COUNTED = {"sample_count": "samples", "feature_count": "features", "omics_layers": "layers"}
+NUMBER = re.compile(r"\d[\d,]*(\.\d+)?")
 
 
 def buttons_mode() -> str:
@@ -45,8 +49,13 @@ def buttons(question) -> list[tuple[str, str, str]]:
     if options:
         found = []
         for value in options:
-            label = (labels.get(value) or value).strip()
-            found.append((value, label[:1].upper() + label[1:], label[:1].upper() + label[1:]))
+            words = (labels.get(value) or value).strip()
+            answer = words[:1].upper() + words[1:]
+            # button-labels-2026-11-01: a card numbers its buttons 1, 2, ...; a bare number as a label collided with
+            # them (the user chose item 2, the button "5"). The label says what it counts; the click still sends it.
+            label = f"{answer} {COUNTED.get(what, '')}".strip() if NUMBER.fullmatch(answer) and what in COUNTED \
+                else (f"Value {answer}" if NUMBER.fullmatch(answer) else answer)
+            found.append((value, label, answer))
         return found
     if what.startswith("jev_link:"):  # round 2 (A16): the answer names the workflow, so the next reading can use it
         name = what.split(":", 1)[1]
