@@ -25,6 +25,7 @@ from ..contracts import HumanMessage, SystemMessage
 from ..interpretation.closed_settings import (
     QUOTE_INSTRUCTIONS, SET_CRITERIA, VALUE_SYSTEM, VALUE_TASK, controls, questions, strong_reads, with_closed_settings,
 )
+from ..interpretation.closed_settings_retype import retyped
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
 from ..jev_client import decide
@@ -145,10 +146,16 @@ def _values(context, state, task: str, names: list[str], usage, budget_warnings)
 def apply_jev_settings(context, state, user_task: str, check, usage, budget_warnings):
     """(check, usage, warnings): the closed settings read applied when on, recorded when shadow, skipped when off."""
     mode = jev_settings_mode()
-    if mode == "off" or check is None or check.unconfirmed():
+    retype = os.environ.get("NETZOO_SETTING_RETYPE", "off").strip().lower() == "on"  # class 4, ROUND-C4
+    if (mode == "off" and not retype) or check is None or check.unconfirmed():
         return check, usage, budget_warnings
     try:
         read = _jev_read(user_task)
+        if retype and (found := retyped(check, user_task, read))[1]:
+            record_event(context, state, "core.setting_retype", "classify", {"changes": found[1]})
+            check = found[0]
+        if mode == "off":
+            return check, usage, budget_warnings
         names = [name for name, answer in read["answers"].items() if name != "other" and answer["choice"] == "set"]
         values, usage, budget_warnings = _values(context, state, user_task, names, usage, budget_warnings)
         reads = strong_reads(user_task, read["answers"], read["picks"], read["sentences"], values)
