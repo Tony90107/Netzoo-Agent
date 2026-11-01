@@ -54,7 +54,7 @@ def blocked_workflows(row: CheckedRequirement) -> list[str]:
     return list(dict.fromkeys(row.blocks))
 
 
-def same_run_holds(check: CapabilityCheck | None) -> CapabilityCheck | None:
+def same_run_holds(check: CapabilityCheck | None, task: str | None = None) -> CapabilityCheck | None:
     """The check with every doable row that rests only on blocked workflows held, citing why they cannot run."""
     if check is None:
         return check
@@ -68,6 +68,11 @@ def same_run_holds(check: CapabilityCheck | None) -> CapabilityCheck | None:
             (unset if workflow in runs_anyway else limited).setdefault(workflow, []).extend(_hard(row))
     asked_by_name = {name for row in check.results() if row.kind == "result" and row.status in _DOABLE
                      for name in workflows_in(row.quote)}
+    if task:  # named-run-sentence (ROUND-N, NETZOO_NAMED_RUN_SENTENCE): named in the row's own request sentence
+        from .named_run import named_in_sentence
+
+        asked_by_name |= named_in_sentence(task, [row.quote for row in check.results()
+                                                  if row.kind == "result" and row.status in _DOABLE])
     reasons = {workflow: [*limited.get(workflow, []), *unset.get(workflow, [])] for workflow in [*limited, *unset]
                if workflow in limited or workflow not in asked_by_name}
     # P2 (a): a question resting on a released run asks whether it can run so -- the settings answer it (H18 "Can you
