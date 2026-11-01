@@ -32,6 +32,7 @@ class _Events(list):
 
 def _on(monkeypatch, typed=VIOLATED, pick=("DRAGON", 0.9)):
     monkeypatch.setenv("NETZOO_DECLINED_CONDITIONS", "on")
+    monkeypatch.setenv("NETZOO_JEV_GUARD", "on")
     events, checked = _Events(), []
     monkeypatch.setattr(dc, "record_event", lambda *a: events.append(a[2:]))
     monkeypatch.setattr(dc, "check_result", lambda task: {"result": pick[0], "confidence": pick[1]})
@@ -118,3 +119,18 @@ def test_a_failed_read_leaves_the_decline(monkeypatch):
     core = _decline()
     assert dc.apply_declined_conditions(None, {}, core, TASK) is core
     assert events[-1][2]["action"] == "not_run"
+
+
+def test_left_without_the_guard(monkeypatch):
+    """Review 2026-11-01 (a): only the guard binds the user's "yes" to the data confirm, so nothing is asked without it."""
+    _on(monkeypatch)
+    monkeypatch.setenv("NETZOO_JEV_GUARD", "off")
+    core = _decline()
+    assert dc.apply_declined_conditions(None, {}, core, TASK) is core
+
+
+def test_left_on_all_results_not_available(monkeypatch):
+    """Review 2026-11-01 (b): the answer path replaces the reason on `full_gap` only."""
+    _on(monkeypatch)
+    core = _decline(basis="all_results_not_available")
+    assert dc.apply_declined_conditions(None, {}, core, TASK) is core

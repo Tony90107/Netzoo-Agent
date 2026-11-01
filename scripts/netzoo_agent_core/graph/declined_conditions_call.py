@@ -21,11 +21,13 @@ from ..interpretation.reason_layers import is_unmatched
 from ..method_names import registered_workflows, workflows_in
 from .context import record_event
 from .jev_guard_call import (THRESHOLD, RESULT_NONE, asked_sentences, check_result, check_typed_data,
-                             condition_asked, conditioned_core, result_menu)
+                             condition_asked, conditioned_core, jev_mode, result_menu)
 
 __all__ = ["apply_declined_conditions", "declined_conditions_mode", "generic_decline", "named_candidates"]
 
-BASES = ("full_gap", "all_results_not_available")
+# Review 2026-11-01: only `full_gap` -- the answer path (`jev_guard_call.confirmed_violation_core`) replaces the reason
+# there alone; on `all_results_not_available` a bound "yes" came back as the same generic DECLINE.
+BASES = ("full_gap",)
 
 
 def declined_conditions_mode() -> str:
@@ -47,7 +49,8 @@ def named_candidates(task: str) -> list[str]:
 
 def apply_declined_conditions(context, state, core: CoreDecision, user_task: str) -> CoreDecision:
     mode = declined_conditions_mode()
-    if mode == "off" or not generic_decline(core) or condition_asked(state.get("task_state")):
+    # Review 2026-11-01: the user's "yes" is bound only by the guard (`apply_jev_guard`), as for `apply_data_first`.
+    if mode == "off" or jev_mode() != "on" or not generic_decline(core) or condition_asked(state.get("task_state")):
         return core
     record = {"mode": mode, "kind_before": core.kind, "basis_before": core.basis}
     try:
