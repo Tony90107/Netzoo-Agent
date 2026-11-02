@@ -58,6 +58,7 @@ from ..interpretation.input_bindings import bound_expression_samples
 from ..interpretation.request_facts import run_fact_bindings
 from ..interpretation.requirement_split import apply_own_sentence_answers
 from .data_facts_call import invoke_data_facts
+from ..interpretation import regulator_scope
 from ..interpretation.run_check import run_check_verdict, run_verdict
 from ..interpretation.run_hold import hold_run
 from ..contracts.capability_check import APPROVING_RUN_VERDICTS
@@ -192,6 +193,8 @@ def invoke_router(
         result = replace(result, usage=usage, budget_warnings=warnings,
                          routing_state={**result.routing_state, "study_purpose": purpose})
         result = _with_applicability(context, advisory_state, user_task, result)
+        result = replace(result, decision=regulator_scope.applied(result.decision, user_task, lambda payload: (
+            record_event(context, state, "routing.regulator_scope_narrowed", "classify", payload))))
         result = _with_capability_check(context, state, user_task, result, proposal,
                                         provisional=check_status == "fallback")
         result = _with_run_check(context, state, user_task, result, proposal, check_status)
