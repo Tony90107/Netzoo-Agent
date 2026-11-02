@@ -49,6 +49,7 @@ export function makeNextTurnPrompt(
     required_fields: [],
     alternative_action: null,
     alternative_granularity: null,
+    held_run: false,
     ...overrides,
   };
 }
