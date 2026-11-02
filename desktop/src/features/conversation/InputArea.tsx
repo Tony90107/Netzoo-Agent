@@ -133,7 +133,8 @@ function AgentQuestion({ view }: { view: ViewPayload }) {
 /**
  * The file wizard's text without the lines that only tell a terminal user how
  * to type an answer (and the numbered candidates the buttons already show).
- * Only these fixed lines go; every reason the agent wrote stays.
+ * With nothing to pick, "Select input" becomes "Input". Only these fixed lines
+ * change; every reason the agent wrote stays.
  */
 const TERMINAL_ANSWER_LINES = new Set([
   "Enter a candidate number or a full path.",
@@ -146,6 +147,7 @@ function withoutTerminalAnswerLines(view: ViewPayload, candidates: string[]): Vi
   const text = view.text
     .split("\n")
     .filter((line) => !TERMINAL_ANSWER_LINES.has(line.trim()) && !listed.has(line.trim()))
+    .map((line) => (candidates.length === 0 ? line.replace(/^(\s*)Select input /, "$1Input ") : line))
     .join("\n");
   return { ...view, text };
 }

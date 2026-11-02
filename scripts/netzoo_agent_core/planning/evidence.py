@@ -620,8 +620,8 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 "Multiple complete validated input bundles are available; "
                 "choose one before execution."
                 if bundle_choices_by_field
-                else "No single complete validated dataset bundle contains every "
-                "remaining required input."
+                else "I found no folder with a complete, valid set of the remaining "
+                "inputs, so each one is asked for separately."
             )
         else:
             selected, reason = _choose_unambiguous_candidate(

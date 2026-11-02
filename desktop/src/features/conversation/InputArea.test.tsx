@@ -136,6 +136,21 @@ describe("the clarification wizard", () => {
     expect(question).not.toContain("1. data/study-a");
     expect(screen.getAllByText("data/study-b/expression.tsv")).toHaveLength(1);
   });
+
+  it("does not say 'Select' when there is nothing to pick", () => {
+    harness(
+      view({
+        prompt_kind: "clarification",
+        plan: makePlan({ evidence: [{ ...PLAN.evidence[0], candidates: [] }] }),
+        target_field: "expression_file",
+        text: "Select input 1 of 3: Expression matrix (expression_file)\nEnter the full path.\nSelection > ",
+      }),
+    );
+
+    const question = document.querySelector(".agent-question")?.textContent ?? "";
+    expect(question).toContain("Input 1 of 3: Expression matrix (expression_file)");
+    expect(question).not.toContain("Select");
+  });
 });
 
 describe("the bundle chooser", () => {
