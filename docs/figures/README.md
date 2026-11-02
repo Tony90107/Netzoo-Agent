@@ -1,29 +1,31 @@
-# 桌面版介面圖
+# Desktop UI screenshots
 
-擷取自實際執行中的 `NetZoo Agent.app`（macOS，Retina 2×，PNG）。
-每一張都是一次真實 PANDA 執行的中間狀態，不是模擬畫面。
+Captured from the running `NetZoo Agent.app` (macOS, Retina 2x, PNG). Each image
+is an intermediate state of one real PANDA run, not a mock-up.
 
-擷取條件：
+Capture conditions:
 
-| 項目 | 值 |
+| Item | Value |
 |---|---|
-| 資料 | `data/official-toy/` 的 netZooPy 官方 toy data |
-| 模型 | `openai/gpt-4o-mini`（response / router / semantic 三者相同） |
-| 模式 | Synthetic Test（toy data 內含已淘汰的 gene symbol，嚴格模式會被 gate 擋下） |
-| 產出 | `outputs/demo/ToyExpressionData-panda.tsv`，3,113,777 bytes |
+| Data | the official netZooPy toy data in `data/official-toy/` |
+| Model | `openai/gpt-4o-mini` (same model for response, router, and semantic roles) |
+| Mode | Synthetic Test (the toy data contains retired gene symbols, which the strict-mode gate rejects) |
+| Output | `outputs/demo/ToyExpressionData-panda.tsv`, 3,113,777 bytes |
 
-| 檔案 | 畫面 | 論文可引用的內容 |
+| File | Screen | What it shows |
 |---|---|---|
-| `ui-01-startup.png` | 啟動後的空狀態 | 四個面板的資訊架構；sessions 列表與 token 計數 |
-| `ui-02-synthetic-test-mode.png` | 切到 Synthetic Test 模式 | 模式切換是 UI 控制項而非輸入指令；模式本身印出「結果僅供軟體測試，不是生物學證據」 |
-| `ui-03-plan-evidence-timeline.png` | 計畫就緒 | Plan 面板的 evidence 表（每個輸入標註來源「you gave it」）；Timeline 68 個事件，逐節點耗時與 token 數 |
-| `ui-04-dry-run-and-outputs.png` | Dry run 與結果瀏覽 | 執行前的驗證數據：expression 1000 genes × 50 samples、motif targets ↔ expression genes 913/913、motif TFs ↔ PPI TFs 87/87；Outputs 面板導覽進 `outputs / demo` |
-| `ui-05-output-preview.png` | 結果檔預覽 | 不載入整個檔案就能看內容；顯示主機端絕對路徑 |
+| `ui-01-startup.png` | empty state after launch | the four-pane information architecture; the sessions list and token counter |
+| `ui-02-synthetic-test-mode.png` | switched to Synthetic Test mode | mode switching is a UI control, not a typed command; the mode itself states that results are for software testing only and are not biological evidence |
+| `ui-03-plan-evidence-timeline.png` | plan ready | the Plan pane's evidence table (each input labeled with its source, "you gave it"); the Timeline with 68 events, per-node durations and token counts |
+| `ui-04-dry-run-and-outputs.png` | dry run and output browsing | pre-execution validation figures: expression 1000 genes x 50 samples, motif targets vs. expression genes 913/913, motif TFs vs. PPI TFs 87/87; the Outputs pane navigated into `outputs / demo` |
+| `ui-05-output-preview.png` | output file preview | file contents viewed without loading the whole file; the host-side absolute path is shown |
 
-## 缺一張
+## Missing screenshot
 
-**兩階段核准卡**（「Run the validated PANDA workflow now? / Execute this plan / Cancel」）
-沒有原生視窗的截圖。這個畫面確實存在且運作正常——在這次工作中已於瀏覽器驅動的
-同一個 daemon 上驗證過——但自動化擷取它需要對視窗送出文字輸入，而合成鍵盤事件
-會送給當下最前景的應用程式，不保證是這個視窗。要補這一張，手動操作一次最快：
-送出請求 → 計畫就緒後按「Review and execute this plan」→ 截圖。
+There is no native-window screenshot of the **two-step approval card** ("Run the
+validated PANDA workflow now? / Execute this plan / Cancel"). The screen exists
+and works (it was verified against the same daemon driven from a browser), but
+capturing it automatically requires sending text input to the window, and
+synthetic keyboard events go to whichever application is frontmost. The fastest
+way to add it is manually: submit a request, press "Review and execute this
+plan" once the plan is ready, then take the screenshot.

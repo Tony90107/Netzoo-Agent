@@ -85,11 +85,38 @@ function inTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
+/**
+ * The web build is served by the daemon itself, and the launcher opens it as
+ * `http://localhost:<port>/#token=<token>`. The fragment never reaches the
+ * server or its access log; it is moved into localStorage and then removed
+ * from the address bar, so a reload or a bookmark keeps working.
+ */
+function servedConfig(): DaemonConfig | null {
+  const match = /(?:^#|&)token=([^&]+)/.exec(window.location.hash);
+  if (!match || !/^https?:$/.test(window.location.protocol)) return null;
+  const origin = window.location.origin;
+  const config: DaemonConfig = {
+    token: decodeURIComponent(match[1]),
+    port: Number(window.location.port) || (window.location.protocol === "https:" ? 443 : 80),
+    baseUrl: origin,
+    socketUrl: origin.replace(/^http/, "ws"),
+  };
+  try {
+    window.localStorage.setItem(DEV_CONFIG_KEY, JSON.stringify(config));
+  } catch {
+    // Private windows may refuse storage; the token still works for this page.
+  }
+  window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  return config;
+}
+
 function developerConfig(): DaemonConfig | null {
   // Outside Tauri there is no shell to mint a token or start a container, so
-  // the daemon has to be running already and its token supplied by hand. This
-  // exists so the window's own code can be exercised in a browser; it grants
-  // nothing, because whoever sets it already holds the token.
+  // the daemon has to be running already and its token supplied by hand, by
+  // the launcher's link (servedConfig) or in localStorage. It grants nothing,
+  // because whoever sets it already holds the token.
+  const served = servedConfig();
+  if (served) return served;
   try {
     const raw = window.localStorage.getItem(DEV_CONFIG_KEY);
     return raw ? (JSON.parse(raw) as DaemonConfig) : null;
@@ -107,18 +134,28 @@ async function bootDaemon(
     if (!config) {
       throw {
         kind: "no_shell",
-        message: "This page is not running inside the NetZoo Agent window.",
+        message: "This page was opened without its access token.",
         remedy:
-          `Start the daemon yourself and put its config in localStorage under "${DEV_CONFIG_KEY}".`,
+          "Open the link that `./netzoo-web` prints (it ends in #token=...), or run " +
+          "`docker compose logs netzoo-web` to see it again.",
         detail: "",
       } satisfies DaemonFault;
     }
     report("Waiting for the agent to answer");
-    if (await health(config)) return { config };
+    if ((await health(config)) && (await authorized(config))) return { config };
+    if (await health(config)) {
+      window.localStorage.removeItem(DEV_CONFIG_KEY);
+      throw {
+        kind: "bad_token",
+        message: "The agent is running but did not accept this page's token.",
+        remedy: "The service was restarted with a new token. Open the new link that `./netzoo-web` prints.",
+        detail: config.baseUrl,
+      } satisfies DaemonFault;
+    }
     throw {
       kind: "health_timeout",
       message: "No daemon answered on the configured port.",
-      remedy: "Start it with `docker compose up -d netzoo-daemon`.",
+      remedy: "Start it with `./netzoo-web` (or `docker compose up -d netzoo-web`).",
       detail: config.baseUrl,
     } satisfies DaemonFault;
   }

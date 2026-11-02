@@ -75,7 +75,7 @@ UNSPECIFIED = "unspecified"
 MAX_SENTENCES = 16
 MAX_NUMBERS = 16
 
-# What counts as stated, per field: spec section 9.2 ("什麼才算有說"), drafts 3-5.
+# What counts as stated, per field: spec section 9.2 ("what counts as stated"), drafts 3-5.
 _STATED_WHEN = {
     "artifact": "What the item's words name: menu_result (a result on the menu: value), kind_of_result (only a kind "
                 "of result -- network, regulation: kind), workflow_only (a registered workflow is named and no "

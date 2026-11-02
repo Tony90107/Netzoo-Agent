@@ -1,101 +1,128 @@
-# NetZoo Agent Desktop UI 架構設計
+# NetZoo Agent Desktop UI Architecture
 
-狀態：設計稿（尚未實作）
-決策前提：Tauri v2 桌面殼層 + Agent 維持在 Docker 容器內執行 + v1 涵蓋「對話與計畫審核／推理時間軸／結果檔案檢視／Session 歷史與設定」四塊。
-
----
-
-## 1. 目標與非目標
-
-### 目標
-1. 用桌面原生視窗取代 `./netzoo-chat` 的終端互動，但**行為完全等價**：同一份狀態機、同一份 trace、同一份 session 檔。
-2. 把目前只能用文字排版表達的東西（WorkflowPlan、InputEvidence、dry-run 指令預覽、recovery）變成可點選、可編輯的 UI 元件。
-3. 讓「推理過程」可被檢視：把 `.netzoo/traces/` 的 hash-chain 事件即時渲染成時間軸。
-4. 讓分析結果（TSV / npz / markdown / 網路圖）不必離開視窗就能看。
-
-### 非目標（v1 明確不做）
-- 不做多人協作、不做雲端帳號。Observer 的 share 機制維持現狀，不整併進桌面版。
-- 不做 workflow 視覺化編輯器（拖拉節點）。Plan 仍由 router/planner 產生，UI 只做審核與修正。
-- 不重寫 agent 的決策邏輯。**任何 prompt 文字、routing 規則、contract 語意都不在本案的變更範圍內。**
-- 不支援遠端 daemon。v1 只連本機 `127.0.0.1`。
+Status: implemented (milestones M0-M5 below).
+Premises: a Tauri v2 desktop shell, the agent keeps running inside its Docker
+container, and v1 covers four areas: conversation and plan review, the
+reasoning timeline, output file viewing, and session history and settings.
 
 ---
 
-## 2. 現況盤點
+## 1. Goals and non-goals
 
-### 2.1 可直接重用的資產
+### Goals
+1. Replace the terminal interaction of `./netzoo-chat` with a native desktop
+   window that **behaves identically**: the same state machine, the same
+   traces, the same session files.
+2. Turn things that the terminal can only express as formatted text
+   (`WorkflowPlan`, `InputEvidence`, dry-run command previews, recovery) into
+   clickable, editable UI components.
+3. Make the reasoning process inspectable: render the hash-chained events in
+   `.netzoo/traces/` as a live timeline.
+4. Let users view analysis results (TSV, npz, Markdown, network tables) without
+   leaving the window.
 
-| 資產 | 位置 | 在桌面版的角色 |
+### Non-goals (explicitly out of scope for v1)
+- No multi-user collaboration and no cloud accounts. The Observer's share
+  mechanism stays as it is and is not merged into the desktop app.
+- No visual workflow editor (drag-and-drop nodes). Plans are still produced by
+  the Router/Planner; the UI only reviews and corrects them.
+- No rewrite of the agent's decision logic. **Prompt text, routing rules, and
+  contract semantics are all outside the scope of this work.**
+- No remote daemon. v1 only connects to local `127.0.0.1`.
+
+---
+
+## 2. Starting point
+
+### 2.1 Reused assets
+
+| Asset | Location | Role in the desktop app |
 | --- | --- | --- |
-| Pydantic contracts | `scripts/netzoo_agent_core/contracts/` | 直接當成前後端的 wire format（見 §7） |
-| `LocalTraceStore` / `TraceRecorder` | `trace_store.py`, `tracing.py` | 推理時間軸的唯一事件來源 |
-| Observer FastAPI + SSE + dashboard | `scripts/netzoo_observer/` | 事件串流與 auth 的既有範例；`dashboard/app.js` 的事件渲染邏輯可移植 |
-| LangGraph 拓樸 | `graph/topology.py` | 10 個節點名稱直接對映時間軸的階段標籤 |
-| Docker 映像與 compose | `Dockerfile`, `docker-compose.yml` | daemon 沿用同一個 image，不另外建環境 |
-| `workflow_registry.py` | `scripts/` | UI 的 workflow 目錄、必填輸入欄位、參數表單 schema 來源 |
+| Pydantic contracts | `scripts/netzoo_agent_core/contracts/` | the wire format between front end and back end (see §7) |
+| `LocalTraceStore` / `TraceRecorder` | `trace_store.py`, `tracing.py` | the only event source for the reasoning timeline |
+| Observer FastAPI + SSE + dashboard | `scripts/netzoo_observer/` | prior art for event streaming and auth; the event rendering in `dashboard/app.js` was portable |
+| LangGraph topology | `graph/topology.py` | the 10 node names map directly to timeline stage labels |
+| Docker image and compose | `Dockerfile`, `docker-compose.yml` | the daemon uses the same image; no separate environment |
+| `workflow_registry.py` | `scripts/` | source of the UI's workflow catalog, required input fields, and parameter form schema |
 
-### 2.2 四個必須先解掉的阻擋點
+### 2.2 Four blockers that had to be removed first
 
-**B1：對話狀態機與終端 I/O 緊耦合。**
-`cli/conversation.py`（711 行）的 `run_conversation()` 在同一個 `while True` 裡同時做四件事：算出該問什麼、用 `reader.read()` 讀終端、呼叫 `invoke_graph_turn_func()`、更新 12 個區域變數當狀態。GUI 無法重用，而**複製一份等於分叉狀態機**——這是最大的長期風險。必須先抽出（§4）。
+**B1: the conversation state machine was tightly coupled to terminal I/O.**
+`run_conversation()` in `cli/conversation.py` (then about 700 lines) did four
+things in one `while True` loop: decide what to ask, read the terminal with
+`reader.read()`, call `invoke_graph_turn_func()`, and update 12 local variables
+that served as state. A GUI could not reuse it, and **copying it would fork the
+state machine**, the largest long-term risk. It had to be extracted first (§4).
 
-**B2：`EXECUTE_TOOLS` 是行程全域旗標。**
-執行授權目前靠 `configure_runtime(EXECUTE_TOOLS=True)` 在單一 turn 前後開關（`cli/conversation.py` 的 `try/finally`）。若 daemon 用單一行程服務多個 session，A session 按下執行時 B session 也會短暫獲得執行權。解法見 §5（一 session 一 worker 行程），**不去動 runtime 的語意**。
+**B2: `EXECUTE_TOOLS` is a process-global flag.**
+Execution authority is granted by toggling `configure_runtime(EXECUTE_TOOLS=True)`
+around a single turn (a `try/finally`). If one daemon process served several
+sessions, session B would briefly gain execution authority whenever session A
+pressed Run. The fix is one worker process per session (§5), **without changing
+the runtime's semantics**.
 
-**B3：`app.invoke()` 是同步阻塞、無串流。**
-`graph/factory.py:143` 只有 `app.invoke(invocation)`，一個 turn 可能跑數十秒到數小時（`NETZOO_TOOL_TIMEOUT_SECONDS` 預設 86400）。UI 的進度必須走 trace 事件旁路，不能等回傳值。
+**B3: `app.invoke()` is synchronous and blocking, with no streaming.**
+`graph/factory.py` only calls `app.invoke(invocation)`, and a turn can take
+anywhere from tens of seconds to hours (`NETZOO_TOOL_TIMEOUT_SECONDS` defaults
+to 86400). UI progress must come from a side channel of trace events, not the
+return value.
 
-**B4：host 與 container 的路徑不一致。**
-容器內 `PROJECT_ROOT` 是 `/work`，host 上是 `/Users/chenzhonghan/Documents/LLM AGENT/netzoo_agent`。原生檔案選擇器回傳 host 路徑，agent 只認容器路徑。需要一層 PathMapper（§8.3）。
+**B4: host and container paths differ.**
+Inside the container `PROJECT_ROOT` is `/work`; on the host it is wherever the
+repository is checked out. Native file pickers return host paths, while the
+agent only understands container paths. A PathMapper layer handles this
+(§8.3).
 
 ---
 
-## 3. 分層架構
+## 3. Layered architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Tauri Shell (Rust)                        netzoo_desktop    │
-│  ・視窗／選單／原生檔案對話框／通知                            │
-│  ・生命週期：docker compose up → health poll → down          │
-│  ・唯一持有 daemon token，透過 IPC 注入 WebView               │
+│  Tauri Shell (Rust)                        desktop/src-tauri │
+│  - window, menus, native file dialogs, notifications         │
+│  - lifecycle: docker compose up -> health poll -> down       │
+│  - sole holder of the daemon token, injected into the WebView│
 └───────────────┬─────────────────────────────────────────────┘
                 │ Tauri IPC (invoke / event)
 ┌───────────────┴─────────────────────────────────────────────┐
 │  WebView UI (React + TypeScript + Vite)                     │
-│  ・三欄版面：Sessions │ Conversation │ Inspector             │
-│  ・狀態：TanStack Query(快照) + Zustand(串流累積)             │
-│  ・型別由 contracts 自動生成（§7）                            │
+│  - three panes: Sessions | Conversation | Inspector         │
+│  - state: TanStack Query (snapshots) + Zustand (streams)    │
+│  - types generated from the contracts (§7)                  │
 └───────────────┬─────────────────────────────────────────────┘
                 │ WebSocket  ws://127.0.0.1:8765/ws/session/{id}
-╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌ Docker 邊界 ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌ Docker boundary ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
 ┌───────────────┴─────────────────────────────────────────────┐
 │  Agent Daemon (FastAPI, asyncio)   netzoo_agent_core/server/ │
-│  ・SessionSupervisor：每個 session 一個 worker 子行程          │
-│  ・TraceFollower：把 worker 的 trace 事件廣播給 WebSocket      │
-│  ・REST：sessions / outputs / workflows / settings / policy   │
+│  - SessionSupervisor: one worker subprocess per session      │
+│  - broadcasts worker trace events to the WebSocket           │
+│  - REST: sessions / history / files / outputs / settings     │
 └───────────────┬─────────────────────────────────────────────┘
-                │ multiprocessing Pipe（JSON lines）
+                │ multiprocessing Pipe (JSON lines)
 ┌───────────────┴─────────────────────────────────────────────┐
-│  Session Worker (同步 Python，一 session 一行程)              │
-│  ・ConversationMachine（§4，CLI 與 GUI 共用）                 │
-│  ・BroadcastTraceRecorder → 既有 LocalTraceStore + 廣播       │
-│  ・invoke_graph_turn(app, invocation)  ← 完全不改             │
+│  Session Worker (synchronous Python, one process per session)│
+│  - ConversationMachine (§4, shared by CLI and GUI)           │
+│  - BroadcastTraceStore -> LocalTraceStore + broadcast        │
+│  - invoke_graph_turn(app, invocation)  <- unchanged          │
 └───────────────┬─────────────────────────────────────────────┘
                 │
-        既有 LangGraph 10 節點 / workflow_registry / netzoopy
+        existing 10-node LangGraph / workflow_registry / netZooPy
 ```
 
-CLI 沒有被取代：`./netzoo-chat` 改成掛在同一個 `ConversationMachine` 上的第二個 adapter，兩條路徑共用同一份狀態轉移。
+The CLI is not replaced: `./netzoo-chat` is a second adapter on the same
+`ConversationMachine`, so both paths share one set of state transitions.
 
 ---
 
-## 4. 核心重構：把對話狀態機抽出來
+## 4. Core refactor: extracting the conversation state machine
 
-這是整個專案的**前置條件**，不先做這步，後面全部是技術債。
+This was the **precondition** for everything else; without it, the rest would
+have been technical debt.
 
-### 4.1 現況的隱性狀態
+### 4.1 The implicit state
 
-`run_conversation()` 內目前用區域變數表達的狀態共 12 項：
+`run_conversation()` held 12 pieces of state in local variables:
 
 ```
 clarification_selections   custom_input_selection      preview_task
@@ -103,17 +130,18 @@ preview_workflow           preview_plan                preview_plan_evaluation
 execution_confirmation_task  input_confirmation_correction  run_paused
 queued_task                next_prompt                 follow_up_context
 ```
-加上 `runtime` 上的 `conversation / pending_plan / active_usage / run_id`。
 
-### 4.2 目標形狀
+plus `conversation / pending_plan / active_usage / run_id` on `runtime`.
 
-新增 `scripts/netzoo_agent_core/engine/`：
+### 4.2 Target shape
+
+`scripts/netzoo_agent_core/engine/` (simplified):
 
 ```python
 # engine/state.py
 @dataclass
 class ConversationState:
-    """把 run_conversation 的 12 個區域變數升格為顯式、可序列化的狀態。"""
+    """The 12 local variables of run_conversation, made explicit and serializable."""
     session_id: str
     profile_id: str
     conversation: list
@@ -132,48 +160,61 @@ class ConversationState:
 # engine/machine.py
 class ConversationMachine:
     def view(self) -> ViewState:
-        """目前該向使用者要什麼：prompt 種類、問題文字、可選項、可否執行。"""
+        """What to ask the user now: prompt kind, question text, options, whether execution is possible."""
 
     def submit(self, answer: str) -> Iterator[EngineEvent]:
-        """吃一個使用者輸入，吐出 0..n 個事件（notice / turn_started /
-        turn_finished / plan_updated / finished）。不做任何 print/input。"""
+        """Consume one user input and emit 0..n events (notice / turn_started /
+        turn_finished / plan_updated / finished). Never prints or reads."""
 ```
 
-`ViewState` 是 UI 與 CLI 共用的「現在畫面該長怎樣」，它**取代目前散在 `clarification_prompt()` / `input_confirmation_prompt()` / `render_next_turn_prompt()` 的字串組裝**——那些函式改成 `ViewState → str` 的純渲染器，GUI 則用 `ViewState → React 元件`。
+`ViewState` is the shared "what the screen should look like now" for the UI and
+the CLI. It **replaces the string assembly that used to be scattered across
+`clarification_prompt()`, `input_confirmation_prompt()`, and
+`render_next_turn_prompt()`**: those functions became pure `ViewState -> str`
+renderers, and the GUI renders `ViewState -> React components`.
 
-### 4.3 兩個 adapter
+### 4.3 Two adapters
 
-| Adapter | 位置 | 職責 |
+| Adapter | Location | Responsibility |
 | --- | --- | --- |
-| CLI | `cli/conversation.py`（瘦身後約 120 行） | `while True: print(render(m.view())); m.submit(read())` |
+| CLI | `cli/conversation.py` (about 120 lines) | `while True: print(render(m.view())); m.submit(read())` |
 | GUI worker | `server/session_worker.py` | `for event in m.submit(answer): pipe.send(event)` |
 
-### 4.4 驗收條件（不可協商）
+### 4.4 How the extraction was verified
 
-測試套件在任何環境下都**不是全綠的**（`HANDOFF.md` 記載的既有基準是約 93 個失敗），
-所以「全部通過」不是可用的標準。實際採用的是**失敗集合相等**：
+The test suite was not fully green in every environment at the time, so "all
+tests pass" was not a usable bar. The criterion was **an identical failure
+set**:
 
-1. 重構前先錄下失敗測試的完整 node id 清單，重構後必須**逐行相同**——不是數量相同，
-   而是同一批測試、同樣的失敗訊息。且不修改任何既有測試的斷言。
-2. 兩個環境都要驗：本機 `python -m pytest tests -q`（`HANDOFF.md` 指定的基準環境），
-   以及 `netzoo_agent:latest` + pytest 的容器。**兩者的 skip 集合不同**：
-   `test_workflow_continuation.py`（最重壓 `run_conversation` 的檔案）在本機因缺
-   langchain 而整檔 skip，只有容器會真的跑它。只驗本機等於沒驗到這個迴圈。
-3. Golden transcript：固定輸入餵給重構前後的 CLI，**stdout 與傳給 `input_func` 的
-   prompt 字串**都要逐字元相同。只比對 stdout 會漏掉大部分 UI 文字，因為提示詞是
-   透過 `input_func` 的參數送出的，不是印出來的。
-4. `git diff` 中 prompt 字串、routing 邏輯、contract 欄位的變更量為零，用 AST
-   抽出字串常數集合對比來證明，不靠肉眼看 diff。
+1. The full node-id list of failing tests was recorded before the refactor and
+   had to be **identical line by line** afterwards: the same tests with the
+   same failure messages, not just the same count. No existing assertion was
+   changed.
+2. Both environments were checked: the local `python -m pytest tests -q` and the
+   `netzoo_agent:latest` image with pytest. **Their skip sets differ**:
+   `test_workflow_continuation.py`, the file that exercises `run_conversation`
+   hardest, is skipped entirely when LangChain is not installed locally, so only
+   the container actually runs it.
+3. Golden transcripts: fixed inputs were fed to the CLI before and after, and
+   **both stdout and the prompt strings passed to `input_func`** had to match
+   character for character. Comparing stdout alone would miss most UI text,
+   because prompts are passed as `input_func` arguments rather than printed.
+4. Zero changes to prompt strings, routing logic, and contract fields in the
+   diff, proven by comparing AST-extracted string-constant sets rather than by
+   eye.
 
-> 為什麼堅持零 prompt 變更：這個專案已經有六次「改 prompt 措辭」的失敗紀錄，routing 的可量測性本來就薄弱。UI 重構必須是純粹的機械式抽取，否則之後任何 routing 指標波動都無法歸因。
+> Why zero prompt changes: prompt-wording fixes had repeatedly failed in this
+> project (a design decision recorded in the research logs), and routing
+> measurements are noisy. The UI refactor had to be a purely mechanical
+> extraction, or later shifts in routing metrics could not be attributed.
 
 ---
 
-## 5. Session Worker 程序模型
+## 5. Session worker process model
 
-### 5.1 為什麼是「一 session 一行程」
+### 5.1 Why one process per session
 
-`runtime.MUTABLE_RUNTIME_NAMES` 共 14 個成員，全部是行程全域值：
+`runtime.MUTABLE_RUNTIME_NAMES` has 14 members, all process-global:
 
 ```
 EXECUTE_TOOLS  TEST_DATA_MODE  TRACE_ENABLED  VERBOSE_OUTPUT  TRANSIENT_TRACE
@@ -181,373 +222,476 @@ PRESENTATION_MODE  TRANSIENT_TRACE_MIN_SECONDS  TOOL_TIMEOUT_SECONDS
 PROJECT_ROOT  SESSION_ROOT  TOOL_LOG_ROOT  TRACE_ROOT  PROFILE_ROOT  EPISODE_ROOT
 ```
 
-不只 `EXECUTE_TOOLS`。`TEST_DATA_MODE`（`/test`）同樣是每個 session 各自的使用者狀態，
-共用行程會讓一個視窗進入合成測試模式時，另一個視窗的 gene label 驗證也一起放寬。
-把這些改成 per-invocation 參數會觸及 graph 的每個節點——風險遠大於多開幾個行程。
-**用行程隔離換取零語意變更**是這裡的正確取捨。
+It is not only `EXECUTE_TOOLS`. `TEST_DATA_MODE` (`/test`) is also per-session
+user state; with a shared process, one window entering Synthetic Test mode
+would relax gene-label validation in another window too. Turning these into
+per-invocation parameters would touch every graph node, a much larger risk than
+running a few more processes. **Trading process isolation for zero semantic
+change** is the right call here.
 
-### 5.2 分工
+### 5.2 Division of work
 
-| 元件 | 行程 | 同步／非同步 | 責任 |
+| Component | Process | Sync/async | Responsibility |
 | --- | --- | --- | --- |
-| `SessionSupervisor` | daemon | asyncio | 建立／回收 worker、health、閒置 30 分鐘後回收 |
-| `SessionWorker` | 每 session 一個 | 同步 | 持有 `CliRuntime` 與 `ConversationMachine`，跑 `app.invoke()` |
-| `WorkerChannel` | 跨行程 | JSON lines over Pipe | 上行事件、下行指令 |
-| `TraceFollower` | daemon | asyncio | 把 worker 廣播的 trace 事件轉發到 WebSocket |
+| `SessionSupervisor` | daemon | asyncio | create and reap workers, health, reap after 30 idle minutes |
+| `SessionWorker` | one per session | synchronous | holds `CliRuntime` and `ConversationMachine`, runs `app.invoke()` |
+| `Channel` | cross-process | JSON lines over a Pipe | upstream events, downstream commands |
+| broadcast relay | daemon | asyncio | forwards the worker's broadcast trace events to the WebSocket |
 
-### 5.3 執行授權的流向
+### 5.3 Flow of execution authority
 
 ```
-UI 按下「執行」
-  → WS: {"type":"approve_execution","run_id":...,"plan_hash":...}
-  → daemon 檢查 plan_hash 與 worker 目前的 preview plan 一致
-  → worker: configure_runtime(EXECUTE_TOOLS=True) → invoke → finally 關掉
+User presses "Run" in the UI
+  -> WS: {"type":"approve_execution","plan_hash":...}
+  -> daemon checks plan_hash against the worker's current preview plan
+  -> worker: configure_runtime(EXECUTE_TOOLS=True) -> invoke -> reset in finally
 ```
-`plan_hash` 是必要的：UI 顯示的計畫與 worker 手上的計畫之間隔著網路，使用者有可能對著舊卡片按執行。對不上就拒絕並要求重新預覽。
 
-### 5.4 取消
+`plan_hash` is required: the plan shown in the UI and the plan held by the
+worker are separated by a network hop, and the user might press Run on a stale
+card. On a mismatch the approval is refused and a new preview is required.
 
-`app.invoke()` 無法中途取消。v1 的取消 = 對 worker 送 `SIGINT`，沿用既有的 `AgentTurnInterrupted` 路徑（`graph/factory.py:147`），trace 會寫入 `run.interrupted`。UI 顯示「已中止，未完成的步驟不會被回報為完成」——與 CLI 現有訊息一致。
+### 5.4 Cancellation
+
+`app.invoke()` cannot be cancelled midway. In v1, cancel means sending `SIGINT`
+to the worker, reusing the existing `AgentTurnInterrupted` path in
+`graph/factory.py`; the trace records `run.interrupted`. The UI says the run was
+stopped and that unfinished steps are not reported as completed, matching the
+CLI's existing message.
 
 ---
 
-## 6. 通訊協定
+## 6. Protocol
 
-### 6.1 為什麼是 WebSocket 而非 SSE
+### 6.1 Why WebSocket rather than SSE
 
-Observer 用 SSE 是因為它單向唯讀。桌面版需要雙向（送出回答、核准執行、取消），且需要在同一條連線上維持 turn 的因果順序。
+The Observer uses SSE because it is one-way and read-only. The desktop app needs
+two-way traffic (sending answers, approving execution, cancelling) and needs to
+keep each turn's causal order on a single connection.
 
-### 6.2 訊息信封
+### 6.2 Envelope
 
 ```jsonc
 { "v": 1, "type": "...", "session_id": "...", "seq": 42, "payload": { } }
 ```
-`seq` 由 daemon 單調遞增；UI 重連時帶 `?since=seq` 補齊漏掉的事件（daemon 為每個 session 保留最近 500 筆環形緩衝）。
 
-### 6.3 Client → Server
+`seq` increases monotonically per daemon. On reconnect, the UI passes
+`?since=seq` to receive the events it missed (the daemon keeps a 500-event ring
+buffer per session).
 
-| type | payload | 對應 CLI 行為 |
+### 6.3 Client -> server
+
+| type | payload | Equivalent CLI behavior |
 | --- | --- | --- |
-| `answer` | `{text}` | 所有一般輸入：主提示、clarification、bundle 選擇、slash 指令 |
-| `answer`（不回音） | `{text}` | 模式切換：UI 送 `/planning` / `/test`，但不把它當成一句話放進對話串 |
-| `approve_execution` | `{plan_hash}` | 執行確認的 `y` |
-| `decline_execution` | `{}` | 執行確認的 `n` |
+| `answer` | `{text}` | every ordinary input: main prompt, clarification, bundle choice, slash command |
+| `answer` (not echoed) | `{text}` | mode switch: the UI sends `/planning` or `/test` but does not add it to the conversation |
+| `approve_execution` | `{plan_hash}` | `y` at the execution confirmation |
+| `decline_execution` | `{}` | `n` at the execution confirmation |
 | `cancel` | `{}` | Ctrl-C |
-| `ping` | `{}` | 無（daemon 直接回 `pong`，不轉給 worker） |
+| `ping` | `{}` | none (the daemon answers `pong` itself without forwarding to the worker) |
 
-原設計把 `submit` / `answer_prompt` / `select_bundle` / `slash` 分成四種。實作時合併成
-一個 `answer`：狀態機對這四者的處理**本來就是同一個 `submit(text)`**，分開只會讓
-daemon 重新推導「現在是哪一種提示」，也就是把 §6.4 明令的「`view` 是唯一真相」破壞掉。
-UI 仍然照 `view.prompt_kind` 決定要畫哪種輸入元件。
+An earlier design split `submit`, `answer_prompt`, `select_bundle`, and `slash`
+into four types. The implementation merged them into one `answer`: the state
+machine **already handles all four with the same `submit(text)`**, and
+splitting them would force the daemon to re-derive "what kind of prompt is
+this", breaking the rule in §6.4 that `view` is the single source of truth. The
+UI still uses `view.prompt_kind` to decide which input component to draw.
 
-`approve_execution` 是唯一的例外，而且是刻意的：終端問 `[y/N]` 然後相信下一行輸入，但
-UI 離它看到的那份計畫有一個網路來回的距離。所以它必須指名自己核准的是哪一份計畫，
-hash 對不上就拒絕。在執行確認提示上送 `answer` 會被拒絕（`ExecutionApprovalRequired`），
-兩段確認（先預覽、再核准）在兩個 driver 上都成立。
+`approve_execution` is the one deliberate exception. The terminal asks `[y/N]`
+and trusts the next line, but the UI is one network round trip away from the
+plan it shows. So the approval must name the plan it approves, and is refused if
+the hash does not match. Sending `answer` at the execution confirmation prompt
+is rejected (`ExecutionApprovalRequired`), so the two-step confirmation (preview
+first, then approve) holds for both drivers.
 
-**WebSocket 的 token 走 subprotocol，不走 query string。** 瀏覽器不能在 WebSocket 上設
-Authorization header，而 query string 會被 uvicorn 的 access log 原封不動記下來
-（`docker logs` 就讀得到）。`["netzoo.bearer", <token>]` 是 WebSocket 協定為此提供的
-機制，不會被記錄。非瀏覽器客戶端仍可用 Authorization header。
+**The WebSocket token travels in a subprotocol, not the query string.**
+Browsers cannot set an Authorization header on a WebSocket, and query strings
+are logged verbatim in uvicorn's access log (readable through `docker logs`).
+`["netzoo.bearer", <token>]` is the WebSocket mechanism intended for this and is
+not logged. Non-browser clients may still use the Authorization header.
 
-**模式是狀態，所以用控制項而非打字。** 終端只能靠 `/planning` / `/test`，那是終端唯一
-的手段；在視窗裡打字會把指令留在對話紀錄裡，而且兩則訊息之間看不出目前是什麼模式。
-UI 仍然把指令送給 engine（`TEST_DATA_MODE` 與 `EXECUTE_TOOLS` 是 engine 的，視窗不得
-自己設），只是不回音；agent 自己那段說明照常進入對話串，因為它帶著「合成結果不是生物
-證據」這句警告。
+**Mode is state, so it is a control, not typed text.** In the terminal,
+`/planning` and `/test` are the only means available; typing them in a window
+would leave commands in the conversation and make the current mode invisible
+between messages. The UI still sends the command to the engine
+(`TEST_DATA_MODE` and `EXECUTE_TOOLS` belong to the engine; the window must not
+set them), just without echoing it. The agent's own explanation still enters the
+conversation, because it carries the warning that synthetic results are not
+biological evidence.
 
-**`view` 多帶三個欄位**：`target_field`、`choosing_bundle`、`preflight_correction`。
-計畫本身說不出精靈正在問哪一個輸入——已收集的答案在 machine 裡而不在 plan 上——去解析
-提示詞的散文等於再造一個沉默的狀態機。
+**`view` carries three extra fields**: `target_field`, `choosing_bundle`, and
+`preflight_correction`. The plan alone cannot say which input the wizard is
+asking for (collected answers live in the machine, not on the plan), and
+parsing the prompt prose would rebuild a silent second state machine.
 
-### 6.4 Server → Client
+### 6.4 Server -> client
 
-| type | payload | UI 去處 |
+| type | payload | Where it goes in the UI |
 | --- | --- | --- |
-| `ready` | `{session_id}` | worker 已啟動 |
-| `view` | `{prompt_kind, text, menu_enabled, mode, plan, plan_hash, next_prompt}` | 驅動輸入區的形態（唯一真相） |
-| `message` | `{text}` | 對話串（agent 的最終回覆） |
-| `notice` | `{text}` | 對話串中的系統訊息 |
-| `progress` | `{text}` | 進度列（見下） |
-| `trace` | `TraceEvent` | Inspector 的 Timeline 分頁 |
-| `turn_started` / `turn_finished` | `{task, execute_once}` / `{}` | 忙碌狀態 |
-| `usage` | `LLMUsage` | 底部成本列 |
-| `error` | `{error_type, message}` | 錯誤卡片 |
-| `stopped` | `{exit_code}` | session 結束 |
+| `ready` | `{session_id}` | worker has started |
+| `view` | `{prompt_kind, text, menu_enabled, mode, plan, plan_hash, next_prompt}` | drives the shape of the input area (single source of truth) |
+| `message` | `{text}` | conversation (the agent's final reply) |
+| `notice` | `{text}` | system message in the conversation |
+| `progress` | `{text}` | progress line (see below) |
+| `trace` | `TraceEvent` | the Inspector's Timeline tab |
+| `turn_started` / `turn_finished` | `{task, execute_once}` / `{}` | busy state |
+| `usage` | `LLMUsage` | cost bar at the bottom |
+| `error` | `{error_type, message}` | error card |
+| `stopped` | `{exit_code}` | session ended |
 
-`plan` 沒有獨立事件：它跟著 `view` 走。計畫只在「該問使用者什麼」改變時才有新版本，
-拆成兩個事件會讓 UI 需要自己對齊兩者的先後。`artifact` 留到 M5 檔案檢視再加。
+`plan` has no event of its own; it travels with `view`. A plan only gets a new
+version when "what to ask the user" changes, and splitting it into two events
+would force the UI to reconcile their order.
 
-`progress` 是 §4.4 提到的那個邊界：`_trace` 與 `_clear_transient_trace` 直接寫
-stdout，因為終端是它們的原生輸出。worker 行程把自己的 stdout 重導向成 `progress`
-事件——**這件事由行程做，不是 driver 做**，因為 `sys.stdout` 是行程層級的，driver
-去改會連帶蓋掉同一個直譯器裡的其他輸出。
+`progress` is the boundary mentioned in §4.4: `_trace` and
+`_clear_transient_trace` write straight to stdout, because the terminal is
+their native output. The worker process redirects its own stdout into
+`progress` events. **The process does this, not the driver**, because
+`sys.stdout` is process-wide and a driver replacing it would also capture any
+other output in the same interpreter.
 
-**原則：`view` 是唯一決定「現在能輸入什麼」的訊息。** UI 不自行推導狀態，避免 GUI 與 CLI 的狀態機漂移。
-
----
-
-## 7. 型別同步
-
-單一真相是 Pydantic contracts，禁止手寫 TS interface。
-
-```
-contracts/*.py  --(pydantic .model_json_schema())-->  schemas/*.json
-                --(json-schema-to-typescript)-->      ui/src/generated/contracts.ts
-```
-
-- 生成腳本 `scripts/generate_ui_types.py`，輸出 `desktop/src/generated/contracts.ts`，進 git（方便 review contract 變更）。
-- 測試 `tests/test_ui_contract_sync.py`：重新生成並比對，漂移即失敗（已實測：往契約加一個欄位會讓它失敗）。
-- **走訪 Pydantic 模型，不走 JSON Schema**：`RequestedOutcome` 有 `__get_pydantic_json_schema__` hook，會展開成每個 artifact type 一個條件分支——那對引導模型是對的，對生成 interface 是災難。
-- 生成器遇到無法誠實表達的型別會**拋錯而不是猜**。無參數的 `dict`（`decision`、`arguments`、trace 的 `payload`）對映成 `Record<string, unknown>`。
-- 需要生成的型別：`WorkflowPlan` `InputEvidence` `InputBundleOption` `WorkflowStep` `NextTurnPrompt` `LLMUsage` `TraceEvent` `FollowUpContext` `ViewState`。
+**Rule: `view` is the only message that decides what can be entered now.** The
+UI never derives state on its own, so the GUI and CLI state machines cannot
+drift apart.
 
 ---
 
-## 8. Docker 執行模型
+## 7. Type synchronization
 
-### 8.1 新增 compose service
-
-```yaml
-  netzoo-daemon:
-    extends: { service: netzoo }        # 沿用同一 image 與全部環境變數
-    command: python -m netzoo_agent_core.server --host 0.0.0.0 --port 8765
-    ports: ["127.0.0.1:8765:8765"]      # 只綁 loopback
-    environment:
-      NETZOO_DESKTOP_TOKEN: ${NETZOO_DESKTOP_TOKEN}
-```
-`netzoo-chat` 的 `ensure_observer_env()` 產生隨機 observer 密鑰的技巧照抄，避免舊 `.env` 擋住啟動。
-
-### 8.2 Tauri 的生命週期
+The single source of truth is the Pydantic contracts; hand-written TypeScript
+interfaces are not allowed.
 
 ```
-啟動  → 產生一次性 NETZOO_DESKTOP_TOKEN（記憶體，不落地）
-      → docker compose up -d netzoo-daemon
-      → poll GET /health（最多 60s；逾時顯示可操作的錯誤，含 docker 未啟動的判斷）
-      → 建立 WebSocket，Authorization: Bearer <token>
-關閉  → 對所有 worker 送 graceful shutdown → docker compose stop netzoo-daemon
+contracts/*.py  --(walk the Pydantic models)-->  desktop/src/generated/contracts.ts
 ```
-Docker Desktop 未啟動是最常見的失敗，UI 要明確指出而不是顯示「連線失敗」。
+
+- The generator is `scripts/generate_ui_types.py`; its output
+  `desktop/src/generated/contracts.ts` is committed, so contract changes are
+  visible in review.
+- `tests/test_ui_contract_sync.py` regenerates and compares; any drift fails the
+  test (adding a field to a contract makes it fail).
+- **It walks the Pydantic models, not the JSON Schema.** `RequestedOutcome` has a
+  `__get_pydantic_json_schema__` hook that expands into one conditional branch
+  per artifact type; that is right for guiding a model and disastrous for
+  generating interfaces.
+- The generator **raises instead of guessing** when a type cannot be expressed
+  honestly. Unparameterized `dict` (`decision`, `arguments`, a trace's
+  `payload`) maps to `Record<string, unknown>`.
+- Generated types include `WorkflowPlan`, `InputEvidence`, `InputBundleOption`,
+  `WorkflowStep`, `NextTurnPrompt`, `LLMUsage`, `TraceEvent`,
+  `FollowUpContext`, and `ViewState`.
+
+---
+
+## 8. Docker execution model
+
+### 8.1 Compose service
+
+`docker-compose.yml` defines `netzoo-daemon`, which extends the `netzoo`
+service (same image and environment), binds only to loopback
+(`127.0.0.1:${NETZOO_DAEMON_PORT:-8765}:8765`), and runs
+`python -m netzoo_agent_core.server --host 0.0.0.0 --port 8765`. It receives
+`NETZOO_DESKTOP_TOKEN` and `NETZOO_HOST_PROJECT_ROOT` from the shell and sets
+`PYTHONPATH` so the mounted working tree, not the code baked into the image, is
+what runs. `netzoo-chat`'s `ensure_observer_env()` trick of generating a random
+Observer secret is reused, so an old `.env` does not block startup.
+
+### 8.2 Tauri lifecycle
+
+```
+start -> mint a one-time NETZOO_DESKTOP_TOKEN (in memory, never written to disk)
+      -> docker compose up -d netzoo-daemon
+      -> poll GET /health (up to 60 s; on timeout show an actionable error,
+         including detection of Docker not running)
+      -> open the WebSocket with the bearer token
+close -> graceful shutdown of all workers -> docker compose stop netzoo-daemon
+```
+
+Docker Desktop not running is the most common failure; the UI must say so
+explicitly rather than show "connection failed".
 
 ### 8.3 PathMapper
 
 ```python
 class PathMapper:
-    """host 絕對路徑 ↔ 容器 /work 路徑的雙向轉換，落在 PROJECT_ROOT 之外一律拒絕。"""
+    """Two-way mapping between host absolute paths and container /work paths; anything outside PROJECT_ROOT is rejected."""
     def to_container(self, host_path: str) -> str: ...
     def to_host(self, container_path: str) -> str: ...
 ```
-- 規則：`<HOST_PROJECT_ROOT>/X` ↔ `/work/X`，其餘拒絕。
-- 轉換後仍要過既有的 `path_safety.py`，**PathMapper 不取代任何既有檢查**。
-- UI 一律顯示 host 路徑（使用者在 Finder 看得到的那個），送進 agent 前才轉換。
-- Tauri 的檔案拖放與原生對話框回傳 host 路徑，是這層的主要入口。
+
+- Rule: `<HOST_PROJECT_ROOT>/X` <-> `/work/X`; everything else is rejected.
+- Mapped paths still go through the existing `path_safety.py`. **PathMapper
+  replaces no existing check.**
+- The UI always shows host paths (the ones the user can find in Finder) and
+  converts them only before sending to the agent.
+- Tauri file drag-and-drop and native dialogs return host paths and are the
+  main entry points to this layer.
+
+### 8.4 Browser build (`netzoo-web`)
+
+The same front end also runs as a plain web page, so the app needs nothing on
+the host but Docker:
+
+- The `web-ui` stage of the `Dockerfile` runs `npm run build` in `desktop/`
+  and copies `dist/` to `/opt/netzoo-web` in the image.
+- The `netzoo-web` compose service is the daemon with `NETZOO_WEB_UI_DIR` set.
+  `create_app` then mounts that directory at `/`, after every API route. The
+  page is same-origin, so it needs no CORS entry, and every `/v1` and `/ws`
+  route still requires the bearer token. The service publishes
+  `127.0.0.1:${NETZOO_WEB_PORT:-8080}`, so it never collides with the desktop
+  app's daemon.
+- `./netzoo-web` mints a token for each launch, starts the service and opens
+  `http://localhost:<port>/#token=<token>`. `transport/daemon.ts` moves the
+  fragment into localStorage and clears it from the address bar. The fragment
+  is never sent to the server, so it does not appear in access logs. A token
+  that the daemon rejects is forgotten, and the page asks for a fresh link.
+- Host-only features fall back in the browser: the host Docker check shows as
+  unknown, log export becomes a browser download, and external links open
+  normally.
 
 ---
 
-## 9. UI 資訊架構
+## 9. UI information architecture
 
-### 9.1 版面
+### 9.1 Layout
 
 ```
 ┌──────────────┬────────────────────────────────┬──────────────────────┐
 │ Sessions     │ Conversation                   │ Inspector            │
 │              │                                │                      │
-│ ▸ 今天       │  [user] 用 toy 資料跑 PANDA     │ ┌ Plan ─┬ Timeline ┐ │
-│   · panda…   │                                │ │ Files │ Cost     │ │
-│   · lioness… │  [agent] 訊息…                 │ ├──────────────────┤ │
-│ ▸ 本週       │                                │ │ workflow: panda  │ │
+│ > Today      │  [user] Run PANDA on toy data  │ ┌ Plan ─┬ Timeline ┐ │
+│   - panda…   │                                │ │ Files │ Cost     │ │
+│   - lioness… │  [agent] message…              │ ├──────────────────┤ │
+│ > This week  │                                │ │ workflow: panda  │ │
 │              │  ┌ Plan Card ──────────────┐   │ │ status: needs_…  │ │
-│ ─────────    │  │ PANDA · needs_input     │   │ │ evidence 表格    │ │
-│ ⚙ 設定       │  │ 缺 motif_path           │   │ │ steps 清單       │ │
-│ 📁 outputs   │  │ [選擇檔案] [用 toy 資料] │   │ │                  │ │
+│ ─────────    │  │ PANDA · needs_input     │   │ │ evidence table   │ │
+│ Settings     │  │ missing motif_path      │   │ │ steps list       │ │
+│ outputs      │  │ [Choose file] [Toy data]│   │ │                  │ │
 │              │  └─────────────────────────┘   │ └──────────────────┘ │
-│              │  ┌ 輸入區（由 view 決定形態）┐  │                      │
+│              │  ┌ Input area (shape set by view) ┐                   │
 └──────────────┴────────────────────────────────┴──────────────────────┘
 ```
 
-### 9.2 輸入區的形態由 `ViewState` 決定
+### 9.2 The input area's shape is decided by `ViewState`
 
-| `NextTurnPrompt.kind` / plan status | 輸入區元件 |
+| `NextTurnPrompt.kind` / plan status | Input component |
 | --- | --- |
-| `initial` | 多行自由輸入；模式切換是標頭上的控制項，不是打字 |
-| plan `needs_input`（有 bundle options） | Bundle 卡片選擇器 + 「自訂」 |
-| plan `needs_input`（逐欄） | 針對 `missing_inputs[0]` 的欄位表單；路徑欄位掛原生檔案選擇器 |
-| plan `needs_confirmation` | 輸入清單確認（是／否／改路徑） |
-| `dry_run` | 指令預覽（等寬字、可複製）+ 主要按鈕「執行」+ 二次確認 |
-| `completed` | 自由輸入 + 後續問題建議 |
-| `failed` / `plan_rejected` / `unsupported` | 錯誤卡片 + 重試／換目標 |
-| `retrieval` / `clarify_outcome` / `alternative_outcome` | 選項按鈕 + 自由輸入 |
+| `initial` | multi-line free text; mode switching is a header control, not typed |
+| plan `needs_input` (with bundle options) | bundle card picker + "Custom" |
+| plan `needs_input` (field by field) | a form for `missing_inputs[0]`; path fields use the native file picker |
+| plan `needs_confirmation` | input-list confirmation (yes / no / change path) |
+| `dry_run` | command preview (monospace, copyable) + primary "Run" button + second confirmation |
+| `completed` | free text + suggested follow-up questions |
+| `failed` / `plan_rejected` / `unsupported` | error card + retry / change goal |
+| `retrieval` / `clarify_outcome` / `alternative_outcome` | option buttons + free text |
 
-**執行仍維持兩段確認**（預覽 → 明確核准），與 CLI 的 `/execute` + `y/N` 一致。UI 不得提供「一鍵直接執行」的捷徑。
+**Execution keeps the two-step confirmation** (preview, then explicit
+approval), matching the CLI's `/execute` + `y/N`. The UI must never offer a
+one-click "run now" shortcut.
 
-### 9.3 Plan Card 的內容
+### 9.3 Plan Card contents
 
-直接對映 `WorkflowPlan`：`workflow` / `objective` / `status` 當標題列；`evidence` 表格顯示 `field · status · value · reason`，其中 `missing` 的列可直接就地編輯；`steps` 顯示為可展開的指令清單；`memory_notes` 與 `policy_notes` 折疊在底部；`recovery_action` 出現時以警示樣式顯示第幾次重試。
+It maps directly to `WorkflowPlan`: `workflow`, `objective`, and `status` form
+the title bar; the `evidence` table shows `field · status · value · reason`,
+with `missing` rows editable in place; `steps` is an expandable command list;
+`memory_notes` and `policy_notes` are collapsed at the bottom; when
+`recovery_action` is present it is shown as a warning with the retry number.
 
 ---
 
-## 10. 推理時間軸
+## 10. Reasoning timeline
 
-### 10.1 事件來源
+### 10.1 Event source
 
-worker 用 `BroadcastTraceStore` 包住 `LocalTraceStore`：
+The worker wraps `LocalTraceStore` in a `BroadcastTraceStore`
+(`server/broadcast_recorder.py`):
 
 ```python
 class BroadcastTraceStore(LocalTraceStore):
     def append(self, *args, **kwargs):
-        event = super().append(*args, **kwargs)   # 先落地 hash chain
-        self._sink(event.model_dump(mode="json")) # 再推給 UI
+        event = super().append(*args, **kwargs)   # persist to the hash chain first
+        self._sink(event.model_dump(mode="json")) # then push to the UI
         return event
 ```
 
-落地順序不能反過來：**UI 看到的事件必須是已經寫入 hash chain 的事件**，否則時間軸會
-出現 trace 檔裡不存在的內容。
+The order cannot be reversed: **every event the UI shows must already be in the
+hash chain**, or the timeline could show content that does not exist in the
+trace file.
 
-**包在 store 而不是 recorder。** 第一版包在 `TraceRecorder` 上，結果 `pause_run` 與
-`finish_run` 是直接呼叫 store 的 `append`，完全繞過 recorder——一個暫停的 run 送到視窗
-時比自己的 trace 檔少一筆 `run.paused`。這正是本節驗收條件（事件數一致）抓到的，
-`tests/test_broadcast_covers_the_chain.py` 把它釘住。
+**Wrap the store, not the recorder.** The first version wrapped
+`TraceRecorder`, but `pause_run` and `finish_run` call the store's `append`
+directly and bypass the recorder, so a paused run reached the window with one
+fewer `run.paused` event than its own trace file. The event-count acceptance
+check caught this, and `tests/test_broadcast_covers_the_chain.py` pins it.
 
-### 10.2 事件 → 時間軸的映射
+### 10.2 Events to timeline
 
-| 事件 | 呈現 |
+| Event | Presentation |
 | --- | --- |
-| `node.started` / `node.finished` | 主階段列（10 個節點名 → 中文標籤），含 `duration_ms` |
-| `routing.*`（約 20 種） | 折疊在 `classify`／`plan` 階段底下的細節列 |
-| `plan.created` | 產生一張 Plan 快照，可回看歷史版本 |
-| `llm.completed` | 該階段右側的 token 徽章 |
-| `tool.started` / `tool.completed` | 執行階段的指令列 + 即時輸出 |
-| `memory.retrieved` / `policy.loaded` | 前置階段的次要列 |
-| `error.recorded` | 紅色列 + 展開 `error_type` / `message` |
-| `run.paused` / `run.resumed` / `run.interrupted` | 時間軸分隔線 |
+| `node.started` / `node.finished` | main stage rows (the 10 node names mapped to readable labels), with `duration_ms` |
+| `routing.*` (about 20 kinds) | detail rows collapsed under the `classify` / `plan` stages |
+| `plan.created` | a Plan snapshot; earlier versions can be reviewed |
+| `llm.completed` | a token badge to the right of the stage |
+| `tool.started` / `tool.completed` | command row of the execution stage + live output |
+| `memory.retrieved` / `policy.loaded` | secondary rows of the setup stages |
+| `error.recorded` | red row, expandable to `error_type` / `message` |
+| `run.paused` / `run.resumed` / `run.interrupted` | timeline separators |
 
-預設只顯示主階段列，`routing.*` 細節收合——這些事件對除錯 routing 很關鍵，但對一般使用者是雜訊。
+By default only the main stage rows are shown and `routing.*` details are
+collapsed: they matter for debugging routing but are noise for most users.
 
 ---
 
-## 11. 結果與檔案檢視
+## 11. Results and file viewing
 
-| 類型 | 檢視器 | 說明 |
+| Type | Viewer | Notes |
 | --- | --- | --- |
-| `.tsv` / `.csv` | 虛擬滾動表格 | 只讀前 N 行 + 串流分頁；PANDA 輸出動輒數十萬列，禁止全載 |
-| `.npz` | 陣列摘要 | 列出 key、shape、dtype、數值摘要，不做完整渲染 |
-| `execution-*.md` | Markdown 檢視 | 既有的執行報告格式 |
-| 網路邊表 | 圖檢視（可選，v1.5） | 依權重取 top-K 邊，超過門檻只顯示摘要 |
+| `.tsv` / `.csv` | virtualized table | reads only the first N rows + streamed paging; PANDA outputs can have hundreds of thousands of rows, so never load everything |
+| `.npz` | array summary | lists keys, shapes, dtypes, and numeric summaries; no full rendering |
+| `execution-*.md` | Markdown viewer | the existing execution report format |
+| `manifest.json` | structured view | matches `outputs/demo/manifest.json` |
+| network edge table | graph view (optional, v1.5) | top-K edges by weight; above a threshold only a summary is shown |
 
-實作補充：
-- 面板叫 **Outputs** 而不是 Files。「Files」沒有說出這些是 agent 自己產出的結果。
-  路徑列**只在你導覽進去時才出現**（在根目錄它只會重複面板標題），每一段都可點回去，
-  所以也不需要 `..` 那一列。
-- **所有分隔線可拖曳**，尺寸記在 localStorage、重啟後還在。每個窗格都有下限，拖過頭
-  會停住——一個被拖到零寬的窗格連把手都不見了，就再也拖不回來。分隔線是
-  `role="separator"` 且可用方向鍵調整：只能用滑鼠改的版面，對某些人等於不能改。
-- 側欄的 session 可以點開成**唯讀對話**（`GET /v1/history/{id}`）。看歷史不會動到
-  進行中的 session——socket 活在檢視之上。只有 agent 停在提問中的才顯示 Resume，
-  其餘顯示「沒有東西在等你」而不是一個按下去會失敗的按鈕。`save_session` 會壓縮長
-  對話，所以檢視會標明那是 agent 保留的部分，而不是把修剪過的歷史當成完整的。
-- session id 必須是純 id：帶分隔符的東西不是 session，在它能指涉路徑之前就被拒絕。
-- 檔案樹只服務 `outputs/`，路徑一律經檔案系統解析，指向樹外的 symlink 會被抓到而不是
-  照名字信任；任何逃逸回 403 而不是被夾回根目錄。
-- `.npz` 從 archive header 讀形狀，**不載入任何陣列**。
-- 有些 NetZoo 輸出的表頭是空白分隔、資料列是 tab 分隔，讀起來會變成一整格。檢視器
-  只在「重切後欄數與資料列完全相同」時才重切表頭，否則原樣顯示——不為了讓表格好看
-  而猜。
-| `manifest.json` | 結構化檢視 | 對應 `outputs/demo/manifest.json` |
+Implementation notes:
+- The pane is called **Outputs**, not Files: "Files" does not say these are
+  results the agent produced. The path bar **appears only once you navigate
+  into a folder** (at the root it would just repeat the pane title), and every
+  segment is clickable, so no `..` row is needed.
+- **Every divider is draggable**; sizes are kept in localStorage and survive a
+  restart. Each pane has a minimum size, and dragging past it stops: a pane
+  dragged to zero width would lose its handle and could never be dragged back.
+  Dividers have `role="separator"` and respond to arrow keys; a layout that
+  only a mouse can change is, for some people, a layout they cannot change.
+- A sidebar session opens as a **read-only conversation**
+  (`GET /v1/history/{id}`). Viewing history never touches the live session;
+  the socket lives above the view. Resume is offered only when the agent is
+  waiting on a question; otherwise the UI says nothing is waiting, instead of
+  showing a button that would fail. `save_session` compacts long
+  conversations, so the view labels what it shows as the part the agent kept
+  rather than presenting trimmed history as complete.
+- A session id must be a bare id: anything containing a separator is not a
+  session and is rejected before it can refer to a path.
+- The file tree only serves `outputs/`; paths are always resolved through the
+  file system, so a symlink pointing outside the tree is caught rather than
+  trusted by name, and any escape returns 403 instead of being clamped to the
+  root.
+- `.npz` shapes are read from the archive header; **no array is loaded**.
+- Some NetZoo outputs have a space-separated header but tab-separated data rows,
+  which would read as a single cell. The viewer re-splits the header only when
+  the re-split column count exactly matches the data rows; otherwise it shows
+  the header as-is rather than guessing to make the table look nice.
 
-檔案樹以 `outputs/` 為根，透過 daemon 的 REST 讀取（不讓 WebView 直接碰檔案系統），路徑一律經 PathMapper + `path_safety`。
-
----
-
-## 12. 安全模型
-
-1. **綁定範圍**：daemon 只綁 `127.0.0.1:8765`，不對 LAN 開放。
-2. **Token**：Tauri 每次啟動產生一次性 bearer token，經環境變數傳給容器，不寫入 `.env`、不出現在日誌。
-2b. **跨來源**：視窗是瀏覽器，它的請求是跨來源的——打包後的 Tauri 是
-   `tauri://localhost`（Windows 為 `http://tauri.localhost`），Vite dev server 是
-   `http://localhost:5173`。daemon 必須對這幾個 origin 開 CORS，否則殼層能透過 IPC
-   把容器叫起來，卻連不上它，畫面上看起來就像 daemon 從來沒啟動。
-   這不是放寬：綁定仍是 loopback、除 `/health` 外每條路由仍要 bearer token，且
-   **刻意不允許 credentials**，避免任何頁面靠環境 cookie 搭便車。WebSocket 不受
-   CORS 管轄，但 REST 受，所以兩者都要驗。
-3. **API key 隔離**：`OPENROUTER_API_KEY` 只存在於容器環境，WebView 與 Rust 端都拿不到。
-4. **Tauri capability**：完全不掛 shell / fs / http plugin。`docker compose` 由 Rust 端用
-   `std::process::Command` 執行，只透過具名的 `start_daemon` / `stop_daemon` command
-   暴露給 webview——renderer 能要求「啟動 daemon」，但無法指定要跑什麼命令。這比開
-   shell plugin 再用白名單過濾更緊。
-5. **CSP**：WebView 禁止外部來源；所有資產內嵌。
-6. **檔案存取**：UI 不直接讀檔，一律走 daemon REST，重用既有的 `path_safety` 與 trace redaction。
-7. **執行授權**：僅 `approve_execution` 能開啟 `EXECUTE_TOOLS`，作用域限單一 turn，且需 `plan_hash` 相符。
+The file tree is rooted at `outputs/` and read through the daemon's REST API
+(the WebView never touches the file system); paths always go through
+PathMapper and `path_safety`.
 
 ---
 
-## 13. 目錄結構
+## 12. Security model
+
+1. **Binding**: the daemon binds only to `127.0.0.1:8765` and is not exposed to
+   the LAN.
+2. **Token**: Tauri mints a one-time bearer token at every launch and passes it
+   to the container through an environment variable; it is never written to
+   `.env` and never appears in logs.
+3. **Cross-origin**: the window is a browser, so its requests are cross-origin.
+   The packaged Tauri app is `tauri://localhost` (`http://tauri.localhost` on
+   Windows) and the Vite dev server is `http://localhost:5173`. The daemon must
+   allow CORS for these origins, or the shell could start the container over
+   IPC but never reach it, which looks exactly like a daemon that never
+   started. This is not a relaxation: the binding is still loopback, every
+   route except `/health` still requires the bearer token, and **credentials
+   are deliberately not allowed**, so no page can ride on ambient cookies.
+   WebSockets are not subject to CORS but REST is, so both are checked.
+4. **API key isolation**: `OPENROUTER_API_KEY` exists only in the container
+   environment; neither the WebView nor the Rust side can read it.
+5. **Tauri capabilities**: no shell, fs, or http plugin is loaded. Rust runs
+   `docker compose` with `std::process::Command` and exposes it to the webview
+   only through the named `start_daemon` / `stop_daemon` commands; the renderer
+   can ask to start the daemon but cannot choose what command runs. This is
+   tighter than enabling the shell plugin and filtering with an allowlist.
+6. **CSP**: the WebView forbids external sources; all assets are bundled.
+7. **File access**: the UI never reads files directly; everything goes through
+   the daemon's REST API, reusing the existing `path_safety` and trace
+   redaction.
+8. **Execution authority**: only `approve_execution` can turn on
+   `EXECUTE_TOOLS`; its scope is a single turn and it requires a matching
+   `plan_hash`.
+
+---
+
+## 13. Directory layout
 
 ```
-netzoo_agent/
-├── desktop/                         # 新增：桌面應用
+.
+├── desktop/                         # desktop application
 │   ├── src-tauri/
-│   │   ├── src/main.rs              # 視窗、選單、docker 生命週期、token
-│   │   ├── src/docker.rs            # compose up/health/stop
-│   │   └── tauri.conf.json          # capability 白名單、CSP
+│   │   ├── src/main.rs              # entry point
+│   │   ├── src/lib.rs               # window, menus, start_daemon/stop_daemon, token
+│   │   ├── src/docker.rs            # compose up / health / stop, failure classification
+│   │   └── tauri.conf.json          # capability allowlist, CSP
 │   ├── src/                         # React + TS
-│   │   ├── app/                     # 版面與路由
+│   │   ├── app/                     # layout, splitters, startup
 │   │   ├── features/
-│   │   │   ├── conversation/        # 對話串、輸入區形態機
-│   │   │   ├── plan/                # Plan Card、evidence 編輯
-│   │   │   ├── timeline/            # trace 事件時間軸
-│   │   │   ├── files/               # outputs 瀏覽與檢視器
-│   │   │   └── sessions/            # 歷史、resume、設定
-│   │   ├── transport/               # WebSocket client、重連、seq 補齊
-│   │   └── generated/contracts.ts   # 由 §7 自動生成，勿手改
+│   │   │   ├── conversation/        # conversation, input-area state machine
+│   │   │   ├── plan/                # Plan Card, evidence editing
+│   │   │   ├── timeline/            # trace event timeline
+│   │   │   ├── files/               # outputs browser and viewers
+│   │   │   ├── sessions/            # history, resume, settings
+│   │   │   └── help/                # in-app help
+│   │   ├── transport/               # WebSocket client, reconnect, seq catch-up
+│   │   └── generated/contracts.ts   # generated per §7; do not edit by hand
 │   └── package.json
 ├── scripts/netzoo_agent_core/
-│   ├── engine/                      # 新增：共用對話狀態機（§4）
+│   ├── engine/                      # shared conversation state machine (§4)
 │   │   ├── state.py
 │   │   ├── machine.py
 │   │   └── view.py
-│   ├── server/                      # 新增：daemon
+│   ├── server/                      # daemon
 │   │   ├── __main__.py
-│   │   ├── app.py                   # FastAPI、WS、REST
+│   │   ├── app.py                   # FastAPI, WebSocket, REST
 │   │   ├── supervisor.py            # SessionSupervisor
-│   │   ├── session_worker.py        # worker 行程進入點
-│   │   ├── channel.py               # JSON lines over Pipe
+│   │   ├── session_worker.py        # worker process entry point
+│   │   ├── channel.py               # JSON lines over a Pipe
+│   │   ├── protocol.py              # envelope, message types, plan_hash
 │   │   ├── broadcast_recorder.py
 │   │   └── path_mapper.py
-│   └── cli/conversation.py          # 瘦身為 engine 的 adapter
-└── docs/DESKTOP_UI_ARCHITECTURE.md  # 本文件
+│   └── cli/conversation.py          # thin adapter over the engine
+└── docs/DESKTOP_UI_ARCHITECTURE.md  # this document
 ```
 
 ---
 
-## 14. 里程碑
+## 14. Milestones
 
-| 里程碑 | 內容 | 驗收 |
+| Milestone | Scope | Acceptance |
 | --- | --- | --- |
-| **M0 狀態機抽取** ✅ 已完成 | `engine/` 落地，CLI 改為 adapter | 失敗集合在本機（83）與容器（107）皆與重構前逐行相同、13 個 golden transcript 逐字元相同、使用者可見字串零遺失 |
-| **M1 Daemon 骨架** ✅ 已完成 | FastAPI + supervisor + worker 行程 + WS | 容器內實跑一輪 planning turn：routing → PANDA → evidence ledger → clarification，`view` 帶完整 plan 與 hash；同一個 prompt 走 CLI 得到相同結果；19 個新測試（含真行程隔離驗證） |
-| **M2 Tauri 殼層** ✅ 已完成 | 視窗、docker 生命週期、token、三欄空版面 | 冷啟動 2.7s（門檻 15s）；每次啟動新鑄 token、舊 token 立即失效；Docker 三種失敗各有專屬補救訊息 |
-| **M3 對話與計畫審核** ✅ 已完成 | 對話串、輸入區形態機、Plan Card、兩段執行確認、模式切換器 | 原生視窗實跑完整 PANDA toy：提問 → preflight 失敗 → Test 模式 → 修正輸入 → 確認 → Ready 計畫 → 兩段核准 → 寫出 3.1MB 網路；19 個 UI 測試 |
-| **M4 推理時間軸** ✅ 已完成 | 事件廣播、階段時間軸、細節折疊、契約型別生成 | 實跑驗證：UI 26 筆 = trace 檔 26 筆；24 個 UI 測試 + 5 個廣播覆蓋測試 + 6 個型別漂移測試 |
-| **M5 結果與 Session** ✅ 已完成 | PathMapper、outputs 檔案樹、TSV/npz/md 檢視、session 歷史與 resume、唯讀設定頁、成本列 | 實跑驗證：3.1MB 網路串讀 200 列、npz 只讀 header、resume 還原暫停中的 PANDA 計畫；35 個新測試 |
+| **M0 state machine extraction** (done) | `engine/` in place, CLI turned into an adapter | identical failure sets locally and in the container, golden transcripts identical character for character, no user-visible string lost |
+| **M1 daemon skeleton** (done) | FastAPI + supervisor + worker processes + WebSocket | a real planning turn in the container (routing -> PANDA -> evidence ledger -> clarification) with the full plan and hash in `view`; the same prompt through the CLI gives the same result; real process-isolation tests |
+| **M2 Tauri shell** (done) | window, Docker lifecycle, token, empty three-pane layout | a fresh token at every launch with the old one invalidated immediately; a dedicated remedy message for each of the three Docker failure modes |
+| **M3 conversation and plan review** (done) | conversation, input-area state machine, Plan Card, two-step execution confirmation, mode switcher | a full PANDA toy run in the native window: question -> preflight failure -> Test mode -> corrected input -> confirmation -> ready plan -> two-step approval -> network written |
+| **M4 reasoning timeline** (done) | event broadcast, stage timeline, collapsed details, contract type generation | UI event count equals trace-file event count; broadcast-coverage and type-drift tests |
+| **M5 results and sessions** (done) | PathMapper, outputs tree, TSV/npz/Markdown viewers, session history and resume, read-only settings page, cost bar | streamed paging of a multi-MB network, npz header-only reads, resume restores a paused PANDA plan |
 
-M0 是硬性前置。M1–M2 可並行。M4 依賴 M1。
+M0 was a hard prerequisite. M1 and M2 could run in parallel. M4 depended on M1.
 
 ---
 
-## 15. 測試策略
+## 15. Testing strategy
 
-| 層級 | 方法 |
+| Layer | Method |
 | --- | --- |
-| engine | 既有 CLI 測試沿用 + golden transcript 對拍 |
-| 協定 | contract 快照測試（§7 的 schema drift 檢查） |
-| daemon | `httpx` + `pytest-asyncio`，用假 worker 驗證 supervisor 的建立／回收／取消 |
-| 行程隔離 | 專門測試：兩個 session 同時進行，A 核准執行時斷言 B 的 `EXECUTE_TOOLS` 仍為 False |
-| UI | Vitest（形態機的 `ViewState` → 元件對映）+ Playwright（M3 的完整 PANDA toy 流程） |
-| 端到端 | 對照測試：同一組輸入分別走 CLI 與 GUI，比對最終 `WorkflowPlan` 與 trace 事件序列 |
+| engine | existing CLI tests + golden-transcript comparison |
+| protocol | contract snapshot test (the schema-drift check in §7) |
+| daemon | `httpx` + `pytest-asyncio`, with a fake worker to check supervisor create/reap/cancel |
+| process isolation | dedicated test: two concurrent sessions; when A approves execution, assert that B's `EXECUTE_TOOLS` is still False |
+| UI | Vitest (`ViewState` -> component mapping) + Playwright (the full PANDA toy flow from M3) |
+| end to end | comparison test: the same inputs through the CLI and the GUI, comparing the final `WorkflowPlan` and trace event sequence |
 
-### 15.1 容器測試環境
+### 15.1 Container test environment
 
-`netzoo_agent:latest` 沒有裝 pytest，所以容器測試要先疊一層：
+`netzoo_agent:latest` does not include pytest, so container tests add a layer
+(`Dockerfile.test`):
 
 ```
 FROM netzoo_agent:latest
@@ -561,9 +705,9 @@ docker build -t netzoo_agent:test -f Dockerfile.test .
 docker run --rm -v "$PWD:/work" -w /work netzoo_agent:test python -m pytest tests -q
 ```
 
-本機與容器的 skip 集合不同，兩邊都要跑。目前基準：本機 83 失敗 / 容器 107 失敗。
+The local and container skip sets differ, so run both.
 
-### 15.2 Daemon 冒煙測試
+### 15.2 Daemon smoke test
 
 ```bash
 docker run -d --name netzoo-daemon-smoke \
@@ -573,49 +717,57 @@ docker run -d --name netzoo-daemon-smoke \
   netzoo_agent:test python -m netzoo_agent_core.server --host 0.0.0.0 --port 8765
 ```
 
-`PYTHONPATH` 必須明寫。映像把 `scripts/` 烘進 `/opt/netzoo-app/scripts` 並放在
-預設 `PYTHONPATH`，不覆寫的話跑到的是建置當下那份舊程式碼，不是掛載進來的 `/work`。
+`PYTHONPATH` must be set explicitly. The image bakes `scripts/` into
+`/opt/netzoo-app/scripts` and puts it on the default `PYTHONPATH`; without the
+override you would run the code from the last image build, not the mounted
+`/work`.
 
-### 15.3 桌面殼層
+### 15.3 Desktop shell
 
 ```bash
 cd desktop
 npm install
-npm run tauri dev                    # 開發
-npm run tauri build -- --bundles app # 產出 .app
+npm run tauri dev                    # development
+npm run tauri build -- --bundles app # build the .app
 cd src-tauri && cargo test -- --test-threads=1
 ```
 
-Rust 測試會真的呼叫 `docker`，並用 `DOCKER_HOST` 指向不存在的 socket 來驗證
-「Docker Desktop 沒開」這條路徑的錯誤分類與補救訊息。因為要改行程環境變數，必須
-單執行緒跑。
+The Rust tests really invoke `docker` and point `DOCKER_HOST` at a nonexistent
+socket to check the error classification and remedy message for "Docker Desktop
+is not running". They change process environment variables, so they must run
+single-threaded.
 
 ---
 
-## 16. 風險與未定案
+## 16. Risks and open questions
 
-| 風險 | 影響 | 對策 |
+| Risk | Impact | Mitigation |
 | --- | --- | --- |
-| ~~M0 抽取時不慎改動行為~~（已驗證） | — | 失敗集合雙環境逐行相同、golden transcript 逐字元相同、AST 字串集合零遺失 |
-| 長時間執行（tool timeout 86400s）跨越視窗關閉 | 使用者以為工作遺失 | worker 為獨立行程可存活；重開後用 `run_id` 重新附著（M5 之後） |
-| 大型 TSV 撐爆 WebView | 當機 | 一律串流分頁，daemon 端限制單次回傳列數 |
-| ~~Rust 工具鏈缺席~~（已排除） | — | 已確認本機有 `cargo` 1.x、Docker 29.5.3、Xcode CLT，M2 無環境前置阻擋 |
-| ~~還有別的行程全域值~~（已盤點） | — | 14 個全部列於 §5.1，全是行程全域；`TEST_DATA_MODE` 與 `EXECUTE_TOOLS` 同樣需要隔離，已用真行程測試驗證 |
+| A long run (tool timeout 86400 s) outlives the window | the user thinks the work is lost | the worker is an independent process and survives; reattaching to a running turn by `run_id` after reopening is not implemented yet |
+| A large TSV overwhelms the WebView | crash | always stream with paging; the daemon caps rows per response |
+| Other process-global values | cross-session leakage | all 14 are listed in §5.1; `TEST_DATA_MODE` and `EXECUTE_TOOLS` both need isolation, verified with real-process tests |
 
-**M2 已知限制**
-- 打包後的 `.app` 用 `project_root()` 從執行檔往上找 `docker-compose.yml`。放在專案
-  目錄內可用；真正安裝到 `/Applications` 後必須設 `NETZOO_PROJECT_ROOT`。要做成可
-  安裝的產品，M5 之後得改成把專案路徑存在應用設定裡並提供選擇器。
-- 開發模式需要 `devCsp`：Vite 會注入 inline 的 React-refresh preamble 與 HMR
-  websocket，兩者都不存在於出貨的 bundle，所以 dev 有自己的一份較寬政策，不去動
-  產品實際執行的那份。
+**Known limitations of the shell**
+- The packaged `.app` uses `project_root()` to walk up from the executable to
+  find `docker-compose.yml`. This works when the app lives inside the project
+  directory; when installed to `/Applications` you must set
+  `NETZOO_PROJECT_ROOT`. An installable product would need to store the project
+  path in app settings and provide a picker.
+- Development mode needs `devCsp`: Vite injects an inline React-refresh preamble
+  and an HMR WebSocket, neither of which exists in the shipped bundle, so dev
+  has its own looser policy and the production policy stays untouched.
 
-**已定案**
-- **設定頁唯讀。** 模型 allowlist 與 token 上限正是「防止一個誤送的請求打到昂貴模型」
-  的那道限制；能從視窗改它的視窗，就是能拿掉那道限制的視窗。設定頁報告生效值
-  （含容器與 host 兩邊的專案根），`OPENROUTER_API_KEY` 只報告存在與否、金鑰本身
-  不離開 daemon。要改就改容器啟動時的環境。
+**Decided**
+- **The settings page is read-only.** The model allowlist and token caps are
+  exactly the limits that stop a misdirected request from hitting an expensive
+  model; a window that can change them is a window that can remove them. The
+  settings page reports effective values (including the project root on both
+  the container and host sides) and reports only whether `OPENROUTER_API_KEY`
+  is present; the key never leaves the daemon. To change settings, change the
+  container's environment at launch.
 
-**仍未定案**
-- 時間軸是否需要「重播」模式（讀舊 run 的 trace 檔逐步播放）。
-- Observer 的 share 功能要不要從桌面版一鍵觸發。
+**Still open**
+- Whether the timeline needs a "replay" mode (stepping through an old run's
+  trace file).
+- Whether the Observer's share feature should be triggerable from the desktop
+  app.

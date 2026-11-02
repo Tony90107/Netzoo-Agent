@@ -759,7 +759,7 @@ class CapabilityGateTests(unittest.TestCase):
             in_scope=True,
             should_execute=True,
             confidence=0.95,
-            reason="使用者要求 LIONESS PANDA",
+            reason="User asked for LIONESS PANDA",
             expression_file="data/lioness-toy/expression.tsv",
         )
         plan = agent.build_workflow_plan(
@@ -1106,7 +1106,7 @@ class CapabilityGateTests(unittest.TestCase):
             in_scope=True,
             should_execute=True,
             confidence=0.95,
-            reason="使用者要求 LIONESS PANDA",
+            reason="User asked for LIONESS PANDA",
         )
         plan = agent.build_workflow_plan(decision, "我要跑 LIONESS PANDA")
 
@@ -1121,7 +1121,7 @@ class CapabilityGateTests(unittest.TestCase):
             in_scope=True,
             should_execute=True,
             confidence=0.95,
-            reason="使用者要求試跑 LIONESS PANDA",
+            reason="User asked for a trial run of LIONESS PANDA",
         )
         plan = agent.build_workflow_plan(decision, "請幫我跑一次 LIONESS PANDA")
 
@@ -1422,7 +1422,7 @@ class CapabilityGateTests(unittest.TestCase):
             in_scope=True,
             should_execute=True,
             confidence=0.95,
-            reason="使用者要求 PUMA",
+            reason="User asked for PUMA",
             expression_file="data/lioness-toy/expression.tsv",
         )
         plan = agent.build_workflow_plan(
@@ -1441,7 +1441,7 @@ class CapabilityGateTests(unittest.TestCase):
             in_scope=True,
             should_execute=True,
             confidence=0.95,
-            reason="使用者要求 CONDOR",
+            reason="User asked for CONDOR",
             network_file="data/condor-toy/bipartite.tsv",
         )
         plan = agent.build_workflow_plan(
@@ -1636,7 +1636,7 @@ class CapabilityGateTests(unittest.TestCase):
         )
         plan = agent.build_workflow_plan(raw, "幫我跑一次LIONESS做測試")
         stale_plan = plan.model_copy(
-            update={"question": "你要執行哪一種 LIONESS？請選擇 1、2 或 3。"}
+            update={"question": "Which LIONESS do you want to run? Choose 1, 2, or 3."}
         )
 
         prompt = agent.clarification_prompt(stale_plan)
@@ -1649,7 +1649,7 @@ class CapabilityGateTests(unittest.TestCase):
             in_scope=True,
             should_execute=True,
             confidence=0.95,
-            reason="使用者要求 CONDOR",
+            reason="User asked for CONDOR",
             network_file="data/condor-toy/bipartite.tsv",
         )
         plan = agent.build_workflow_plan(

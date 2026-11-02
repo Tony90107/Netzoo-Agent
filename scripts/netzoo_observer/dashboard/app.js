@@ -16,27 +16,27 @@ const state = {
 };
 
 const labels = {
-  "run.started": "任務開始",
-  "run.resumed": "任務繼續",
-  "run.paused": "等待補充資料",
-  "run.finished": "任務結束",
-  "policy.loaded": "載入專案規則",
-  "memory.retrieved": "取得相關記憶",
-  "decision.recorded": "記錄路由決策",
-  "plan.created": "建立執行計畫",
-  "plan.evaluated": "檢查執行計畫",
-  "tool.started": "開始呼叫工具",
-  "tool.completed": "工具執行完成",
-  "tool.failed": "工具執行失敗",
-  "artifact.validated": "驗證輸出檔案",
-  "evaluation.recorded": "評估工作結果",
-  "recovery.selected": "選擇復原路徑",
-  "llm.completed": "模型呼叫完成",
-  "budget.warning": "Token 用量警告",
-  "budget.blocked": "Token 上限阻擋",
-  "node.started": "節點開始",
-  "node.finished": "節點結束",
-  "error.recorded": "記錄執行錯誤",
+  "run.started": "Run started",
+  "run.resumed": "Run resumed",
+  "run.paused": "Waiting for more input",
+  "run.finished": "Run finished",
+  "policy.loaded": "Project rules loaded",
+  "memory.retrieved": "Relevant memory retrieved",
+  "decision.recorded": "Routing decision recorded",
+  "plan.created": "Execution plan created",
+  "plan.evaluated": "Execution plan checked",
+  "tool.started": "Tool call started",
+  "tool.completed": "Tool call completed",
+  "tool.failed": "Tool call failed",
+  "artifact.validated": "Output files validated",
+  "evaluation.recorded": "Result evaluated",
+  "recovery.selected": "Recovery path selected",
+  "llm.completed": "Model call completed",
+  "budget.warning": "Token usage warning",
+  "budget.blocked": "Blocked by token limit",
+  "node.started": "Node started",
+  "node.finished": "Node finished",
+  "error.recorded": "Error recorded",
 };
 
 function eventTitle(event) {
@@ -46,7 +46,7 @@ function eventTitle(event) {
 function formatTime(value, withDate = false) {
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return "—";
-  return new Intl.DateTimeFormat("zh-TW", {
+  return new Intl.DateTimeFormat("en-US", {
     ...(withDate ? { month: "2-digit", day: "2-digit" } : {}),
     hour: "2-digit",
     minute: "2-digit",
@@ -59,13 +59,13 @@ function formatDuration(milliseconds) {
   if (!Number.isFinite(milliseconds) || milliseconds < 0) return "—";
   if (milliseconds < 1000) return `${milliseconds} ms`;
   const seconds = Math.round(milliseconds / 1000);
-  if (seconds < 60) return `${seconds} 秒`;
+  if (seconds < 60) return `${seconds} s`;
   const minutes = Math.floor(seconds / 60);
-  return `${minutes} 分 ${seconds % 60} 秒`;
+  return `${minutes} min ${seconds % 60} s`;
 }
 
 function number(value) {
-  return new Intl.NumberFormat("zh-TW").format(value || 0);
+  return new Intl.NumberFormat("en-US").format(value || 0);
 }
 
 function isAnomaly(event) {
@@ -126,7 +126,7 @@ function payloadSummary(event) {
   ].find((value) => value !== undefined && value !== null && String(value).trim());
   if (preferred !== undefined) return String(preferred);
   const keys = Object.keys(payload).filter((key) => key !== "redactions").slice(0, 3);
-  return keys.length ? keys.join(" · ") : "沒有額外資料";
+  return keys.length ? keys.join(" · ") : "No extra data";
 }
 
 function setConnection(status, label) {
@@ -175,28 +175,28 @@ function updateSummary() {
   const status = deriveStatus();
 
   $("#run-short").textContent = String(state.runId).slice(0, 8);
-  $("#mission-title").textContent = task ? `追蹤：${task}` : "NetZoo Agent 工作軌跡";
-  $("#mission-subtitle").textContent = `從 ${formatTime(first.occurred_at, true)} 開始；點選事件可檢查當時留下的證據。`;
+  $("#mission-title").textContent = task ? `Trace: ${task}` : "NetZoo Agent trace";
+  $("#mission-subtitle").textContent = `Started ${formatTime(first.occurred_at, true)}. Select an event to inspect the evidence recorded at that point.`;
   $("#run-status").textContent = status.toUpperCase();
   $("#run-status").dataset.status = status;
-  $("#integrity-label").textContent = "伺服器已檢查事件序號與雜湊鏈";
+  $("#integrity-label").textContent = "Server verified event sequence and hash chain";
   $("#metric-tokens").textContent = llmCalls.length ? number(totalTokens) : "—";
-  $("#metric-token-detail").textContent = llmCalls.length ? `輸入 ${number(inputTokens)} · 輸出 ${number(outputTokens)}` : "尚無模型用量事件";
+  $("#metric-token-detail").textContent = llmCalls.length ? `Input ${number(inputTokens)} · output ${number(outputTokens)}` : "No model usage events yet";
   $("#metric-cost").textContent = costCalls.length ? `$${(costMicroUsd / 1_000_000).toFixed(4)}` : "—";
-  $("#metric-cost-detail").textContent = costCalls.length ? `${costCalls.length} 次含費用來源` : "供應商未回傳或尚未估算";
+  $("#metric-cost-detail").textContent = costCalls.length ? `${costCalls.length} with a cost source` : "Not reported by provider or not yet estimated";
   $("#metric-duration").textContent = formatDuration(ended - started);
-  $("#metric-event-count").textContent = `${number(events.length)} 個事件`;
+  $("#metric-event-count").textContent = `${number(events.length)} events`;
   $("#metric-anomalies").textContent = number(anomalies.length);
-  $("#metric-anomaly-detail").textContent = anomalies.length ? "可直接篩選並逐一回放" : "目前沒有失敗或阻擋事件";
+  $("#metric-anomaly-detail").textContent = anomalies.length ? "Filter and replay them one by one" : "No failed or blocked events";
 }
 
 function filteredEvents() {
-  const query = state.query.trim().toLocaleLowerCase("zh-Hant");
+  const query = state.query.trim().toLocaleLowerCase("en-US");
   return state.events.filter((event) => {
     if (!belongsToLevel(event, state.level)) return false;
     if (state.anomaliesOnly && !isAnomaly(event)) return false;
     if (!query) return true;
-    const haystack = `${event.event_type} ${event.node} ${JSON.stringify(event.payload)}`.toLocaleLowerCase("zh-Hant");
+    const haystack = `${event.event_type} ${event.node} ${JSON.stringify(event.payload)}`.toLocaleLowerCase("en-US");
     return haystack.includes(query);
   });
 }
@@ -241,7 +241,7 @@ function renderTimeline({ preserveSelection = true } = {}) {
   $("#trace-scrubber").max = Math.max(0, state.visible.length - 1);
   $("#trace-empty").hidden = state.visible.length > 0;
   if (!state.visible.length) {
-    setEmpty("沒有符合條件的事件", "切換層級、關閉異常篩選，或清除搜尋文字。", false);
+    setEmpty("No matching events", "Switch level, turn off the anomaly filter, or clear the search text.", false);
     clearInspector();
     updatePlaybackPosition();
     return;
@@ -252,12 +252,12 @@ function renderTimeline({ preserveSelection = true } = {}) {
 }
 
 function clearInspector() {
-  $("#inspector-title").textContent = "選取一個事件";
+  $("#inspector-title").textContent = "Select an event";
   $("#inspector-time").textContent = "—";
   ["sequence", "node", "level", "visibility", "hash"].forEach((key) => {
     $(`#fact-${key}`).textContent = "—";
   });
-  $("#payload-view").textContent = "尚未選取事件";
+  $("#payload-view").textContent = "No event selected";
 }
 
 function selectEvent(eventId, scroll = true) {
@@ -268,7 +268,7 @@ function selectEvent(eventId, scroll = true) {
     item.classList.toggle("is-selected", item.dataset.eventId === eventId);
   });
   $("#inspector-title").textContent = eventTitle(event);
-  $("#inspector-time").textContent = new Date(event.occurred_at).toLocaleString("zh-TW", { hour12: false });
+  $("#inspector-time").textContent = new Date(event.occurred_at).toLocaleString("en-US", { hour12: false });
   $("#fact-sequence").textContent = `#${event.sequence}`;
   $("#fact-node").textContent = event.node;
   $("#fact-level").textContent = eventLevel(event);
@@ -291,7 +291,7 @@ function stopPlayback() {
   window.clearInterval(state.timer);
   state.timer = null;
   $("#play-toggle").textContent = "▶";
-  $("#play-toggle").setAttribute("aria-label", "播放事件");
+  $("#play-toggle").setAttribute("aria-label", "Play events");
 }
 
 function startPlayback() {
@@ -299,7 +299,7 @@ function startPlayback() {
   stopPlayback();
   state.playing = true;
   $("#play-toggle").textContent = "Ⅱ";
-  $("#play-toggle").setAttribute("aria-label", "暫停回放");
+  $("#play-toggle").setAttribute("aria-label", "Pause replay");
   state.timer = window.setInterval(() => {
     const current = state.visible.findIndex((event) => event.event_id === state.selectedId);
     const next = current + 1;
@@ -330,14 +330,14 @@ async function exchangeFragmentToken(shareId) {
     body: JSON.stringify({ share_id: shareId, token }),
   });
   window.history.replaceState(null, document.title, window.location.pathname);
-  if (!response.ok) throw new Error("這個觀看連結已失效、過期，或被管理者撤銷。");
+  if (!response.ok) throw new Error("This viewer link is invalid, expired, or was revoked by an administrator.");
 }
 
 async function loadSnapshot() {
   const response = await fetch(`/v1/share/runs/${state.runId}`, { credentials: "same-origin" });
   if (!response.ok) {
-    if (response.status === 401) throw new Error("找不到有效觀看權限。請重新開啟完整分享連結，或請管理者建立新連結。");
-    throw new Error(`追蹤資料載入失敗（HTTP ${response.status}）。`);
+    if (response.status === 401) throw new Error("No valid viewer access found. Reopen the full share link, or ask an administrator for a new one.");
+    throw new Error(`Failed to load trace data (HTTP ${response.status}).`);
   }
   const snapshot = await response.json();
   state.events = snapshot.events || [];
@@ -348,11 +348,11 @@ async function loadSnapshot() {
 function connectLiveStream() {
   if (state.source) state.source.close();
   state.source = new EventSource(`/v1/share/runs/${state.runId}/events`);
-  state.source.addEventListener("open", () => setConnection("live", "即時紀錄已連線"));
+  state.source.addEventListener("open", () => setConnection("live", "Live trace connected"));
   state.source.addEventListener("trace", (message) => {
-    try { addEvent(JSON.parse(message.data)); } catch { setConnection("error", "收到無效事件"); }
+    try { addEvent(JSON.parse(message.data)); } catch { setConnection("error", "Received an invalid event"); }
   });
-  state.source.addEventListener("error", () => setConnection("loading", "正在重新連線"));
+  state.source.addEventListener("error", () => setConnection("loading", "Reconnecting"));
 }
 
 function bindControls() {
@@ -390,11 +390,11 @@ function bindControls() {
   $("#copy-run").addEventListener("click", async () => {
     if (!state.runId) return;
     await navigator.clipboard.writeText(state.runId);
-    showToast("已複製 Run ID");
+    showToast("Run ID copied");
   });
   $("#copy-payload").addEventListener("click", async () => {
     await navigator.clipboard.writeText($("#payload-view").textContent);
-    showToast("已複製事件 JSON");
+    showToast("Event JSON copied");
   });
 }
 
@@ -405,14 +405,14 @@ async function start() {
   try {
     await exchangeFragmentToken(shareId);
     const exchangeRun = await fetch(`/v1/share/resolve/${shareId}`, { credentials: "same-origin" });
-    if (!exchangeRun.ok) throw new Error("無法確認此連結所屬的任務。");
+    if (!exchangeRun.ok) throw new Error("Could not determine which run this link belongs to.");
     state.runId = (await exchangeRun.json()).run_id;
     await loadSnapshot();
-    setConnection("live", "即時紀錄已連線");
+    setConnection("live", "Live trace connected");
     connectLiveStream();
   } catch (error) {
-    setConnection("error", "連結無法使用");
-    setEmpty("無法開啟這趟記錄", error.message || "觀看權限驗證失敗。", true);
+    setConnection("error", "Link unavailable");
+    setEmpty("Could not open this trace", error.message || "Viewer access check failed.", true);
     $("#run-status").textContent = "NO ACCESS";
     $("#run-status").dataset.status = "failed";
   }

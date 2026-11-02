@@ -17,6 +17,7 @@ from typing import Literal
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.websockets import WebSocketDisconnect
 
@@ -460,6 +461,14 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
             pass
         finally:
             supervisor.unsubscribe(session_id, subscriber)
+
+    # The browser build of the desktop window (Dockerfile stage `web-ui`). It is
+    # served from this origin, so it needs no CORS entry and carries the token
+    # in its URL fragment, which never reaches this server. Mounted last, so
+    # every route above wins over a file of the same name.
+    web_ui = os.environ.get("NETZOO_WEB_UI_DIR", "").strip()
+    if web_ui and os.path.isfile(os.path.join(web_ui, "index.html")):
+        app.mount("/", StaticFiles(directory=web_ui, html=True), name="web-ui")
 
     return app
 

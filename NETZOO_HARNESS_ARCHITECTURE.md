@@ -1,137 +1,154 @@
-# NetZoo Agent 完整架構與實作導覽
+# NetZoo Agent Architecture and Implementation Guide
 
-本文件說明目前 NetZoo agent 已完成的功能、程式碼分層、資料契約，以及一個使用者請求
-如何經過 Router、Planner、Plan Evaluator、Executor、Result Evaluator、Memory 和 CLI。
-閱讀完本文件後，應能回答下列問題：
+This document describes the NetZoo agent's capabilities, code layers, and data
+contracts, and how one user request passes through the Router, Planner, Plan
+Evaluator, Executor, Result Evaluator, Memory, and CLI. After reading it you
+should be able to answer:
 
-- 一個自然語言請求如何變成可執行、可稽核的 workflow？
-- Planner 產生的 plan 如何傳給 Plan Evaluator？
-- Plan Evaluator 如何保證 Executor 不能繞過 required inputs、allowlist 和 step order？
-- Executor 的文字輸出如何變成 typed result，再交給 Result Evaluator？
-- 缺少輸入、偏好確認、dry-run、失敗與 recovery 分別如何處理？
-- 每一份 Python module 負責什麼，以及新增 workflow 時應修改哪裡？
+- How does a natural-language request become an executable, auditable workflow?
+- How is the Planner's plan handed to the Plan Evaluator?
+- How does the Plan Evaluator guarantee that the Executor cannot bypass required
+  inputs, the allowlist, or step order?
+- How does the Executor's text output become a typed result for the Result
+  Evaluator?
+- How are missing inputs, preference confirmation, dry runs, failures, and
+  recovery handled?
+- What is each Python module responsible for, and what must change when a
+  workflow is added?
 
-若是第一次接觸這份 code，請先走
-[`CODE_READING_GUIDE.md`](CODE_READING_GUIDE.md) 的 15 分鐘主線；本文件再用來查完整設計、
-資料契約與治理細節。
-
----
-
-## 1. 系統定位
-
-目前系統是一個受規則約束、有狀態、可中斷續跑、具有受治理長期記憶的 NetZoo
-workflow harness。它整合：
-
-- PANDA
-- PUMA
-- LIONESS-PANDA
-- LIONESS-PUMA
-- LIONESS co-expression
-- CONDOR
-- Context7 文件查詢
-- Websearch 查詢
-
-它不是讓一個 LLM 自由決定 shell command。LLM 主要負責理解使用者意圖與產生一般文字
-回答；所有本機工具權限、required inputs、step sequence、input validation、output safety
-和 recovery 都由 Python typed contracts 與 allowlist 強制執行。
-
-Planner、Plan Evaluator、Executor 與 Result Evaluator 是同一個 LangGraph 裡權責分離的
-節點，不是四個各自啟動、互相聊天的 LLM sub-agent。這個選擇讓目前線性的 NetZoo
-workflow 更可重現、成本更低，也更容易測試。
+If this is your first time in the code, start with the 15-minute main path in
+[`CODE_READING_GUIDE.md`](CODE_READING_GUIDE.md); use this document to look up
+the full design, data contracts, and governance details.
 
 ---
 
-## 2. 重構後的檔案結構
+## 1. What the system is
 
-原本 `scripts/netzoo_agent.py` 同時包含資料模型、routing、planning、I/O、執行、
-evaluation、memory、session 與 CLI，共 7,626 行。重構後它是限制在 150 行以內的相容入口；
-實作位於 `scripts/netzoo_agent_core/`，並依照「契約、資料、工作流程、介面」分層。
+The system is a rule-constrained, stateful, resumable NetZoo workflow harness
+with governed long-term memory. It integrates these workflows:
+
+- PANDA, PUMA
+- LIONESS-PANDA, LIONESS-PUMA, LIONESS co-expression
+- CONDOR, COBRA, SAMBAR, OTTER, GIRAFFE, BONOBO
+- DRAGON, LIONESS-DRAGON
+
+plus expression formatting and co-expression conversion helpers, an official
+STRING network download (`download_string`), Context7 documentation lookup, and
+web search.
+
+It does not let an LLM choose shell commands freely. The LLM mainly reads the
+user's intent and writes general prose answers; all local tool authority,
+required inputs, step sequences, input validation, output safety, and recovery
+are enforced by Python typed contracts and allowlists.
+
+The Planner, Plan Evaluator, Executor, and Result Evaluator are nodes with
+separate responsibilities in one LangGraph, not four independently launched LLM
+sub-agents talking to each other. This keeps the (mostly linear) NetZoo
+workflows reproducible, cheaper, and easier to test.
+
+---
+
+## 2. File layout
+
+`scripts/netzoo_agent.py` used to hold the data models, routing, planning, I/O,
+execution, evaluation, memory, session, and CLI in one file. It is now a
+compatibility entry point capped at 150 lines; the implementation lives in
+`scripts/netzoo_agent_core/`, layered as contracts, data, workflow, and
+interfaces.
 
 ```text
 scripts/
-├── netzoo_agent.py                  # 舊 CLI/import 相容 facade
-├── workflow_registry.py             # action 與 workflow 的單一 Python registry
-├── netzoo_table_io.py               # 共用表格讀取與 delimiter 判斷
+├── netzoo_agent.py                  # legacy CLI/import compatibility facade
+├── workflow_registry.py             # single Python registry of actions and workflows
+├── netzoo_table_io.py               # shared table reading and delimiter detection
 └── netzoo_agent_core/
-    ├── __init__.py                  # 新程式應使用的精簡公開 interface
-    ├── contracts/                   # typed contracts；__init__ 保留舊 import interface
-    │   ├── decisions.py             # Router、Task、Preference decisions
-    │   ├── planning.py              # evidence、workflow step 與 plan
+    ├── __init__.py                  # small public interface for new code
+    ├── contracts/                   # typed contracts; __init__ keeps the old import interface
+    │   ├── decisions.py             # Router, task, and preference decisions
+    │   ├── planning.py              # evidence, workflow steps, and plan
     │   ├── results.py               # plan/tool/result evaluation contracts
     │   ├── policy.py                # project policy contracts
-    │   ├── memory.py                # profile 與 episode contracts
+    │   ├── memory.py                # profile and episode contracts
     │   └── state.py                 # LangGraph AgentState
-    ├── settings.py                  # 常數與 process-wide runtime settings
-    ├── framework_compat.py          # LangChain/LangGraph optional dependency bridge
-    ├── presentation.py              # 共用語言與顯示政策
-    ├── data/                        # 不依賴 orchestration 的資料底層
-    │   ├── paths.py                 # output path 安全與 canonicalization
-    │   ├── tables.py                # 純表格與 biological ID validation
-    │   ├── transforms.py            # 純 expression/co-expression 轉換
-    │   ├── discovery.py             # 候選檔案關鍵字、評分與選擇
+    ├── settings.py                  # constants and process-wide runtime settings
+    ├── framework_compat.py          # LangChain/LangGraph optional-dependency bridge
+    ├── presentation.py              # shared language and display policy
+    ├── data/                        # data layer, independent of orchestration
+    │   ├── paths.py                 # output path safety and canonicalization
+    │   ├── tables.py                # pure table and biological ID validation
+    │   ├── transforms.py            # pure expression/co-expression transforms
+    │   ├── discovery.py             # candidate-file keywords, scoring, and selection
     │   ├── inspection.py            # neutral input inspection
     │   ├── bundles.py               # PANDA/PUMA input bundles
     │   └── artifacts.py             # output artifact validation
-    ├── tool_adapters.py             # LangChain @tool wrappers → data 純函式
-    ├── validation.py                # 舊 import 相容 facade → data facade/tables
-    ├── preparation.py               # 舊 import 相容 facade → data facade/transforms
-    ├── bundles.py                   # 舊 import 相容 facade → data.bundles
-    ├── artifact_validation.py       # 舊 import 相容 facade → data.artifacts
-    ├── path_safety.py               # 舊 import 相容 facade → data.paths
-    ├── runtime.py                   # 舊 process-wide 設定的相容橋接
-    ├── memory/                      # 長期記憶公開 interface 與實作
-    │   ├── profiles.py              # 確認式 UserProfile 行為
-    │   ├── episodes.py              # episode search、retention 與寫入
-    │   ├── normalization.py         # 共用文字與查詢正規化
-    │   └── storage.py               # JSON persistence 與序列化
-    ├── command.py                   # subprocess 與 dry-run command rendering
-    ├── execution.py                 # PANDA/PUMA/LIONESS/CONDOR adapters
-    ├── routing/                     # capability gate、retrieval、tool result normalization
-    ├── policy.py                    # AGENTS.md/workflow YAML fail-closed loader
-    ├── interpretation/              # deterministic hydration、repair、file discovery
-    ├── planning/                    # evidence ledger 與 WorkflowPlan 建構
-    ├── evaluation/                  # Plan Evaluator、Result Evaluator、recovery、renderer
-    ├── llm.py                       # prompts、model allowlist、token budget
-    ├── graph/                       # LangGraph nodes、edges、transitions、orchestration
-    ├── session.py                   # resumable session 與 retention
-    ├── interaction.py               # 舊 import 相容 facade → cli 子模組
-    └── cli/                         # CLI interface 與生命週期
-        ├── arguments.py             # 參數定義
-        ├── commands.py              # policy/memory/preflight 立即命令
-        ├── bootstrap.py             # runtime dependency 組裝
-        ├── conversation.py          # one-shot/互動/resume 對話生命週期
-        └── loop.py                  # 小型 CLI coordinator
+    ├── tool_adapters.py             # LangChain @tool wrappers around pure data functions
+    ├── validation.py                # legacy import facade -> data/tables
+    ├── preparation.py               # legacy import facade -> data/transforms
+    ├── bundles.py                   # legacy import facade -> data.bundles
+    ├── artifact_validation.py       # legacy import facade -> data.artifacts
+    ├── path_safety.py               # legacy import facade -> data.paths
+    ├── runtime.py                   # bridge for legacy process-wide settings
+    ├── memory/                      # long-term memory interface and implementation
+    │   ├── profiles.py              # confirmed UserProfile behavior
+    │   ├── episodes.py              # episode search, retention, and writes
+    │   ├── normalization.py         # shared text and query normalization
+    │   └── storage.py               # JSON persistence and serialization
+    ├── command.py                   # subprocess and dry-run command rendering
+    ├── execution.py                 # workflow adapters and LOCAL_TOOL_EXECUTORS
+    ├── execution_bonobo.py          # BONOBO runner (split out of execution.py)
+    ├── execution_lioness_dragon.py  # LIONESS-DRAGON runner (split out of execution.py)
+    ├── routing/                     # capability gate, outcome matching, dispatch, result normalization
+    ├── policy.py                    # fail-closed loader for AGENTS.md and workflow YAML
+    ├── interpretation/              # deterministic hydration, repair, file discovery
+    ├── planning/                    # evidence ledger and WorkflowPlan construction
+    ├── evaluation/                  # Plan Evaluator, Result Evaluator, recovery, rendering
+    ├── llm.py                       # prompts, model allowlist, token budget
+    ├── graph/                       # LangGraph nodes, edges, transitions, orchestration
+    ├── engine/                      # driver-independent conversation engine (CLI and desktop UI)
+    ├── reply_cards/                 # display-only reply cards derived from the typed decision
+    ├── server/                      # local daemon serving the engine to the desktop UI
+    ├── session.py                   # resumable sessions and retention
+    ├── interaction.py               # legacy import facade -> cli submodules
+    └── cli/                         # CLI interface and lifecycle
+        ├── arguments.py             # argument definitions
+        ├── commands.py              # immediate policy/memory/preflight commands
+        ├── bootstrap.py             # runtime dependency wiring
+        ├── conversation.py          # one-shot, interactive, and resume lifecycle
+        ├── slash_commands.py        # /planning, /test, /execute, /status, /help, /doctor
+        └── loop.py                  # small CLI coordinator
 ```
 
-拆分原則不是「每個函式一個檔案」，而是讓每個 module 隱藏一組完整行為，只暴露小而清楚
-的 interface。例如：
+The split is not "one function per file". Each module hides one complete
+behavior and exposes a small, clear interface, for example:
 
 - `planning.build_workflow_plan(...) -> WorkflowPlan`
 - `evaluation.evaluate_workflow_plan(...) -> PlanEvaluationResult`
 - `evaluation.evaluate_step_result(...) -> EvaluationResult`
 - `graph.build_graph(...) -> compiled LangGraph`
 
-這些是主要 seam，也是測試與其他 callers 應優先使用的 interface。
+These are the main seams, and the interfaces that tests and other callers
+should prefer.
 
-### 2.1 問題發生時要先看哪裡
+### 2.1 Where to look first
 
-| 症狀或修改目的 | 第一個閱讀位置 | 下一層 |
+| Symptom or goal | First place to read | Next layer |
 |---|---|---|
-| CLI 參數、互動流程、確認問題不正確 | `cli/` | `cli/arguments.py`、`cli/commands.py`、`cli/conversation.py` |
-| Router 選錯能力或 tool | `routing/` | `interpretation/`、`planning/` |
-| 缺少輸入、plan 被拒絕或 step 順序錯誤 | `planning/`、`evaluation/plan_rules.py` | `contracts/planning.py` |
-| 輸入檔案、delimiter、ID 或 output path 驗證錯誤 | `data/` | `data/tables.py`、`data/paths.py`、`data/discovery.py` |
-| PANDA/PUMA/LIONESS/CONDOR 命令執行錯誤 | `execution.py` | `command.py`、`data/bundles.py` |
-| LangGraph 跳錯節點或 recovery 流程錯誤 | `graph/topology.py`、`graph/transitions.py` | `evaluation/recovery.py` |
-| 回覆語言或顯示格式錯誤 | `presentation.py` | `evaluation/rendering.py`、`graph/response.py` |
-| 型別、序列化或 state 欄位問題 | `contracts/` | 對應的 decisions/planning/results/state module |
+| Wrong CLI argument, interaction flow, or confirmation question | `cli/` | `cli/arguments.py`, `cli/commands.py`, `cli/conversation.py` |
+| Router picks the wrong capability or tool | `routing/` | `interpretation/`, `planning/` |
+| Missing inputs, rejected plan, or wrong step order | `planning/`, `evaluation/plan_rules.py` | `contracts/planning.py` |
+| Wrong input file, delimiter, ID, or output-path validation | `data/` | `data/tables.py`, `data/paths.py`, `data/discovery.py` |
+| A workflow command fails | `execution.py` | `command.py`, `data/bundles.py` |
+| Graph jumps to the wrong node or recovery misbehaves | `graph/topology.py`, `graph/transitions.py` | `evaluation/recovery.py` |
+| Wrong reply language or formatting | `presentation.py` | `evaluation/rendering.py`, `graph/response.py` |
+| Type, serialization, or state-field problems | `contracts/` | the matching decisions/planning/results/state module |
 
-`contracts/__init__.py`、`data/__init__.py`、`cli/__init__.py` 與上述舊名稱 facade 是穩定相容層；
-真正修改行為時，應進入表格列出的 owner module，不要把新邏輯放回 facade。
+`contracts/__init__.py`, `data/__init__.py`, `cli/__init__.py`, and the legacy
+facades above are stable compatibility layers. Change behavior in the owner
+module listed in the table; never put new logic back into a facade.
 
-### 2.2 相容入口與互動執行
+### 2.2 Compatibility entry points and interactive execution
 
-以下既有 preview/status 命令維持可用：
+These preview and status commands remain available:
 
 ```bash
 python scripts/netzoo_agent.py --policy-status
@@ -139,12 +156,17 @@ python scripts/netzoo_agent.py --task "Run a PANDA demo"
 ./netzoo-chat
 ```
 
-`--task` 保持 preview-only；舊版 `--execute` startup argument 已移除且會被 argparse
-拒絕。只有在目前 `./netzoo-chat` session 輸入 `/execute` 後，後續 workflow task 才能
-執行；輸入 `/test` 會撤銷授權。
+`--task` is preview-only; the old `--execute` startup argument has been removed
+and argparse rejects it. Execution happens only inside an interactive session:
+after a plan has been previewed and approved, the user enters `/execute` and
+confirms, which authorizes exactly one graph turn to run that plan. The session
+then returns to Planning mode. `/planning` switches to preview-only Planning
+mode; `/test` switches to Synthetic Test mode (still preview-only until
+`/execute`, with unresolved gene labels accepted as test-only identifiers).
 
-既有程式若使用 `import netzoo_agent` 也能繼續運作。Facade 重新 export 舊名稱，並只為舊
-測試與舊 callers 保留少數 process-wide 設定同步。新程式應直接 import 所屬 module，例如：
+Existing code that does `import netzoo_agent` keeps working. The facade
+re-exports the old names and keeps a few process-wide settings in sync only for
+old tests and callers. New code should import the owning module directly:
 
 ```python
 from netzoo_agent_core.planning import build_workflow_plan
@@ -153,14 +175,14 @@ from netzoo_agent_core.evaluation import evaluate_workflow_plan
 
 ---
 
-## 3. 一個請求的完整生命週期
+## 3. Lifecycle of one request
 
 ```mermaid
 flowchart TD
     U["User / CLI input"] --> P["apply_project_policy"]
-    P --> M["retrieve_memory"]
-    M --> R["classify"]
-    R --> PL["plan"]
+    P --> R["classify"]
+    R --> M["retrieve_memory"]
+    M --> PL["plan"]
     PL --> PE["evaluate_plan"]
 
     PE -->|"approved + ready + steps"| EX["execute_tool"]
@@ -170,162 +192,137 @@ flowchart TD
     EV -->|"continue"| EX
     EV -->|"replan"| RC["recover"]
     RC --> PE
-    EV -->|"completed or failed"| CM
+    EV -->|"completed, failed, or needs_input"| CM
 
     CM --> RESP["respond"]
     RESP --> E["END / CLI checkpoint or next prompt"]
 ```
 
-LangGraph state 使用 `AgentState`。主要欄位如下：
+LangGraph state is `AgentState` (`contracts/state.py`). The main fields:
 
-| State field | Typed value | 用途 |
+| State field | Typed value | Purpose |
 |---|---|---|
-| `messages` | LangChain messages | 本輪輸入與回覆 |
-| `decision` | serialized `TaskDecision` | Router 後、已 deterministic hydration 的內部決策 |
-| `plan` | serialized `WorkflowPlan` | Planner 的唯一結構化輸出 |
-| `plan_evaluation` | serialized `PlanEvaluationResult` | Executor 前的 gate verdict |
-| `current_step` | integer | 下一個 `WorkflowStep` index |
-| `tool_result` | serialized `ToolExecutionResult` | 最近一次執行結果 |
-| `tool_results` | list | 本 workflow 到目前為止的全部結果 |
-| `evaluation` | serialized `EvaluationResult` | Result Evaluator 的控制結果 |
-| `replan_count` | integer | bounded recovery 次數 |
-| `profile` | serialized `UserProfile` | 已確認的長期偏好 |
-| `retrieved_episodes` | list of `Episode` | 本輪檢索出的過往 compact outcomes |
-| `project_policy` | serialized `ProjectPolicySnapshot` | 已驗證 policy 與 hash |
+| `messages` | LangChain messages | this turn's input and reply |
+| `decision` | serialized `TaskDecision` | internal decision after the Router and deterministic hydration |
+| `plan` | serialized `WorkflowPlan` | the Planner's only structured output |
+| `plan_evaluation` | serialized `PlanEvaluationResult` | the gate verdict before the Executor |
+| `current_step` | integer | index of the next `WorkflowStep` |
+| `tool_result` | serialized `ToolExecutionResult` | the most recent execution result |
+| `tool_results` | list | all results so far in this workflow |
+| `evaluation` | serialized `EvaluationResult` | the Result Evaluator's control result |
+| `replan_count` | integer | bounded recovery count |
+| `profile` | serialized `UserProfile` | confirmed long-term preferences |
+| `retrieved_episodes` | list of `Episode` | compact past outcomes retrieved this turn |
+| `project_policy` | serialized `ProjectPolicySnapshot` | validated policy and its hash |
 | `token_usage` | serialized `LLMUsage` | Router/response token telemetry |
+
+`AgentState` also carries routing and conversation context added later
+(`semantic_goal`, `requested_outcome`, `capability_match`,
+`request_requirements`, `task_state`, `workflow_continuation`,
+`method_comparison`, `reply_kind`, `previewed_inputs`, and others); see
+`contracts/state.py` for the full list.
 
 ---
 
-## 4. Phase 1：Project Policy
+## 4. Phase 1: project policy
 
-### 4.1 Policy 來源
+### 4.1 Policy sources
 
-權限與規格分成三層：
+Authority and specification come in three layers:
 
 1. `scripts/workflow_registry.py`
    - Python action allowlist
-   - required/optional inputs
+   - required and optional inputs
    - validation steps
    - executor arguments
    - workflow name
    - memory metadata
 2. `workflows/*.yaml`
-   - 人類可讀、可驗證的 workflow 規格
+   - human-readable, verifiable workflow specifications
 3. `AGENTS.md`
-   - 跨 workflow conventions 與 workflow spec directory
+   - cross-workflow conventions and the workflow spec directory
 
-Python registry 是執行權限的 source of truth。YAML 和 Markdown 只能描述或收窄行為，
-不能新增 action、移除 required input、繞過目前 session 的 `/execute` 授權，或在
-`/test` 模式執行工具。
+The Python registry is the source of truth for execution authority. YAML and
+Markdown may only describe or narrow behavior; they cannot add an action, remove
+a required input, or bypass the per-session `/execute` confirmation.
 
-### 4.2 Loader 的 fail-closed 驗證
+### 4.2 Fail-closed validation in the loader
 
-`ProjectPolicyLoader.load()`：
+`ProjectPolicyLoader.load()`:
 
-1. 尋找 `AGENTS.md`。
-2. 只解析受 schema 約束的 YAML front matter。
-3. 驗證 `policy_version == 1`。
-4. 確認 workflow directory 仍位於專案內。
-5. 讀取每一個 workflow YAML。
-6. 驗證 action 集合完整等於 Python `RUN_ACTIONS`。
-7. 驗證 required inputs、validation steps、execution step 與 Python registry 完全一致。
-8. 產生 immutable `ProjectPolicySnapshot` 與 SHA-256 `policy_hash`。
+1. Finds `AGENTS.md`.
+2. Parses only the schema-constrained YAML front matter.
+3. Checks `policy_version == 2`.
+4. Confirms the workflow directory is inside the project.
+5. Reads every workflow YAML.
+6. Checks that the set of actions exactly equals Python `RUN_ACTIONS`.
+7. Checks that required inputs, validation steps, the execution step, and the
+   output capability exactly match the Python registry, and that every
+   `input_checks` entry quotes the workflow's own contract.
+8. Produces an immutable `ProjectPolicySnapshot` and a SHA-256 `policy_hash`.
 
-任何衝突都拋出 `ProjectPolicyError`，agent 拒絕啟動。`AGENTS.md` 的 Markdown body 不會
-整段送進模型，避免把說明文字提升成 runtime instruction。
+Any conflict raises `ProjectPolicyError` and the agent refuses to start. The
+Markdown body of `AGENTS.md` is never sent to the model, so explanatory prose
+cannot become a runtime instruction.
 
-Graph 的 `apply_project_policy` node 把 snapshot 的 `model_dump()` 寫入 state。
-
----
-
-## 5. Phase 2：Memory Retrieval
-
-`retrieve_memory` node 在 routing 前執行：
-
-1. `UserProfileStore.load(profile_id)` 載入已確認偏好。
-2. `EpisodeStore.search(profile_id, user_task, limit=3)` 取回最多三筆相關 episode。
-3. 將兩者序列化放入 graph state。
-
-### 5.1 UserProfileStore
-
-只允許保存：
-
-- `default_output_dir`
-- `allow_demo_autofill`
-- `reuse_last_inputs`
-- `preferred_workflow`
-
-偏好必須由使用者明確提出，Planner 先進入 `needs_confirmation`，CLI 再要求 `yes`。
-Proposal 本身沒有寫入權。每次讀取 profile 時會重新驗證：
-
-- 輸出目錄必須位於專案 `outputs/`。
-- workflow 必須在 allowlist。
-- boolean 必須能明確正規化。
-- 未知 preference key 會被拒絕。
-
-### 5.2 EpisodeStore
-
-Episode 是過去任務的 compact outcome，不是完整對話或 dataset：
-
-- workflow、action、intent、status
-- 使用過的 input/output roles
-- validation 與 execution steps
-- execution mode
-- artifacts、metrics、error signature
-- recovery actions
-- policy hash
-
-它不保存 dataset 內容，也不把完整 stdout 放入 memory。Episode 依 profile 分區，具
-file lock、atomic write、private permissions、retention、筆數上限與容量上限。
-
-只有使用者已確認 `reuse_last_inputs=true`，Planner 才可能重用同 workflow 的成功
-episode inputs；重用前仍必須重新檢查檔案存在與 identifier compatibility。
+The graph's `apply_project_policy` node writes the snapshot's `model_dump()`
+into state.
 
 ---
 
-## 6. Phase 3：Routing 與 deterministic hydration
+## 5. Phase 2: routing and deterministic hydration
 
-### 6.1 LLM-facing schema
+### 5.1 LLM-facing schema
 
-Router 只輸出小型 `RouterDecision`：
+The Router outputs a small `RouterDecision` (`contracts/decisions.py`) with
+fields such as:
 
 ```text
 action
+selected_action
+candidate_actions
 in_scope
 intent_type
 confidence
 reason
-recommended_actions
+semantic_goal
+clarification_question
+outcome_hypotheses
 ```
 
-Router 不直接取得可靠 path、missing-input 或 preference-write 權限。小 schema 可減少
-LLM 輸出的攻擊面與 token 使用。
+The Router does not get trusted paths, missing-input lists, or preference-write
+authority. A small schema shrinks the attack surface of LLM output and its
+token use.
 
-### 6.2 內部 TaskDecision
+### 5.2 Internal TaskDecision
 
-Router 結果依序通過：
+The Router result passes through, in order:
 
-1. `hydrate_router_decision`
-   - 從最新 user task deterministic parse paths、queries 與 preference proposals。
-   - 接收 Router 的 typed `RequestedOutcome`，但不接受 Router 提供 workflow 清單。
-2. `match_requested_outcome`
-   - 將 operation、artifact type、entity/role 與 granularity 對照 Python
-     `OutputCapabilityDefinition`。
-   - 結果只能是 `exact`、`ambiguous` 或 `unsupported`。
-   - YAML `output_capability` 必須與 Python registry 完全一致，否則 policy
-     loader fail closed。
-3. `repair_router_decision`
-   - 只有 exact match 能建立 code-owned `matched_actions`。
-   - `recommended_actions` 是用於解說的 workflow sequence；
-     `alternative_actions` 只供 capability-gap 說明，不能擴權。
-   - 區分「詢問做法」和「授權立即執行」。
-4. `enforce_capability_gate`
-   - local run action 必須存在於 `matched_actions`，再檢查 scope、confidence、
-     required fields 與 capability。
-5. Provider 失敗時使用 conservative `deterministic_router_fallback`；它只接受
-   明示 workflow 名稱，不會從未命名的科學目標猜 workflow。
+1. `hydrate_router_decision` (`interpretation/hydration.py`)
+   - Deterministically parses paths, queries, and preference proposals from the
+     latest user task.
+   - Accepts the Router's typed `RequestedOutcome`, but never a workflow list
+     from the Router.
+2. `match_requested_outcome` (`routing/requested_outcome_matching.py`)
+   - Compares operation, artifact type, entity/role, and granularity against
+     the Python `OutputCapabilityDefinition`s.
+   - The result can only be `exact`, `ambiguous`, or `unsupported`.
+   - A YAML `output_capability` must exactly match the Python registry, or the
+     policy loader fails closed.
+3. `repair_router_decision` (`interpretation/repair.py`)
+   - Only an exact match can create code-owned `matched_actions`.
+   - `recommended_actions` is a workflow sequence used for explanation;
+     `alternative_actions` is only for describing capability gaps and never
+     grants authority.
+   - Distinguishes "asking how to do it" from "authorizing it now".
+4. `enforce_capability_gate` (`routing/capability.py`)
+   - A local run action must be in `matched_actions`; scope, confidence,
+     required fields, and capability are then checked.
+5. On provider failure, a conservative `deterministic_router_fallback`
+   (`interpretation/provider_fallback.py`) is used. It only accepts an explicit
+   workflow name and never guesses a workflow from an unnamed scientific goal.
 
-權限資料流如下：
+The authority data flow:
 
 ```text
 Router RequestedOutcome
@@ -336,33 +333,86 @@ Router RequestedOutcome
     -> Planner only for exact matched actions
 ```
 
-完整的 `TaskDecision` 才含：
+Only the full `TaskDecision` contains:
 
 - `should_execute`
 - `missing_inputs`
-- 每一種 input/output path
+- every input and output path
 - formatting parameters
-- docs/web query
+- docs and web queries
 - preference proposals
-- requested outcome
-- capability match status
-- exact matched actions、guidance sequence 與 non-authorizing alternatives
+- the requested outcome
+- the capability match status
+- exact matched actions, the guidance sequence, and non-authorizing
+  alternatives
 
-### 6.3 Router 看見什麼
+### 5.3 What the Router sees
 
-Router 只讀最新 human turn，而不是無限制的完整歷史。Pending workflow 透過 canonical
-continuation markers 傳回必要 context，例如：
+The Router reads only the latest human turn, not the unbounded history. A
+pending workflow passes the necessary context back through canonical
+continuation markers, for example:
 
 - `PREVIOUS_ACTION=...`
 - `SELECTED_FIELD=...`
 
-這樣可降低舊對話干擾本輪分類，也讓 clarification 可被 deterministic 驗證。
+This keeps old conversation from disturbing the current classification and
+lets clarifications be verified deterministically.
 
 ---
 
-## 7. Phase 4：Planner 如何建立 WorkflowPlan
+## 6. Phase 3: memory retrieval
 
-Graph 的 `plan_task` node：
+The `retrieve_memory` node runs after `classify` and before `plan`:
+
+1. `UserProfileStore.load(profile_id)` loads confirmed preferences.
+2. `EpisodeStore.search(profile_id, user_task, limit=3)` returns at most three
+   relevant episodes.
+3. Both are serialized into graph state.
+
+### 6.1 UserProfileStore
+
+Only these keys can be stored:
+
+- `default_output_dir`
+- `allow_demo_autofill`
+- `reuse_last_inputs`
+- `preferred_workflow`
+
+A preference must be stated explicitly by the user; the Planner first enters
+`needs_confirmation`, and the CLI then asks for `yes`. A proposal itself has no
+write authority. Every profile read re-validates that:
+
+- the output directory is inside the project's `outputs/`;
+- the workflow is on the allowlist;
+- booleans normalize unambiguously;
+- unknown preference keys are rejected.
+
+### 6.2 EpisodeStore
+
+An episode is a compact outcome of a past task, not a full conversation or
+dataset:
+
+- workflow, action, intent, status
+- input and output roles used
+- validation and execution steps
+- execution mode
+- artifacts, metrics, error signature
+- recovery actions
+- policy hash
+
+It never stores dataset contents or full stdout. Episodes are partitioned per
+profile, with file locks, atomic writes, private permissions, retention, and
+count and size limits.
+
+Only when the user has confirmed `reuse_last_inputs=true` may the Planner reuse
+inputs from a successful episode of the same workflow, and it still re-checks
+that the files exist and that identifiers are compatible.
+
+---
+
+## 7. Phase 4: how the Planner builds a WorkflowPlan
+
+The graph's `plan_task` node:
 
 ```python
 decision = TaskDecision.model_validate(state["decision"])
@@ -375,107 +425,119 @@ plan = build_workflow_plan(
 )
 ```
 
-`build_workflow_plan` 回傳 `WorkflowPlan`，之後 graph 只把其 `model_dump()` 存入 state。
+`build_workflow_plan` returns a `WorkflowPlan`; the graph stores only its
+`model_dump()` in state.
 
 ### 7.1 WorkflowPlan contract
 
-| Field | 意義 |
+| Field | Meaning |
 |---|---|
-| `workflow` | 人類可讀 workflow 名稱 |
-| `objective` | 本輪被接受的目標與理由 |
-| `decision` | Planner 修正後的完整 `TaskDecision` snapshot |
-| `evidence` | 每個 required field 的 provenance ledger |
-| `steps` | 有順序的 typed `WorkflowStep` |
-| `missing_inputs` | 尚未解決的 required fields |
-| `status` | `ready`、`needs_input`、`needs_confirmation` 或 `respond_only` |
-| `question` | 需要 human input 時的單一問題 |
-| `preference_proposals` | 尚未確認的長期偏好 |
-| `memory_notes` | 使用過的 profile/episode 說明 |
-| `policy_hash` | 建立 plan 時的 active policy hash |
-| `policy_notes` | 已驗證 workflow spec conventions |
+| `workflow` | human-readable workflow name |
+| `objective` | the accepted goal for this turn and why |
+| `decision` | the full `TaskDecision` snapshot after Planner repair |
+| `evidence` | provenance ledger for every required field |
+| `input_bundle_options` | candidate dataset bundles offered for selection |
+| `steps` | ordered typed `WorkflowStep`s |
+| `missing_inputs` | required fields still unresolved |
+| `status` | `ready`, `needs_input`, `needs_confirmation`, or `respond_only` |
+| `question` | the single question when human input is needed |
+| `workflow_handoff` | declared handoff to a follow-on workflow, if any |
+| `preference_proposals` | long-term preferences not yet confirmed |
+| `memory_notes` | notes on the profile and episodes used |
+| `policy_hash` | the active policy hash when the plan was built |
+| `policy_notes` | conventions from the validated workflow spec |
+| `recovery_*` | recovery action, error code, step index, and attempt count |
 
-`WorkflowStep` 只含：
+A `WorkflowStep` contains only:
 
 - `action`
 - `purpose`
 - `arguments`
 
-Planner 不能放入任意 shell command；step action 之後仍會再經 Plan Evaluator allowlist。
+The Planner cannot insert an arbitrary shell command; every step action is
+checked again against the allowlist by the Plan Evaluator.
 
 ### 7.2 Evidence ledger
 
-每個 required field 都必須有一筆 `InputEvidence`：
+Every required field must have one `InputEvidence` entry:
 
-| Status | 來源契約 |
+| Status | Provenance contract |
 |---|---|
-| `provided` | path literal 出現在使用者 task |
-| `selected` | 使用者從 clarification candidates 中明確選擇 |
-| `discovered` | Planner 從同 dataset/workspace 找到明確最佳候選，並記錄原因 |
-| `demo_bundle` | 使用者明確要求 demo/test，且找到完整、相容的資料 bundle |
-| `defaulted` | 只允許可逆 output location，不能用於研究 input |
-| `missing` | 找不到安全且唯一的值 |
+| `provided` | the path literal appears in the user's task |
+| `selected` | the user explicitly chose it from clarification candidates |
+| `discovered` | the Planner found a clear best candidate in the same dataset/workspace and recorded why |
+| `derived` | produced from another input by a declared step (`derived_from` names the source) |
+| `demo_bundle` | the user explicitly asked for a demo/test and a complete, compatible bundle was found |
+| `defaulted` | only for reversible output locations, never for research inputs |
+| `missing` | no safe, unique value was found |
 
-Evidence 還保存：
+Evidence also stores:
 
 - `field`
 - `value`
 - `reason`
-- 最多五個 `candidates`
+- up to five `candidates`
+- bundle identifiers when a dataset bundle was used
 
-這份 ledger 不是單純顯示文字；Plan Evaluator 會逐欄驗證 status 是否符合其來源契約。
+The ledger is not just display text: the Plan Evaluator checks, field by field,
+that each status satisfies its provenance contract.
 
-### 7.3 Planner 的解析優先序
+### 7.3 Planner resolution order
 
-對每個 required field，Planner 依序處理：
+For each required field, the Planner tries, in order:
 
-1. 使用者 task 中明確命名的 path。
-2. Router path，但只有 literal 確實出現在 task 才可信。
-3. 使用者已確認 `reuse_last_inputs=true` 時，同 workflow 的有效成功 episode。
-4. 明確 demo/test request 的 coherent demo bundle。
-5. 從 expression 附近的 dataset directory 和專案 `data/` 搜尋。
-6. 只有候選分數有明顯唯一最佳者才自動選擇。
-7. 無法唯一判斷則標為 `missing`。
+1. A path explicitly named in the user's task.
+2. A Router path, trusted only if the literal actually appears in the task.
+3. A valid successful episode of the same workflow, if the user confirmed
+   `reuse_last_inputs=true`.
+4. A coherent demo bundle, for an explicit demo/test request.
+5. A search of the dataset directory near the expression file and of the
+   project's `data/`.
+6. Automatic selection only when one candidate clearly scores best.
+7. Otherwise, `missing`.
 
-Router 猜出的 workspace path 若沒有出現在 user task，Planner 會清除它，不能偽裝成
-`provided`。
+A workspace path guessed by the Router that does not appear in the user's task
+is cleared by the Planner; it can never pass as `provided`.
 
 ### 7.4 Output defaults
 
-Output 是可逆選擇，因此可安全 default：
+Outputs are reversible choices and may be defaulted safely (for example the
+PANDA/PUMA network output, LIONESS aggregate and sample-specific outputs, or the
+CONDOR output directory). Without an explicit path, outputs go to the current
+session's own output folder.
 
-- PANDA/PUMA network output
-- LIONESS aggregate output
-- LIONESS sample-specific output
-- CONDOR output directory
+An input dataset is never defaulted just because toy data happens to be in the
+workspace. A request about a real data folder without a concrete path never
+silently switches to a demo bundle.
 
-Input dataset 不可因為「workspace 剛好有 toy data」就 default。正式資料夾請求如果沒有
-具體 path，也不能偷偷改用 demo bundle。
+### 7.5 Missing inputs and human-in-the-loop
 
-### 7.5 Missing input 與 human-in-the-loop
-
-若有任何 required field 是 `missing`：
+If any required field is `missing`:
 
 - `decision.should_execute = False`
 - `plan.status = "needs_input"`
 - `plan.steps = []`
-- CLI 保存 session checkpoint
-- clarification wizard 一次處理一個欄位，使用者依序提供每個缺少的 input
+- the CLI saves a session checkpoint
+- the clarification wizard handles one field at a time, and the user supplies
+  each missing input in turn
 
-補充答案會轉成 canonical continuation，再重新經 Router、Planner 和 Plan Evaluator，
-不是直接修改舊 plan 後跳進 Executor。
+Answers become a canonical continuation and run again through the Router,
+Planner, and Plan Evaluator; the old plan is never patched and sent straight to
+the Executor.
 
 ### 7.6 Preference confirmation
 
-若有尚未確認的 preference proposals：
+If there are unconfirmed preference proposals:
 
 - `plan.status = "needs_confirmation"`
 - `plan.steps = []`
-- Executor 不執行
-- CLI 只有收到明確 `yes` 才呼叫 `UserProfileStore.confirm`
+- the Executor does not run
+- the CLI calls `UserProfileStore.confirm` only after an explicit `yes`
 
-### 7.7 Ready plan 的 step sequence
+### 7.7 Step sequence of a ready plan
 
-Step sequence 來自 active workflow spec；若無 snapshot 才回退到 Python registry。
+The step sequence comes from the active workflow spec, falling back to the
+Python registry only when there is no snapshot.
 
 | Workflow | Typed steps |
 |---|---|
@@ -485,22 +547,31 @@ Step sequence 來自 active workflow spec；若無 snapshot 才回退到 Python 
 | LIONESS-PUMA | `inspect_inputs -> run_lioness_puma` |
 | LIONESS co-expression | `run_lioness_coexpression` |
 | CONDOR | `inspect_condor_inputs -> run_condor` |
+| COBRA | `inspect_cobra_inputs -> run_cobra` |
+| SAMBAR | `inspect_sambar_inputs -> run_sambar` |
+| DRAGON | `inspect_dragon_inputs -> run_dragon` |
+| LIONESS-DRAGON | `inspect_dragon_inputs -> run_lioness_dragon` |
+| OTTER | `inspect_otter_inputs -> run_otter` |
+| GIRAFFE | `inspect_giraffe_inputs -> run_giraffe` |
+| BONOBO | `inspect_bonobo_inputs -> run_bonobo` |
 | Expression formatting | `format_expression` |
 | Co-expression conversion | `convert_expression` |
+| STRING download | `download_string` |
 | Context7 | `query_context7` |
-| Websearch | `web_search` |
+| Web search | `web_search` |
 
-只寫出這些 steps 仍不代表已取得執行權；下一個 node 必須再審查 plan。
+Writing these steps does not grant execution; the next node must still review
+the plan.
 
 ---
 
-## 8. Planner 如何把 plan 傳給 Plan Evaluator
+## 8. How the Planner hands the plan to the Plan Evaluator
 
-這是整個系統最重要的 seam。
+This is the most important seam in the system.
 
-### 8.1 傳遞的不是 Markdown
+### 8.1 What is passed is not Markdown
 
-Planner 回傳：
+The Planner returns:
 
 ```python
 {
@@ -512,7 +583,7 @@ Planner 回傳：
 }
 ```
 
-下一個 `evaluate_plan` node 重新驗證：
+The next node, `evaluate_plan`, re-validates it:
 
 ```python
 plan = WorkflowPlan.model_validate(state["plan"])
@@ -523,12 +594,13 @@ evaluation = evaluate_workflow_plan(
 )
 ```
 
-因此 evaluator 接收的是經 Pydantic 驗證的 `WorkflowPlan` object、原始 user task 與 active
-policy snapshot。`render_plan(plan)` 產生的文字只供人類 audit；Evaluator 不解析該文字。
+So the evaluator receives a Pydantic-validated `WorkflowPlan`, the original
+user task, and the active policy snapshot. The text produced by
+`render_plan(plan)` is for human audit only; the Evaluator never parses it.
 
 ### 8.2 PlanEvaluationResult
 
-Plan Evaluator 回傳：
+The Plan Evaluator returns:
 
 ```text
 status: approved | deferred | rejected
@@ -537,7 +609,7 @@ summary
 rubric: list[PlanRubricItem]
 ```
 
-每個 `PlanRubricItem`：
+Each `PlanRubricItem`:
 
 ```text
 criterion
@@ -546,26 +618,41 @@ result: pass | fail | not_applicable
 detail
 ```
 
-### 8.3 九個 code-enforced criteria
+### 8.3 Code-enforced criteria
 
-| Criterion | 強制檢查 |
+The core criteria (`evaluation/plan_review.py`, rules in
+`evaluation/plan_rules.py`):
+
+| Criterion | Enforced check |
 |---|---|
-| `intent_and_capability_alignment` | action、workflow、intent 與 user authorization 是否一致 |
-| `required_input_evidence` | 每個 required input/output 是否有一致且非 missing 的 evidence |
-| `evidence_provenance_contract` | provided/selected/discovered/demo/defaulted 是否符合來源契約 |
-| `path_hygiene` | path 是否含句尾標點等 parsing artifact |
-| `step_allowlist` | 每個 step action 是否位於 Python allowlist |
-| `validation_and_execution_order` | steps 是否完整等於 active workflow spec |
-| `output_non_overwrite` | output 是否會覆寫任何 input |
-| `planner_state_consistency` | ready、should_execute、missing_inputs 和 steps 是否一致 |
-| `project_policy_binding` | plan policy hash 是否等於 active validated policy hash |
+| `intent_and_capability_alignment` | action, workflow, intent, and user authorization agree |
+| `required_input_evidence` | every required input/output has consistent, non-missing evidence |
+| `evidence_provenance_contract` | provided/selected/discovered/derived/demo/defaulted statuses meet their provenance contracts |
+| `dataset_bundle_provenance` | autonomously discovered multi-file inputs come from one dataset bundle |
+| `path_hygiene` | paths contain no parsing artifacts such as trailing punctuation |
+| `step_allowlist` | every step action is on the Python allowlist |
+| `validation_and_execution_order` | the steps exactly equal the active workflow spec |
+| `step_argument_alignment` | every step uses the typed arguments reviewed in the plan |
+| `output_non_overwrite` | no output overwrites any input |
+| `output_role_uniqueness` | every populated output role resolves to a distinct path |
+| `planner_state_consistency` | `ready`, `should_execute`, `missing_inputs`, and steps agree |
+| `project_policy_binding` | the plan's policy hash equals the active validated policy hash |
 
-若 plan 還不是 `ready`，verdict 是 `deferred`，不執行。若任何 required criterion 是
-`fail`，verdict 是 `rejected`。Score 是 audit summary，不會覆蓋 required failure。
+Further criteria apply when relevant: `operation_authorization` (the request
+does not forbid a planned operation), `capability_verdict`,
+`request_requirements`, `execution_readiness`, `decision_schema`,
+`workflow_handoff_contract`, `recovery_authorization`,
+`string_acquisition_contract`, and the CONDOR/COBRA derived-output safety
+checks.
 
-### 8.4 Executor 的不可繞過條件
+If the plan is not yet `ready`, the verdict is `deferred` and nothing runs. If
+any required criterion is `fail`, the verdict is `rejected`. The score is an
+audit summary and never overrides a required failure.
 
-Graph conditional edge 只有在三個條件同時成立時才指向 Executor：
+### 8.4 The Executor condition that cannot be bypassed
+
+The graph's conditional edge (`graph/transitions.py`) leads to the Executor
+only when all three hold:
 
 ```python
 evaluation.status == "approved"
@@ -573,213 +660,233 @@ and plan.status == "ready"
 and bool(plan.steps)
 ```
 
-其他情況一律走 `consolidate_memory -> respond`。所以：
+Every other case goes to `consolidate_memory -> respond`. Therefore:
 
-- Planner 不能自己批准 plan。
-- Markdown 顯示成 approved 沒有效果。
-- LLM response 不能新增 step。
-- Rejected 或 deferred plan 不會碰 Executor。
+- The Planner cannot approve its own plan.
+- Markdown that says "approved" has no effect.
+- An LLM response cannot add a step.
+- A rejected or deferred plan never reaches the Executor.
 
 ---
 
-## 9. Phase 6：Executor
+## 9. Phase 5: the Executor
 
-`execute_tool` node 每次只執行一個 `WorkflowStep`：
+The `execute_tool` node runs one `WorkflowStep` at a time:
 
-1. 從 state 重建 `WorkflowPlan`。
-2. 讀取 `steps[current_step]`。
-3. 從 `plan.decision` 重建 `TaskDecision`。
-4. 暫時把 `decision.action` 改成本 step action。
-5. 套用 allow-listed `step.arguments`。
-6. 呼叫 `execute_selected_tool(decision)`。
-7. 把 legacy text output 經 `structure_tool_result` 正規化。
-8. 將 typed result 寫入 `tool_result` 並 append 到 `tool_results`。
+1. Rebuilds the `WorkflowPlan` from state.
+2. Reads `steps[current_step]`.
+3. Rebuilds the `TaskDecision` from `plan.decision`.
+4. Temporarily sets `decision.action` to this step's action.
+5. Applies the allow-listed `step.arguments`.
+6. Calls `execute_selected_tool(decision)` (`routing/dispatch.py`).
+7. Normalizes the legacy text output with `structure_tool_result`
+   (`routing/results.py`).
+8. Writes the typed result to `tool_result` and appends it to `tool_results`.
 
 ### 9.1 Tool dispatch
 
-本機 executor mapping 位於 `execution.py`：
+The local executor mapping is `LOCAL_TOOL_EXECUTORS` in `execution.py`. It maps
+every `inspect_*`, `run_*`, `format_expression`, `convert_expression`, and
+`download_string` action to its adapter. `query_context7` and `web_search` are
+dispatched to the read-only retrieval functions in `routing/retrieval.py`.
 
-- `inspect_netzoo_inputs`
-- `format_expression_for_netzoo`
-- `convert_expression_to_coexpression`
-- `run_panda`
-- `run_puma`
-- `run_lioness_panda`
-- `run_lioness_puma`
-- `run_lioness_coexpression`
-- `inspect_condor_inputs`
-- `run_condor`
+`workflow_registry.executor_arguments(...)` decides which fields each action
+receives; extra fields are never passed through to an adapter.
 
-`workflow_registry.executor_arguments(...)` 決定每個 action 可取得哪些欄位。多餘欄位不會
-被無限制傳給 adapter。
+### 9.2 Dry run and execute mode
 
-### 9.2 Dry-run 與 execute mode
+By default `EXECUTE_TOOLS=False`:
 
-預設 `EXECUTE_TOOLS=False`：
+- parsing, planning, evaluation, and input validation still run;
+- run steps only produce a command preview;
+- no analysis command is executed;
+- `ToolExecutionResult.status = "dry_run"`.
 
-- 仍解析、planning、evaluation 與 input validation。
-- run step 只產生 command preview。
-- 不執行分析 command。
-- `ToolExecutionResult.status = "dry_run"`。
-
-只有使用者在目前 `./netzoo-chat` session 明確輸入 `/execute`，再提交 workflow task
-才執行 subprocess；輸入 `/test` 會回到 command preview。
+A subprocess runs only after the user enters `/execute` in the current
+`./netzoo-chat` session and confirms. That authority covers one graph turn for
+the previewed plan; `EXECUTE_TOOLS` is reset to `False` afterwards. If a
+previewed input file changed since the preview, the run is refused.
 
 ### 9.3 Input validation
 
-`validation.py` 與 `netzoo_table_io.py` 負責：
+`data/tables.py` (re-exported by the `validation.py` facade), the per-workflow
+`inspect_*` adapters, and `scripts/netzoo_table_io.py` handle:
 
-- delimiter 與 annotation row 判斷
+- delimiter and annotation-row detection
 - expression orientation
-- 數值欄位檢查
-- duplicate/empty identifier 檢查
-- motif target genes ↔ expression genes overlap
-- motif TFs ↔ PPI TFs overlap
-- miRNA list 格式
-- miRNA names ↔ motif/prior regulators overlap
-- CONDOR bipartite edge 格式與 numeric weight
+- numeric column checks
+- duplicate and empty identifier checks
+- overlap of motif target genes with expression genes
+- overlap of motif TFs with PPI TFs
+- miRNA list format
+- overlap of miRNA names with motif/prior regulators
+- CONDOR bipartite edge format and numeric weights
 
-LIONESS adapters 也會檢查 expression sample count、header requirements 與 output paths。
+LIONESS adapters also check the expression sample count, header requirements,
+and output paths.
 
 ### 9.4 ToolExecutionResult
 
-Executor 與 Result Evaluator 之間只傳這個 stable contract：
+Only this stable contract passes between the Executor and the Result
+Evaluator:
 
-| Field | 用途 |
+| Field | Purpose |
 |---|---|
-| `action` | 實際執行的 typed action |
-| `status` | `success`、`dry_run` 或 `failed` |
-| `summary` | 簡短機器可讀結果摘要 |
-| `artifacts` | 預期 outputs |
-| `metrics` | exit code、verified artifacts 等 |
-| `warnings` | 正規化警告 |
-| `errors` | 正規化錯誤 |
-| `retryable` | 是否允許 bounded recovery |
+| `action` | the typed action actually run |
+| `status` | `success`, `dry_run`, or `failed` |
+| `summary` | short machine-readable result summary |
+| `attempt_id`, `superseded` | attempt bookkeeping when a step is re-run |
+| `artifacts` | expected outputs |
+| `metrics` | exit code, verified artifacts, and similar |
+| `warnings` | normalized warnings |
+| `errors` | normalized errors |
+| `error_code` | stable error code, when one applies |
+| `retryable` | whether bounded recovery is allowed |
 | `recovery_hint` | allow-listed recovery name |
-| `log_file` | 完整 raw output log |
-| `raw_output` | 有長度上限的輸出 |
+| `log_file` | full raw output log |
+| `raw_output` | length-capped output |
 
-若 raw output 超過上限，模型與 graph state 只保存頭尾摘要，完整內容寫入 private log。
-Subprocess exit code 為 0 仍不足以判定成功；若預期 artifact 沒有新增或更新，也會標為失敗。
+If raw output exceeds the cap, the model and graph state keep only a head/tail
+summary and the full content goes to a private log. Exit code 0 is not enough
+for success: if an expected artifact was not created or updated, the step is
+marked failed.
 
 ---
 
-## 10. Phase 7：Result Evaluator 與 execution loop
+## 10. Phase 6: Result Evaluator and the execution loop
 
-`evaluate_step_result(plan, step_index, result, replan_count)` 不靠 LLM 自由判斷。
+`evaluate_step_result(plan, step_index, result, replan_count)`
+(`evaluation/step_results.py`) does not rely on free-form LLM judgment.
 
-### 10.1 狀態轉移
+### 10.1 State transitions
 
-| 條件 | EvaluationResult.status | Graph route |
+| Condition | `EvaluationResult.status` | Graph route |
 |---|---|---|
-| step 成功且後面還有 step | `continue` | 下一個 `execute_tool` |
-| 最後一步成功或 dry-run | `completed` | memory consolidation |
-| structured result 失敗且不可修復 | `failed` | memory consolidation |
-| 失敗可修復、未超過上限、且為 execute mode | `replan` | `recover` |
+| step succeeded and more steps follow | `continue` | next `execute_tool` |
+| last step succeeded or was a dry run | `completed` | memory consolidation |
+| structured result failed and is not repairable | `failed` | memory consolidation |
+| result shows an input is still needed | `needs_input` | memory consolidation |
+| failure is repairable, under the limit, and in execute mode | `replan` | `recover` |
 
-`EvaluationResult` 還含：
+`EvaluationResult` also carries:
 
 - `reason`
 - `recovery_action`
+- `recovery_error_code`
 
-### 10.2 目前的 bounded recovery
+### 10.2 Bounded recovery
 
-目前唯一 allow-listed recovery 是 PUMA expression header 修復：
+Recovery strategies are registered in `evaluation/recovery_registry.py`. The
+only allow-listed strategy is the PUMA expression-header repair
+(`evaluation/recovery_strategies/puma_headerless.py`):
 
-1. 偵測 PUMA 拒絕 expression header。
-2. `ToolExecutionResult.retryable=True`。
-3. `recovery_hint="format_expression_headerless"`。
-4. 只有 `replan_count < 2` 且為真正 execute mode 才允許 recovery。
-5. `recover_workflow_plan` 插入：
+1. Detect that PUMA rejected the expression header.
+2. `ToolExecutionResult.retryable=True`.
+3. `recovery_hint="format_expression_headerless"`.
+4. Recovery is allowed only below `MAX_RECOVERY_ATTEMPTS` (currently 1,
+   `settings.py`) and only in real execute mode.
+5. `recover_workflow_plan` inserts:
    - `format_expression`
    - `inspect_inputs`
-   - 原本的 PUMA run step
-6. 從 recovery step index 重新進 Executor。
+   - the original PUMA run step
+6. The plan goes back through `evaluate_plan` and re-enters the Executor at the
+   recovery step index.
 
-Recovery 不能讓 LLM發明 shell action，也不能跳過重新 validation。
+Recovery never lets the LLM invent a shell action and never skips
+re-validation.
 
 ---
 
-## 11. Phase 8：Memory Consolidation
+## 11. Phase 7: memory consolidation
 
-只有同時存在 evaluation 與 tool results，且 evaluation 是 `completed` 或 `failed`，
-`consolidate_memory` 才記錄 episode。
+`consolidate_memory` records an episode only when both an evaluation and tool
+results exist and the evaluation is `completed` or `failed`.
 
-記錄內容來自：
+The record is built from:
 
-- `WorkflowPlan`
-- 全部 `ToolExecutionResult`
-- 最終 `EvaluationResult`
+- the `WorkflowPlan`
+- all `ToolExecutionResult`s
+- the final `EvaluationResult`
 - `replan_count`
-- active `profile_id`
-- user task 的有限 audit excerpt
+- the active `profile_id`
+- a bounded audit excerpt of the user task
 
-`needs_input`、`needs_confirmation`、plan rejection 或純問答不會被當成已完成的執行
-episode。
+`needs_input`, `needs_confirmation`, plan rejections, and plain Q&A are not
+recorded as completed execution episodes.
 
 ---
 
-## 12. Phase 9：Response
+## 12. Phase 8: response
 
-### 12.1 本機 workflow
+### 12.1 Local workflows
 
-只要本機 workflow 有 structured results，就使用 deterministic renderer：
+Whenever a local workflow has structured results, a deterministic renderer is
+used:
 
-- compact mode 顯示 inputs、provenance、validation、result、command 或 outputs。
-- `--verbose` 顯示完整 evidence、step results、metrics、logs 與 evaluator reason。
+- compact mode shows inputs, provenance, validation, result, command, or
+  outputs;
+- `--verbose` shows full evidence, step results, metrics, logs, and the
+  evaluator's reason.
 
-這避免分析已完成後，因 response-model provider failure 而把成功工作變成 traceback 或
-錯誤宣稱。
+This prevents a response-model provider failure from turning finished work into
+a traceback or a false claim.
 
-### 12.2 needs_input / needs_confirmation / rejected
+Each deterministic reply also carries a `reply_kind`, from which
+`reply_cards/` derives a display-only card (conclusion, key points, options,
+related items that cannot run, next step).
 
-這三種狀態都使用 deterministic response：
+### 12.2 needs_input, needs_confirmation, rejected
 
-- `needs_input`：明確說沒有執行，並要求下一個缺少欄位。
-- `needs_confirmation`：明確說偏好尚未保存。
-- `rejected`：顯示 typed rubric 的 Markdown audit view。
+All three use deterministic responses:
 
-### 12.3 一般回答與 retrieval
+- `needs_input`: states clearly that nothing ran and asks for the next missing
+  field.
+- `needs_confirmation`: states clearly that the preference has not been saved.
+- `rejected`: shows a Markdown audit view of the typed rubric.
 
-Conceptual question、recommendation、Context7 或 Websearch 結果可交給 response LLM。
-Prompt context 分成：
+### 12.3 General answers and retrieval
+
+Conceptual questions, recommendations, and Context7 or web-search results can be
+handed to the response LLM. The prompt context is split into:
 
 - trusted typed harness state
-- latest user task
+- the latest user task
 - untrusted external retrieval content
 
-External content 不會被放進 system message，也不能新增工具或改寫 policy。若 token budget
-不足或 provider 失敗，使用 deterministic fallback。
+External content is never placed in the system message and cannot add tools or
+rewrite policy. If the token budget is insufficient or the provider fails, a
+deterministic fallback is used.
 
-所有 agent-authored user-visible output 固定為英文；使用者輸入可為中文或其他語言。
+All agent-authored user-visible output is in English; user input may be in any
+language.
 
 ---
 
-## 13. Clarification、Session 與下一輪
+## 13. Clarification, sessions, and the next turn
 
-### 13.1 Short-term session
+### 13.1 Short-term sessions
 
-`.netzoo/sessions/<session>.json` 保存：
+`.netzoo/sessions/<session>.json` stores:
 
-- bounded conversation
-- pending plan
+- the bounded conversation
+- the pending plan
 - token usage
-- profile id
+- the profile id
 
-`--resume <id>` 或 `--resume latest` 可繼續未完成 session。這是 app-level checkpoint，
-不是 LangGraph node-level durable checkpoint。
+`--resume <id>` or `--resume latest` continues an unfinished session. This is an
+application-level checkpoint, not a LangGraph node-level durable checkpoint.
 
 ### 13.2 Clarification wizard
 
-Wizard：
+The wizard:
 
-1. 從 plan evidence 找出尚未解決欄位。
-2. 顯示候選與編號。
-3. 解析目前欄位的 number 或 path。
-4. 建立帶有 `PREVIOUS_ACTION` 和 `SELECTED_FIELD` 的 canonical continuation。
-5. 重新跑完整 graph。
+1. Finds unresolved fields from the plan evidence.
+2. Shows numbered candidates.
+3. Parses a number or a path for the current field.
+4. Builds a canonical continuation with `PREVIOUS_ACTION` and `SELECTED_FIELD`.
+5. Re-runs the whole graph.
 
-LIONESS 未指定 base method 時會先問：
+When LIONESS is requested without a base method, it asks first:
 
 1. LIONESS-PANDA
 2. LIONESS-PUMA
@@ -787,120 +894,116 @@ LIONESS 未指定 base method 時會先問：
 
 ### 13.3 Outcome-aware follow-up
 
-下一問依上一輪 structured outcome 產生：
+The next prompt is derived from the previous turn's structured outcome:
 
 - recommended workflow
 - clarify outcome
-- alternative outcome confirmation（只確認產物，不直接執行）
-- dry-run
+- alternative outcome confirmation (confirms the artifact only; does not run)
+- dry run
 - completed
 - failed
 - plan rejected
 - unsupported
 - retrieval
 
-Response LLM 的重複 conversational CTA 會被清除，確保 CLI 只顯示一個下一問。
+Repeated conversational calls to action from the response LLM are stripped so
+the CLI shows exactly one next prompt.
 
 ---
 
-## 14. 信任與權限模型
+## 14. Trust and authority model
 
 ```text
-最高執行權限
+Highest execution authority
     Python ActionName + workflow_registry
-        ↓ 必須一致
+        | must match
     validated workflow YAML
-        ↓ 綁定 hash
+        | bound by hash
     WorkflowPlan
-        ↓ required rubric 全通過
+        | every required rubric item passes
     PlanEvaluationResult.approved
-        ↓
+        | plus a confirmed /execute for this turn
     Executor dispatch
 
-不能擴權的資料
+Data that can never expand authority
     AGENTS.md Markdown body
     user profile
     retrieved episodes
-    Context7/Websearch content
+    Context7 / web-search content
     LLM reasoning text
     rendered Markdown plan/rubric
 ```
 
-核心安全性質：
+Core safety properties:
 
-- 使用者提供的 path 優先，LLM 猜測 path 不算 evidence。
-- Demo data 不能代替未指定的正式 dataset。
-- Output 不能覆寫 input。
-- Plan step 必須完整匹配 registry/spec。
-- 目前互動 session 的 `/execute` 授權是本機分析副作用的必要條件；`/test` 會撤銷它。
-- External retrieval 只有 read-only reference authority。
-- Preference proposal 沒有 write authority。
-- Project policy data 不能擴張 Python authority。
-
----
-
-## 15. Model、成本與故障處理
-
-Router model 與 response model 分離：
-
-- Router 使用較小 structured-output model。
-- Response model 只在需要自然語言回答時使用。
-- 本機 workflow 結果優先 deterministic rendering。
-
-保護機制：
-
-- router model allowlist
-- response model allowlist
-- per-call output token caps
-- 30 秒預設 timeout
-- provider retries 預設為 0
-- per-task combined token budget
-- actual/estimated token provenance
-- Router provider failure deterministic fallback
-- Response provider failure deterministic fallback
+- User-provided paths win; paths guessed by the LLM are not evidence.
+- Demo data never replaces an unspecified real dataset.
+- Outputs never overwrite inputs.
+- Plan steps must exactly match the registry/spec.
+- A confirmed `/execute` in the current interactive session is required for any
+  local analysis side effect, and it covers one turn only.
+- External retrieval has read-only reference authority.
+- Preference proposals have no write authority.
+- Project policy data cannot expand Python authority.
 
 ---
 
-## 16. 測試與目前驗證結果
+## 15. Models, cost, and failure handling
 
-目前測試執行方式：
+The Router model and the response model are separate:
+
+- The Router uses a smaller structured-output model.
+- The response model is used only when a natural-language answer is needed.
+- Local workflow results prefer deterministic rendering.
+
+Safeguards (defaults in `settings.py`, overridable by CLI flags):
+
+- Router and response model allowlists
+- per-call output token caps (`--router-max-tokens`, `--response-max-tokens`)
+- a 30-second default LLM timeout (`--llm-timeout`)
+- provider retries default to 0
+- a per-task combined token budget (`--max-task-tokens`)
+- actual vs. estimated token provenance
+- a separate tool timeout (`--tool-timeout`, default 24 hours)
+- deterministic fallback on Router provider failure
+- deterministic fallback on response provider failure
+
+---
+
+## 16. Testing
+
+Run the suite with:
 
 ```bash
-python -m unittest discover -s tests
+python -m pytest -q
 ```
 
-重構後結果：
+Integration tests that need the full LangGraph/netZooPy runtime are skipped when
+those dependencies are missing; run them in the Docker image. The suite covers,
+among other things:
 
-```text
-Ran 166 tests
-OK (skipped=11)
-```
-
-11 個 skipped tests 是既有條件：本機環境沒有完整 LangGraph runtime，這些 integration
-tests 預期在 Docker 環境執行。其餘測試涵蓋：
-
-- capability gate
-- routing hydration/repair/fallback
+- the capability gate
+- routing hydration, repair, and fallback
 - evidence-ledger planning
 - demo bundle coherence
-- clarification continuation
-- Plan Evaluator forged-plan rejection
-- input/output overwrite
+- clarification continuations
+- Plan Evaluator rejection of forged plans
+- input/output overwrite protection
 - step order
-- PANDA/PUMA/LIONESS/CONDOR command building
-- expression formatting/co-expression
+- command building for every workflow adapter
+- expression formatting and co-expression conversion
 - biological identifier validation
 - dry-run semantics
 - result normalization
 - bounded recovery
-- memory retention、locking、profile isolation
-- session resume/retention
-- token budget
-- policy fail-closed validation
-- CLI follow-up
-- 舊 `netzoo_agent` import 相容性
+- memory retention, locking, and profile isolation
+- session resume and retention
+- the token budget
+- fail-closed policy validation
+- CLI follow-ups
+- compatibility of the old `netzoo_agent` import
 
-另有 smoke checks：
+Smoke checks:
 
 ```bash
 python scripts/netzoo_agent.py --policy-status
@@ -909,94 +1012,107 @@ python scripts/netzoo_agent.py --help
 
 ---
 
-## 17. 維護指南
+## 17. Maintenance guide
 
-### 17.1 修改既有 workflow inputs
+### 17.1 Changing an existing workflow's inputs
 
-必須同步檢查：
+Check all of these together:
 
 1. `scripts/workflow_registry.py`
-2. 對應 `workflows/*.yaml`
-3. `validation.py` 或 execution adapter
+2. the matching `workflows/*.yaml`
+3. the validation code in `data/` or the workflow's `inspect_*` adapter
 4. tests
-5. 本文件的 step/contract 說明
+5. the step and contract descriptions in this document
 
-Policy loader 會在 YAML 與 Python 不一致時拒絕啟動。
+The policy loader refuses to start if YAML and Python disagree.
 
-### 17.2 新增一個本機 workflow
+### 17.2 Adding a local workflow
 
-建議順序：
+Suggested order:
 
-1. 在 `ActionName` 與 `ACTION_DEFINITIONS` 登記 action。
-2. 定義 required/optional inputs、executor fields 與 validation steps。
-3. 新增 workflow YAML。
-4. 在 `execution.py` 實作 adapter 並加入 local executor mapping。
-5. 在 `validation.py` 實作必要 input gate。
-6. 在 `interpretation.py` 加入 goal/path inference，但不授予新權限。
-7. 讓 `planning.py` 由 registry 自動建立 evidence 與 steps。
-8. 確認 `evaluation.py` 不需特殊放寬；通常不應放寬。
-9. 新增 planner、plan evaluator、adapter、failure 與 CLI tests。
+1. Register the action in `ActionName` and `ACTION_DEFINITIONS`
+   (`workflow_registry.py`).
+2. Define required and optional inputs, executor fields, validation steps, and
+   the output capability.
+3. Add the workflow YAML.
+4. Implement the adapter in `execution.py` (or a sibling `execution_*.py` module
+   if `execution.py` would exceed its 1000-line cap) and add it to
+   `LOCAL_TOOL_EXECUTORS`.
+5. Implement the required input gate (an `inspect_*` action backed by `data/`).
+6. Add goal and path inference in `interpretation/` without granting new
+   authority.
+7. Let `planning/` build the evidence and steps from the registry.
+8. Confirm `evaluation/` needs no special relaxation; usually it should not be
+   relaxed.
+9. Add Planner, Plan Evaluator, adapter, failure, and CLI tests.
 
-### 17.3 應避免的作法
+### 17.3 Practices to avoid
 
-- 不要再把功能加回 `scripts/netzoo_agent.py` facade。
-- 不要在 Planner 中直接執行 I/O 副作用。
-- 不要讓 Plan Evaluator 解析 Markdown。
-- 不要在 LLM prompt 裡維護另一份 action allowlist。
-- 不要把 Router path 當成使用者提供的 evidence。
-- 不要為單一 implementation 建立無意義 pass-through module。
-- 不要新增無上限的 replan/retry loop。
+- Do not add features back into the `scripts/netzoo_agent.py` facade.
+- Do not perform I/O side effects inside the Planner.
+- Do not let the Plan Evaluator parse Markdown.
+- Do not maintain a second action allowlist inside an LLM prompt.
+- Do not treat a Router path as user-provided evidence.
+- Do not create pointless pass-through modules for a single implementation.
+- Do not add unbounded replan or retry loops.
 
 ---
 
-## 18. 目前成熟度與已知缺口
+## 18. Maturity and known gaps
 
-目前最準確定位是 robust research prototype。它已具：
+The most accurate description is a robust research prototype. It has:
 
-- typed state 與 contracts
-- capability boundary
+- typed state and contracts
+- a capability boundary
 - evidence-ledger planning
-- pre-execution gate
-- deterministic execution/result evaluation
+- a pre-execution gate
+- deterministic execution and result evaluation
 - bounded recovery
 - human-in-the-loop
-- session 與 governed memory
-- observability 與 regression tests
+- sessions and governed memory
+- observability and regression tests
 
-進入可靠大型研究使用前，仍應優先完成：
+Before relying on it for large-scale research, the priorities are:
 
-1. LangGraph 原生 durable checkpoint、interrupt/resume 與 step idempotency。
-2. 科學產物驗證：NaN/Inf、network dimensions、coverage、stability、biological sanity。
-3. Reproducibility manifest：input/output hash、tool/container version、parameters、seed、時間。
-4. 長任務 job control：timeout、CPU/RAM/disk budget、cancel、crash-safe staging。
-5. 更完整的資料治理：schema migration、encryption at rest、敏感 path redaction。
-6. 真實中小型 dataset golden tests 與 failure injection。
+1. Native LangGraph durable checkpoints, interrupt/resume, and step idempotency.
+2. Scientific artifact validation: NaN/Inf, network dimensions, coverage,
+   stability, and biological sanity.
+3. A reproducibility manifest: input/output hashes, tool and container
+   versions, parameters, seeds, and timestamps.
+4. Job control for long tasks: CPU/RAM/disk budgets, cancellation, and
+   crash-safe staging.
+5. Stronger data governance: schema migration, encryption at rest, and
+   sensitive-path redaction.
+6. Golden tests on real small and medium datasets, plus failure injection.
 
-目前不應只為了「看起來像 multi-agent」就把 Planner、Executor、Evaluator 改成三個自由
-對話的 LLM。只有未來任務能安全平行、角色具有真正不同工具權限與獨立產物時，才值得
-增加 multi-agent coordination。
+Do not turn the Planner, Executor, and Evaluator into three freely conversing
+LLMs just to look "multi-agent". Multi-agent coordination is worth adding only
+when future tasks can safely run in parallel and the roles genuinely have
+different tool authority and independent artifacts.
 
 ---
 
-## 19. 最短心智模型
+## 19. The shortest mental model
 
-如果只記得一條流程，請記住：
+If you remember one flow, remember this:
 
 ```text
 User task
-  → validated policy + confirmed memory
-  → small LLM routing decision
-  → deterministic TaskDecision hydration/repair
-  → evidence-backed WorkflowPlan
-  → typed Plan Evaluator gate
-  → one allow-listed step at a time
-  → structured ToolExecutionResult
-  → deterministic Result Evaluator
-  → bounded recovery or completion
-  → compact memory + truthful response
+  -> validated policy
+  -> small LLM routing decision
+  -> deterministic TaskDecision hydration/repair
+  -> confirmed memory
+  -> evidence-backed WorkflowPlan
+  -> typed Plan Evaluator gate
+  -> one allow-listed step at a time
+  -> structured ToolExecutionResult
+  -> deterministic Result Evaluator
+  -> bounded recovery or completion
+  -> compact memory + truthful response
 ```
 
-Planner 的責任是提出有 evidence 的計畫；Plan Evaluator 的責任是決定該計畫是否取得
-執行權；Executor 只執行已核准的 typed step；Result Evaluator 只根據 structured result
-控制下一步。這四個責任不共享模糊的自由文字權限，正是目前 agent 可維護、可稽核與
-可測試的核心。
+The Planner proposes an evidence-backed plan; the Plan Evaluator decides
+whether that plan earns execution authority; the Executor runs only approved
+typed steps; the Result Evaluator controls the next step only from structured
+results. These four responsibilities never share vague free-text authority, and
+that is what keeps the agent maintainable, auditable, and testable.

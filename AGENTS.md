@@ -14,89 +14,66 @@ conventions:
 
 # NetZoo Agent Project Policy
 
-本檔案是 NetZoo harness 的人類可讀專案政策入口。Runtime 只載入並驗證上方 YAML
-front matter；本文用來解釋維護原則，不會整段送進模型。
+This file is the human-readable project policy entry point for the NetZoo
+harness. At runtime only the YAML front matter above is loaded and validated
+(`scripts/netzoo_agent_core/policy.py`); the Markdown body explains the
+maintenance principles and is never sent to the model.
 
-## 規則分層
+## Rule layers
 
-1. `AGENTS.md`：跨 workflow 的工作慣例。
-2. `workflows/*.yaml`：每個 NetZoo workflow 的可驗證規格。
-3. `scripts/workflow_registry.py`：action、inputs、validation 與 Executor mapping 的單一 Python registry。
-4. `scripts/netzoo_agent_core/`：不可繞過的 input gate、Planner、Executor 與 Evaluator；
-   `scripts/netzoo_agent.py` 只保留 CLI 與舊 import 相容入口。
-5. `UserProfileStore`：使用者明確確認的長期偏好。
-6. `EpisodeStore`：過去 completed、dry-run 或 failed 任務的 compact outcome。
+1. `AGENTS.md`: conventions shared by every workflow.
+2. `workflows/*.yaml`: a verifiable specification for each NetZoo workflow.
+3. `scripts/workflow_registry.py`: the single Python registry of actions,
+   inputs, validation steps, and Executor mappings.
+4. `scripts/netzoo_agent_core/`: the input gate, Planner, Executor, and
+   Evaluator, which cannot be bypassed. `scripts/netzoo_agent.py` only keeps the
+   CLI and the legacy import entry points.
+5. `UserProfileStore`: long-term preferences the user has explicitly confirmed.
+6. `EpisodeStore`: compact outcomes of past completed, dry-run, or failed tasks.
 
-若 Markdown/YAML 與 Python 強制規則衝突，以 Python 為準，而且 policy loader 必須拒絕
-啟動，不能靜默採用較寬鬆的設定。
+If Markdown or YAML conflicts with a rule enforced in Python, Python wins, and
+the policy loader must refuse to start rather than silently accept the more
+permissive setting.
 
-## 共通工作方式
+## Shared working rules
 
-- Planner 必須產生 provided、discovered、defaulted、missing 的 evidence ledger。
-- 正式分析不可因為 workspace 存在 toy data 就自動採用 toy data。
-- Demo autofill 只能選擇同一資料集目錄中的完整、identifier-compatible bundle。
-- Executor 只能執行 Planner 建立、且位於 Python allowlist 的 typed step。
-- 每個 ready plan 必須先通過 typed Plan Evaluator；Markdown 表格只供 audit，不是權限來源。
-- Evaluator 只能採用 Python allowlist 內、次數受限的 recovery。
-- `./netzoo-chat` 啟動時只能建立 command preview；只有使用者在目前互動 session
-  明確輸入 `/execute` 後才能執行，輸入 `/planning` 會撤銷該授權。
-- 所有使用者可見 agent 輸出固定為英文。
-- 使用者提出兩個以上生物學假設、要求比較不同分析方向，或科學目標尚未釐清時，
-  所有註冊 workflow 都必須先辨識有效分析選項。只有至少兩個不同且相容的候選時，
-  才並列演算法前提、必要輸入、產出與限制並反問選擇，也允許平行比較。
-  相同工具只說明一次；現象、原因提問與方法前提不是三個假設。只有一個有效候選時，
-  直接解釋科學問題與方法的關係，不製造選擇題。概念諮詢優先使用專家對話式說明；
-  只有使用者要求操作細節時才展開 API 欄位、預設值與參數清單。
-  不支援的假設須明列缺口；不可用不相容工具湊選項，也不能把設計諮詢當成執行授權。
+- The Planner must produce an evidence ledger that marks every input as
+  provided, discovered, defaulted, or missing.
+- A real analysis never adopts toy data just because toy data exists in the
+  workspace.
+- Demo autofill may only select a complete, identifier-compatible bundle from a
+  single dataset directory.
+- The Executor may only run typed steps that the Planner created and that are on
+  the Python allowlist.
+- Every ready plan must first pass the typed Plan Evaluator. Markdown tables are
+  for audit only and never grant permission.
+- The Evaluator may only apply recoveries that are on the Python allowlist, with
+  a bounded number of attempts.
+- `./netzoo-chat` only builds command previews. A previewed, approved plan runs
+  only after the user enters `/execute` in the current interactive session and
+  confirms; that authority covers a single turn, after which the session is
+  back in Planning mode (`/planning` also switches to it explicitly).
+- All user-visible agent output is in English.
+- When the user states two or more biological hypotheses, asks to compare
+  analysis directions, or has not yet settled the scientific goal, every
+  registered workflow must first identify the valid analysis options. Only when
+  there are at least two distinct, compatible candidates does the agent lay out
+  each algorithm's assumptions, required inputs, outputs, and limitations side
+  by side and ask the user to choose; a parallel comparison is also allowed.
+  - Describe the same tool only once. A phenomenon, a question about its cause,
+    and a method assumption are not three hypotheses.
+  - With only one valid candidate, explain directly how the method relates to
+    the scientific question instead of inventing a choice.
+  - For conceptual consultation, prefer an expert, conversational explanation;
+    expand API fields, defaults, and parameter lists only when the user asks for
+    operational detail.
+  - Name the gap for any unsupported hypothesis. Never pad the options with an
+    incompatible tool, and never treat a design consultation as authorization to
+    execute.
 
-## Codebase knowledge graph
+## Maintenance
 
-This repository has a persistent Codebase Memory index in `.codebase-memory/`.
-Its project name is
-`Users-chenzhonghan-Documents-LLM-AGENT-netzoo_agent`.
-
-At the beginning of every session that involves code discovery, architecture,
-dependencies, callers, impact analysis, or refactoring:
-
-1. Call `list_projects` and select the project above.
-2. Call `index_status` to confirm the graph is ready and note its generation and
-   any parse-partial, skipped, stale, or excluded coverage.
-3. Choose an evidence tier: Verify by default; Auditor for exhaustive or
-   negative claims; Scout only for quick positive lookups.
-
-For structural code discovery, query the graph before scanning files or loading
-large source files into context:
-
-- Use `search_graph` to locate functions, methods, classes, routes, and variables.
-- Use `trace_path(direction="inbound")` for callers and
-  `trace_path(direction="outbound")` for dependencies.
-- Use `detect_changes(direction="inbound")` for change-impact and blast-radius
-  analysis.
-- Use `trace_path(mode="cross_service")` or Cypher through `query_graph` for
-  HTTP, async, and cross-service paths.
-- Use `get_architecture` for the project overview, layers, boundaries, routes,
-  clusters, and hotspots.
-- Use `get_code_snippet` only after resolving the exact qualified name through
-  `search_graph`.
-- Check `has_more`, `next`, or `truncated` on every graph response and paginate
-  before claiming the result is complete.
-- Before exhaustive or negative claims, run `check_index_coverage` for every
-  cited path and relevant scope. Read the reported source ranges directly when
-  coverage is partial, skipped, stale, or excluded.
-
-Do not run broad `grep`, `find`, glob, or repository-wide file reads for a
-structural question the graph can answer. This is a token-efficiency rule, not
-just a preference. Fall back to targeted source search only for string literals,
-error messages, config or non-code files, graph coverage gaps, or exact source
-verification after the graph has identified candidate paths.
-
-After large code changes, rebuild the index in `full` mode with persistence
-enabled so `.codebase-memory/graph.db.zst` stays shareable and current. After
-small indexed code changes, allow the watcher to refresh the graph, then confirm
-freshness with `index_status` before relying on it.
-
-## 維護方式
-
-修改 workflow 所需 inputs 或 validation steps 時，必須更新 `workflow_registry.py`、
-對應 YAML 與測試。`policy_version` schema 不相容時必須升版，不能直接改變
-既有 version 1 的語意。
+When a workflow's required inputs or validation steps change, update
+`workflow_registry.py`, the matching YAML spec, and the tests together. If the
+`policy_version` schema changes incompatibly, bump the version; never change the
+meaning of an existing version.

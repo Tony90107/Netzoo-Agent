@@ -21,8 +21,8 @@ export type EnvironmentReport = {
 export async function checkHostEnvironment(): Promise<EnvironmentCheck[]> {
   if (!("__TAURI_INTERNALS__" in window)) return [{
     key: "host", label: "Host Docker and image", status: "unknown",
-    detail: "Host checks are available in the desktop app. This browser cannot inspect Docker.",
-    remedy: "Open NetZoo Agent on your desktop to inspect the host environment.",
+    detail: "A browser cannot inspect the host. ./netzoo-web checked Docker and the image before it started this page.",
+    remedy: "If something on the host looks wrong, run ./netzoo-web again and read what it prints.",
   }];
   return invoke<EnvironmentCheck[]>("check_environment");
 }

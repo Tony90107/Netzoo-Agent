@@ -4,7 +4,7 @@
 #
 # Four things have to be true before the agent runs: Docker is up, the image
 # exists, `.env` names a model the allowlist permits, and — for the desktop
-# window — the app has been built. Each of those fails in its own way, and
+# app — the app has been built. Each of those fails in its own way, and
 # the failure a newcomer actually hits is usually the least informative one
 # (`docker compose` printing a stack trace because the daemon is not running).
 # So every step here checks its precondition first and, when it cannot
@@ -20,14 +20,16 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-BUILD_DESKTOP=1
+BUILD_DESKTOP=0
 BUILD_IMAGE=1
 
 usage() {
   cat <<'USAGE'
 Usage: ./setup [options]
 
-  --cli-only     Set up the Docker environment only; skip the desktop app.
+  --desktop      Also build the native desktop app (needs Node.js 20+ and Rust;
+                 tested on macOS only). Without it you use the same window in
+                 your browser through ./netzoo-web.
   --skip-image   Assume the Docker image is already built.
   -h, --help     Show this message.
 
@@ -37,7 +39,8 @@ USAGE
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --cli-only) BUILD_DESKTOP=0 ;;
+    --desktop) BUILD_DESKTOP=1 ;;
+    --cli-only) BUILD_DESKTOP=0 ;;  # the old spelling of the default
     --skip-image) BUILD_IMAGE=0 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -121,7 +124,8 @@ OPENROUTER_MODEL=openai/gpt-4o-mini
 OPENROUTER_ROUTER_MODEL=openai/gpt-4o-mini
 OPENROUTER_SEMANTIC_MODEL=openai/gpt-4o-mini
 NETZOO_RESPONSE_MODEL_ALLOWLIST=openai/gpt-4o-mini
-NETZOO_ROUTER_MODEL_ALLOWLIST=openai/gpt-4o-mini
+NETZOO_ROUTER_MODEL_ALLOWLIST=openai/gpt-4o-mini,openai/gpt-4o-mini-2024-07-18
+OPENROUTER_CAPABILITY_MODEL=openai/gpt-4o-mini-2024-07-18
 NETZOO_MAX_TASK_TOKENS=20000
 ENV
   )
@@ -172,20 +176,23 @@ if [[ "$BUILD_DESKTOP" == 1 ]]; then
     ok 'bundle under desktop/src-tauri/target/release/bundle/'
   fi
 else
-  say 'Skipping the desktop app (--cli-only)'
+  say 'Skipping the native desktop app (add --desktop to build it)'
 fi
 
 # ------------------------------------------------------------------ Summary
 
 printf '\nSetup complete.\n\n'
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  printf '  Desktop:  open "desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"\n'
-else
-  printf '  Desktop:  see desktop/src-tauri/target/release/bundle/ (only macOS is tested)\n'
-fi
-cat <<'DONE'
-  Terminal: ./netzoo-chat
+printf '  Browser:  ./netzoo-web\n'
+printf '  Terminal: ./netzoo-chat\n'
+if [[ "$BUILD_DESKTOP" == 1 ]]; then
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    printf '  Desktop:  open "desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"\n'
+  else
+    printf '  Desktop:  see desktop/src-tauri/target/release/bundle/ (only macOS is tested)\n'
+  fi
+  cat <<'DONE'
 
 Keep the app inside this directory: it locates docker-compose.yml by walking
 up from its own path, and an app moved elsewhere has no repo above it.
 DONE
+fi

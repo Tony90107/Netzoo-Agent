@@ -427,7 +427,7 @@ def render_authority_search_response(
     for identifier in identifiers:
         candidates = matches[identifier]
         if not candidates:
-            lines.append(f"- {identifier}: Websearch 未找到 exact trusted result.")
+            lines.append(f"- {identifier}: Websearch found no exact trusted result.")
             continue
         for candidate in candidates[:3]:
             result = candidate["result"]

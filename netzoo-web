@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+#
+# Start NetZoo Agent in your browser.
+#
+# The agent daemon runs in Docker and serves the same window the desktop app
+# shows, on http://localhost:<NETZOO_WEB_PORT> (8080 by default). Nothing but
+# Docker is needed on the host. Every launch mints a new access token and
+# opens a link that carries it in the URL fragment, which the browser never
+# sends to the server.
+#
+#   ./netzoo-web          start (or restart) and open the browser
+#   ./netzoo-web stop     stop the service
+#   ./netzoo-web logs     follow the service output
+
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+case "${1:-}" in
+  stop) exec docker compose stop netzoo-web ;;
+  logs) exec docker compose logs -f netzoo-web ;;
+  -h|--help) sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  "") ;;
+  *) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
+esac
+
+fail() { printf '\n%s\n' "$1" >&2; exit 1; }
+
+command -v docker >/dev/null 2>&1 || fail "Docker is not installed. Install Docker Desktop: https://www.docker.com/products/docker-desktop/"
+docker info >/dev/null 2>&1 || fail "Docker is not running. Start Docker Desktop, then run ./netzoo-web again."
+[[ -f .env ]] || fail "No .env yet. Run ./setup first; it asks for your OpenRouter API key."
+docker image inspect netzoo_agent:latest >/dev/null 2>&1 \
+  || fail "The netzoo_agent image is not built yet. Run ./setup (or: docker compose build netzoo)."
+docker run --rm --entrypoint test netzoo_agent:latest -f /opt/netzoo-web/index.html \
+  || fail "The image predates the browser UI. Rebuild it: docker compose build netzoo"
+
+port="${NETZOO_WEB_PORT:-$(sed -n 's/^NETZOO_WEB_PORT=\([0-9][0-9]*\).*/\1/p' .env | tail -1)}"
+port="${port:-8080}"
+
+NETZOO_WEB_TOKEN="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+export NETZOO_WEB_TOKEN NETZOO_WEB_PORT="$port" NETZOO_HOST_PROJECT_ROOT="$PWD"
+
+echo "Starting NetZoo Agent on port $port ..."
+docker compose up -d --force-recreate netzoo-web >/dev/null
+
+for _ in $(seq 1 120); do
+  if curl -fsS "http://127.0.0.1:$port/health" >/dev/null 2>&1; then
+    url="http://localhost:$port/#token=$NETZOO_WEB_TOKEN"
+    printf '\nNetZoo Agent is running. Open:\n\n  %s\n\n' "$url"
+    printf 'Stop it with ./netzoo-web stop\n'
+    if command -v open >/dev/null 2>&1; then open "$url"
+    elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$url" >/dev/null 2>&1 || true
+    fi
+    exit 0
+  fi
+  sleep 0.5
+done
+
+fail "The service started but did not answer within 60 s. See: docker compose logs netzoo-web"

@@ -206,7 +206,7 @@ def test_browser_dashboard_assets_are_served_with_strict_csp() -> None:
     script = client.get("/observer-assets/app.js")
 
     assert page.status_code == 200
-    assert "Agent 飛行記錄器" in page.text
+    assert "Agent Flight Recorder" in page.text
     assert 'id="trace-list"' in page.text
     assert styles.status_code == 200
     assert script.status_code == 200

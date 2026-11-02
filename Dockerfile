@@ -1,3 +1,13 @@
+# The browser build of the desktop window. The netzoo-web service serves it, so
+# using NetZoo needs nothing on the host but Docker.
+FROM node:20-bookworm-slim AS web-ui
+WORKDIR /ui
+COPY desktop/package.json desktop/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY desktop/index.html desktop/tsconfig.json desktop/vite.config.ts ./
+COPY desktop/src ./src
+RUN npm run build
+
 FROM mambaorg/micromamba:1.5.10
 
 COPY --chown=mambauser:mambauser environment.yml /tmp/environment.yml
@@ -47,6 +57,7 @@ COPY scripts/netzoo_table_io.py /opt/netzoo-harness/netzoo_table_io.py
 COPY scripts /opt/netzoo-app/scripts
 COPY docker/add-puma-lioness-header /usr/local/bin/add-puma-lioness-header
 COPY docker/web-url /usr/local/bin/web-url
+COPY --from=web-ui /ui/dist /opt/netzoo-web
 RUN chmod +x /usr/local/bin/run-panda /usr/local/bin/run-panda-precomputed /usr/local/bin/run-puma /usr/local/bin/run-puma-precomputed /usr/local/bin/run-lioness /usr/local/bin/run-condor /usr/local/bin/run-cobra /usr/local/bin/run-sambar /usr/local/bin/add-puma-lioness-header /usr/local/bin/web-url \
     && mkdir -p /work /data /outputs \
     && chown -R $MAMBA_USER:$MAMBA_USER /work /data /outputs /opt/netZooPy /opt/netzoo-harness

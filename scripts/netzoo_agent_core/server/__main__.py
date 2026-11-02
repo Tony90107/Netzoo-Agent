@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from .app import create_app, resolve_token
@@ -27,6 +28,12 @@ def main(argv: list[str] | None = None) -> int:
         # generated one keeps `websocat` and manual testing possible without
         # weakening the default.
         print(f"NETZOO_DESKTOP_TOKEN={token}", flush=True)
+    if os.environ.get("NETZOO_WEB_UI_DIR"):
+        # The web launcher opens this link itself; `docker compose logs` keeps
+        # it for anyone who started the service by hand. Inside the container
+        # the port is always --port; the host side is NETZOO_WEB_PORT.
+        port = os.environ.get("NETZOO_WEB_PORT") or arguments.port
+        print(f"NetZoo web UI: http://localhost:{port}/#token={token}", flush=True)
 
     import uvicorn
 

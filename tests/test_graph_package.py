@@ -183,7 +183,7 @@ def test_failed_web_search_is_not_rendered_as_a_negative_match():
     content = result["messages"][0].content
     assert "lookup failed" in content
     assert "not evidence that the requested record was not found" in content
-    assert "未找到" not in content
+    assert "found no exact trusted result" not in content
 
 
 def test_successful_authority_search_preserves_exact_ncbi_match():
@@ -234,7 +234,7 @@ def test_successful_authority_search_preserves_exact_ncbi_match():
     assert "exact trusted match" in content
     assert "canonical_id=7157" in content
     assert "https://www.ncbi.nlm.nih.gov/gene/7157" in content
-    assert "Websearch 未找到" not in content
+    assert "found no exact trusted result" not in content
 
 
 def test_large_websearch_result_stays_parseable_for_authority_report():
@@ -276,7 +276,7 @@ def test_large_websearch_result_stays_parseable_for_authority_report():
     report = rendering.render_authority_search_response(task, decision, [result])
     assert report is not None
     assert "canonical_id=7157" in report
-    assert "Websearch 未找到" not in report
+    assert "found no exact trusted result" not in report
 
 
 def test_authority_report_requires_web_search_action():
