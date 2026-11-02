@@ -96,8 +96,7 @@ def _assemble_workflow_plan(
             )
         else:
             question = (
-                "Please provide the next missing input. The CLI wizard will ask for "
-                "each unresolved field one at a time."
+                "Please provide the missing inputs; I will ask for them one at a time."
             )
         return WorkflowPlan(
             workflow=workflow,

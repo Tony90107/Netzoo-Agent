@@ -108,6 +108,34 @@ describe("the clarification wizard", () => {
 
     expect(screen.getByText("expression_file")).toBeTruthy();
   });
+
+  it("drops the terminal-only answer lines but keeps the agent's reasons", () => {
+    harness(
+      view({
+        prompt_kind: "clarification",
+        plan: PLAN,
+        target_field: "expression_file",
+        text: [
+          "Select input 1 of 1: Expression matrix (expression_file)",
+          "Enter a candidate number or a full path.",
+          "1. data/study-a/expression.tsv",
+          "2. data/study-b/expression.tsv",
+          "Give the path of expression_file; no other data was searched.",
+          "Enter the full path.",
+          "Selection > ",
+        ].join("\n"),
+      }),
+    );
+
+    const question = document.querySelector(".agent-question")?.textContent ?? "";
+    expect(question).toContain("Select input 1 of 1");
+    expect(question).toContain("no other data was searched");
+    expect(question).not.toContain("Enter a candidate number");
+    expect(question).not.toContain("Enter the full path");
+    expect(question).not.toContain("Selection >");
+    expect(question).not.toContain("1. data/study-a");
+    expect(screen.getAllByText("data/study-b/expression.tsv")).toHaveLength(1);
+  });
 });
 
 describe("the bundle chooser", () => {
