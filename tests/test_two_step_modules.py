@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-sys.path.insert(0, str(ROOT / "docs" / "research-log" / "two-step-modules-2026-10-03"))
+sys.path.insert(0, str(ROOT / "tests" / "fixtures" / "logs" / "two-step-modules-2026-10-03"))
 
 from netzoo_agent_core.contracts.outcomes import OutcomeHypothesis  # noqa: E402
 from netzoo_agent_core.interpretation.outcome_validation import (  # noqa: E402
@@ -69,7 +69,7 @@ def test_a_reading_reusing_another_readings_quote_is_not_named_apart():
 def test_recorded_pf_trials_keep_both_halves_and_answer_the_modules_gap():
     import replay_mg
 
-    fixtures = json.loads((ROOT / "docs" / "research-log" / "two-step-modules-2026-10-03"
+    fixtures = json.loads((ROOT / "tests" / "fixtures" / "logs" / "two-step-modules-2026-10-03"
                            / "pf_recorded_calls.json").read_text())
     for number in (0, 2):  # trials 1 and 3 need no sibling call under MG
         decision = replay_mg.route(fixtures[number])
@@ -87,7 +87,7 @@ def test_steps_that_feed_each_other_are_worded_as_steps():
     # Log 329: the network is the input of the workflow that finds the modules.
     import replay_mg
 
-    fixture = json.loads((ROOT / "docs" / "research-log" / "two-step-modules-2026-10-03"
+    fixture = json.loads((ROOT / "tests" / "fixtures" / "logs" / "two-step-modules-2026-10-03"
                           / "pf_recorded_calls.json").read_text())[0]
     kind, text, card = replay_mg.answer(fixture["prompt"], replay_mg.route(fixture))
     assert text.startswith("Your request has 2 steps, one after the other")

@@ -104,7 +104,7 @@ def test_semantic_failure_recovers_chinese_panda_run_with_listed_inputs():
         "netzoo_agent_core.graph.router_invocation"
     )
     policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
-    dataset = "manual_tests/gene_existence/dataset_a"
+    dataset = "tests/fixtures/manual_tests/gene_existence/dataset_a"
     task = (
         f"用 {dataset}/expression.tsv {dataset}/motif.tsv {dataset}/ppi.tsv "
         "這三個檔案跑 PANDA，物種是 human，"

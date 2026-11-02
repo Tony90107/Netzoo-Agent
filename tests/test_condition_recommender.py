@@ -88,7 +88,7 @@ def _claims(*pairs) -> SelectionConditionClaims:
 
 # R-b: every algorithm-dimension tie in the Log 137 grid can be asked about.
 def test_every_method_tie_in_the_grid_has_a_separating_condition():
-    sys.path.insert(0, str(ROOT / "docs" / "research-log"))
+    sys.path.insert(0, str(ROOT / "tests" / "fixtures" / "logs"))
     import log136_outcome_grid as grid
 
     uncovered = set()

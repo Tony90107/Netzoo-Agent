@@ -10,7 +10,7 @@ from netzoo_agent_core.interpretation.request_parameters import (  # noqa: E402
     render_explicit_request_parameters,
 )
 
-_DATASET = "manual_tests/gene_existence/dataset_a"
+_DATASET = "tests/fixtures/manual_tests/gene_existence/dataset_a"
 _FILES = (
     f"{_DATASET}/expression.tsv {_DATASET}/motif.tsv {_DATASET}/ppi.tsv"
 )

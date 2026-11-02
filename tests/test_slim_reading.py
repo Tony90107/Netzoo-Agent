@@ -14,7 +14,7 @@ import yaml
 
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-sys.path.insert(0, str(ROOT / "docs/research-log/closed-menu-phase0-2026-10-18"))
+sys.path.insert(0, str(ROOT / "tests/fixtures/logs/closed-menu-phase0-2026-10-18"))
 
 from netzoo_agent_core.capability_sheet import sheet_entries  # noqa: E402
 from netzoo_agent_core.contracts.menu_reading import MenuReading, Said, Wanted  # noqa: E402
@@ -31,9 +31,9 @@ from netzoo_agent_core.interpretation.slim_values import (  # noqa: E402
 from netzoo_agent_core.judgment_defaults import load_defaults  # noqa: E402
 
 WORKFLOWS = ROOT / "workflows"
-GOLD = yaml.safe_load((ROOT / "docs/research-log/closed-menu-phase0-2026-10-18/gold_readings.yaml").read_text())
+GOLD = yaml.safe_load((ROOT / "tests/fixtures/logs/closed-menu-phase0-2026-10-18/gold_readings.yaml").read_text())
 ITEMS = {item["id"]: item for item in json.loads(
-    (ROOT / "docs/research-log/core-judgment-2026-10-15/items.json").read_text())["items"]}
+    (ROOT / "tests/fixtures/logs/core-judgment-2026-10-15/items.json").read_text())["items"]}
 
 
 def said(value: str, quote: str) -> Said:

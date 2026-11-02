@@ -77,8 +77,8 @@ def test_every_stated_per_sample_scale_names_a_unit():
     # request whose scale is stated is never touched by the drop.
     prompts = set()
     for path in [*glob.glob(str(ROOT / "tests" / "*.json")),
-                 *glob.glob(str(ROOT / "docs" / "research-log" / "**" / "*targeted*.json"), recursive=True),
-                 *glob.glob(str(ROOT / "docs" / "research-log" / "blind" / "blind_*.json"))]:
+                 *glob.glob(str(ROOT / "tests" / "fixtures" / "logs" / "**" / "*targeted*.json"), recursive=True),
+                 *glob.glob(str(ROOT / "tests" / "fixtures" / "logs" / "blind" / "blind_*.json"))]:
         try:
             data = json.loads(Path(path).read_text(encoding="utf-8"))
         except ValueError:

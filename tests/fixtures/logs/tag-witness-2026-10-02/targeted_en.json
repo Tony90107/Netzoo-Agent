@@ -1,0 +1,108 @@
+[
+  {
+    "id": "t1-otter",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I need one cohort-wide TF-to-gene regulatory network from my expression matrix, TF motif prior and PPI data (data/blind-neutral/case-2/). The real network will be very large, so memory and runtime are a concern.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "wt-compute-laptop",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "I need one cohort-wide TF-to-gene regulatory network from my expression matrix, TF motif prior and PPI data (data/blind-neutral/case-2/). We only have a laptop with limited memory, and the network will cover about 20k genes.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "wt-compute-runtime",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "One aggregate TF-gene network from expression, motif and PPI priors, please; runtime matters because we will rerun it many times. Which workflow? Advice only.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "ms-generic-communication",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "Our tumor RNA-seq comes with TF motif priors and a protein interaction map. We want to capture how TFs communicate with their target genes and how TFs cooperate in complexes. Which framework builds this network? Advice only.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "ms-lung-generic",
+    "language": "en",
+    "category": "positive",
+    "prompt": "We just finished sequencing lung cancer tissue transcriptomes and have standard transcription factor motif binding sites alongside known protein-protein interaction maps. We want to estimate genome-wide regulatory strengths, capturing both the regulatory communication between TFs and target genes as well as cooperative complexes among TFs. What framework should we use to build this network?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "gg-modules-within-each-patient",
+    "language": "en",
+    "category": "positive",
+    "prompt": "Which workflow finds gene modules within each patient? Advice only.",
+    "expected": {
+      "status": "unsupported",
+      "actions": []
+    }
+  },
+  {
+    "id": "gran-tf-agg-relaxed-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I need one cohort-wide TF-to-gene regulatory network solved as a relaxed graph matching problem, not per-sample networks. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_otter"
+      ]
+    }
+  },
+  {
+    "id": "ms-ctl-message-passing",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I have expression, motif and PPI priors. I want one cohort TF-to-gene network estimated by message passing between the motif, PPI and co-expression networks. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_panda"
+      ]
+    }
+  },
+  {
+    "id": "ms-ctl-factorization",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I have expression, motif and PPI priors. I want to factorize gene expression into TF activities and a regulatory matrix, one network for the cohort. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_giraffe"
+      ]
+    }
+  },
+  {
+    "id": "mirna-degradation-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "We found a set of genes heavily suppressed in the cells, but this isn't because upstream regulatory proteins failed to bind. Instead, another type of 'short non-coding molecule' directly degraded the products post-transcription. The underlying logic of this mechanism is fundamentally different from our previous protein regulation (one promotes transcription, the other destroys products). How does the algorithm design need to be adjusted for this 'post-transcriptional degradation' mechanism? Do you have a tool specifically for this class of molecules?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  }
+]

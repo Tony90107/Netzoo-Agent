@@ -22,7 +22,7 @@ from netzoo_agent_core.interpretation.outside_steps import outside_steps, with_o
 from netzoo_agent_core.interpretation.practical_notes import practical_notes  # noqa: E402
 from test_reply_cards import POLICY, decision, reading, respond_and_card  # noqa: E402
 
-PROMPTS = json.loads((ROOT / "docs" / "research-log" / "test10-2026-10-03" / "prompts.json").read_text())
+PROMPTS = json.loads((ROOT / "tests" / "fixtures" / "logs" / "test10-2026-10-03" / "prompts.json").read_text())
 TIE = ["run_panda", "run_lioness_panda", "run_otter", "run_giraffe"]
 
 
@@ -88,7 +88,7 @@ def test_condor_is_told_to_threshold_a_panda_network_first():
 
 def test_a_prepared_input_gap_does_not_say_no_workflow_builds_the_network():
     # The decision Test 7 got live (r1), with operation "prepare".
-    recorded = json.loads((ROOT / "docs" / "research-log" / "test10-2026-10-03" / "r1-decisions.json").read_text())
+    recorded = json.loads((ROOT / "tests" / "fixtures" / "logs" / "test10-2026-10-03" / "r1-decisions.json").read_text())
     made = TaskDecision.model_validate(recorded["test7"]["decision"])
     assert made.requested_outcome.operation == "prepare"
     text, _, card = respond_and_card(PROMPTS["test7"], made)

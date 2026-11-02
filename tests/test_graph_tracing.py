@@ -1502,9 +1502,9 @@ def test_explicit_panda_run_survives_semantic_validation_failure(
         review_policy="when_needed",
     )
     task = """Run PANDA using these local files:
-expression_file=/work/manual_tests/input_identification/correct_names_invalid_content/expression.tsv
-motif_file=/work/manual_tests/input_identification/correct_names_invalid_content/motif.tsv
-ppi_file=/work/manual_tests/input_identification/correct_names_invalid_content/ppi.tsv"""
+expression_file=/work/tests/fixtures/manual_tests/input_identification/correct_names_invalid_content/expression.tsv
+motif_file=/work/tests/fixtures/manual_tests/input_identification/correct_names_invalid_content/motif.tsv
+ppi_file=/work/tests/fixtures/manual_tests/input_identification/correct_names_invalid_content/ppi.tsv"""
 
     result = app.invoke({"messages": [HumanMessage(content=task)], "run_id": str(run_id)})
 
@@ -1542,9 +1542,9 @@ def _explicit_panda_turn(tmp_path, monkeypatch, router_llm):
                       episode_store=EpisodeStore(tmp_path / "episodes"), trace_recorder=recorder,
                       semantic_contract="legacy", review_policy="when_needed")
     task = """Run PANDA using these local files:
-expression_file=/work/manual_tests/input_identification/correct_names_invalid_content/expression.tsv
-motif_file=/work/manual_tests/input_identification/correct_names_invalid_content/motif.tsv
-ppi_file=/work/manual_tests/input_identification/correct_names_invalid_content/ppi.tsv"""
+expression_file=/work/tests/fixtures/manual_tests/input_identification/correct_names_invalid_content/expression.tsv
+motif_file=/work/tests/fixtures/manual_tests/input_identification/correct_names_invalid_content/motif.tsv
+ppi_file=/work/tests/fixtures/manual_tests/input_identification/correct_names_invalid_content/ppi.tsv"""
     result = app.invoke({"messages": [HumanMessage(content=task)], "run_id": str(run_id)})
     return result, executed, [event.event_type for event in store.read_events(run_id)]
 

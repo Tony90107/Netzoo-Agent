@@ -67,7 +67,7 @@ def test_the_rest_must_still_validate_on_its_own():
 
 # -- Log 332: a sample-clustering reading needs words asking to group something --
 
-TEST4 = json.loads((HERE.parent / "docs" / "research-log" / "test10-2026-10-03" / "out"
+TEST4 = json.loads((HERE.parent / "tests" / "fixtures" / "logs" / "test10-2026-10-03" / "out"
                     / "r5-decisions.json").read_text())["test4"]
 
 

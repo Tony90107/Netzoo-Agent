@@ -21,7 +21,7 @@ from netzoo_agent_core.cli.follow_up import build_next_turn_prompt  # noqa: E402
 from netzoo_agent_core.graph.response_context import validated_workflow_context  # noqa: E402
 
 POLICY = ProjectPolicyLoader(ROOT).load()
-CASES = json.loads((ROOT / "manual_tests/all_workflow_routing_2026_09_28/cases.json").read_text())
+CASES = json.loads((ROOT / "tests/fixtures/manual_tests/all_workflow_routing_2026_09_28/cases.json").read_text())
 SCIENTIFIC = [item for item in CASES if item.get("expected_artifact")]
 METHODS = {
     "run_bonobo": ["bayesian"], "run_cobra": ["covariate_association"],

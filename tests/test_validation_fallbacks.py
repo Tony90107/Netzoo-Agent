@@ -20,7 +20,7 @@ from netzoo_agent_core.interpretation.outcome_validation import validate_outcome
 from netzoo_agent_core.interpretation.terminal_goal_fold import _STEPS, fold_intermediate_readings  # noqa: E402
 from netzoo_agent_core.routing.outcome_matching import match_semantic_request  # noqa: E402
 
-FALLBACKS = json.loads((ROOT / "docs" / "research-log" / "validation-fallbacks-2026-10-03"
+FALLBACKS = json.loads((ROOT / "tests" / "fixtures" / "logs" / "validation-fallbacks-2026-10-03"
                         / "test5-fallbacks.json").read_text())
 
 

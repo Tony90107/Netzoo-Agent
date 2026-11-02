@@ -36,9 +36,9 @@ from netzoo_agent_core.routing.outcome_matching import match_semantic_request  #
 
 RUN_PANDA = (
     "Run PANDA using these three local files:\n"
-    "/work/manual_tests/input_identification/random_names_valid/alpha_17.tsv\n"
-    "/work/manual_tests/input_identification/random_names_valid/blue_note.csv\n"
-    "/work/manual_tests/input_identification/random_names_valid/fragment_03.txt"
+    "/work/tests/fixtures/manual_tests/input_identification/random_names_valid/alpha_17.tsv\n"
+    "/work/tests/fixtures/manual_tests/input_identification/random_names_valid/blue_note.csv\n"
+    "/work/tests/fixtures/manual_tests/input_identification/random_names_valid/fragment_03.txt"
 )
 
 

@@ -261,7 +261,7 @@ def test_a_technical_pairing_or_grouping_is_still_no_design(design, quote):
 # -- Logs 365-368: workflows with one result for all the samples ------------------------------
 # Recorded decisions from earlier live rounds (already read), so only the reply layer is under test.
 
-LIVE = ROOT / "docs" / "research-log" / "purpose-contract-2026-10-04" / "live"
+LIVE = ROOT / "tests" / "fixtures" / "logs" / "purpose-contract-2026-10-04" / "live"
 POOLED = ("With one sample per individual (per time point), that says nothing about a single individual; "
           "a result for one individual needs many samples from that individual.")
 

@@ -1,0 +1,972 @@
+[
+ {
+  "prompt": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network. Which tool finds those per-patient modules? Advice only.",
+  "calls": [
+   {
+    "schema": "SemanticInterpretation",
+    "args": {
+     "request_mode": "guidance",
+     "semantic_goal": "Identify tools for finding patient-specific networks and gene modules.",
+     "outcome_hypotheses": [
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "sample_specific",
+        "granularity": "sample_specific"
+       },
+       "confidence": 0.9,
+       "evidence": [
+        {
+         "dimension": "artifact_type",
+         "value": "sample_specific",
+         "source": "explicit",
+         "rationale": "The user is interested in patient-specific networks for each of the 30 patients.",
+         "text_span": "patient-specific networks for my 30 patients"
+        }
+       ]
+      },
+      {
+       "outcome": {
+        "operation": "analyze",
+        "artifact_type": "community_assignment",
+        "granularity": "sample_specific"
+       },
+       "confidence": 0.8,
+       "evidence": [
+        {
+         "dimension": "artifact_type",
+         "value": "community_assignment",
+         "source": "explicit",
+         "rationale": "The user wants to find gene modules within each patient's network, which relates to community detection.",
+         "text_span": "the gene modules inside each patient's network"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "schema": "SemanticPatch",
+    "args": {
+     "hypothesis_index": 0,
+     "request_mode": "guidance",
+     "semantic_goal": "Identify tools for finding patient-specific networks and gene modules.",
+     "confidence": 0.9,
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "gene",
+       "sample"
+      ],
+      "display_entities": [
+       "patient-specific networks"
+      ],
+      "regulator_types": [
+       "unknown"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "evidence_removals": [
+      {
+       "dimension": "operation",
+       "value": "unknown"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "unknown"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific"
+      }
+     ],
+     "evidence_additions": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "rationale": "The user is seeking to construct patient-specific networks, which requires inference from available data.",
+       "source": "explicit",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "rationale": "The user is interested in constructing networks that represent regulatory relationships among genes for each patient.",
+       "source": "explicit",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "rationale": "The request specifies networks for each individual patient, indicating a sample-specific granularity.",
+       "source": "inferred"
+      }
+     ],
+     "assumptions": []
+    }
+   },
+   {
+    "schema": "SemanticDiscriminator",
+    "args": {
+     "selection_tags": [
+      "sample_specific"
+     ],
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "explicit",
+       "rationale": "The user is seeking to construct patient-specific networks, which requires inference from available data.",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "rationale": "The user is interested in constructing networks that represent regulatory relationships among genes for each patient.",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "explicit",
+       "rationale": "The request explicitly states the output granularity.",
+       "text_span": "per-patient modules"
+      }
+     ]
+    }
+   },
+   {
+    "schema": "IntentDecision",
+    "args": {
+     "mode": "answer",
+     "confidence": 0.9,
+     "reason": "The user is seeking advice on tools for finding patient-specific networks and gene modules, which qualifies as an answer request."
+    }
+   },
+   {
+    "schema": "ResearchFraming",
+    "args": {
+     "question_mode": "single_goal",
+     "hypotheses": [
+      {
+       "text_span": "patient-specific networks",
+       "profile": "sample_distance_matrix",
+       "target_artifact": "community_assignment",
+       "granularity": "sample_specific",
+       "target_span": "find those per-patient modules",
+       "regulators": [],
+       "method_tags": []
+      }
+     ],
+     "concerns": []
+    }
+   },
+   {
+    "schema": "MethodComparisonReview",
+    "args": {
+     "requested_philosophy": [
+      "regulator_class:mirna"
+     ],
+     "requirement_quote": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network. Which tool finds those per-patient modules? Advice only.",
+     "capability_gap": {
+      "selection_tags": [
+       "mirna_regulation"
+      ],
+      "text_spans": [
+       "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      ],
+      "rationale": "The requested method requires the ability to analyze miRNA regulation, which is not available in the candidate methods."
+     },
+     "preference": {
+      "action": "run_lioness_puma",
+      "selection_tags": [
+       "leave_one_out_network_inference",
+       "message_passing",
+       "mirna_regulation",
+       "sample_specific"
+      ],
+      "text_spans": [
+       "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      ],
+      "rationale": "LIONESS-PUMA is designed to infer sample-specific networks that include miRNA regulation, making it suitable for identifying patient-specific gene modules. It utilizes a leave-one-out approach to derive individual networks while incorporating miRNA interactions, which aligns with your requirement for patient-specific analysis.",
+      "assumptions": [
+       "The user has access to the necessary input files including expression, motif, PPI, and miRNA data."
+      ]
+     },
+     "claims": [
+      {
+       "condition": "regulator_class:mirna",
+       "text_span": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "prompt": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network. Which tool finds those per-patient modules? Advice only.",
+  "calls": [
+   {
+    "schema": "SemanticInterpretation",
+    "args": {
+     "request_mode": "guidance",
+     "semantic_goal": "Identify tools for finding patient-specific networks and gene modules.",
+     "outcome_hypotheses": [
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "sample_specific",
+        "granularity": "sample_specific"
+       },
+       "evidence": [
+        {
+         "dimension": "artifact_type",
+         "value": "sample_specific",
+         "source": "explicit",
+         "rationale": "The user is interested in patient-specific networks for each of the 30 patients.",
+         "text_span": "patient-specific networks for my 30 patients"
+        }
+       ]
+      },
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "community_assignment",
+        "granularity": "sample_specific"
+       },
+       "evidence": [
+        {
+         "dimension": "artifact_type",
+         "value": "community_assignment",
+         "source": "explicit",
+         "rationale": "The user wants to find gene modules within each patient's network, which typically involves community detection or module assignment.",
+         "text_span": "the gene modules inside each patient's network"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "schema": "SemanticPatch",
+    "args": {
+     "hypothesis_index": 0,
+     "request_mode": "guidance",
+     "semantic_goal": "Identify tools for finding patient-specific networks and gene modules.",
+     "confidence": 0.8,
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "gene",
+       "sample"
+      ],
+      "display_entities": [
+       "patient-specific networks"
+      ],
+      "regulator_types": [
+       "unknown"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "evidence_removals": [
+      {
+       "dimension": "operation",
+       "value": "unknown"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "unknown"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific"
+      }
+     ],
+     "evidence_additions": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "rationale": "The user is seeking to construct patient-specific networks, which requires inferring regulatory relationships from the data.",
+       "source": "explicit",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "rationale": "The user is interested in constructing networks that represent regulatory relationships among genes for each patient.",
+       "source": "explicit",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "rationale": "The request specifies networks for each patient, indicating that the results should vary per patient.",
+       "source": "inferred"
+      }
+     ],
+     "assumptions": []
+    }
+   },
+   {
+    "schema": "SemanticDiscriminator",
+    "args": {
+     "selection_tags": [
+      "sample_specific"
+     ],
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "explicit",
+       "rationale": "The user is seeking to construct patient-specific networks, which requires inferring regulatory relationships from the data.",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "rationale": "The user is interested in constructing networks that represent regulatory relationships among genes for each patient.",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "explicit",
+       "rationale": "The request explicitly states the output granularity.",
+       "text_span": "per-patient modules"
+      }
+     ]
+    }
+   },
+   {
+    "schema": "IntentDecision",
+    "args": {
+     "mode": "answer",
+     "confidence": 0.9,
+     "reason": "The user is seeking advice on tools for finding patient-specific networks and gene modules, which falls under the category of answer requests."
+    }
+   },
+   {
+    "schema": "ResearchFraming",
+    "args": {
+     "question_mode": "single_goal",
+     "hypotheses": [],
+     "concerns": []
+    }
+   },
+   {
+    "schema": "MethodComparisonReview",
+    "args": {
+     "requested_philosophy": [
+      "regulator_class:mirna"
+     ],
+     "requirement_quote": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network. Which tool finds those per-patient modules? Advice only.",
+     "capability_gap": null,
+     "preference": {
+      "action": "run_lioness_puma",
+      "selection_tags": [
+       "leave_one_out_network_inference",
+       "message_passing",
+       "mirna_regulation",
+       "sample_specific"
+      ],
+      "text_spans": [
+       "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      ],
+      "rationale": "LIONESS-PUMA is designed to infer sample-specific networks that include miRNA regulation, which is essential for your analysis of patient-specific gene modules. It utilizes a leave-one-out approach to derive individual patient networks while incorporating miRNA interactions, making it suitable for your needs.",
+      "assumptions": [
+       "The user has access to the required input files: expression_file, motif_file, ppi_file, mirna_file, output_file, and lioness_output."
+      ]
+     },
+     "claims": [
+      {
+       "condition": "regulator_class:mirna",
+       "text_span": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "prompt": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network. Which tool finds those per-patient modules? Advice only.",
+  "calls": [
+   {
+    "schema": "SemanticInterpretation",
+    "args": {
+     "request_mode": "guidance",
+     "semantic_goal": "Identify tools for finding patient-specific networks and gene modules.",
+     "outcome_hypotheses": [
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "sample_specific",
+        "granularity": "sample_specific"
+       },
+       "confidence": 0.9,
+       "evidence": [
+        {
+         "dimension": "artifact_type",
+         "value": "sample_specific",
+         "source": "explicit",
+         "rationale": "The user is looking for patient-specific networks.",
+         "text_span": "patient-specific networks for my 30 patients"
+        }
+       ]
+      },
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "community_assignment",
+        "granularity": "sample_specific"
+       },
+       "confidence": 0.8,
+       "evidence": [
+        {
+         "dimension": "artifact_type",
+         "value": "community_assignment",
+         "source": "explicit",
+         "rationale": "The user wants to find gene modules within each patient's network.",
+         "text_span": "the gene modules inside each patient's network"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "schema": "SemanticPatch",
+    "args": {
+     "hypothesis_index": 0,
+     "request_mode": "guidance",
+     "semantic_goal": "Identify tools for finding patient-specific networks and gene modules.",
+     "confidence": 0.9,
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "gene",
+       "sample"
+      ],
+      "display_entities": [
+       "patient-specific networks"
+      ],
+      "regulator_types": [
+       "unknown"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "evidence_removals": [
+      {
+       "dimension": "operation",
+       "value": "unknown"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "unknown"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific"
+      }
+     ],
+     "evidence_additions": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "rationale": "The user is seeking to construct patient-specific networks, which requires inference from data.",
+       "source": "explicit",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "rationale": "The user is looking for patient-specific networks, which are best represented as regulatory networks.",
+       "source": "explicit",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "rationale": "The request specifies networks for each patient, indicating a sample-specific granularity.",
+       "source": "inferred"
+      }
+     ],
+     "assumptions": []
+    }
+   },
+   {
+    "schema": "SemanticDiscriminator",
+    "args": {
+     "selection_tags": [
+      "sample_specific"
+     ],
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "explicit",
+       "rationale": "The user is seeking to construct patient-specific networks, which requires inference from data.",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "rationale": "The user is looking for patient-specific networks, which are best represented as regulatory networks.",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "explicit",
+       "rationale": "The request explicitly states the output granularity.",
+       "text_span": "per-patient modules"
+      }
+     ]
+    }
+   },
+   {
+    "schema": "IntentDecision",
+    "args": {
+     "mode": "answer",
+     "confidence": 0.9,
+     "reason": "The user is seeking advice on tools for finding patient-specific networks and gene modules, which qualifies as an answer request."
+    }
+   },
+   {
+    "schema": "ResearchFraming",
+    "args": {
+     "question_mode": "single_goal",
+     "hypotheses": [],
+     "concerns": []
+    }
+   },
+   {
+    "schema": "MethodComparisonReview",
+    "args": {
+     "requested_philosophy": [
+      "regulator_class:mirna"
+     ],
+     "requirement_quote": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network. Which tool finds those per-patient modules? Advice only.",
+     "capability_gap": {
+      "selection_tags": [
+       "mirna_regulation"
+      ],
+      "text_spans": [
+       "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      ],
+      "rationale": "The requested method requires a focus on miRNA regulation, which is not fully supported by the available candidates."
+     },
+     "preference": {
+      "action": "run_lioness_puma",
+      "selection_tags": [
+       "leave_one_out_network_inference",
+       "message_passing",
+       "mirna_regulation",
+       "sample_specific"
+      ],
+      "text_spans": [
+       "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      ],
+      "rationale": "LIONESS-PUMA is designed to infer sample-specific networks that include miRNA regulation, making it suitable for identifying patient-specific gene modules. It utilizes a leave-one-out approach to derive individual networks while incorporating miRNA interactions, which aligns with your requirement for patient-specific analysis.",
+      "assumptions": [
+       "The user has access to the necessary input files including expression, motif, PPI, and miRNA data."
+      ]
+     }
+    }
+   }
+  ]
+ },
+ {
+  "prompt": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network. Which tool finds those per-patient modules? Advice only.",
+  "calls": [
+   {
+    "schema": "SemanticInterpretation",
+    "args": {
+     "request_mode": "guidance",
+     "semantic_goal": "Identify tools for finding patient-specific networks and gene modules.",
+     "outcome_hypotheses": [
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "sample_specific",
+        "granularity": "sample_specific"
+       },
+       "evidence": [
+        {
+         "dimension": "artifact_type",
+         "value": "sample_specific",
+         "source": "explicit",
+         "rationale": "The user is interested in patient-specific networks for each of the 30 patients.",
+         "text_span": "patient-specific networks for my 30 patients"
+        }
+       ]
+      },
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "community_assignment",
+        "granularity": "sample_specific"
+       },
+       "evidence": [
+        {
+         "dimension": "artifact_type",
+         "value": "community_assignment",
+         "source": "explicit",
+         "rationale": "The user wants to find gene modules within each patient's network, which typically involves community detection or module assignment.",
+         "text_span": "the gene modules inside each patient's network"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "schema": "SemanticPatch",
+    "args": {
+     "hypothesis_index": 0,
+     "request_mode": "guidance",
+     "semantic_goal": "Identify tools for finding patient-specific networks and gene modules.",
+     "confidence": 0.8,
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "gene",
+       "sample"
+      ],
+      "display_entities": [
+       "patient-specific networks"
+      ],
+      "regulator_types": [
+       "unknown"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "evidence_removals": [
+      {
+       "dimension": "operation",
+       "value": "unknown"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "unknown"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific"
+      }
+     ],
+     "evidence_additions": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "rationale": "The user is seeking to construct patient-specific networks, which requires inferring regulatory relationships from data.",
+       "source": "explicit",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "rationale": "The user is interested in constructing networks that represent regulatory relationships for each patient.",
+       "source": "explicit",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "rationale": "The request specifies networks for each patient, indicating that the results should vary per sample.",
+       "source": "inferred"
+      }
+     ],
+     "assumptions": []
+    }
+   },
+   {
+    "schema": "SemanticDiscriminator",
+    "args": {
+     "selection_tags": [
+      "sample_specific"
+     ],
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "explicit",
+       "rationale": "The user is seeking to construct patient-specific networks, which requires inferring regulatory relationships from data.",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "rationale": "The user is interested in constructing networks that represent regulatory relationships for each patient.",
+       "text_span": "I want patient-specific networks for my 30 patients"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "explicit",
+       "rationale": "The request explicitly states the output granularity.",
+       "text_span": "per-patient modules"
+      }
+     ]
+    }
+   },
+   {
+    "schema": "IntentDecision",
+    "args": {
+     "mode": "answer",
+     "confidence": 0.9,
+     "reason": "The user is seeking advice on tools for finding patient-specific networks and gene modules, which falls under the category of answer requests."
+    }
+   },
+   {
+    "schema": "ResearchFraming",
+    "args": {
+     "question_mode": "single_goal",
+     "hypotheses": [
+      {
+       "text_span": "patient-specific networks",
+       "profile": "sample_distance_matrix",
+       "target_artifact": "community_assignment",
+       "granularity": "sample_specific",
+       "target_span": "find those per-patient modules",
+       "regulators": [],
+       "method_tags": []
+      }
+     ],
+     "concerns": []
+    }
+   },
+   {
+    "schema": "MethodComparisonReview",
+    "args": {
+     "requested_philosophy": [
+      "regulator_class:mirna"
+     ],
+     "requirement_quote": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network. Which tool finds those per-patient modules? Advice only.",
+     "capability_gap": {
+      "selection_tags": [
+       "mirna_regulation"
+      ],
+      "text_spans": [
+       "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      ],
+      "rationale": "The requested method requires a focus on miRNA regulation, which is not fully supported by the available candidates."
+     },
+     "preference": {
+      "action": "run_lioness_puma",
+      "selection_tags": [
+       "leave_one_out_network_inference",
+       "message_passing",
+       "mirna_regulation",
+       "sample_specific"
+      ],
+      "text_spans": [
+       "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      ],
+      "rationale": "LIONESS-PUMA is designed to infer sample-specific networks that include miRNA regulation, making it suitable for identifying patient-specific gene modules. It utilizes a leave-one-out approach to derive individual networks while incorporating miRNA interactions, which aligns with your requirement for patient-specific analysis.",
+      "assumptions": [
+       "The user has access to the necessary input files including expression, motif, PPI, and miRNA data."
+      ]
+     }
+    }
+   }
+  ]
+ },
+ {
+  "prompt": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network. Which tool finds those per-patient modules? Advice only.",
+  "calls": [
+   {
+    "schema": "SemanticInterpretation",
+    "args": {
+     "request_mode": "guidance",
+     "semantic_goal": "Identify tools for finding patient-specific networks and gene modules.",
+     "outcome_hypotheses": [
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "sample_specific",
+        "granularity": "sample_specific"
+       },
+       "evidence": [
+        {
+         "dimension": "artifact_type",
+         "value": "sample_specific",
+         "source": "explicit",
+         "rationale": "The user is interested in patient-specific networks for each of the 30 patients.",
+         "text_span": "patient-specific networks for my 30 patients"
+        }
+       ]
+      },
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "unknown",
+        "granularity": "sample_specific"
+       },
+       "evidence": [
+        {
+         "dimension": "operation",
+         "value": "infer",
+         "source": "inferred",
+         "rationale": "Finding gene modules typically involves inferring relationships within the patient-specific networks.",
+         "text_span": "gene modules inside each patient's network"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "schema": "SemanticPatch",
+    "args": {
+     "hypothesis_index": 0,
+     "request_mode": "guidance",
+     "semantic_goal": "Identify tools for finding patient-specific networks and gene modules.",
+     "confidence": 0.8,
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "gene",
+       "sample"
+      ],
+      "display_entities": [
+       "patient-specific networks"
+      ],
+      "regulator_types": [
+       "unknown"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "evidence_removals": [
+      {
+       "dimension": "operation",
+       "value": "unknown"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "sample_specific"
+      }
+     ],
+     "evidence_additions": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "rationale": "The user is seeking to identify tools for constructing patient-specific networks, which involves inferring relationships among genes within each patient's data.",
+       "source": "explicit",
+       "text_span": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "rationale": "The requested outcome is to identify patient-specific networks, which are best represented as regulatory networks.",
+       "source": "explicit",
+       "text_span": "I want patient-specific networks for my 30 patients."
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "rationale": "The user explicitly mentions wanting networks for each patient, indicating a sample-specific granularity.",
+       "source": "explicit",
+       "text_span": "I want patient-specific networks for my 30 patients."
+      }
+     ],
+     "assumptions": null
+    }
+   },
+   {
+    "schema": "IntentDecision",
+    "args": {
+     "mode": "answer",
+     "confidence": 0.9,
+     "reason": "The user is seeking advice on tools for finding patient-specific networks and gene modules, which falls under the category of answer requests."
+    }
+   },
+   {
+    "schema": "ResearchFraming",
+    "args": {
+     "question_mode": "single_goal",
+     "hypotheses": [],
+     "concerns": []
+    }
+   },
+   {
+    "schema": "MethodComparisonReview",
+    "args": {
+     "requested_philosophy": [
+      "regulator_class:mirna"
+     ],
+     "requirement_quote": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network. Which tool finds those per-patient modules? Advice only.",
+     "capability_gap": {
+      "selection_tags": [
+       "mirna_regulation"
+      ],
+      "text_spans": [
+       "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      ],
+      "rationale": "The requested method requires the ability to analyze miRNA regulation, which is not available in the LIONESS-PANDA method."
+     },
+     "preference": {
+      "action": "run_lioness_puma",
+      "selection_tags": [
+       "leave_one_out_network_inference",
+       "message_passing",
+       "mirna_regulation",
+       "sample_specific"
+      ],
+      "text_spans": [
+       "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      ],
+      "rationale": "LIONESS-PUMA is designed to infer sample-specific networks that include miRNA regulation, making it suitable for identifying patient-specific gene modules. It utilizes a leave-one-out approach to derive individual networks while incorporating miRNA interactions, which aligns with your requirement for patient-specific analysis.",
+      "assumptions": [
+       "The user has the necessary input files (expression, motif, PPI, and miRNA) ready for analysis."
+      ]
+     },
+     "claims": [
+      {
+       "condition": "regulator_class:mirna",
+       "text_span": "I want patient-specific networks for my 30 patients and then the gene modules inside each patient's network."
+      }
+     ]
+    }
+   }
+  ]
+ }
+]

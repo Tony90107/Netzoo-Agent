@@ -20,7 +20,7 @@ from netzoo_agent_core.interpretation.request_integrity import regulatory_role_m
 from netzoo_agent_core.routing.outcome_matching import match_semantic_request  # noqa: E402
 from netzoo_agent_core.interpretation.stated_field_restoration import restore_stated_fields  # noqa: E402
 
-TEST6 = json.loads((ROOT / "docs" / "research-log" / "test10-2026-10-03" / "prompts.json").read_text())["test6"]
+TEST6 = json.loads((ROOT / "tests" / "fixtures" / "logs" / "test10-2026-10-03" / "prompts.json").read_text())["test6"]
 
 
 def _reading(artifact, regulators, entities=("gene", "tf", "sample"), granularity="aggregate"):

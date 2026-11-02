@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
 from test_reply_cards import respond_and_card  # noqa: E402
 
-OUT = ROOT / "docs" / "research-log" / "test10-2026-10-03" / "out"
+OUT = ROOT / "tests" / "fixtures" / "logs" / "test10-2026-10-03" / "out"
 RECORDED = json.loads((OUT / "r5-decisions.json").read_text())
 
 
@@ -66,7 +66,7 @@ def test_a_concern_about_comparing_two_networks_is_not_answered_with_core_scores
 
 def test_single_cell_data_is_not_offered_the_per_cell_networks_its_note_advises_against():
     # Log 334: r1-r3 offered "Only expression data -> LIONESS-COEXPRESSION or BONOBO".
-    item = json.loads((ROOT / "docs" / "research-log" / "test10-2026-10-03" / "out"
+    item = json.loads((ROOT / "tests" / "fixtures" / "logs" / "test10-2026-10-03" / "out"
                        / "r3-decisions.json").read_text())["test4"]
     text, _, card = respond_and_card(item["prompt"], TaskDecision.model_validate(item["decision"]))
     assert "per-cell LIONESS or BONOBO networks are not advised" in text

@@ -1,0 +1,498 @@
+# Closed-menu judgment, phase 0: the gold reading of each of the 56 bench items (core-judgment-2026-10-15/items.json
+# minus C01, C02, C03, C05), written by hand to the reading rules of spec sections 3.1, 3.3 and 9.2:
+# - stated = explicit, or implied by words as clear as saying it (draft 3); "a network" implies no scale;
+# - miRNA regulators and comparisons are extras: never mentioned -> not stated (plain);
+# - a doubt between alternatives is `conflicting` with those alternatives as `values`;
+# - named workflows are counted by code from the prompt, never written here.
+# Shorthand: `artifact: regulatory_network` is stated (explicit); `{status: conflicting, values: [...]}` otherwise.
+# `judgment` notes where a reading rests on a call the phase-1 reader may make differently.
+# `fact`: for ask items, the question dimensions that target the gold deciding fact (or `settled` for a file doubt a
+# run's input check settles). This file is never tuned against the decision table: a gate miss is reported, not fixed
+# here.
+
+C04:
+  wanted:
+    - {quote: "that patient's own TF-to-gene regulatory network", artifact: regulatory_network,
+       granularity: per_sample, regulators: tf}
+    - {quote: "so I can later compare each TF's targeting between responders and non-responders", form: purpose}
+  data: [expression, motif_prior, ppi]
+  groups: [responders, non-responders]
+  sample_count: 25
+
+C06:
+  wanted:
+    - quote: "a network of how about 150 regulators control their target genes"
+      artifact: regulatory_network
+      regulators: {status: conflicting, values: [tf, off_menu], quotes: ["both RNA-binding proteins and transcription factors, and I'm not sure which of the two lists I was given"]}
+  data: [expression, ppi]
+  sample_count: 60
+  judgment: "'across 60 hepatocellular carcinoma samples' left as no scale (strict draft 3), so granularity is asked too."
+  fact: [regulators]
+
+C07:
+  wanted:
+    - {quote: "a separate network for every patient that links miRNAs and cytokines through partial correlations",
+       artifact: multi_omic_network, granularity: per_sample, integration: joint}
+    - {quote: "so I can compare survivors with non-survivors patient by patient afterwards", form: purpose}
+  data: [mirna_expression, protein]
+  conditions: {value_type: continuous, samples_matched: same_samples}
+  groups: [survivors, non-survivors]
+  sample_count: 64
+  feature_count: 225
+
+C08:
+  wanted:
+    - {quote: "Can GIRAFFE be run with my own optimizer settings?"}
+  settings:
+    - {quote: "a learning rate of 1e-4", workflow: GIRAFFE, control: unregistered, value: "1e-4"}
+    - {quote: "2,000 iterations", workflow: GIRAFFE, control: unregistered, value: "2000"}
+    - {quote: "a heavier weight on the PPI term in the loss", workflow: GIRAFFE, control: unregistered}
+  sample_count: 52
+
+C09:
+  wanted:
+    - {quote: "Should I go with BONOBO or LIONESS", form: question_to_us}
+    - {quote: "I'm hoping to learn something about the knockout", form: purpose}
+  groups: [Shank3 knockout, wild-type]
+  sample_count: 20
+
+C10:
+  wanted:
+    - {quote: "Should I be using COBRA or CONDOR on our lupus nephritis cohort?", form: question_to_us}
+
+C11:
+  wanted:
+    - quote: "Run the TF network inference"
+      artifact: regulatory_network
+      regulators: tf
+      granularity: {status: conflicting, values: [per_group, per_sample], quotes: ["I can't tell if that means one network per diagnostic group or one network per donor"]}
+  data: [expression, motif_prior, ppi]
+  groups: [AD, controls]
+  sample_count: 88
+  run_requested: true
+  fact: [granularity]
+
+C12:
+  wanted:
+    - {quote: "run the network analysis", artifact: network}
+  data: [expression]
+  run_requested: true
+  judgment: "expression read from the file name expr_sle_monocytes.tsv."
+
+C13:
+  wanted:
+    - {quote: "Run OTTER on expr_t2d_islets.tsv, seed_W.tsv and ppi_tf.tsv"}
+  data: [expression, motif_prior, ppi]
+  settings:
+    - {quote: "lam set to 1.5", workflow: OTTER, control: lam, value: "1.5"}
+  run_requested: true
+
+C14:
+  wanted:
+    - quote: "the TF-gene network it returns for my 45 bovine mammary gland samples is sparse"
+      artifact: regulatory_network
+      regulators: tf
+      requirements:
+        - {quote: "with most edges exactly zero", verdicts: {OTTER: contradicted}}
+  settings:
+    - {quote: "an L1 (lasso) sparsity penalty", workflow: OTTER, control: unregistered}
+  sample_count: 45
+
+C15:
+  wanted:
+    - {quote: "Analyze everything in glioma_bundle/ ... and tell me what you find"}
+  data: [expression, methylation, mutation_calls]
+  sample_count: 80
+  run_requested: true
+
+C16:
+  wanted:
+    - {quote: "order the cells along a pseudotime trajectory", artifact: off_menu, outside_name: "a pseudotime trajectory"}
+    - {quote: "find the branch point where atrial and ventricular fates split", artifact: off_menu, outside_name: "the branch point of cell fates"}
+  conditions: {data_unit: single_cells}
+
+C17:
+  wanted:
+    - {quote: "a transcript-metabolite partial-correlation network for 75 NAFLD liver biopsies",
+       artifact: multi_omic_network, integration: joint}
+  data: [expression, metabolite]
+  settings:
+    - {quote: "the transcript layer's shrinkage is fixed at 0.3", control: lambda1, value: "0.3"}
+  sample_count: 75
+  judgment: "the metabolite layer's estimated shrinkage is no setting; the workflow is unnamed, so the setting is judged for each candidate."
+
+C18:
+  wanted:
+    - {quote: "to get gene communities", artifact: communities}
+  data: [expression]
+  data_absent: [motif_prior, ppi]
+  only_data: true
+  sample_count: 64
+  run_requested: true
+
+C19:
+  wanted:
+    - {quote: "run whichever NetZoo analysis is appropriate"}
+  data: [expression, mirna_expression, motif_prior, mirna_prior]
+  run_requested: true
+
+C20:
+  wanted:
+    - {quote: "Run PANDA on tumour_profiles_v2.tsv with motif_hs.txt and ppi_hs.txt"}
+  data: [motif_prior, ppi]
+  conditions:
+    value_type: {status: conflicting, values: [continuous, binary], quotes: ["one with log2 expression and one with binary somatic-mutation calls, and I'm not sure which one this is"]}
+  run_requested: true
+  judgment: "the doubt is read as continuous expression vs binary calls (a data condition), not as a file doubt the input check settles."
+  fact: [value_type]
+
+C21:
+  wanted:
+    - {quote: "Can CONDOR find communities in network_final.tsv", artifact: communities}
+  conditions:
+    input_network: {status: conflicting, values: [regulator_gene, gene_gene], quotes: ["I don't know whether it's the TF-to-gene regulatory network from his PANDA runs or the gene-gene co-expression network"]}
+  fact: [input_network]
+
+C22:
+  wanted:
+    - {quote: "Call somatic SNVs and indels ... and give me a filtered VCF", artifact: off_menu, outside_name: "somatic SNV and indel calls in a filtered VCF"}
+  conditions: {data_stage: raw_files}
+
+C23:
+  wanted:
+    - {quote: "I'd like a systems-level view of what is going on in these animals", form: purpose}
+    - {quote: "Where should we start?", form: question_to_us}
+  data: [expression, protein, metabolite]
+  groups: [baseline, 24 hours]
+
+C24:
+  wanted:
+    - quote: "'a network analysis' of our placenta study"
+      artifact: network
+  data: [expression, mirna_expression]
+  conditions: {samples_matched: same_samples}
+  groups: [preeclampsia, control]
+  sample_count: 45
+  judgment: "the user says they do not know what kind of network: the generic word stays generic."
+
+C25:
+  wanted:
+    - {quote: "one regulatory network for my 70 colorectal tumours in which both transcription factors and microRNAs act as regulators",
+       artifact: regulatory_network, granularity: whole_cohort, regulators: tf_mirna}
+  data: [expression, motif_prior, ppi, mirna_prior]
+  sample_count: 70
+
+C26:
+  wanted:
+    - {quote: "Is SAMBAR the right thing to run, or one of the network methods like PANDA?", form: question_to_us}
+    - {quote: "I'm open to whatever gives the most interesting result", form: purpose}
+  data: [mutation_calls, expression]
+  sample_count: 90
+
+C27:
+  wanted:
+    - {quote: "Can SAMBAR subtype our 210 hepatocellular carcinomas from the RNA-seq expression matrix?", artifact: patient_subtypes}
+  data: [expression]
+  data_absent: [mutation_calls]
+  only_data: true
+  sample_count: 210
+
+C28:
+  wanted:
+    - {quote: "how much of each gene pair's co-expression is associated with sequencing run versus sex, and get an adjusted gene-by-gene co-expression matrix",
+       artifact: covariate_adjustment}
+  data: [expression, design_matrix]
+  sample_count: 140
+  single_feature_count: 18000
+  judgment: "run and sex are design covariates, not groups the user wants results for."
+
+C29:
+  wanted:
+    - {quote: "split it into communities of TFs and their target genes", artifact: communities}
+  data: [regulator_gene_network]
+  conditions: {input_network: regulator_gene}
+
+C30:
+  wanted:
+    - {quote: "Run SAMBAR on mut_pilot.csv"}
+  data: [mutation_calls]
+  settings:
+    - {quote: "testing every subtype number from 2 through 8", workflow: SAMBAR, control: kmin, value: "2"}
+    - {quote: "testing every subtype number from 2 through 8", workflow: SAMBAR, control: kmax, value: "8"}
+  sample_count: 5
+  run_requested: true
+
+C31:
+  wanted:
+    - quote: "signed TF-to-gene effects, activation versus repression"
+      artifact: regulatory_network
+      signed: signed
+      regulators: tf
+      granularity: {status: conflicting, values: [per_sample, whole_cohort], quotes: ["for each biopsy separately, but the grant text says one set of signed effects for the whole cohort"]}
+  data: [expression, motif_prior, ppi]
+  sample_count: 40
+  fact: [granularity]
+
+C32:
+  wanted:
+    - {quote: "write the partial-correlation network as an edge list", artifact: multi_omic_network}
+  data: [protein, metabolite]
+  conditions: {samples_matched: same_samples, value_type: continuous}
+  settings:
+    - {quote: "as an edge list rather than a matrix", workflow: DRAGON, control: output_format, value: "edge_list"}
+  sample_count: 85
+
+C33:
+  wanted:
+    - {quote: "Can BONOBO run with sparsify on"}
+  data: [expression]
+  settings:
+    - {quote: "sparsify on", workflow: BONOBO, control: sparsify, value: "true"}
+    - {quote: "at a 0.01 confidence level", workflow: BONOBO, control: bonobo_confidence, value: "0.01"}
+    - {quote: "delta fixed at 0.5", workflow: BONOBO, control: delta, value: "0.5"}
+    - {quote: "log-transformed", workflow: BONOBO, control: log_transformed, value: "true"}
+    - {quote: "centered", workflow: BONOBO, control: centered, value: "true"}
+  sample_count: 18
+
+C34:
+  wanted:
+    - quote: "I want the batch effect removed"
+      artifact: {status: conflicting, values: [off_menu, covariate_adjustment], quotes: ["a batch-corrected expression matrix to hand to other people, or batch-adjusted gene co-expression"]}
+      outside_name: "a batch-corrected expression matrix"
+  data: [expression, design_matrix]
+  sample_count: 96
+  single_feature_count: 20000
+  fact: [artifact]
+
+C35:
+  wanted:
+    - {quote: "Run SAMBAR on mutations_ucec.csv ... and cluster the tumours into between 2 and 6 subtypes"}
+  data: [mutation_calls]
+  settings:
+    - {quote: "cluster the tumours", workflow: SAMBAR, control: cluster, value: "true"}
+    - {quote: "between 2 and 6 subtypes", workflow: SAMBAR, control: kmin, value: "2"}
+    - {quote: "between 2 and 6 subtypes", workflow: SAMBAR, control: kmax, value: "6"}
+  sample_count: 248
+  run_requested: true
+
+C36:
+  wanted:
+    - quote: "one number per transcription factor that captures that TF's regulatory strength in that patient"
+      artifact: {status: conflicting, values: [targeting_scores, tf_activity], quotes: ["how strongly the TF is wired to its targets or how active the TF is"]}
+      granularity: per_sample
+      regulators: tf
+    - {quote: "so we can relate it to survival", form: purpose}
+  data: [expression, motif_prior, ppi]
+  sample_count: 40
+  fact: [artifact]
+
+C37:
+  wanted:
+    - {quote: "Which of these should we apply, and what would we actually learn from each?", form: question_to_us}
+  data: [expression, protein, chromatin]
+  groups: [three time points]
+  sample_count: 30
+
+C38:
+  wanted:
+    - {quote: "an activity score for every transcription factor in each of our 30 psoriasis skin samples",
+       artifact: tf_activity, granularity: per_sample, regulators: tf}
+  data: [expression, motif_prior, ppi]
+  sample_count: 30
+
+C39:
+  wanted:
+    - quote: "model the small RNAs ... as regulators alongside the TFs"
+      artifact: regulatory_network
+      regulators: {status: conflicting, values: [tf_mirna, off_menu], quotes: ["the small RNAs we picked could be miRNAs or piRNAs"]}
+  data: [expression, motif_prior, ppi, mirna_prior]
+  sample_count: 24
+  fact: [regulators]
+
+C40:
+  wanted:
+    - {quote: "Run BONOBO on expr_ms_lesions.tsv"}
+  data: [expression]
+  settings:
+    - {quote: "log2-transformed", workflow: BONOBO, control: log_transformed, value: "true"}
+    - {quote: "centered per gene", workflow: BONOBO, control: centered, value: "true"}
+    - {quote: "gene IDs in the first column, sample IDs in the header", workflow: BONOBO, control: genes_axis, value: "rows"}
+    - {quote: "only write networks for samples MS_03, MS_11 and MS_19", workflow: BONOBO, control: sample_names, value: "MS_03, MS_11, MS_19"}
+    - {quote: "saved as .csv files", workflow: BONOBO, control: bonobo_output_format, value: ".csv"}
+  sample_count: 27
+  run_requested: true
+
+C41:
+  wanted:
+    - {quote: "Which one should I run?", form: question_to_us}
+  data: [expression]
+
+C42:
+  wanted:
+    - {quote: "Run DRAGON on expr_cll_layer.csv and methyl_cll_layer.csv"}
+  data: [expression, methylation]
+  conditions:
+    samples_matched: same_samples
+    value_type: {status: conflicting, values: [continuous, binary], quotes: ["either the continuous beta values or the binarized methylated/unmethylated calls (0/1)"]}
+  sample_count: 110
+  run_requested: true
+  fact: [value_type]
+
+C43:
+  wanted:
+    - {quote: "Run LIONESS-PANDA ... to get a TF-to-gene network per column", artifact: regulatory_network,
+       granularity: per_sample, regulators: tf}
+  data: [expression, motif_prior, ppi]
+  sample_count: {status: conflicting, values: [24, 2], quotes: ["the per-patient matrix (24 patients) or the version where a student averaged the patients into two columns"]}
+  unsure_files: ["I'm not sure which export this file is"]
+  run_requested: true
+  fact: [sample_count, settled]
+
+C44:
+  wanted:
+    - {quote: "Run OTTER with seed_W_mm.tsv, ppi_tf_mm.tsv and coexp_liver.tsv"}
+  data: [motif_prior, ppi, coexpression_matrix]
+  data_absent: [expression]
+  unsure_files: ["I can't remember if coexp_liver.tsv is the full gene-by-gene correlation matrix for the cohort or the edge-by-sample table"]
+  context_mentions: [LIONESS]
+  run_requested: true
+  judgment: "added after the first gate run: 'our earlier LIONESS co-expression run' is background, not a choice (spec change log)."
+  fact: [settled]
+
+C45:
+  wanted:
+    - {quote: "a separate miRNA-protein partial-correlation network for each of our 50 heart-failure patients",
+       artifact: multi_omic_network, granularity: per_sample, integration: joint}
+  data: [mirna_expression, protein]
+  conditions: {samples_matched: same_samples, value_type: continuous}
+  sample_count: 50
+  feature_count: {status: conflicting, values: [500, 2300], quotes: ["the 200-protein targeted panel or the 2,000-protein discovery panel"]}
+  fact: [feature_count]
+
+C46:
+  wanted:
+    - {quote: "the list of genes differentially expressed ... with log2 fold changes and FDR-adjusted p-values",
+       artifact: off_menu, outside_name: "differentially expressed genes with fold changes and adjusted p-values"}
+  data: [expression]
+
+C47:
+  wanted:
+    - {quote: "a model that predicts each new patient's overall-survival risk", artifact: off_menu,
+       outside_name: "a survival-risk prediction model"}
+  claims: prediction
+  data: [expression]
+
+C48:
+  wanted:
+    - {quote: "link fecal metabolomics with colon-biopsy transcriptomics", artifact: multi_omic_network, integration: joint}
+  data: [metabolite, expression]
+  conditions:
+    value_type: continuous
+    samples_matched: {status: conflicting, values: [same_samples, different_samples], quotes: ["may have been taken from a different group of volunteers"]}
+  fact: [samples_matched]
+
+C49:
+  wanted:
+    - {quote: "Do whatever makes sense with them and give me figures for the paper"}
+  data: [expression, motif_prior, ppi]
+  run_requested: true
+
+C50:
+  wanted:
+    - quote: "a gene co-expression network for each of our 9 periodontitis gingival biopsies"
+      artifact: coexpression_network
+      granularity: per_sample
+      requirements:
+        - {quote: "with a p-value for every edge", verdicts: {BONOBO: met, LIONESS-COEXPRESSION: not_addressed}}
+  data: [expression]
+  settings:
+    - {quote: "mean-centered per gene", workflow: BONOBO, control: centered, value: "true"}
+    - {quote: "I can't tell whether the values were log-transformed", workflow: BONOBO, control: log_transformed, unsure: true, values: ["true", "false"]}
+  sample_count: 9
+  fact: ["setting:BONOBO.log_transformed"]
+
+C51:
+  wanted:
+    - {quote: "Is OTTER able to run on CPU in single precision"}
+  data: [expression, motif_prior, ppi]
+  settings:
+    - {quote: "on CPU", workflow: OTTER, control: computing, value: "cpu"}
+    - {quote: "in single precision", workflow: OTTER, control: precision, value: "single"}
+    - {quote: "150 iterations", workflow: OTTER, control: iterations, value: "150"}
+    - {quote: "a step size (eta) of 1e-4", workflow: OTTER, control: eta, value: "1e-4"}
+    - {quote: "writing the result as an edge list", workflow: OTTER, control: output_format, value: "edge_list"}
+  sample_count: 60
+
+C52:
+  wanted:
+    - {quote: "a co-expression network for each of my 6 rhesus macaque lymph node samples", artifact: coexpression_network,
+       granularity: per_sample}
+  data: [expression]
+  settings:
+    - {quote: "log2-transformed", workflow: BONOBO, control: log_transformed, value: "true"}
+    - {quote: "centered per gene", workflow: BONOBO, control: centered, value: "true"}
+    - {quote: "genes in rows and sample IDs in the header", workflow: BONOBO, control: genes_axis, value: "rows"}
+    - {quote: "saved as HDF5", workflow: BONOBO, control: bonobo_output_format, value: "HDF5"}
+    - {quote: "computed in double precision", workflow: BONOBO, control: precision, value: "double"}
+  sample_count: 6
+
+C53:
+  wanted:
+    - {quote: "see how genes are connected", artifact: network}
+  groups: [heat stress]
+  judgment: "'how genes are connected' read as the generic word network."
+
+C54:
+  wanted:
+    - {quote: "nobody has said what the network part should actually be", artifact: network}
+    - {quote: "What can we do?", form: question_to_us}
+  data: [expression]
+  sample_count: 150
+
+C55:
+  wanted:
+    - {quote: "a single TF-to-gene regulatory network for our whole cohort of 48 mouse liver RNA-seq samples",
+       artifact: regulatory_network, granularity: whole_cohort, regulators: tf}
+  data: [expression, motif_prior, ppi]
+  sample_count: 48
+
+C56:
+  wanted:
+    - {quote: "Can SAMBAR subtype our 160 pediatric medulloblastomas?", artifact: patient_subtypes}
+  data: [mutation_calls]
+  conditions:
+    mutation_origin: {status: conflicting, values: [somatic, germline], quotes: ["whether the counts are tumour-only somatic mutations or germline variant calls"]}
+  sample_count: 160
+  fact: [mutation_origin]
+
+C57:
+  wanted:
+    - {quote: "how much of the co-expression between those 48 genes is associated with the hospital each sample came from, decomposed per covariate",
+       artifact: covariate_adjustment}
+  data: [expression, design_matrix]
+  sample_count: 600
+  single_feature_count: 48
+
+C58:
+  wanted:
+    - quote: "Run PANDA on expr_ipf.tsv with motif_hg38.tsv and ppi_hs.tsv"
+      artifact: {status: stated, value: regulatory_network, basis: implied, quotes: ["Run PANDA"]}
+  data: [expression, motif_prior, ppi, coexpression_matrix]
+  context_mentions: [COBRA]
+  run_requested: true
+  judgment: "the run's result is implied by the named workflow; COBRA is named only as the source of an input (context_mentions added after the first gate run)."
+
+C59:
+  wanted:
+    - {quote: "a TF/miRNA-to-gene network for every patient", artifact: regulatory_network, granularity: per_sample,
+       regulators: tf_mirna}
+  data: [expression, motif_prior, ppi, mirna_prior]
+  sample_count: 36
+  run_requested: true
+
+C60:
+  wanted:
+    - {quote: "Can you run the right workflow on them?", form: question_to_us}
+  data: [expression]
+  groups: [week 0, week 4, week 12]
+  run_requested: true

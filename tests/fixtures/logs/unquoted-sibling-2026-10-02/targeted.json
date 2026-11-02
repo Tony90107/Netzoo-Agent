@@ -1,0 +1,112 @@
+[
+  {
+    "id": "t2-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "We have microarray expression profiles from 40 heart failure patients with highly heterogeneous clinical presentations. A single population-level network would average away individual differences, but each patient contributed only one tissue biopsy, so a per-patient correlation cannot be computed. How can we reconstruct a separate regulatory network for each patient from this cohort?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "t2-follow-has-priors",
+    "language": "en",
+    "category": "positive",
+    "prompt": "Previous NetZoo goal: We have microarray expression profiles from 40 heart failure patients with highly heterogeneous clinical presentations. A single population-level network would average away individual differences, but each patient contributed only one tissue biopsy, so a per-patient correlation cannot be computed. How can we reconstruct a separate regulatory network for each patient from this cohort?\nUser follow-up: I also have a motif prior and a PPI network.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "ms-lung-generic",
+    "language": "en",
+    "category": "positive",
+    "prompt": "We just finished sequencing lung cancer tissue transcriptomes and have standard transcription factor motif binding sites alongside known protein-protein interaction maps. We want to estimate genome-wide regulatory strengths, capturing both the regulatory communication between TFs and target genes as well as cooperative complexes among TFs. What framework should we use to build this network?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "ms-generic-communication",
+    "language": "en",
+    "category": "positive",
+    "prompt": "Our tumor RNA-seq comes with TF motif priors and a protein interaction map. We want to capture how TFs communicate with their target genes and how TFs cooperate in complexes. Which framework builds this network? Advice only.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "ctl-dragon-aggregate",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I have methylation and expression tables for the same samples. Build one cohort-level partial-correlation network across both layers. Which tool fits? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_dragon"
+      ]
+    }
+  },
+  {
+    "id": "ld-per-patient-methylation",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I have RNA-seq expression and DNA methylation measured on the same 40 tumour samples. I want one network per patient that links the two layers through partial correlations. Which tool fits? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_dragon"
+      ]
+    }
+  },
+  {
+    "id": "pe-person-specific-multiomic",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I have proteomics and transcriptomics tables for the same 25 donors and want person-specific partial-correlation networks linking both layers. Which tool fits? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_dragon"
+      ]
+    }
+  },
+  {
+    "id": "ld-sample-specific-multiomic",
+    "language": "en",
+    "category": "positive",
+    "prompt": "For each sample, build a multi-omic partial-correlation network from my proteomics and transcriptomics tables, which cover the same samples. What should I use? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_dragon"
+      ]
+    }
+  },
+  {
+    "id": "t2-follow-expression-only",
+    "language": "en",
+    "category": "positive",
+    "prompt": "Previous NetZoo goal: We have microarray expression profiles from 40 heart failure patients with highly heterogeneous clinical presentations. A single population-level network would average away individual differences, but each patient contributed only one tissue biopsy, so a per-patient correlation cannot be computed. How can we reconstruct a separate regulatory network for each patient from this cohort?\nUser follow-up: I only have expression data. One gene-gene co-expression network per sample (genes only, no regulator roles) is fine.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "ms-ctl-message-passing",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I have expression, motif and PPI priors. I want one cohort TF-to-gene network estimated by message passing between the motif, PPI and co-expression networks. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_panda"
+      ]
+    }
+  }
+]

@@ -29,7 +29,7 @@ from netzoo_agent_core.routing.study_purpose import Claim, study_purpose, timepo
 from test_reply_cards import respond_and_card  # noqa: E402
 from workflow_registry import CLAIM_SUPPORT, OUTPUT_CAPABILITIES, UNSUPPORTED_CLAIMS  # noqa: E402
 
-MINIMAL_PAIRS = ROOT / "docs" / "research-log" / "minimal-pairs-2026-10-04"
+MINIMAL_PAIRS = ROOT / "tests" / "fixtures" / "logs" / "minimal-pairs-2026-10-04"
 PROMPTS = json.loads((MINIMAL_PAIRS / "prompts.json").read_text())
 RECORDED = json.loads((MINIMAL_PAIRS / "out" / "s1-decisions.json").read_text())
 

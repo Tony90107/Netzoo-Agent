@@ -20,7 +20,7 @@ from netzoo_agent_core.interpretation.verified_guidance import render_verified_g
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 
 POLICY = ProjectPolicyLoader(ROOT).load()
-BLIND = {c["id"]: c["prompt"] for c in json.loads((ROOT / "docs/research-log/blind/blind_en.json").read_text())}
+BLIND = {c["id"]: c["prompt"] for c in json.loads((ROOT / "tests/fixtures/logs/blind/blind_en.json").read_text())}
 
 
 def test_a_role_name_inside_a_file_name_is_not_a_role_keyword():

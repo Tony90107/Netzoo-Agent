@@ -1,0 +1,211 @@
+[
+ {
+  "session": "t10-r3-test5",
+  "task": "We have binary (0/1) somatic mutation calls from tumor exome sequencing of 200 patients. The data are extremely sparse with a long tail: thousands of genes are mutated in only one or two patients, and hierarchical clustering or NMF fails to find meaningful subtypes. We want to summarize these scattered gene-level mutations into pathway-level scores for each patient using known pathway annotations, and then subtype patients on those scores. Which approach fits this?",
+  "rejected_interpretation": {
+   "outcome_hypotheses": [
+    {
+     "assumptions": [],
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "operation",
+       "rationale": "The user wants to summarize gene-level mutations into pathway-level scores.",
+       "source": "explicit",
+       "text_span": "summarize these scattered gene-level mutations into pathway-level scores for each patient",
+       "value": "infer"
+      },
+      {
+       "dimension": "artifact_type",
+       "rationale": "The user specifies the need for pathway-level scores.",
+       "source": "explicit",
+       "text_span": "pathway-level scores for each patient",
+       "value": "pathway_mutation_matrix"
+      },
+      {
+       "dimension": "input_artifact",
+       "rationale": "The user explicitly states they have somatic mutation calls from tumor exome sequencing, which corresponds to a mutation matrix.",
+       "source": "explicit",
+       "text_span": "somatic mutation",
+       "value": "mutation_matrix"
+      },
+      {
+       "dimension": "granularity",
+       "rationale": "The subtyping process will yield a single assignment for each patient, indicating aggregate granularity.",
+       "source": "inferred",
+       "text_span": null,
+       "value": "aggregate"
+      }
+     ],
+     "outcome": {
+      "artifact_type": "pathway_mutation_matrix",
+      "display_entities": [],
+      "entity_types": [
+       "pathway",
+       "sample"
+      ],
+      "granularity": "aggregate",
+      "input_artifacts": [
+       "mutation_matrix"
+      ],
+      "operation": "infer",
+      "regulator_types": [],
+      "selection_tags": [],
+      "target_types": [],
+      "unresolved_dimensions": []
+     }
+    },
+    {
+     "assumptions": [],
+     "confidence": 0.8,
+     "evidence": [
+      {
+       "dimension": "operation",
+       "rationale": "The user wants to subtype patients based on the summarized scores.",
+       "source": "explicit",
+       "text_span": "subtype patients on those scores",
+       "value": "analyze"
+      },
+      {
+       "dimension": "artifact_type",
+       "rationale": "Subtyping patients typically results in cluster assignments.",
+       "source": "inferred",
+       "text_span": null,
+       "value": "sample_cluster_assignment"
+      },
+      {
+       "dimension": "granularity",
+       "rationale": "The subtyping process will yield a single assignment for each patient.",
+       "source": "inferred",
+       "text_span": null,
+       "value": "aggregate"
+      }
+     ],
+     "outcome": {
+      "artifact_type": "sample_cluster_assignment",
+      "display_entities": [],
+      "entity_types": [
+       "sample"
+      ],
+      "granularity": "aggregate",
+      "input_artifacts": [],
+      "operation": "analyze",
+      "regulator_types": [],
+      "selection_tags": [],
+      "target_types": [],
+      "unresolved_dimensions": []
+     }
+    }
+   ],
+   "request_mode": "guidance",
+   "semantic_goal": "Summarize gene-level mutations into pathway-level scores and subtype patients based on those scores."
+  }
+ },
+ {
+  "session": "t10-r4-test5",
+  "task": "We have binary (0/1) somatic mutation calls from tumor exome sequencing of 200 patients. The data are extremely sparse with a long tail: thousands of genes are mutated in only one or two patients, and hierarchical clustering or NMF fails to find meaningful subtypes. We want to summarize these scattered gene-level mutations into pathway-level scores for each patient using known pathway annotations, and then subtype patients on those scores. Which approach fits this?",
+  "rejected_interpretation": {
+   "outcome_hypotheses": [
+    {
+     "assumptions": [
+      "Pathway annotations are available for the genes in the dataset.",
+      "The pathway-level scores can be derived from the binary mutation calls."
+     ],
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "operation",
+       "rationale": "The user wants to summarize gene-level mutations into pathway-level scores, which requires inferring pathway scores from the mutations.",
+       "source": "explicit",
+       "text_span": "summarize these scattered gene-level mutations into pathway-level scores for each patient",
+       "value": "infer"
+      },
+      {
+       "dimension": "artifact_type",
+       "rationale": "The user specifically mentions pathway-level scores, indicating the desired output type.",
+       "source": "explicit",
+       "text_span": "pathway-level scores",
+       "value": "pathway_mutation_matrix"
+      },
+      {
+       "dimension": "input_artifact",
+       "rationale": "The user explicitly states they have binary somatic mutation calls from tumor exome sequencing, which corresponds to a mutation matrix.",
+       "source": "explicit",
+       "text_span": "somatic mutation",
+       "value": "mutation_matrix"
+      },
+      {
+       "dimension": "granularity",
+       "rationale": "The subtyping process will yield a single set of clusters for the entire patient cohort, indicating aggregate granularity is appropriate.",
+       "source": "inferred",
+       "text_span": null,
+       "value": "aggregate"
+      }
+     ],
+     "outcome": {
+      "artifact_type": "pathway_mutation_matrix",
+      "display_entities": [],
+      "entity_types": [
+       "pathway",
+       "sample"
+      ],
+      "granularity": "aggregate",
+      "input_artifacts": [
+       "mutation_matrix"
+      ],
+      "operation": "infer",
+      "regulator_types": [],
+      "selection_tags": [],
+      "target_types": [],
+      "unresolved_dimensions": []
+     }
+    },
+    {
+     "assumptions": [
+      "The pathway-level scores will provide sufficient information for meaningful patient subtyping."
+     ],
+     "confidence": 0.8,
+     "evidence": [
+      {
+       "dimension": "artifact_type",
+       "rationale": "Subtyping patients typically results in cluster assignments for each patient.",
+       "source": "inferred",
+       "text_span": "subtype patients",
+       "value": "sample_cluster_assignment"
+      },
+      {
+       "dimension": "granularity",
+       "rationale": "The subtyping process will yield a single set of clusters for the entire patient cohort.",
+       "source": "inferred",
+       "text_span": null,
+       "value": "aggregate"
+      },
+      {
+       "dimension": "operation",
+       "rationale": "The selected artifact ontology uniquely defines the canonical scientific operation.",
+       "source": "inferred",
+       "text_span": null,
+       "value": "analyze"
+      }
+     ],
+     "outcome": {
+      "artifact_type": "sample_cluster_assignment",
+      "display_entities": [],
+      "entity_types": [
+       "sample"
+      ],
+      "granularity": "aggregate",
+      "input_artifacts": [],
+      "operation": "analyze",
+      "regulator_types": [],
+      "selection_tags": [],
+      "target_types": [],
+      "unresolved_dimensions": []
+     }
+    }
+   ],
+   "request_mode": "guidance",
+   "semantic_goal": "Summarize gene-level mutations into pathway-level scores for patient subtyping."
+  }
+ }
+]

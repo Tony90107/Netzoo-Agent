@@ -578,7 +578,7 @@ def test_a_stated_method_signal_reads_as_what_the_user_asked_for():
 
 def _prompt(name: str) -> str:
     import json
-    return json.loads((ROOT / "docs" / "research-log" / "test10-2026-10-03" / "prompts.json").read_text())[name]
+    return json.loads((ROOT / "tests" / "fixtures" / "logs" / "test10-2026-10-03" / "prompts.json").read_text())[name]
 
 
 def test_regulators_stated_in_the_passive_voice_are_not_offered_a_genes_only_network():

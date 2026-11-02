@@ -11,7 +11,7 @@ import pytest
 
 @pytest.fixture
 def evaluator(tmp_path):
-    path = Path(__file__).parents[1] / "docs/research-log/requirement-verdicts-2026-10-10/analyze11.py"
+    path = Path(__file__).parents[1] / "tests/fixtures/logs/requirement-verdicts-2026-10-10/analyze11.py"
     spec = importlib.util.spec_from_file_location("requirement_verdict_evaluation", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -110,7 +110,7 @@ def test_dropping_a_requirement_from_both_code_and_labels_blocks_promotion(evalu
 
 
 def test_replay_keeps_the_reply_when_the_runtime_would_skip_an_invalid_card(monkeypatch):
-    path = Path(__file__).parents[1] / "docs/research-log/requirement-verdicts-2026-10-10/replay_sessions.py"
+    path = Path(__file__).parents[1] / "tests/fixtures/logs/requirement-verdicts-2026-10-10/replay_sessions.py"
     spec = importlib.util.spec_from_file_location("requirement_verdict_replay", path)
     replay = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(replay)

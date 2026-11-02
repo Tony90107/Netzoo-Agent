@@ -116,7 +116,7 @@ def test_original_c40_preparation_reading_does_not_regress_to_an_unnecessary_que
     import json
     from netzoo_agent_core.contracts import TaskDecision
     from netzoo_agent_core.interpretation.core_decision import decide_core
-    source = Path(__file__).parents[1] / "docs/research-log/reading-coverage-2026-10-20"
+    source = Path(__file__).parents[1] / "tests/fixtures/logs/reading-coverage-2026-10-20"
     spec = importlib.util.spec_from_file_location("c40_frozen_replay", source / "replay.py")
     replay = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(replay)
