@@ -97,7 +97,11 @@ def request_input_bindings(
         if path.is_absolute() or path.parent != Path("."):
             directories.add((path if path.is_absolute() else root / path).resolve().parent)
     # A folder-only request is also a valid anchor. Never use output locations.
-    for token in re.findall(r"(?<![\w./~-])([\w./~-]+/)", input_text):
+    # The token must end at its slash: the folder part of a named file
+    # ("/data/" in "/data/counts.tsv") is not a folder the user named
+    # (2026-11-04: an unlabelled "Run PANDA on /data/counts.tsv" searched /data/
+    # and proposed a different file as the expression matrix).
+    for token in re.findall(r"(?<![\w./~-])([\w./~-]+/)(?!\.?[A-Za-z0-9_~-])", input_text):
         candidate = (root / token).resolve()
         if candidate.is_dir() and not candidate.is_symlink():
             directories.add(candidate)

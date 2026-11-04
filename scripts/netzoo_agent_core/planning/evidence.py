@@ -39,6 +39,7 @@ _FILE_INPUT_FIELDS = frozenset(
     {
         "expression_file",
         "design_file",
+        "groups_file",
         "motif_file",
         "ppi_file",
         "mirna_file",
@@ -162,14 +163,40 @@ def _task_directory(task: str) -> Path | None:
     return found[0] if len(found) == 1 else None
 
 
-def _search_root(task: str, selections) -> tuple[Path | None, bool]:
+def _unbound_named(named_paths, bound) -> list[str]:
+    """The files the request names that no role holds.
+
+    A bare name a "same folder" binding resolved is held, and so is a file a content mapping holds by its
+    resolved path.
+    """
+    held = {str(value) for value in bound if value}
+    resolved = {_resolved(value) for value in held}
+    return [path for path in named_paths
+            if path not in held and _resolved(path) not in resolved
+            and not any(value.endswith("/" + path) for value in held)]
+
+
+def _resolved(value: str) -> str:
+    try:
+        return str(_resolve_user_path(value).resolve())
+    except (OSError, RuntimeError, ValueError):
+        return value
+
+
+def _search_root(task: str, selections, pending_named: list[str] | tuple[str, ...] = ()) -> tuple[Path | None, bool]:
     """Where to look for inputs the request did not bind, and whether shipped demo data may be offered (M2).
 
     A folder the user named is searched, and its own files may be offered even when it is a shipped dataset. A
     request that names files or folders that are not there is never answered with other data: nothing is searched
     (a24b P21, P16, P24, P33 were offered toy datasets). Only a request naming none searches `data/`, and leaves
     the shipped demonstration and fixture datasets out unless it asks for a demo (AGENTS.md; a24b: 18 of 24).
+
+    A file the request names without a role (*pending_named*) is the user's input for some role: nothing is
+    searched while it is unbound, so a discovered file can never take its place (2026-11-04: "Run PANDA on
+    /data/counts.tsv" proposed /data/log_expr.tsv as the expression matrix).
     """
+    if pending_named:
+        return None, False
     named = selections.directory or _task_directory(task)
     if named is not None:
         return named, False
@@ -189,7 +216,8 @@ def _not_searched_reason(selections, named_unbound: list[str], field_name: str) 
         return (f"The folder named in your request ({folders}) does not exist, so no other data was used; "
                 f"give the path of {field_name}.")
     if named_unbound:
-        return (f"Your request names {', '.join(named_unbound)}; say which one is {field_name}, or give its path. "
+        which = "whether it is" if len(named_unbound) == 1 else "which one is"
+        return (f"Your request names {', '.join(named_unbound)}; say {which} {field_name}, or give its path. "
                 "No other data was searched.")
     return f"Give the path of {field_name}; your request names its own files, so no other data was searched."
 
@@ -295,10 +323,20 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         | set(confirmed_bindings)
         | set(corrected_bindings)
     )
+    # COBRA's ordered two paths are a fallback applied below, after a content mapping had its say.
+    cobra_expression, cobra_design = _cobra_unlabeled_input_paths(task)
+    pending_named = _unbound_named(selections.named_paths, [
+        *selections.values.values(), *confirmed_bindings.values(), *corrected_bindings.values(),
+        # A role the decision already holds with a path written in this request (the normalization request reads
+        # "the counts in /data/counts.tsv" as its matrix) is bound; a value not in the request's words is not.
+        *(value for name in input_fields if (value := getattr(decision, name, None)) and str(value) in task),
+    ])
     # Only inspect a directory explicitly named by the user. Router-proposed paths
     # are untrusted and must not steer content discovery into an unrelated folder.
-    search_root, demo_data = _search_root(task, selections)
-    content_bindings = {} if search_root is None else infer_input_roles(
+    search_root, demo_data = _search_root(task, selections, pending_named)
+    # A file named without a role may still be mapped by its contents, for the user to confirm; with
+    # `search_root` None the mapper chooses only among the named files, which are the user's own.
+    content_bindings = {} if search_root is None and not pending_named else infer_input_roles(
         action,
         task,
         [field_name for field_name in input_fields if field_name not in protected_bindings],
@@ -306,7 +344,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         context.content_mapper,
     )
     content_bindings = {field_name: assignment for field_name, assignment in content_bindings.items()
-                        if _offerable(assignment.path, search_root, demo_data)}
+                        if search_root is None or _offerable(assignment.path, search_root, demo_data)}
     inferred_input_values: set[str] = set()
     explicit_input_values: dict[str, str] = {}
     selected_fields = set(
@@ -319,7 +357,6 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
             flags=re.IGNORECASE,
         )
     )
-    cobra_expression, cobra_design = _cobra_unlabeled_input_paths(task)
     for field_name in input_fields:
         labeled = labelled_values.get(field_name)
         parsed = (
@@ -368,9 +405,10 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     # M2 (a24b P21 "yeast_stress_logc.tsv", P16 "methylation_beta.csv and rnaseq_log.csv", P24): a file the request
     # names that no role hint matched was dropped, and toy data offered in its place. One named file for the one
     # unbound input -- or the two DRAGON layers in the order named -- is the user's; otherwise only the named files are
-    # offered for the unbound inputs. Preflight reports a named file that is not there.
-    bound_paths = {str(getattr(decision, name)) for name in input_fields if getattr(decision, name, None)}
-    named_unbound = [path for path in selections.named_paths if path not in bound_paths]
+    # offered for the unbound inputs and the user says which role each plays (2026-11-04: "Run PANDA on
+    # /data/counts.tsv" leaves three roles open, so it is asked, never guessed from the filename or the folder).
+    # Preflight reports a named file that is not there.
+    named_unbound = _unbound_named(selections.named_paths, [getattr(decision, name) for name in input_fields])
     unbound_fields = [name for name in input_fields if not getattr(decision, name, None)]
     if named_unbound and len(named_unbound) == len(unbound_fields) and (
             len(unbound_fields) == 1 or set(unbound_fields) <= {"omics_layer_1", "omics_layer_2"}):
@@ -409,7 +447,9 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         autonomous_bundle_ids[field_name] = (
             f"directory:{_resolve_user_path(value).parent.resolve()}"
         )
-    if profile_model.preferences.get("reuse_last_inputs") is True:
+    # A named file still unbound is asked for by role (see `_not_searched_reason`); neither a past run's inputs
+    # nor a demo bundle may fill the roles it could be (2026-11-04).
+    if profile_model.preferences.get("reuse_last_inputs") is True and not named_unbound:
         reused = reusable_episode_inputs(action, episode_models, context.policy)
         if reused and all(_offerable(value, search_root, demo_data) for value in reused[0].values()):
             reused_values, reason = reused
@@ -432,6 +472,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         and not autonomous_values
         and not inferred_input_values
         and not protected_bindings
+        and not named_unbound
     ):
         bundle = discover_demo_bundle(action)
         if bundle:

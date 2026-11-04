@@ -91,6 +91,7 @@ SHORT_INPUT_LABELS: dict[str, str] = {
     "ppi_file": "PPI network",
     "mirna_file": "miRNA list",
     "design_file": "covariate design matrix",
+    "groups_file": "sample groups file",
     "network_file": "TF-gene (bipartite) network",
     "omics_layer_1": "omics layer 1",
     "omics_layer_2": "omics layer 2",

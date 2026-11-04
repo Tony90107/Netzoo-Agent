@@ -77,8 +77,12 @@ _ROLE_GUIDANCE = {
 }
 
 
-def _path_candidates(task: str, nearby: Path) -> list[Path]:
-    """Collect user-named files and nearby table files without broad filesystem reads."""
+def _path_candidates(task: str, nearby: Path | None) -> list[Path]:
+    """Collect user-named files and nearby table files without broad filesystem reads.
+
+    With no *nearby* folder only the files the request names are candidates: a file named without a role is
+    mapped by its own contents, never set aside for a neighbour in its folder (2026-11-04).
+    """
     paths: dict[Path, None] = {}
     directories: set[Path] = set()
     for match in _PATH_RE.finditer(task):
@@ -86,6 +90,8 @@ def _path_candidates(task: str, nearby: Path) -> list[Path]:
         if candidate.is_file() and not candidate.is_symlink():
             paths[candidate] = None
             directories.add(candidate.parent)
+    if nearby is None:
+        return list(paths)[:_MAX_CANDIDATES]
     anchor = nearby.expanduser().resolve()
     if anchor.is_file():
         anchor = anchor.parent
@@ -199,10 +205,13 @@ def infer_input_roles(
     action: str,
     task: str,
     fields: list[str],
-    nearby: Path,
+    nearby: Path | None,
     mapper: Any | None = None,
 ) -> dict[str, InputRoleAssignment]:
-    """Ask the configured LLM for bounded content mappings, or decline safely."""
+    """Ask the configured LLM for bounded content mappings, or decline safely.
+
+    *nearby* None limits the candidates to the files the request names (see `_path_candidates`).
+    """
     # Enforce priority here as well as in callers: an advisory mapper cannot
     # reassign a role already attached to a file in the user's request.
     from ..interpretation.input_bindings import request_input_bindings

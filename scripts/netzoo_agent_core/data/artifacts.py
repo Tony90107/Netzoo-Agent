@@ -20,6 +20,7 @@ from .lioness_dragon import validate_lioness_dragon_output
 from .giraffe import giraffe_output_paths, load_giraffe_inputs, validate_giraffe_output
 from .bonobo import load_bonobo_inputs, validate_bonobo_output
 from .otter import load_otter_inputs, validate_otter_output
+from .normalization import normalization_record_path
 
 __all__ = [
     "ARTIFACT_WRITE_ACTIONS",
@@ -31,6 +32,7 @@ ARTIFACT_WRITE_ACTIONS = frozenset(
     {
         "format_expression",
         "convert_expression",
+        "normalize_expression",
         "run_panda",
         "run_puma",
         "run_lioness_panda",
@@ -521,6 +523,13 @@ def validate_output_artifacts(
                 metrics["expression_rows"] = _validate_expression(output, errors)
             elif action == "convert_expression":
                 metrics["coexpression_genes"] = _validate_coexpression(output, errors)
+            elif action == "normalize_expression":
+                metrics["expression_rows"] = _validate_expression(output, errors)
+                manifest = normalization_record_path(output)
+                if manifest.is_file():
+                    artifacts.append(str(manifest))
+                else:
+                    errors.append(f"normalization record is missing: {manifest}")
             else:
                 metrics["aggregate_rows"] = _validate_numeric_network(
                     output, "aggregate network output", errors

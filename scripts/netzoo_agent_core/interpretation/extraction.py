@@ -28,7 +28,7 @@ INPUT_LABELS = {
     "lioness_output": _ui_text("sample-specific LIONESS output"),
     "output_dir": _ui_text("CONDOR output directory"),
 }
-INPUT_LABELS.update({"mutation_file": _ui_text("somatic mutation matrix"), "exon_size_file": _ui_text("gene/exon-size CSV"), "cancer_gene_file": _ui_text("cancer-gene list"), "pathway_file": _ui_text("GMT pathway file")})
+INPUT_LABELS.update({"groups_file": _ui_text("sample groups file"), "mutation_file": _ui_text("somatic mutation matrix"), "exon_size_file": _ui_text("gene/exon-size CSV"), "cancer_gene_file": _ui_text("cancer-gene list"), "pathway_file": _ui_text("GMT pathway file")})
 
 _PATHLIKE_SUFFIXES = frozenset({".tsv", ".tab", ".txt", ".csv", ".gmt", ".npy"})
 def _looks_like_path(value: str) -> bool:
@@ -102,7 +102,7 @@ def _task_path(task: str, field_name: str) -> str | None:
             "輸出",
         ),
     }
-    aliases_by_field.update({"mutation_file": ("mutation_file", "mutation", "mutations", "somatic mutation", "突變矩陣"), "exon_size_file": ("exon_size_file", "exon size", "gene length", "esize", "外顯子長度"), "cancer_gene_file": ("cancer_gene_file", "cancer genes", "cancer-gene list", "cangenes", "癌症基因"), "pathway_file": ("pathway_file", "pathway", "GMT", "gene set", "路徑")})
+    aliases_by_field.update({"groups_file": ("groups_file", "groups file", "group file", "sample groups", "groups", "分組檔", "分組"), "mutation_file": ("mutation_file", "mutation", "mutations", "somatic mutation", "突變矩陣"), "exon_size_file": ("exon_size_file", "exon size", "gene length", "esize", "外顯子長度"), "cancer_gene_file": ("cancer_gene_file", "cancer genes", "cancer-gene list", "cangenes", "癌症基因"), "pathway_file": ("pathway_file", "pathway", "GMT", "gene set", "路徑")})
     if explicit := _extract_explicit_role_path(task, field_name):
         return explicit
     aliases = aliases_by_field.get(field_name, (field_name,))

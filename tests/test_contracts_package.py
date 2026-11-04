@@ -208,12 +208,19 @@ SCHEMA_DIGESTS = {
     # the two asked, still open). Verified the digest returns to the previous pin when only these two are removed.
     # 2026-10-27 (jev-overlap ROUND-2): code-owned CheckedRequirement.doubted_forms -- result forms Jev did not confirm,
     # whose form reason the reply leaves out; no model schema carries it. Reply only, calls unchanged.
-    "TaskDecision": "a960e7e0017cb5bec5a0251d6c66d46acced82bbafc50213ef9ddc092b2ec6f1",
-    "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
+    # 2026-11-04 (SNAIL normalization): ActionName gains normalize_expression (so RouterDecision and
+    # CapabilityMatch change too); TaskDecision gains optional groups_file and snail_aggregation, omitted from
+    # dumps while unset, so older sessions load and dump unchanged.
+    # Same day: optional code-owned TaskDecision.then_action (the workflow a "normalize, then run X" request
+    # names, planned on a later turn); omitted from dumps while unset.
+    # Same day: optional code-owned TaskDecision.normalization_method (snail, or the R arms rle / tmm /
+    # quantile); omitted from dumps while unset.
+    "TaskDecision": "73ad2c525f969d798041f49692c8d52072aaf234529d2eb433bf77c10ab3f8b9",
+    "RouterDecision": "13c1ebd8e1885e01be7130848365eb48e9baa36d7a584a745c66a0be02e70aec",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
     "OutcomeHypothesis": "90cdc308da7a0c3fb3099f7cdd31e8823668e1beb22925d1137df156272dbf9f",
-    "CapabilityMatch": "f0ca634c91295fe69ee5200701a7b8c86490714a7b0f458f43870e6f8d51dc69",
+    "CapabilityMatch": "125ee25fdab1dfc33be4a9c0ee80b6c2f8ffb0024fb980c5de59048500fd989b",
     "WorkflowPlan": "60754a779e0ad46bd409619063be6793cb9c68268fb23fe5bc61d2469777113c",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",

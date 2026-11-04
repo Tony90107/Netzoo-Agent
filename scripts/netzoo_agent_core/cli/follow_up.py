@@ -25,6 +25,7 @@ from ..contracts import (
     _ui_text,
 )
 from ..contracts.interaction import WorkflowContinuation
+from ..data.normalization import METHOD_LABELS
 from ..presentation import _ui_text_with_user_data, user_data_token
 from ..interpretation import INPUT_LABELS
 from ..interpretation.input_bindings import request_input_bindings
@@ -314,11 +315,15 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         return NextTurnPrompt(kind="failed", question=question)
 
     if any(item.status == "dry_run" for item in results):
+        then = (
+            f" After it runs, {_workflow_name(decision.then_action)} is planned next with the normalized matrix."
+            if decision.action == "normalize_expression" and decision.then_action else ""
+        )
         return NextTurnPrompt(
             kind="dry_run",
             question=_ui_text(
                 f"Your {plan.workflow} plan is ready. Enter /execute to execute this "
-                "validated workflow.\n"
+                f"validated workflow.{then}\n"
                 "Or describe the input changes you want."
             ),
         )
@@ -330,6 +335,23 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
                 "Would you like to ask about these sources or connect them to a "
                 "NetZoo workflow?"
             ),
+        )
+
+    if (results and result_evaluation.get("status") == "completed" and decision.action == "normalize_expression"
+            and decision.then_action and decision.output_file):
+        # "Normalize, then run X": the normalization ran; X is offered with its output as X's expression matrix.
+        workflow = _workflow_name(decision.then_action)
+        return NextTurnPrompt(
+            kind="recommended_workflow",
+            question=_ui_text_with_user_data(
+                f"{METHOD_LABELS[decision.normalization_method or 'snail']} normalization is done. "
+                f"Reply 'continue' to plan {workflow} with {user_data_token(0)} as its "
+                "expression matrix, ask a follow-up question, or describe another NetZoo goal.",
+                [decision.output_file],
+            ),
+            continuation_action=decision.then_action,
+            expected_field="expression_file",
+            carried_inputs={"expression_file": decision.output_file},
         )
 
     if results and result_evaluation.get("status") == "completed":
@@ -538,6 +560,14 @@ def build_workflow_continuation(
         }
         parameters.update(extract_explicit_request_parameters(prior))
     parameters.update(extract_explicit_workflow_controls(prior, action))
+    if prompt.carried_inputs and action == prompt.continuation_action:
+        # The earlier step's output is this workflow's input; that step's own output path and settings are not
+        # this workflow's (PANDA must not write over the normalized matrix it reads).
+        parameters = {
+            field: value for field, value in parameters.items()
+            if field not in OUTPUT_ROLE_FIELDS and field not in {"groups_file", "snail_aggregation"}
+        }
+        parameters.update(prompt.carried_inputs)
     return WorkflowContinuation(
         action=action, task=routing_window(task), parameters=parameters,
     )

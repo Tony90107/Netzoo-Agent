@@ -24,6 +24,7 @@ ActionName = Literal[
     "inspect_bonobo_inputs",
     "format_expression",
     "convert_expression",
+    "normalize_expression",
     "run_panda",
     "run_puma",
     "run_lioness_panda",
@@ -1420,6 +1421,18 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "CONVERT-EXPRESSION",
         required_inputs=("expression_file", "output_file"),
         executor_fields=("expression_file", "output_file"),
+        local=True,
+    ),
+    # Between-sample normalization -- SNAIL (PySNAIL), or RLE (DESeq2), TMM (edgeR), quantile
+    # (preprocessCore): a preparation step the user asks for by name, never a menu workflow
+    # (it produces no network).
+    "normalize_expression": ActionDefinition(
+        "normalize_expression",
+        "NORMALIZE-EXPRESSION",
+        required_inputs=("expression_file", "output_file"),
+        optional_inputs=("groups_file", "snail_aggregation", "normalization_method"),
+        executor_fields=("expression_file", "output_file", "groups_file", "snail_aggregation", "normalization_method"),
+        executor_defaults={"groups_file": "", "snail_aggregation": "median", "normalization_method": "snail"},
         local=True,
     ),
     "run_panda": ActionDefinition(

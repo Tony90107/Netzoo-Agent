@@ -20,6 +20,15 @@ RUN micromamba env create -y -f /tmp/environment.yml \
 RUN micromamba run -n netzoo python -c \
     'from langchain_mcp_adapters.client import MultiServerMCPClient; from mcp.shared.context import RequestContext; print("MCP adapter compatibility OK")'
 
+# RLE (DESeq2), TMM (edgeR) and quantile (preprocessCore) normalization: the PySNAIL
+# manuscript's comparison arms, in an R environment of its own so the Bioconductor
+# solve never moves the Python environment's packages. Versions as tested 2026-11-04.
+RUN micromamba create -y -n netzoo-r -c conda-forge -c bioconda \
+      r-base=4.5.3 bioconductor-deseq2=1.50.2 bioconductor-edger=4.10.7 \
+      bioconductor-preprocesscore=1.72.0 r-jsonlite=2.0.0 \
+    && micromamba clean -a -y \
+    && /opt/conda/envs/netzoo-r/bin/Rscript -e 'suppressPackageStartupMessages({library(DESeq2); library(edgeR); library(preprocessCore); library(jsonlite)}); cat("R normalization packages OK\n")'
+
 USER root
 ARG NETZOOPY_REF=60bcaf5ac69ac8f002db5fc6b1b10cbc101ee822
 ENV NETZOOPY_REF=${NETZOOPY_REF}
@@ -45,6 +54,22 @@ RUN sed -i \
 RUN micromamba run -n netzoo python -m pip install --no-deps -e /opt/netZooPy \
     && micromamba run -n netzoo netzoopy --help >/dev/null \
     && micromamba run -n netzoo python -c 'import inspect, netZooPy; from netZooPy.giraffe import Giraffe; from netZooPy.bonobo import Bonobo; assert netZooPy.__version__ == "0.11.0"; print(inspect.signature(Giraffe)); print(inspect.signature(Bonobo)); print(inspect.signature(Bonobo.run_bonobo))'
+# PySNAIL (Kuijjer lab) for SNAIL smooth-quantile normalization. PyPI's
+# "pysnail" is an unrelated package, so install the pinned GitHub source.
+# Upstream reads the groups file with read_csv(squeeze=True), removed in
+# pandas 2; patch only that call, and fail the build if the patch no longer applies.
+ARG PYSNAIL_REF=55bfe71002c36298a732752cb6ca8d99b16aa1d4
+ENV PYSNAIL_REF=${PYSNAIL_REF}
+RUN mkdir -p /opt/PySNAIL \
+    && micromamba run -n netzoo curl -fsSL -o /tmp/pysnail.tar.gz "https://codeload.github.com/kuijjerlab/PySnail/tar.gz/${PYSNAIL_REF}" \
+    && tar xzf /tmp/pysnail.tar.gz --strip-components=1 -C /opt/PySNAIL \
+         "PySNAIL-${PYSNAIL_REF}/setup.py" "PySNAIL-${PYSNAIL_REF}/LICENSE" "PySNAIL-${PYSNAIL_REF}/pysnail" \
+    && rm /tmp/pysnail.tar.gz \
+    && grep -q "squeeze=True" /opt/PySNAIL/pysnail/utils.py \
+    && sed -i -z 's/            header=None,\n            squeeze=True\n        )/            header=None,\n        ).squeeze("columns")/' /opt/PySNAIL/pysnail/utils.py \
+    && ! grep -q "squeeze=True" /opt/PySNAIL/pysnail/utils.py \
+    && micromamba run -n netzoo python -m pip install --no-deps /opt/PySNAIL \
+    && micromamba run -n netzoo python -c 'from pysnail import Dataset, qsmooth; print("PySNAIL import OK")'
 COPY docker/run-panda /usr/local/bin/run-panda
 COPY docker/run-panda-precomputed /usr/local/bin/run-panda-precomputed
 COPY docker/run-puma /usr/local/bin/run-puma
@@ -53,12 +78,14 @@ COPY docker/run-lioness /usr/local/bin/run-lioness
 COPY docker/run-condor /usr/local/bin/run-condor
 COPY docker/run-cobra /usr/local/bin/run-cobra
 COPY docker/run-sambar /usr/local/bin/run-sambar
+COPY docker/run-pysnail /usr/local/bin/run-pysnail
+COPY docker/run-normalize-r /usr/local/bin/run-normalize-r
 COPY scripts/netzoo_table_io.py /opt/netzoo-harness/netzoo_table_io.py
 COPY scripts /opt/netzoo-app/scripts
 COPY docker/add-puma-lioness-header /usr/local/bin/add-puma-lioness-header
 COPY docker/web-url /usr/local/bin/web-url
 COPY --from=web-ui /ui/dist /opt/netzoo-web
-RUN chmod +x /usr/local/bin/run-panda /usr/local/bin/run-panda-precomputed /usr/local/bin/run-puma /usr/local/bin/run-puma-precomputed /usr/local/bin/run-lioness /usr/local/bin/run-condor /usr/local/bin/run-cobra /usr/local/bin/run-sambar /usr/local/bin/add-puma-lioness-header /usr/local/bin/web-url \
+RUN chmod +x /usr/local/bin/run-panda /usr/local/bin/run-panda-precomputed /usr/local/bin/run-puma /usr/local/bin/run-puma-precomputed /usr/local/bin/run-lioness /usr/local/bin/run-condor /usr/local/bin/run-cobra /usr/local/bin/run-sambar /usr/local/bin/run-pysnail /usr/local/bin/run-normalize-r /usr/local/bin/add-puma-lioness-header /usr/local/bin/web-url \
     && mkdir -p /work /data /outputs \
     && chown -R $MAMBA_USER:$MAMBA_USER /work /data /outputs /opt/netZooPy /opt/netzoo-harness
 

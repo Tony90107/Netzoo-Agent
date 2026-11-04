@@ -16,6 +16,7 @@ from ..contracts import (
 )
 from ..outcomes import effective_results, terminal_failed
 from ..data.paths import _resolve_user_path
+from workflow_registry import workflow_name
 
 def render_plan_evaluation(evaluation: PlanEvaluationResult) -> str:
     """Render the typed rubric as Markdown for audit; code never parses this table."""
@@ -231,8 +232,17 @@ def render_compact_execution_response(
                 "demo_bundle": "demo bundle",
                 "defaulted": "default",
             }.get(item.status, item.status)
+            unused = (plan.workflow == "NORMALIZE-EXPRESSION" and item.field == "groups_file"
+                      and (plan.decision or {}).get("normalization_method") not in (None, "snail"))
             lines.append(
                 f"- {_compact_field_label(item.field)}: {item.value} [{source}]"
+                + (" -- not used: only SNAIL normalizes within groups" if unused else "")
+            )
+        if (plan.workflow == "NORMALIZE-EXPRESSION" and (plan.decision or {}).get("normalization_method") in (None, "snail")
+                and not any(item.field == "groups_file" for item in input_evidence)):
+            lines.append(
+                "- Groups file: not given -- all samples form one group, so SNAIL gives a quantile normalization; "
+                "give a sample-to-group file (tissue or condition) for group-aware normalization."
             )
 
     inspection = next(
@@ -296,7 +306,13 @@ def render_compact_execution_response(
                 suffix = f" ({path.stat().st_size} bytes)"
             elif not has_dry_run and not path.exists():
                 suffix = " (not created)"
-            lines.append(f"- {_compact_field_label(item.field)}: {item.value}{suffix}")
+            label = ("Normalized expression matrix" if plan.workflow == "NORMALIZE-EXPRESSION" and item.field == "output_file"
+                     else _compact_field_label(item.field))
+            lines.append(f"- {label}: {item.value}{suffix}")
+    if plan.workflow == "NORMALIZE-EXPRESSION" and (then := (plan.decision or {}).get("then_action")):
+        lines.extend(["", "Then", f"- {workflow_name(then)} on the normalized matrix: "
+                      + ("planned after this step runs, once you confirm it; its other inputs are asked then."
+                         if has_dry_run else "reply 'continue' to plan it; its other inputs are asked then.")])
 
     if has_failure:
         log_files = [item.log_file for item in results if item.log_file]

@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 _RETRIEVAL_ACTIONS = frozenset({"web_search", "query_context7"})
-_TRANSFORM_ACTIONS = frozenset({"format_expression"})
+_TRANSFORM_ACTIONS = frozenset({"format_expression", "normalize_expression"})
 
 
 def action_operation_kind(action: str) -> str | None:

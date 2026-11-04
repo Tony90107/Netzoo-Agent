@@ -8,6 +8,7 @@ from workflow_registry import CODE_VALIDATION_STEPS, workflow_name
 
 from .context import _PlanningContext
 from ..contracts import InputBundleOption, InputEvidence, WorkflowPlan, WorkflowStep
+from ..data.normalization import METHOD_LABELS
 
 __all__: list[str] = []
 
@@ -243,7 +244,11 @@ def _assemble_workflow_plan(
     steps.append(
         WorkflowStep(
             action=execution_action,
-            purpose="Execute the requested NetZoo workflow.",
+            purpose=(
+                f"Normalize the expression matrix with {METHOD_LABELS[decision.normalization_method or 'snail']}."
+                if execution_action == "normalize_expression"
+                else "Execute the requested NetZoo workflow."
+            ),
         )
     )
     if workflow_handoff is not None and workflow_handoff.status == "validated":

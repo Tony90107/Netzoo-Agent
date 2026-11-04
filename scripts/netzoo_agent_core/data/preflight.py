@@ -20,6 +20,7 @@ from .gene_validation import (
 )
 from .coexpression import read_coexpression_matrix
 from .demo_provenance import is_verified_bundled_demo
+from .normalization import normalization_input_report
 from .inspection import LIONESS_MIN_SAMPLES, inspect_condor_inputs_impl
 from .otter import inspect_otter_inputs_impl, load_otter_inputs
 from .panda_preflight import inspect_panda_inputs_with_provenance
@@ -392,6 +393,15 @@ def _validate_workflow_inputs_impl(action: str, decision: Any) -> list[str]:
             execute=False,
         )
         errors.extend(_report_errors("Expression formatting", report, "- error:" not in report))
+    elif action == "normalize_expression":
+        report, ok, _ = normalization_input_report(
+            expression,
+            _value(decision, "output_file"),
+            _value(decision, "groups_file"),
+            _value(decision, "snail_aggregation") or "median",
+            _value(decision, "normalization_method") or "snail",
+        )
+        errors.extend(_report_errors("Normalization inputs", report, ok))
     elif action == "convert_expression":
         report = convert_expression_to_coexpression_impl(
             expression,

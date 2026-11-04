@@ -90,5 +90,8 @@ class NextTurnPrompt(BaseModel):
     alternative_granularity: Granularity | None = None
     held_run: bool = False
     """M2: the last turn held a run the user asked for; a reply that changes it is that run, checked again."""
+    carried_inputs: dict[str, str] = Field(default_factory=dict, max_length=4)
+    """Input files an earlier step of the same request produced for `continuation_action` (the normalized matrix of
+    "normalize, then run PANDA"); they replace that role's value when the continuation is accepted."""
 
 __all__ = ['AgentState', 'AgentTurnInterrupted', 'ClarificationInputError', 'LLMUsage', 'NextTurnPrompt']

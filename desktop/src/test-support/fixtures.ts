@@ -50,6 +50,7 @@ export function makeNextTurnPrompt(
     alternative_action: null,
     alternative_granularity: null,
     held_run: false,
+    carried_inputs: {},
     ...overrides,
   };
 }

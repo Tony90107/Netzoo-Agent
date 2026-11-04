@@ -52,6 +52,7 @@ from .data.otter import inspect_otter_inputs_impl, load_otter_inputs, write_otte
 from .data.panda_preflight import inspect_panda_inputs_with_provenance
 from .execution_bonobo import inspect_bonobo_inputs, run_bonobo
 from .execution_lioness_dragon import run_lioness_dragon
+from .execution_normalization import normalize_expression
 from .string_download import download_string
 
 from .data.tables import (
@@ -984,6 +985,7 @@ LOCAL_TOOL_EXECUTORS = {
     "run_condor": run_condor,
     "inspect_cobra_inputs": inspect_cobra_inputs,
     "run_cobra": run_cobra,
+    "normalize_expression": normalize_expression,
     "inspect_sambar_inputs": inspect_sambar_inputs,
     "run_sambar": run_sambar,
     "inspect_dragon_inputs": inspect_dragon_inputs,

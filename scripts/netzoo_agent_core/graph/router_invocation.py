@@ -74,6 +74,7 @@ from .input_inspection import invoke_input_inspection
 from ..routing.reading_selection import drop_input_only_readings, drop_unwitnessed_readings, matchable_readings
 from ..routing.scale_relaxation import drop_unnamed_scale, note_unstated_scale, relax_unstated_scale
 from ..string_download import continued_string_download_decision, string_download_decision
+from ..normalization_request import normalization_decision
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
 # Re-exported for callers and tests that imported them from here before the
@@ -180,7 +181,7 @@ def invoke_router(
         result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
     else:
         proposal, check_status = None, "no_model"
-        if result.decision.action != "download_string":
+        if result.decision.action not in ("download_string", "normalize_expression"):  # preparation steps: no result to check
             # Log 387: the safety check is asked before the advisory reads; verdict layer step 1: a run too.
             proposal, usage, warnings, check_status = request_capability_check(
                 context, state, user_task, result.usage, result.budget_warnings)
@@ -367,7 +368,7 @@ def _with_run_check(context, state, user_task: str, result: _RouterInvocation, p
     methylation subtypes -> SAMBAR, gene embeddings -> PANDA); the check found all 8 a gap and, with the second
     opinion, judged none of 9 correct runs one (r17 PQ3-2 had been, on the first reading alone).
     """
-    if result.decision.action in ("no_tool", "download_string"):
+    if result.decision.action in ("no_tool", "download_string", "normalize_expression"):
         return result
     if proposal is None:
         _record_shadow(context, state, result.decision, None, check_status)
@@ -808,6 +809,9 @@ def _route_request(
             reason_code="string_acquisition",
         )
 
+    if normalization := normalization_decision(user_task, interpretation):
+        return _RouterInvocation(decision=normalization, routing_state=outcome_routing_state(normalization, interpretation.semantic_goal, interpretation.request_mode),
+                                 usage=usage, budget_warnings=budget_warnings, reason_code="snail_normalization")
     _trace(
         "reasoning",
         "Checking registered workflow capabilities",

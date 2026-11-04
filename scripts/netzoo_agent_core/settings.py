@@ -50,6 +50,7 @@ DEFAULT_EPISODE_MAX_BYTES = 10 * 1024 * 1024
 INPUT_ROLE_FIELDS = {
     "expression_file",
     "design_file",
+    "groups_file",
     "motif_file",
     "ppi_file",
     "mirna_file",
@@ -69,7 +70,7 @@ PARAMETER_FIELDS = {
     "gmt_msigdb", "subset_cancer_genes", "distance", "linkage", "cluster",
     "output_format", "bonobo_output_format", "sample_names", "sparsify",
     "bonobo_confidence", "save_pvals", "keep_in_memory", "delta", "log_transformed",
-    "centered", "lambda1", "lambda2",
+    "centered", "lambda1", "lambda2", "snail_aggregation", "normalization_method",
     "computing", "precision", "lam", "gamma", "iterations", "eta", "bexp",
 }
 

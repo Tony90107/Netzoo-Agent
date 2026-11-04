@@ -25,7 +25,7 @@ def _episode_intent_type(decision: TaskDecision, task: str) -> str:
         return "run_analysis"
     if decision.action.startswith("inspect_"):
         return "inspect_input"
-    if decision.action in {"format_expression", "convert_expression"}:
+    if decision.action in {"format_expression", "convert_expression", "normalize_expression"}:
         return "prepare_input"
     return "unknown"
 
