@@ -13,6 +13,7 @@ from .capability_check import CapabilityCheck, RunVerdict
 from .core_decision import CoreDecision
 from .fact_check import FactCheck
 from .data_plan import DataPlan
+from .normalization import NormalizationChoice
 from .outcomes import (
     RUNNABLE_CAPABILITY_COUNT,
     AddressedConcern,
@@ -210,6 +211,9 @@ class TaskDecision(BaseModel):
     normalization_method: Literal["snail", "rle", "tmm", "quantile", "fpkm"] | None = Field(
         default=None, exclude_if=lambda value: value is None,
     )
+    # How that method was chosen (named, read from the request's stated needs, or the default); with several
+    # candidates the method stays unset and is asked. Code-owned; omitted while unset.
+    normalization_choice: NormalizationChoice | None = Field(default=None, exclude_if=lambda value: value is None)
     motif_file: str | None = None
     ppi_file: str | None = None
     mirna_file: str | None = None

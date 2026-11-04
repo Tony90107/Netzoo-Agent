@@ -30,7 +30,17 @@ from netzoo_agent_core.interpretation.request_parameters import (  # noqa: E402
 from netzoo_agent_core.cli.follow_up import build_workflow_continuation  # noqa: E402
 from netzoo_agent_core.contracts.interaction import ContextualReplyResolution, FollowUpContext  # noqa: E402
 from netzoo_agent_core.contracts.state import NextTurnPrompt  # noqa: E402
-from netzoo_agent_core.normalization_request import normalization_decision  # noqa: E402
+from netzoo_agent_core.cli.clarification import _normalization_continuation  # noqa: E402
+from netzoo_agent_core.contracts import ClarificationInputError  # noqa: E402
+from netzoo_agent_core.contracts.normalization import NeedReading  # noqa: E402
+from netzoo_agent_core.normalization_request import (  # noqa: E402
+    decision_from_needs,
+    method_choice_evidence,
+    methods_for_needs,
+    needs_normalization_reading,
+    normalization_decision,
+    verified_needs,
+)
 from netzoo_agent_core.routing.authorization import action_operation_kind  # noqa: E402
 from netzoo_agent_core.routing.capability import validate_task_text  # noqa: E402
 from workflow_registry import (  # noqa: E402
@@ -358,6 +368,79 @@ class NormalizationRequestTests(unittest.TestCase):
         self.assertEqual(continuation.parameters.get("expression_file"), "/data/out/snail.tsv")
         for field in ("output_file", "groups_file", "snail_aggregation"):
             self.assertNotIn(field, continuation.parameters)
+
+
+class NeedBasedChoiceTests(unittest.TestCase):
+    """The method chosen from what the request says it needs corrected (no LLM: readings are given)."""
+
+    TASK = ("My samples were sequenced at very different depths; make /data/counts.tsv comparable across "
+            "samples and save it to /data/out/n.tsv.")
+
+    def need(self, need: str, quote: str) -> NeedReading:
+        return NeedReading(need=need, text_span=quote)
+
+    def test_only_quoted_needs_are_kept(self):
+        kept = verified_needs(self.TASK, [
+            self.need("sequencing_depth", "sequenced at very different depths"),
+            self.need("gene_length", "longer genes get more reads"),  # not in the request
+        ])
+        self.assertEqual([reading.need for reading in kept], ["sequencing_depth"])
+
+    def test_needs_map_to_methods(self):
+        depth, length = self.need("sequencing_depth", "d"), self.need("gene_length", "g")
+        groups, same = self.need("group_differences", "t"), self.need("same_distribution", "s")
+        self.assertEqual(methods_for_needs([depth]), ["rle", "tmm"])
+        self.assertEqual(methods_for_needs([length]), ["fpkm"])
+        self.assertEqual(methods_for_needs([depth, length]), ["fpkm"])  # FPKM also divides by library size
+        self.assertEqual(methods_for_needs([groups]), ["snail"])
+        self.assertEqual(methods_for_needs([same]), ["quantile"])
+        self.assertEqual(methods_for_needs([groups, same]), ["snail", "quantile"])
+
+    def test_one_fitting_method_is_used_with_its_reason(self):
+        task = "I need values that account for gene length; lengths in /data/len.tsv for /data/counts.tsv. Save to /data/out/n.tsv."
+        decision = decision_from_needs(task, [self.need("gene_length", "account for gene length")])
+        self.assertEqual(decision.normalization_method, "fpkm")
+        self.assertEqual(decision.normalization_choice.source, "need")
+        self.assertEqual((decision.expression_file, decision.gene_lengths_file), ("/data/counts.tsv", "/data/len.tsv"))
+
+    def test_several_fitting_methods_are_asked(self):
+        decision = decision_from_needs(self.TASK, [self.need("sequencing_depth", "sequenced at very different depths")])
+        self.assertIsNone(decision.normalization_method)
+        self.assertEqual(decision.normalization_choice.candidates, ["rle", "tmm"])
+        [item] = method_choice_evidence(decision)
+        self.assertEqual((item.field, item.status, item.candidates), ("normalization_method", "missing", ["rle", "tmm"]))
+        self.assertIn('"sequenced at very different depths"', item.reason)
+
+    def test_no_stated_need_keeps_the_default_said_as_default(self):
+        decision = decision_from_needs("Normalize /data/counts.tsv and save it to /data/out/n.tsv.", [])
+        self.assertEqual((decision.normalization_method, decision.normalization_choice.source), ("snail", "default"))
+        self.assertEqual(method_choice_evidence(decision), [])
+
+    def test_named_method_needs_no_reading(self):
+        decision = normalization_decision("Normalize /data/counts.tsv with TMM and save it to /data/out/t.tsv.")
+        self.assertEqual((decision.normalization_method, decision.normalization_choice.source), ("tmm", "named"))
+
+    def test_which_unnamed_requests_are_read_for_needs(self):
+        self.assertTrue(needs_normalization_reading(self.TASK))
+        for task in (
+            "Should I correct /data/counts.tsv for sequencing depth?",
+            "Run PANDA on /data/counts.tsv with motif /data/m.tsv and ppi /data/p.tsv.",
+            "Make my data comparable across samples.",  # no matrix named
+        ):
+            self.assertFalse(needs_normalization_reading(task), task)
+
+    def test_the_chosen_method_comes_back_with_every_file(self):
+        task = ("Make /data/counts.tsv comparable across sequencing depths, save it to /data/out/n.tsv, "
+                "and then run PANDA on it.")
+        decision = decision_from_needs(task, [self.need("sequencing_depth", "comparable across sequencing depths")])
+        follow = _normalization_continuation(decision, {"normalization_method": "tmm"})
+        again = normalization_decision(follow)
+        self.assertEqual(again.normalization_method, "tmm")
+        self.assertEqual(again.normalization_choice.source, "answered")  # said as the user's choice, not as named
+        self.assertEqual((again.expression_file, again.output_file), ("/data/counts.tsv", "/data/out/n.tsv"))
+        self.assertEqual(again.then_action, "run_panda")
+        with self.assertRaises(ClarificationInputError):
+            _normalization_continuation(decision, {"normalization_method": "quantile"})  # not among the candidates
 
 
 @unittest.skipUnless(HAS_R_ENV, "the R environment exists only in the Docker runtime")

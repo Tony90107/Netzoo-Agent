@@ -16,7 +16,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from .contracts import RequestedOutcome, TaskDecision
+from .contracts import InputEvidence, RequestedOutcome, TaskDecision
+from .contracts.normalization import NeedReading, NormalizationChoice
 from .data.normalization import METHOD_LABELS
 from .interpretation.extraction import _task_path
 from workflow_registry import ACTION_DEFINITIONS
@@ -29,7 +30,11 @@ from .settings import INPUT_ROLE_FIELDS
 if TYPE_CHECKING:
     from .contracts.outcomes import SemanticInterpretation
 
-__all__ = ["CHAINABLE_ACTIONS", "chained_action", "named_methods", "normalization_decision", "normalization_requested"]
+__all__ = [
+    "CHAINABLE_ACTIONS", "NEED_METHODS", "build_normalization_decision", "chained_action", "decision_from_needs",
+    "method_named", "methods_for_needs", "named_methods", "needs_normalization_reading", "normalization_decision",
+    "normalization_requested", "verified_needs", "METHOD_OPTION_LINES", "method_choice_evidence",
+]
 
 _METHOD_WORDS = {
     "snail": r"(?<![A-Za-z0-9])(?:py)?snail(?![A-Za-z0-9])|qsmooth|smooth[- _]?quantile",
@@ -54,10 +59,12 @@ _NEGATED = re.compile(
 )
 _COMMAND = re.compile(
     r"(?:^|[.;!\n]\s*|\b(?:please|pls|can you|could you)\s+)"
-    r"(?:normali[sz]e|run|apply|use|perform|do|compute|calculate|convert)\b"
+    r"(?:normali[sz]e|run|apply|use|perform|do|compute|calculate|convert|make|correct|adjust|rescale|scale)\b"
     r"|請|幫我|做",
     re.I,
 )
+_SEQUENCE = re.compile(r"\b(?:then|after(?:wards)?|before|first|followed by)\b|之後|然後|再", re.I)
+_TRAILING = ".,;:!?)]}\"'"  # sentence and bracket marks after a path, never part of it
 _PATH_CHUNK = re.compile(r"[^\s\"'`()\[\]{}<>，。；：、「」（）]+")
 
 
@@ -93,10 +100,13 @@ def _names_network_workflow(task: str) -> bool:
     return bool(_named_workflows(task))
 
 
-def chained_action(task: str) -> str | None:
-    """The one workflow a "normalize, then run it" request names, when it reads a normalized expression matrix."""
+def chained_action(task: str, *, normalizing_read: bool = False) -> str | None:
+    """The one workflow a "normalize, then run it" request names, when it reads a normalized expression matrix.
+
+    The act of normalizing is in the words, or (`normalizing_read`) the need reader read the request as one.
+    """
     named = _named_workflows(task)
-    if len(named) != 1 or named[0] not in CHAINABLE_ACTIONS or not _NORMALIZE_ACT.search(task):
+    if len(named) != 1 or named[0] not in CHAINABLE_ACTIONS or not (normalizing_read or _NORMALIZE_ACT.search(task)):
         return None
     return named[0]
 
@@ -129,47 +139,161 @@ def _request_paths(task: str) -> dict[str, str]:
     paths: dict[str, str] = {}
     for field in ("groups_file", "gene_lengths_file", "output_file", "expression_file"):
         if value := _task_path(task, field):
-            paths[field] = value.rstrip(".,;")
+            paths[field] = value.rstrip(_TRAILING)
     if "groups_file" not in paths and (
         found := re.search(r"\b(?:groups?|tissues?|conditions?)\b[^/~\n]{0,40}?\s((?:/|\./|\.\./|~)\S+|\S+\.(?:tsv|txt|csv|tab))", task, re.I)
-    ) and is_path_token(found.group(1).rstrip(".,;")):
-        paths["groups_file"] = found.group(1).rstrip(".,;")
+    ) and is_path_token(found.group(1).rstrip(_TRAILING)):
+        paths["groups_file"] = found.group(1).rstrip(_TRAILING)
     if "gene_lengths_file" not in paths and (
         found := re.search(r"\blengths?\b[^/~\n]{0,40}?\s((?:/|\./|\.\./|~)\S+|\S+\.(?:tsv|txt|csv|tab))", task, re.I)
-    ) and is_path_token(found.group(1).rstrip(".,;")):
-        paths["gene_lengths_file"] = found.group(1).rstrip(".,;")
+    ) and is_path_token(found.group(1).rstrip(_TRAILING)):
+        paths["gene_lengths_file"] = found.group(1).rstrip(_TRAILING)
     if "output_file" not in paths and (
         found := re.search(r"\b(?:write|save|store|output)\b[^/~.]{0,40}?\b(?:to|as|in|at|into)\s+(\S+)", task, re.I)
     ) and is_path_token(found.group(1)):
-        paths["output_file"] = found.group(1).rstrip(".,;")
+        paths["output_file"] = found.group(1).rstrip(_TRAILING)
     if "expression_file" not in paths:
         # Files labelled for the chained workflow's other roles ("motif /data/motif.tsv") are not the matrix.
-        others = {value.rstrip(".,;") for field in INPUT_ROLE_FIELDS - {"expression_file", "groups_file", "gene_lengths_file"}
+        others = {value.rstrip(_TRAILING) for field in INPUT_ROLE_FIELDS - {"expression_file", "groups_file", "gene_lengths_file"}
                   if (value := _task_path(task, field))}
         taken = {*paths.values(), *others}
-        rest = [chunk.rstrip(".,;:!?") for chunk in _PATH_CHUNK.findall(task)]
+        rest = [chunk.rstrip(_TRAILING) for chunk in _PATH_CHUNK.findall(task)]
         rest = list(dict.fromkeys(chunk for chunk in rest if is_path_token(chunk) and chunk not in taken))
         if len(rest) == 1:
             paths["expression_file"] = rest[0]
     return paths
 
 
-def normalization_decision(task: str, interpretation: SemanticInterpretation | None = None) -> TaskDecision | None:
-    if not normalization_requested(task, interpretation):
-        return None
-    method = next(iter(named_methods(task)), "snail")
-    if (explicit := re.search(r"\bnormalization_method\s*=\s*(snail|rle|tmm|quantile)\b", task, re.I)):
-        method = explicit.group(1).lower()
+# What each stated need is corrected by. Sequencing depth fits two methods, so it is asked, never picked.
+NEED_METHODS = {
+    "sequencing_depth": ("rle", "tmm"),
+    "gene_length": ("fpkm",),
+    "group_differences": ("snail",),
+    "same_distribution": ("quantile",),
+}
+
+
+def verified_needs(task: str, readings) -> list[NeedReading]:
+    """The model's need readings whose quote the request contains, one per need."""
+    lowered = task.casefold()
+    kept: dict[str, NeedReading] = {}
+    for reading in readings:
+        quote = reading.text_span.strip().strip("\"'")
+        if len(quote) >= 3 and quote.casefold() in lowered and reading.need not in kept:
+            kept[reading.need] = NeedReading(need=reading.need, text_span=quote)
+    return list(kept.values())
+
+
+def methods_for_needs(needs: list[NeedReading]) -> list[str]:
+    """The methods that correct every stated need; one means it is used, several mean the user chooses."""
+    kinds = {reading.need for reading in needs}
+    if "gene_length" in kinds:
+        # FPKM divides by gene length and by library size, so it also answers a stated depth difference.
+        return ["fpkm"]
+    return list(dict.fromkeys(method for need in NEED_METHODS if need in kinds for method in NEED_METHODS[need]))
+
+
+def method_named(task: str) -> str | None:
+    """The one method the request names, or an explicit normalization_method= assignment."""
+    if explicit := re.search(r"\bnormalization_method\s*=\s*(snail|rle|tmm|quantile|fpkm)\b", task, re.I):
+        return explicit.group(1).lower()
+    named = named_methods(task)
+    return named[0] if len(named) == 1 else None
+
+
+def needs_normalization_reading(task: str, interpretation: SemanticInterpretation | None = None) -> bool:
+    """A command, about an expression matrix, that no registered workflow answered and that may describe a
+    normalization in its own words ("make /data/counts.tsv comparable across sequencing depths"): the need reader
+    is asked. A question, a negation or another named workflow is never read as one."""
+    if _NEGATED.search(task) or is_workflow_information_request(task) or has_explicit_advice_intent(task):
+        return False
+    if _names_network_workflow(task) and (
+        chained_action(task, normalizing_read=True) is None or not _SEQUENCE.search(task)
+    ):  # a named workflow is only a follower: "make ... comparable, then run PANDA"
+        return False
+    if "expression_file" not in _request_paths(task):
+        return False
+    commanded = interpretation is not None and interpretation.request_mode == "execute"
+    return commanded or bool(_COMMAND.search(task.strip()))
+
+
+def build_normalization_decision(
+    task: str, method: str | None, choice: NormalizationChoice,
+) -> TaskDecision:
+    then_action = chained_action(task, normalizing_read=choice.source == "need")
+    """normalize_expression for this request; `method` None leaves the choice among `choice.candidates` asked."""
+    label = METHOD_LABELS[method] if method else " or ".join(METHOD_LABELS[c] for c in choice.candidates)
     return TaskDecision(
         **_request_paths(task),
         action="normalize_expression", in_scope=True, should_execute=True,
         intent_type="prepare_input", confidence=1.0,
-        reason=f"Normalize the expression matrix with {METHOD_LABELS[method]}.",
+        reason=f"Normalize the expression matrix with {label}.",
         requested_outcome=RequestedOutcome(
             operation="prepare", artifact_type="expression_matrix", granularity="not_applicable",
         ),
         capability_match_status="exact", match_basis="semantic",
         matched_actions=["normalize_expression"],
-        then_action=chained_action(task),
+        then_action=then_action,
         normalization_method=method,
+        normalization_choice=choice,
     )
+
+
+def decision_from_needs(task: str, needs: list[NeedReading]) -> TaskDecision:
+    """The decision for a request whose method is read from its stated needs (or the default when none)."""
+    if not needs:
+        return build_normalization_decision(task, "snail", NormalizationChoice(source="default"))
+    candidates = methods_for_needs(needs)
+    method = candidates[0] if len(candidates) == 1 else None
+    return build_normalization_decision(
+        task, method, NormalizationChoice(source="need", needs=needs, candidates=candidates),
+    )
+
+
+def normalization_decision(task: str, interpretation: SemanticInterpretation | None = None) -> TaskDecision | None:
+    """The request read without the need reader: the named method, or SNAIL by default."""
+    if not normalization_requested(task, interpretation):
+        return None
+    if method := method_named(task):
+        # The continuation of an asked choice carries the answer as an assignment: it was chosen, not named.
+        source = "answered" if re.search(r"\bPREVIOUS_ACTION=normalize_expression\b", task) else "named"
+        return build_normalization_decision(task, method, NormalizationChoice(source=source, candidates=[method]))
+    return build_normalization_decision(task, "snail", NormalizationChoice(source="default"))
+
+
+# One line per method for the choice: what you get · how it differs · when to use it.
+METHOD_OPTION_LINES = {
+    "snail": "SNAIL (PySNAIL): smooth quantile normalization within the sample groups you give · keeps real "
+             "differences between groups · use with a sample-groups file (tissues, conditions)",
+    "rle": "RLE (DESeq2): counts divided by a per-sample size factor, the median ratio to a pseudo-reference sample · "
+           "assumes most genes do not change · use for depth differences between comparable samples",
+    "tmm": "TMM (edgeR): counts per million on library sizes scaled by a trimmed mean of M-values · also adjusts "
+           "when a few very abundant genes take up the reads · use for depth plus composition differences",
+    "quantile": "quantile (preprocessCore): every sample takes the same value distribution · the strongest "
+                "equalizing, which also removes real global differences · use when samples should be alike overall",
+    "fpkm": "FPKM (edgeR rpkm): counts per kilobase of gene length per million reads · compares genes of different "
+            "length within a sample · needs a gene-lengths file",
+}
+_NEED_WORDS = {
+    "sequencing_depth": "a sequencing-depth difference",
+    "gene_length": "a gene-length correction",
+    "group_differences": "differences between sample groups",
+    "same_distribution": "the same distribution in every sample",
+}
+
+
+def method_choice_evidence(decision: TaskDecision) -> list[InputEvidence]:
+    """The method to ask for when the stated needs fit more than one: a missing input with the candidates."""
+    choice = decision.normalization_choice
+    if decision.action != "normalize_expression" or decision.normalization_method or choice is None:
+        return []
+    if len(choice.candidates) < 2:
+        return []
+    stated = "; ".join(f'{_NEED_WORDS[need.need]} ("{need.text_span}")' for need in choice.needs)
+    question = (
+        f"Your request states {stated}, which {len(choice.candidates)} methods correct. Which should run?\n"
+        + "\n".join(f"- {METHOD_OPTION_LINES[method]}" for method in choice.candidates)
+    )
+    return [InputEvidence(
+        field="normalization_method", status="missing", reason=question, candidates=list(choice.candidates),
+    )]

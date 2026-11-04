@@ -116,6 +116,8 @@ def clarification_continuation(
             f"taxon={species}; string_network_type={kind}; "
             f"output_dir={decision.output_dir or 'data/string'}."
         )
+    if decision.action == "normalize_expression":
+        return _normalization_continuation(decision, assignments)
     carried = [
         item
         for item in plan.evidence
@@ -145,6 +147,21 @@ def clarification_continuation(
             "with the same sample IDs and gene order."
         )
     return continuation
+
+def _normalization_continuation(decision: TaskDecision, assignments: dict[str, str]) -> str:
+    """The normalization request again, with the chosen method and every file it already had, as assignments."""
+    method = (assignments.get("normalization_method") or decision.normalization_method or "").strip().lower()
+    candidates = decision.normalization_choice.candidates if decision.normalization_choice else []
+    if method not in (candidates or ["snail", "rle", "tmm", "quantile", "fpkm"]):
+        raise ClarificationInputError("Choose one of: " + ", ".join(candidates or ["snail", "rle", "tmm", "quantile", "fpkm"]) + ".")
+    parts = [f"PREVIOUS_ACTION=normalize_expression. Normalize the expression matrix; normalization_method={method}"]
+    for field_name in ("expression_file", "groups_file", "gene_lengths_file", "output_file"):
+        if value := assignments.get(field_name) or getattr(decision, field_name, None):
+            parts.append(f"{field_name}={value}")
+    if decision.then_action:
+        parts.append(f"then run {ACTION_DEFINITIONS[decision.then_action].workflow} on it")
+    return "; ".join(parts) + "."
+
 
 def bundle_clarification_continuation(plan: WorkflowPlan, answer: str) -> str:
     """Apply one complete typed bundle atomically to the pending workflow."""
@@ -304,6 +321,11 @@ def _render_clarification_prompt(
         # The question quotes the plan's own discovered folder and file names,
         # which may be in any language (Log 192).
         lines.extend([_ui_text_quoting(plan.question, _plan_user_data(plan)), ""])
+    if current.field == "normalization_method":
+        lines.append(current.reason)
+        lines.extend(f"{index}. {candidate}" for index, candidate in enumerate(current.candidates, 1))
+        lines.append(_ui_text("Choose a method (number or name) > "))
+        return "\n".join(lines)
     if TaskDecision.model_validate(plan.decision).action == "download_string":
         lines.append("Species name or NCBI taxonomy ID > " if current.field == "taxon"
                      else "Choose functional, physical, or regulatory (or 1–3) > ")

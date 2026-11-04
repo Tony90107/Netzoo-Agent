@@ -74,7 +74,7 @@ from .input_inspection import invoke_input_inspection
 from ..routing.reading_selection import drop_input_only_readings, drop_unwitnessed_readings, matchable_readings
 from ..routing.scale_relaxation import drop_unnamed_scale, note_unstated_scale, relax_unstated_scale
 from ..string_download import continued_string_download_decision, string_download_decision
-from ..normalization_request import normalization_decision
+from .normalization_need_call import normalization_route
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
 # Re-exported for callers and tests that imported them from here before the
@@ -809,9 +809,8 @@ def _route_request(
             reason_code="string_acquisition",
         )
 
-    if normalization := normalization_decision(user_task, interpretation):
-        return _RouterInvocation(decision=normalization, routing_state=outcome_routing_state(normalization, interpretation.semantic_goal, interpretation.request_mode),
-                                 usage=usage, budget_warnings=budget_warnings, reason_code="snail_normalization")
+    if normalization := normalization_route(context, state, user_task, interpretation, usage, budget_warnings):
+        return normalization  # a normalization request, read before workflow matching (normalization_need_call)
     _trace(
         "reasoning",
         "Checking registered workflow capabilities",
@@ -855,6 +854,9 @@ def _route_request(
         usage,
         budget_warnings,
     )
+    if capability_match.status == "unsupported" and (normalization := normalization_route(
+            context, state, user_task, interpretation, usage, budget_warnings, after_match=True)):
+        return normalization  # nothing registered matched: a normalization described without the word
     # A direct read-only retrieval request is already an explicit capability
     # selection. It must not be held behind the scientific-outcome evidence gate:
     # an empty/irrelevant semantic hypothesis can make the generic matcher
