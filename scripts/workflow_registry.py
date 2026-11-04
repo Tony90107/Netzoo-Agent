@@ -1424,15 +1424,20 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         local=True,
     ),
     # Between-sample normalization -- SNAIL (PySNAIL), or RLE (DESeq2), TMM (edgeR), quantile
-    # (preprocessCore): a preparation step the user asks for by name, never a menu workflow
-    # (it produces no network).
+    # (preprocessCore), FPKM (edgeR rpkm, with gene lengths): a preparation step the user asks for
+    # by name, never a menu workflow (it produces no network).
     "normalize_expression": ActionDefinition(
         "normalize_expression",
         "NORMALIZE-EXPRESSION",
         required_inputs=("expression_file", "output_file"),
-        optional_inputs=("groups_file", "snail_aggregation", "normalization_method"),
-        executor_fields=("expression_file", "output_file", "groups_file", "snail_aggregation", "normalization_method"),
-        executor_defaults={"groups_file": "", "snail_aggregation": "median", "normalization_method": "snail"},
+        optional_inputs=("groups_file", "snail_aggregation", "normalization_method", "gene_lengths_file"),
+        executor_fields=(
+            "expression_file", "output_file", "groups_file", "snail_aggregation", "normalization_method",
+            "gene_lengths_file",
+        ),
+        executor_defaults={
+            "groups_file": "", "snail_aggregation": "median", "normalization_method": "snail", "gene_lengths_file": "",
+        },
         local=True,
     ),
     "run_panda": ActionDefinition(

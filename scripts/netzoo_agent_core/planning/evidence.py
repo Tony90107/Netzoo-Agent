@@ -40,6 +40,7 @@ _FILE_INPUT_FIELDS = frozenset(
         "expression_file",
         "design_file",
         "groups_file",
+        "gene_lengths_file",
         "motif_file",
         "ppi_file",
         "mirna_file",

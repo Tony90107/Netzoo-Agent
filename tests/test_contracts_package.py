@@ -215,7 +215,9 @@ SCHEMA_DIGESTS = {
     # names, planned on a later turn); omitted from dumps while unset.
     # Same day: optional code-owned TaskDecision.normalization_method (snail, or the R arms rle / tmm /
     # quantile); omitted from dumps while unset.
-    "TaskDecision": "73ad2c525f969d798041f49692c8d52072aaf234529d2eb433bf77c10ab3f8b9",
+    # Same day: normalization_method gains fpkm, and optional TaskDecision.gene_lengths_file (FPKM's gene
+    # lengths); omitted from dumps while unset.
+    "TaskDecision": "ad60476c1a58b24803ba8a9b326b33296c3d4160da92eb7ed13f276f13d3df1f",
     "RouterDecision": "13c1ebd8e1885e01be7130848365eb48e9baa36d7a584a745c66a0be02e70aec",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

@@ -400,6 +400,7 @@ def _validate_workflow_inputs_impl(action: str, decision: Any) -> list[str]:
             _value(decision, "groups_file"),
             _value(decision, "snail_aggregation") or "median",
             _value(decision, "normalization_method") or "snail",
+            _value(decision, "gene_lengths_file"),
         )
         errors.extend(_report_errors("Normalization inputs", report, ok))
     elif action == "convert_expression":

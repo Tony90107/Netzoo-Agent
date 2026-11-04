@@ -150,7 +150,7 @@ def extract_explicit_request_parameters(task: str) -> dict[str, object]:
         ("computing", r"cpu|gpu"),
         ("precision", r"single|double"),
         ("snail_aggregation", r"median|mean|auto"),
-        ("normalization_method", r"snail|rle|tmm|quantile"),
+        ("normalization_method", r"snail|rle|tmm|quantile|fpkm"),
         ("bonobo_output_format", r"\.?h5|\.?hdf|\.?txt|\.?csv"),
     ):
         match = re.search(

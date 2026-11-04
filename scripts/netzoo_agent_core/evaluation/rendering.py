@@ -232,11 +232,13 @@ def render_compact_execution_response(
                 "demo_bundle": "demo bundle",
                 "defaulted": "default",
             }.get(item.status, item.status)
-            unused = (plan.workflow == "NORMALIZE-EXPRESSION" and item.field == "groups_file"
-                      and (plan.decision or {}).get("normalization_method") not in (None, "snail"))
+            method = (plan.decision or {}).get("normalization_method") or "snail"
+            unused = plan.workflow == "NORMALIZE-EXPRESSION" and (
+                (item.field == "groups_file" and method != "snail")
+                or (item.field == "gene_lengths_file" and method != "fpkm"))
             lines.append(
                 f"- {_compact_field_label(item.field)}: {item.value} [{source}]"
-                + (" -- not used: only SNAIL normalizes within groups" if unused else "")
+                + (f" -- not used: only {'SNAIL' if item.field == 'groups_file' else 'FPKM'} reads it" if unused else "")
             )
         if (plan.workflow == "NORMALIZE-EXPRESSION" and (plan.decision or {}).get("normalization_method") in (None, "snail")
                 and not any(item.field == "groups_file" for item in input_evidence)):

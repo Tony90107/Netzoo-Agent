@@ -1,20 +1,23 @@
 # Between-sample normalization of a count-scale gene-by-sample matrix with the
-# Bioconductor packages the method is published in (the comparison arms of the
-# PySNAIL manuscript):
+# Bioconductor packages the method is published in (rle, tmm and quantile are the
+# comparison arms of the PySNAIL manuscript; fpkm is the length-scaled unit):
 #   rle      DESeq2 median-of-ratios size factors (estimateSizeFactorsForMatrix);
 #            output = counts / size factor
 #   tmm      edgeR TMM normalization factors (normLibSizes); output = CPM on the
 #            TMM-effective library sizes
 #   quantile preprocessCore normalize.quantiles; every sample takes the same
 #            distribution
-# Usage: Rscript normalize_counts.R <method> <expression.tsv> <output.tsv> <record.json>
+#   fpkm     edgeR rpkm on the raw library sizes (no TMM): counts per kilobase of
+#            gene length per million reads; needs a gene-lengths table
+# Usage: Rscript normalize_counts.R <method> <expression.tsv> <output.tsv> <record.json> [lengths.tsv]
+# lengths.tsv (fpkm only): columns "gene" and "length" (bases), one row per expression gene.
 # Inputs are checked in Python first (netzoo_agent_core/data/normalization.py).
 
 suppressPackageStartupMessages(library(jsonlite))
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 4) {
-  stop("usage: normalize_counts.R <rle|tmm|quantile> <expression.tsv> <output.tsv> <record.json>")
+if (!(length(args) %in% c(4, 5))) {
+  stop("usage: normalize_counts.R <rle|tmm|quantile|fpkm> <expression.tsv> <output.tsv> <record.json> [lengths.tsv]")
 }
 method <- args[1]
 expression_file <- args[2]
@@ -53,6 +56,17 @@ if (method == "rle") {
   package <- "preprocessCore"
   factor_name <- NULL
   scale <- "quantile-normalized values: every sample takes the mean sorted distribution"
+} else if (method == "fpkm") {
+  suppressPackageStartupMessages(library(edgeR))
+  if (length(args) != 5) stop("fpkm needs a gene-lengths table")
+  lengths_table <- read.delim(args[5], check.names = FALSE, stringsAsFactors = FALSE)
+  gene_length <- setNames(as.numeric(lengths_table$length), lengths_table$gene)[rownames(counts)]
+  if (any(is.na(gene_length)) || any(gene_length <= 0)) stop("every gene needs a positive length")
+  normalized <- rpkm(DGEList(counts = counts), gene.length = gene_length, normalized.lib.sizes = FALSE)
+  factors <- NULL
+  package <- "edgeR"
+  factor_name <- NULL
+  scale <- "FPKM: counts per kilobase of gene length per million reads, on raw library sizes (no TMM)"
 } else {
   stop(paste("unknown method:", method))
 }

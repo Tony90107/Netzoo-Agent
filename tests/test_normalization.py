@@ -163,6 +163,31 @@ class RMethodInputTests(unittest.TestCase):
             self.assertIsNone(inputs.groups_path)
             self.assertNotIn("tied values", report)
 
+    def test_fpkm_needs_a_length_for_every_gene(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            expression = tmp_path / "counts.tsv"
+            counts = _counts()
+            counts.to_csv(expression, sep="\t")
+            output = str(tmp_path / "o.tsv")
+            report, ok, _ = normalization_input_report(str(expression), output, "", "median", "fpkm")
+            self.assertFalse(ok)
+            self.assertIn("FPKM needs a gene-lengths file", report)
+            short = tmp_path / "short.tsv"
+            short.write_text("".join(f"{gene}\t1500\n" for gene in counts.index[:-1]))
+            report, ok, _ = normalization_input_report(str(expression), output, "", "median", "fpkm", str(short))
+            self.assertFalse(ok)
+            self.assertIn("1 expression genes have no length", report)
+            full = tmp_path / "lengths.tsv"
+            full.write_text("gene\tlength\n" + "".join(f"{gene}\t{1000 + i}\n" for i, gene in enumerate(counts.index)))
+            report, ok, inputs = normalization_input_report(str(expression), output, "", "median", "fpkm", str(full))
+            self.assertTrue(ok, report)  # a header row is accepted
+            self.assertEqual(list(inputs.lengths.index), list(counts.index))
+            report, ok, inputs = normalization_input_report(str(expression), output, "", "median", "tmm", str(full))
+            self.assertTrue(ok, report)
+            self.assertIn("used only by FPKM", report)
+            self.assertIsNone(inputs.lengths_path)
+
     def test_unknown_method_is_refused(self):
         report, ok, _ = normalization_input_report("counts.tsv", "o.tsv", "", "median", "upperquartile")
         self.assertFalse(ok)
@@ -192,7 +217,7 @@ class NormalizationRegistryTests(unittest.TestCase):
         self.assertEqual(
             executor_arguments("normalize_expression", decision),
             {"expression_file": "counts.tsv", "output_file": "norm.tsv", "groups_file": "", "snail_aggregation": "median",
-             "normalization_method": "snail"},
+             "normalization_method": "snail", "gene_lengths_file": ""},
         )
 
     def test_unset_fields_do_not_change_decision_dumps(self):
@@ -272,11 +297,22 @@ class NormalizationRequestTests(unittest.TestCase):
             "Run PySNAIL smooth-quantile normalization on /data/counts.tsv and save it to /data/out/s.tsv.": "snail",
             "Please normalize my RNA-seq counts in /data/counts.tsv and write them to /data/out/n.tsv.": "snail",
             "Normalize expression_file=/data/counts.tsv output_file=/data/out/x.tsv normalization_method=quantile": "quantile",
+            "Compute FPKM for /data/counts.tsv with gene lengths /data/len.tsv and save it to /data/out/f.tsv.": "fpkm",
         }
         for task, method in cases.items():
             decision = normalization_decision(task)
             self.assertIsNotNone(decision, task)
             self.assertEqual(decision.normalization_method, method, task)
+
+    def test_fpkm_request_binds_its_lengths_file(self):
+        decision = normalization_decision(
+            "Compute FPKM for the counts in /data/counts.tsv using the gene lengths in /data/len.tsv, "
+            "and save it to /data/out/f.tsv."
+        )
+        self.assertEqual(
+            (decision.expression_file, decision.gene_lengths_file, decision.output_file),
+            ("/data/counts.tsv", "/data/len.tsv", "/data/out/f.tsv"),
+        )
 
     def test_two_methods_are_not_read_as_one(self):
         self.assertIsNone(normalization_decision("Normalize /data/counts.tsv with RLE and with TMM, output /data/out/x.tsv."))
@@ -328,13 +364,14 @@ class NormalizationRequestTests(unittest.TestCase):
 class RNormalizationRunnerTests(unittest.TestCase):
     """The R arms against what each method is defined to give."""
 
-    def run_method(self, method: str, counts: pd.DataFrame, tmp: Path) -> tuple[pd.DataFrame, dict]:
+    def run_method(self, method: str, counts: pd.DataFrame, tmp: Path, extra: tuple[str, ...] = ()) -> tuple[pd.DataFrame, dict]:
         expression = tmp / "counts.tsv"
         counts.to_csv(expression, sep="\t")
         output = tmp / f"{method}.tsv"
         env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(SCRIPTS_DIR), os.environ.get("PYTHONPATH", "")])}
         result = subprocess.run(
-            [sys.executable, str(SCRIPTS_DIR / "run_r_normalization.py"), "-m", method, "-e", str(expression), "-o", str(output)],
+            [sys.executable, str(SCRIPTS_DIR / "run_r_normalization.py"), "-m", method, "-e", str(expression), "-o", str(output),
+             *extra],
             capture_output=True, text=True, env=env, timeout=300,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -362,6 +399,19 @@ class RNormalizationRunnerTests(unittest.TestCase):
         expected = counts.to_numpy() / (counts.sum().to_numpy() * factors) * 1e6
         self.assertTrue(np.allclose(normalized.to_numpy(), expected, rtol=1e-8))
         self.assertEqual(record["package"], "edgeR")
+
+    def test_fpkm_scales_by_gene_length_and_library_size(self):
+        counts = _counts(genes=120, samples=5)
+        lengths = np.random.default_rng(2).integers(300, 9000, size=len(counts))
+        with tempfile.TemporaryDirectory() as tmp:
+            table = Path(tmp) / "lengths.tsv"
+            # Rows in another order than the matrix, with a header: the runner aligns them by gene.
+            pd.Series(lengths, index=counts.index).iloc[::-1].rename("length").to_csv(table, sep="\t", index_label="gene")
+            normalized, record = self.run_method("fpkm", counts, Path(tmp), ("-l", str(table)))
+        expected = counts.to_numpy() / (lengths[:, None] / 1e3) / (counts.sum().to_numpy()[None, :] / 1e6)
+        self.assertTrue(np.allclose(normalized.to_numpy(), expected, rtol=1e-8))
+        self.assertEqual(record["package"], "edgeR")
+        self.assertIn("gene_lengths_sha256", record)
 
     def test_quantile_gives_every_sample_one_distribution(self):
         counts = _counts(genes=100, samples=5).astype(float) + np.random.default_rng(1).random((100, 5))  # no ties

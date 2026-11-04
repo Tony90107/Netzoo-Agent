@@ -491,7 +491,8 @@ def validate_task_text(
     ):
         return "The user must explicitly request a co-expression or correlation matrix."
     if action == "normalize_expression" and not re.search(
-        r"(normali[sz]|snail|qsmooth|smooth[- _]?quantile|quantile normali|\brle\b|\btmm\b|deseq2|edger|preprocesscore"
+        r"(normali[sz]|snail|qsmooth|smooth[- _]?quantile|quantile normali|\brle\b|\btmm\b|\b[fr]pkm\b|deseq2|edger"
+        r"|preprocesscore"
         r"|標準化|正規化|常態化)",
         normalized,
         flags=re.IGNORECASE,

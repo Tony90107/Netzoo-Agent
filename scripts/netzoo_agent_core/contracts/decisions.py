@@ -199,6 +199,7 @@ class TaskDecision(BaseModel):
     # SNAIL normalization (normalize_expression): sample-to-group TSV and how tied values
     # are aggregated. Omitted from dumps while unset, so existing decisions dump unchanged.
     groups_file: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    gene_lengths_file: str | None = Field(default=None, exclude_if=lambda value: value is None)  # FPKM's gene lengths
     snail_aggregation: Literal["median", "mean", "auto"] | None = Field(
         default=None, exclude_if=lambda value: value is None,
     )
@@ -206,7 +207,7 @@ class TaskDecision(BaseModel):
     # its expression input, after the normalization has run. Code-owned; omitted from dumps while unset.
     then_action: RecommendedAction | None = Field(default=None, exclude_if=lambda value: value is None)
     # normalize_expression's method: SNAIL (PySNAIL, the default) or a comparison arm run in R. Omitted while unset.
-    normalization_method: Literal["snail", "rle", "tmm", "quantile"] | None = Field(
+    normalization_method: Literal["snail", "rle", "tmm", "quantile", "fpkm"] | None = Field(
         default=None, exclude_if=lambda value: value is None,
     )
     motif_file: str | None = None

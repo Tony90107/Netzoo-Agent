@@ -1,11 +1,13 @@
 """Input contract for between-sample normalization of a count-scale expression matrix.
 
-Four methods, one per run:
+Five methods, one per run:
 - ``snail``: SNAIL smooth-quantile normalization with PySNAIL (Kuijjer lab), within sample groups
   (tissues, conditions). It runs in its own process (``run-pysnail``) because importing PySNAIL starts
   pandarallel workers.
 - ``rle`` (DESeq2 median of ratios), ``tmm`` (edgeR) and ``quantile`` (preprocessCore): the comparison arms of
   the PySNAIL manuscript, run with those Bioconductor packages by ``run-normalize-r``.
+- ``fpkm``: edgeR ``rpkm`` on the raw library sizes (no TMM), which needs each gene's length in bases from a
+  gene-lengths file; also run by ``run-normalize-r``.
 The checks here run in the agent process with pandas only.
 
 Facts the report states were checked on PySNAIL 55bfe710 (2026-11-04):
@@ -36,12 +38,13 @@ __all__ = [
 ]
 
 SNAIL_AGGREGATIONS = ("median", "mean", "auto")
-NORMALIZATION_METHODS = ("snail", "rle", "tmm", "quantile")
+NORMALIZATION_METHODS = ("snail", "rle", "tmm", "quantile", "fpkm")
 METHOD_LABELS = {
     "snail": "SNAIL (PySNAIL)",
     "rle": "RLE (DESeq2 median of ratios)",
     "tmm": "TMM (edgeR)",
     "quantile": "quantile (preprocessCore)",
+    "fpkm": "FPKM (edgeR rpkm)",
 }
 
 # A matrix whose largest value is at most this, with mostly non-integer values, reads
@@ -58,6 +61,8 @@ class NormalizationInputs:
     output_path: Path | None = None
     expression: pd.DataFrame | None = None
     groups: pd.Series | None = None
+    lengths_path: Path | None = None
+    lengths: pd.Series | None = None
     errors: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
@@ -172,13 +177,52 @@ def _read_groups(path: Path, samples: list[str], inputs: NormalizationInputs) ->
     inputs.groups = groups
 
 
+def _read_lengths(path: Path, genes: list[str], inputs: NormalizationInputs) -> None:
+    """Gene lengths in bases: two tab-separated columns (gene, length), an optional header row."""
+    errors = inputs.errors
+    try:
+        table = pd.read_csv(path, sep="\t", header=None, dtype=str)
+    except Exception as error:  # noqa: BLE001
+        errors.append(f"gene-lengths file could not be read as a tab-separated table: {error}")
+        return
+    if table.shape[1] != 2:
+        errors.append(f"gene-lengths file must have exactly two tab-separated columns (gene, length); found {table.shape[1]}.")
+        return
+    table = table.apply(lambda column: column.str.strip())
+    if pd.to_numeric(table.iloc[:1, 1], errors="coerce").isna().all():
+        table = table.iloc[1:]  # a header row
+    lengths = pd.to_numeric(table[1], errors="coerce")
+    if lengths.isna().any():
+        errors.append(f"gene-lengths file has {int(lengths.isna().sum())} lengths that are not numbers.")
+        return
+    duplicated = table[0][table[0].duplicated()].unique()
+    if len(duplicated):
+        errors.append("gene-lengths file lists a gene more than once: " + ", ".join(duplicated[:5]))
+        return
+    lengths = pd.Series(lengths.to_numpy(dtype=float), index=table[0].to_numpy())
+    missing = [gene for gene in genes if gene not in lengths.index]
+    if missing:
+        errors.append(
+            f"{len(missing)} expression genes have no length (first: {', '.join(missing[:5])}); "
+            "FPKM needs the length of every gene."
+        )
+        return
+    lengths = lengths.loc[genes]
+    if (lengths <= 0).any():
+        errors.append("gene lengths must be positive: " + ", ".join(lengths.index[lengths <= 0][:5]))
+        return
+    inputs.notes.append(f"gene lengths: {len(lengths)} genes, {lengths.min():.0f}-{lengths.max():.0f} bases")
+    inputs.lengths = lengths
+
+
 def load_normalization_inputs(
     expression_file: str,
     output_file: str,
     groups_file: str = "",
     method: str = "snail",
+    lengths_file: str = "",
 ) -> NormalizationInputs:
-    """Read and check the expression matrix and, for SNAIL, the optional groups file."""
+    """Read and check the expression matrix, SNAIL's optional groups file and FPKM's gene-lengths file."""
     inputs = NormalizationInputs()
     expression_path = _resolve_user_path(expression_file) if expression_file else None
     if expression_path is None or not expression_path.is_file():
@@ -192,13 +236,21 @@ def load_normalization_inputs(
     inputs.output_path = output_path
     groups_path = _resolve_user_path(groups_file) if groups_file else None
     inputs.groups_path = groups_path
-    if output_path in {expression_path, groups_path} or normalization_record_path(output_path) in {
-        expression_path, groups_path,
+    lengths_path = _resolve_user_path(lengths_file) if lengths_file else None
+    inputs.lengths_path = lengths_path
+    if output_path in {expression_path, groups_path, lengths_path} or normalization_record_path(output_path) in {
+        expression_path, groups_path, lengths_path,
     }:
         inputs.errors.append("output path must be different from the inputs.")
         return inputs
     if groups_path is not None and not groups_path.is_file():
         inputs.errors.append("groups file does not exist or is not a file.")
+        return inputs
+    if method == "fpkm" and lengths_path is None:
+        inputs.errors.append("FPKM needs a gene-lengths file (gene, length in bases); give its path.")
+        return inputs
+    if method == "fpkm" and not lengths_path.is_file():
+        inputs.errors.append("gene-lengths file does not exist or is not a file.")
         return inputs
 
     frame = _read_expression(expression_path, inputs.errors)
@@ -209,6 +261,11 @@ def load_normalization_inputs(
     _check_expression(frame, inputs, METHOD_LABELS.get(method, method).split(" ")[0])
     if inputs.errors:
         return inputs
+    if method != "fpkm" and lengths_path is not None:
+        inputs.notes.append(f"the gene-lengths file is used only by FPKM; {METHOD_LABELS[method]} ignores it.")
+        inputs.lengths_path = None
+    if method == "fpkm":
+        _read_lengths(lengths_path, list(frame.index), inputs)
     if method != "snail":
         if groups_path is not None:
             inputs.notes.append(f"the groups file is used only by SNAIL; {METHOD_LABELS[method]} ignores it.")
@@ -231,6 +288,7 @@ def normalization_input_report(
     groups_file: str = "",
     aggregation: str = "median",
     method: str = "snail",
+    lengths_file: str = "",
 ) -> tuple[str, bool, NormalizationInputs]:
     """A report of the input checks, whether they passed, and the loaded inputs."""
     if method not in NORMALIZATION_METHODS:
@@ -242,11 +300,13 @@ def normalization_input_report(
     if method == "snail" and aggregation not in SNAIL_AGGREGATIONS:
         lines.append(f"- error: aggregation must be one of {', '.join(SNAIL_AGGREGATIONS)}; got {aggregation!r}.")
         return "\n".join(lines), False, NormalizationInputs()
-    inputs = load_normalization_inputs(expression_file, output_file, groups_file, method)
+    inputs = load_normalization_inputs(expression_file, output_file, groups_file, method, lengths_file)
     if inputs.expression_path is not None:
         lines.append(f"- expression: {inputs.expression_path}")
     if inputs.groups_path is not None:
         lines.append(f"- groups: {inputs.groups_path}")
+    if inputs.lengths_path is not None:
+        lines.append(f"- gene lengths: {inputs.lengths_path}")
     if inputs.output_path is not None:
         lines.append(f"- output: {inputs.output_path}")
         lines.append(f"- record: {normalization_record_path(inputs.output_path)}")

@@ -1,4 +1,4 @@
-"""A request to normalize expression -- SNAIL (PySNAIL), RLE (DESeq2), TMM (edgeR) or quantile -- read before
+"""A request to normalize expression -- SNAIL (PySNAIL), RLE (DESeq2), TMM (edgeR), quantile or FPKM -- read before
 workflow matching. One method runs per step; a request naming two methods is left to routing.
 
 The semantic interpreter reads results the registry's workflows produce; normalization produces none, so a plain
@@ -36,6 +36,7 @@ _METHOD_WORDS = {
     "rle": r"(?<![A-Za-z0-9])rle(?![A-Za-z0-9])|deseq2?|median[- _]of[- _]ratios?",
     "tmm": r"(?<![A-Za-z0-9])tmm(?![A-Za-z0-9])|edger",
     "quantile": r"(?<!smooth )(?<!smooth-)(?<!smooth_)quantile[- _]normali[sz]|preprocess[- _]?core|normalize\.quantiles",
+    "fpkm": r"(?<![A-Za-z0-9])[fr]pkm(?![A-Za-z0-9])",
 }
 _METHODS = {method: re.compile(words, re.I) for method, words in _METHOD_WORDS.items()}
 _SNAIL = re.compile("|".join(f"(?:{words})" for words in _METHOD_WORDS.values()), re.I)  # any method named
@@ -47,13 +48,13 @@ _NORMALIZE_EXPRESSION = re.compile(
 )
 _NEGATED = re.compile(
     r"\b(?:do\s*n[o']t|don't|never|without|no|skip|not)\s+(?:\w+\s+){0,2}"
-    r"(?:normali[sz]|snail|qsmooth|rle\b|tmm\b|deseq|edger|quantile)"
+    r"(?:normali[sz]|snail|qsmooth|rle\b|tmm\b|[fr]pkm\b|deseq|edger|quantile)"
     r"|(?:不要|不用|不需要|別|勿).{0,6}(?:標準化|正規化|常態化|snail)",
     re.I,
 )
 _COMMAND = re.compile(
     r"(?:^|[.;!\n]\s*|\b(?:please|pls|can you|could you)\s+)"
-    r"(?:normali[sz]e|run|apply|use|perform|do)\b"
+    r"(?:normali[sz]e|run|apply|use|perform|do|compute|calculate|convert)\b"
     r"|請|幫我|做",
     re.I,
 )
@@ -71,7 +72,7 @@ CHAINABLE_ACTIONS = frozenset(
 )
 # The act of normalizing, not a description of data already normalized ("my SNAIL-normalized counts").
 _NORMALIZE_ACT = re.compile(
-    r"\bnormali[sz](?:e|ing)\b|\b(?:run|apply|use|with)\s+(?:the\s+)?(?:py)?(?:snail|qsmooth|rle|tmm|deseq2?|edger)\b"
+    r"\bnormali[sz](?:e|ing)\b|\b(?:run|apply|use|with)\s+(?:the\s+)?(?:py)?(?:snail|qsmooth|rle|tmm|[fr]pkm|deseq2?|edger)\b"
     r"|(?:先|請|幫我).{0,10}(?:標準化|正規化|常態化)",
     re.I,
 )
@@ -126,20 +127,24 @@ def _request_paths(task: str) -> dict[str, str]:
     other workflows; here, with the groups file and the output taken out, a single path left can only be the matrix.
     """
     paths: dict[str, str] = {}
-    for field in ("groups_file", "output_file", "expression_file"):
+    for field in ("groups_file", "gene_lengths_file", "output_file", "expression_file"):
         if value := _task_path(task, field):
             paths[field] = value.rstrip(".,;")
     if "groups_file" not in paths and (
         found := re.search(r"\b(?:groups?|tissues?|conditions?)\b[^/~\n]{0,40}?\s((?:/|\./|\.\./|~)\S+|\S+\.(?:tsv|txt|csv|tab))", task, re.I)
     ) and is_path_token(found.group(1).rstrip(".,;")):
         paths["groups_file"] = found.group(1).rstrip(".,;")
+    if "gene_lengths_file" not in paths and (
+        found := re.search(r"\blengths?\b[^/~\n]{0,40}?\s((?:/|\./|\.\./|~)\S+|\S+\.(?:tsv|txt|csv|tab))", task, re.I)
+    ) and is_path_token(found.group(1).rstrip(".,;")):
+        paths["gene_lengths_file"] = found.group(1).rstrip(".,;")
     if "output_file" not in paths and (
         found := re.search(r"\b(?:write|save|store|output)\b[^/~.]{0,40}?\b(?:to|as|in|at|into)\s+(\S+)", task, re.I)
     ) and is_path_token(found.group(1)):
         paths["output_file"] = found.group(1).rstrip(".,;")
     if "expression_file" not in paths:
         # Files labelled for the chained workflow's other roles ("motif /data/motif.tsv") are not the matrix.
-        others = {value.rstrip(".,;") for field in INPUT_ROLE_FIELDS - {"expression_file", "groups_file"}
+        others = {value.rstrip(".,;") for field in INPUT_ROLE_FIELDS - {"expression_file", "groups_file", "gene_lengths_file"}
                   if (value := _task_path(task, field))}
         taken = {*paths.values(), *others}
         rest = [chunk.rstrip(".,;:!?") for chunk in _PATH_CHUNK.findall(task)]
