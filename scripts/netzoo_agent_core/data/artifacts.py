@@ -20,6 +20,7 @@ from .lioness_dragon import validate_lioness_dragon_output
 from .giraffe import giraffe_output_paths, load_giraffe_inputs, validate_giraffe_output
 from .bonobo import load_bonobo_inputs, validate_bonobo_output
 from .otter import load_otter_inputs, validate_otter_output
+from .porcupine import validate_porcupine_output
 from .normalization import normalization_record_path
 
 __all__ = [
@@ -46,6 +47,7 @@ ARTIFACT_WRITE_ACTIONS = frozenset(
         "run_otter",
         "run_giraffe",
         "run_bonobo",
+        "run_porcupine",
     }
 )
 
@@ -487,6 +489,16 @@ def validate_output_artifacts(
                 metrics.update(giraffe_metrics)
             except (OSError, ValueError) as error:
                 errors.append(f"GIRAFFE output contract could not be checked: {error}")
+    elif action == "run_porcupine":
+        if not decision.output_dir:
+            errors.append("PORCUPINE output_dir is missing")
+        else:
+            ok, porcupine_errors, porcupine_artifacts, porcupine_metrics = validate_porcupine_output(
+                decision.output_dir, decision.sample_network_file
+            )
+            artifacts.extend(porcupine_artifacts)
+            errors.extend(porcupine_errors)
+            metrics.update(porcupine_metrics)
     elif action == "run_bonobo":
         if not decision.output_dir:
             errors.append("BONOBO output_dir is missing")

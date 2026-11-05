@@ -15,6 +15,7 @@ from ..data.inspection import (
     expression_sample_count as _expression_sample_count,
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
+from ..data.porcupine import inspect_porcupine_inputs_impl
 from ..data.cobra import inspect_cobra_inputs_impl
 from ..data.sambar import inspect_sambar_inputs_impl
 from ..data.dragon import inspect_dragon_inputs_impl
@@ -106,6 +107,16 @@ def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:
         return (
             {"omics_layer_1": _display_path(layer1), "omics_layer_2": _display_path(layer2)},
             f"Demo intent: selected the {workflow} two-layer toy bundle with exact sample-ID alignment.",
+        )
+    if action == "run_porcupine":
+        network = data_root / "porcupine-toy" / "lioness_panda_network.txt"
+        pathways = data_root / "porcupine-toy" / "pathways.gmt"
+        _, ok = inspect_porcupine_inputs_impl(str(network), str(pathways))
+        if not ok:
+            return None
+        return (
+            {"sample_network_file": _display_path(network), "pathway_file": _display_path(pathways)},
+            "Demo intent: selected the PORCUPINE toy LIONESS-PANDA network and GMT bundle with matching gene IDs.",
         )
     if action == "run_cobra":
         expression = data_root / "cobra-toy" / "expression.tsv"

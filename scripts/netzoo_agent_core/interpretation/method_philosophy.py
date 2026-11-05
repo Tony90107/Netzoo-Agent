@@ -6,6 +6,7 @@ https://netzoo.github.io/netZooR/articles/CONDOR.html
 https://netzoo.github.io/zooanimals/cobra/
 https://netzoo.github.io/zooanimals/dragon/
 https://netzoo.github.io/zooanimals/sambar/
+https://github.com/kuijjerlab/PORCUPINE (Belova et al. 2023)
 https://netzoo.github.io/zooanimals/panda/panda/
 https://netzoo.github.io/zooanimals/panda/puma/ and netZooPy puma/calculations.py
 https://netzoo.github.io/netZooR/articles/TutorialOTTER.html
@@ -38,6 +39,15 @@ _PHILOSOPHIES = {
         " This is pathway aggregation followed by distance-based clustering, not "
         "non-negative matrix factorization; a mutation score does not establish "
         "permanent functional loss or equivalence of every mutation in a pathway."
+    ),
+    "pathway_heterogeneity": (
+        "PORCUPINE takes the edges that target each pathway's genes in every sample's "
+        "LIONESS network, scales each edge across samples and runs a PCA; the share of "
+        "variance on PC1 measures how coherently that pathway's regulation varies between "
+        "samples. PC1 variance is compared with size-matched random gene sets by a "
+        "one-tailed t-test and Cohen's d, then FDR-adjusted. It finds heterogeneity "
+        "without predefined groups; it is not a group comparison, does not build the "
+        "networks, and a heterogeneous pathway is not proof of a causal driver."
     ),
     "leave_one_out_network_inference": (
         "LIONESS represents the cohort network through sample contributions: "

@@ -53,6 +53,14 @@ const METHODS = [
     outputs: "Gene and pathway mutation scores, sample distances, and optional sample clusters.",
   },
   {
+    name: "PORCUPINE",
+    family: "Pathway-level heterogeneity of sample-specific networks",
+    principle:
+      "For each pathway, runs a PCA on the edges targeting its genes across all sample-specific (LIONESS) networks and tests whether PC1 explains more variance than size-matched random gene sets. Finds coordinated variation between patients without predefined groups.",
+    inputs: "LIONESS-PANDA or LIONESS-PUMA text output (edges as rows, samples as columns) and a GMT pathway file in the same gene namespace.",
+    outputs: "Per-pathway statistics (PC1 variance, p-value, FDR, effect size), pathway-by-sample PC1 scores, and edge loadings for significant pathways.",
+  },
+  {
     name: "DRAGON",
     family: "Multi-omics conditional association network",
     principle:

@@ -29,7 +29,6 @@ from .data.cobra import (
     cobra_input_output_collisions,
     inspect_cobra_inputs_impl,
 )
-from .data.sambar import inspect_sambar_inputs_impl
 from .data.dragon import (
     lambda_pair_error,
     DRAGON_OUTPUT_FORMATS,
@@ -51,7 +50,10 @@ from .data.coexpression import read_coexpression_matrix
 from .data.otter import inspect_otter_inputs_impl, load_otter_inputs, write_otter_output
 from .data.panda_preflight import inspect_panda_inputs_with_provenance
 from .execution_bonobo import inspect_bonobo_inputs, run_bonobo
+from .execution_porcupine import inspect_porcupine_inputs, run_porcupine
+from .execution_sambar import inspect_sambar_inputs, run_sambar
 from .execution_lioness_dragon import run_lioness_dragon
+from .data.lioness_dragon import standardize_dragon_layer
 from .execution_normalization import normalize_expression
 from .string_download import download_string
 
@@ -59,6 +61,7 @@ from .data.tables import (
     _drop_common_header,
     _read_checked_table,
     _resolve_user_path,
+    _validate_edge_or_bed,
     _validate_expression,
 )
 from .data.paths import condor_artifact_paths
@@ -87,6 +90,8 @@ __all__ = [
     "run_cobra",
     "inspect_sambar_inputs",
     "run_sambar",
+    "inspect_porcupine_inputs",
+    "run_porcupine",
     "run_dragon",
     "run_lioness_dragon",
     "inspect_giraffe_inputs",
@@ -97,6 +102,40 @@ __all__ = [
     "run_otter",
     "LOCAL_TOOL_EXECUTORS",
 ]
+
+
+def _gene_set_mode_note(command: list[str], expression_file: str, motif_file: str) -> str:
+    """Say which genes netZooPy's gene-set mode keeps, with the count of prior-only genes.
+
+    netZooPy PANDA/PUMA default to ``union``: a motif target gene missing from the
+    expression matrix gets an all-zero expression row, hence zero co-expression,
+    and is scored from the motif and PPI priors alone. That is upstream's published
+    default, so it is kept -- but the number of such genes is reported.
+    """
+    mode = "union"
+    for index, token in enumerate(command):
+        if token == "--mode_process" and index + 1 < len(command):
+            mode = command[index + 1]
+        elif token.startswith("--mode_process="):
+            mode = token.split("=", 1)[1]
+    if mode != "union":
+        return f"\n- gene set: {mode} mode"
+    try:
+        expression = _validate_expression(_read_checked_table("expression", expression_file))
+        motif = _validate_edge_or_bed(_read_checked_table("motif", motif_file), "motif")
+    except Exception:  # noqa: BLE001 - a report line, never a failure
+        return "\n- gene set: union mode (netZooPy default)"
+    prior_only = motif.secondary_identifiers - expression.identifiers
+    if not prior_only:
+        return "\n- gene set: union mode (netZooPy default); every motif target gene has expression data"
+    total = len(motif.secondary_identifiers | expression.identifiers)
+    return (
+        f"\n- gene set: union mode (netZooPy default): {len(prior_only)} of {total} genes are "
+        "motif targets with no expression data (e.g. "
+        + ", ".join(sorted(prior_only)[:3])
+        + "); they get zero co-expression and are scored from the motif and PPI priors alone. "
+        "netZooPy's intersection mode keeps only genes with expression data."
+    )
 
 
 @tool
@@ -156,6 +195,8 @@ def run_panda(
     if extra_args:
         command.extend(shlex.split(extra_args))
     report = validation_report + ("\n" + coexpression_report if coexpression_report else "")
+    if not coexpression_file:
+        report += _gene_set_mode_note(command, expression_file, motif_file)
     return report + "\n\n" + _run_command(command, output_file=output_file)
 
 
@@ -231,6 +272,8 @@ def run_puma(
         command.extend(["--mode_process", mode_process])
     if extra_args:
         command.extend(shlex.split(extra_args))
+    if not coexpression_file:
+        validation_report += _gene_set_mode_note(command, expression_file, motif_file)
     return validation_report + "\n\n" + _run_command(command, output_file=output_file)
 
 
@@ -552,24 +595,6 @@ def run_cobra(expression_file: str, design_file: str, output_dir: str) -> str:
 
 
 @tool
-def inspect_sambar_inputs(
-    mutation_file: str,
-    exon_size_file: str,
-    cancer_gene_file: str,
-    pathway_file: str,
-    kmin: int = 2,
-    kmax: int = 4,
-    cluster: bool = True,
-) -> str:
-    """Inspect SAMBAR files before a subtype-analysis run."""
-    report, _ = inspect_sambar_inputs_impl(
-        mutation_file, exon_size_file, cancer_gene_file, pathway_file,
-        {"kmin": kmin, "kmax": kmax, "cluster": cluster},
-    )
-    return report
-
-
-@tool
 def inspect_otter_inputs(
     expression_file: str = "",
     coexpression_file: str = "",
@@ -586,55 +611,6 @@ def inspect_otter_inputs(
         precision,
     )
     return report
-
-
-@tool
-def run_sambar(
-    mutation_file: str,
-    exon_size_file: str,
-    cancer_gene_file: str,
-    pathway_file: str,
-    output_dir: str,
-    norm_patient: bool = True,
-    kmin: int = 2,
-    kmax: int = 4,
-    gmt_msigdb: bool = True,
-    subset_cancer_genes: bool = True,
-    distance: str = "binomial",
-    linkage: str = "complete",
-    cluster: bool = True,
-) -> str:
-    """Run SAMBAR using only declared, validated registry parameters."""
-    inspection, ok = inspect_sambar_inputs_impl(
-        mutation_file, exon_size_file, cancer_gene_file, pathway_file,
-        {"norm_patient": norm_patient, "kmin": kmin, "kmax": kmax,
-         "gmt_msigdb": gmt_msigdb, "subset_cancer_genes": subset_cancer_genes,
-         "distance": distance, "linkage": linkage, "cluster": cluster},
-    )
-    if not ok:
-        return "SAMBAR input validation failed; no command was executed.\n\n" + inspection
-    root = _resolve_user_path(output_dir)
-    inputs = {_resolve_user_path(path) for path in (mutation_file, exon_size_file, cancer_gene_file, pathway_file)}
-    outputs = [root / "mt_out.csv", root / "pt_out.csv", root / "manifest.json"]
-    if cluster:
-        outputs.extend([root / "clustergroups.csv", root / "dist_matrix.csv"])
-    collision = next((path for path in outputs if path in inputs), None)
-    if collision is not None:
-        return "SAMBAR input validation failed; no command was executed.\n\n  error: output would overwrite input: " + str(collision)
-    command = [
-        "run-sambar", "-m", mutation_file, "-e", exon_size_file, "-g", cancer_gene_file,
-        "-p", pathway_file, "-o", str(root), "--kmin", str(kmin), "--kmax", str(kmax),
-        "--distance", distance, "--linkage", linkage,
-    ]
-    if not norm_patient:
-        command.append("--no-norm-patient")
-    if not gmt_msigdb:
-        command.append("--no-gmt-msigdb")
-    if not subset_cancer_genes:
-        command.append("--no-subset-cancer-genes")
-    if not cluster:
-        command.append("--no-cluster")
-    return inspection + "\n\n" + _run_command(command, additional_output_files=[str(path) for path in outputs])
 
 
 def _load_otter_api():
@@ -776,6 +752,7 @@ def run_dragon(
         preview = (
             "DRAGON Python API preview:\n"
             "- import: netZooPy.dragon\n"
+            "- preprocessing: each layer standardized per feature (mean 0, SD 1), as netZooPy dragon.Scale\n"
             "- calls: estimate_penalty_parameters_dragon(X1, X2) -> "
             "get_precision_matrix_dragon(X1, X2, lambdas) and "
             "get_partial_correlation_dragon(X1, X2, lambdas) and "
@@ -788,8 +765,9 @@ def run_dragon(
             return input_report + "\n\n" + preview
 
         api = _load_dragon_api()
-        x1 = layer1.to_numpy(dtype=float)
-        x2 = layer2.to_numpy(dtype=float)
+        # Standardize each layer, as the netZooPy DRAGON tutorial does (dragon.Scale).
+        x1 = standardize_dragon_layer(layer1.to_numpy(dtype=float))
+        x2 = standardize_dragon_layer(layer2.to_numpy(dtype=float))
         if lambda1 is None:
             lambdas, _ = api.estimate_penalty_parameters_dragon(x1, x2)
         else:
@@ -988,6 +966,8 @@ LOCAL_TOOL_EXECUTORS = {
     "normalize_expression": normalize_expression,
     "inspect_sambar_inputs": inspect_sambar_inputs,
     "run_sambar": run_sambar,
+    "inspect_porcupine_inputs": inspect_porcupine_inputs,
+    "run_porcupine": run_porcupine,
     "inspect_dragon_inputs": inspect_dragon_inputs,
     "run_dragon": run_dragon,
     "run_lioness_dragon": run_lioness_dragon,

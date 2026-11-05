@@ -42,6 +42,18 @@ def main() -> int:
         design.insert(0, "intercept", 1.0)
     elif not np.allclose(design["intercept"].to_numpy(dtype=float), 1.0):
         raise ValueError("COBRA intercept column must contain only ones")
+    covariates = [column for column in design.columns if column != "intercept"]
+    constant = [column for column in covariates if np.ptp(design[column].to_numpy(dtype=float)) == 0]
+    if constant:
+        raise ValueError(
+            "COBRA design covariates must vary across samples; constant columns are "
+            "collinear with the intercept: " + ", ".join(map(str, constant))
+        )
+    # Covariates are passed as given, as netZooPy PANDA's own COBRA path does. The
+    # intercept component is then the co-expression where every covariate is 0
+    # (the reference level of a 0/1 indicator). Do not center them: with centered
+    # covariates the intercept component equals the unadjusted correlation of the
+    # expression (its psi row is the eigenvalues), so nothing would be adjusted.
     psi, q, d, g = cobra(design.to_numpy(), expression.to_numpy())
     output_dir = Path(args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -75,6 +87,8 @@ def main() -> int:
             "method": "intercept_component",
             "intercept_column": "intercept",
             "formula": "Q @ diag(psi[intercept, :]) @ Q.T, normalized to correlation",
+            "covariates_centered": False,
+            "meaning": "co-expression where every design covariate is 0 (the reference level of a 0/1 indicator)",
         },
         "adjusted_coexpression": {
             "format": "labeled_gene_by_gene_correlation",

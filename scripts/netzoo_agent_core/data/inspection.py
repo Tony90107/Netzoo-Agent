@@ -20,7 +20,9 @@ def expression_sample_count(expression_file: str) -> tuple[int, bool]:
     expression = _validate_expression(
         _read_checked_table("expression", expression_file)
     )
-    if expression.frame is None or expression.errors:
+    # A value-level problem (a missing value, a duplicate gene) does not change how many samples the file has;
+    # counting them anyway lets the workflow's own input check report that problem instead of "too few samples".
+    if expression.frame is None or expression.format_name != "expression matrix":
         return 0, expression.has_header
     frame, has_header = _drop_common_header(expression.frame)
     return max(frame.shape[1] - 1, 0), has_header

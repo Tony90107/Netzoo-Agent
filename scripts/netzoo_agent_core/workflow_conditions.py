@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Callable, Mapping
 
+import porcupine_io
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS, resolve_conditional_output
 
 from .data import bonobo, cobra, dragon, giraffe, inspection, lioness_dragon, otter, sambar
@@ -40,6 +41,7 @@ _MIN_SAMPLES: Mapping[str, Callable[[], int]] = MappingProxyType({
     "run_bonobo": lambda: bonobo.BONOBO_MIN_SAMPLES,
     "run_cobra": lambda: cobra.COBRA_MIN_SAMPLES,
     "run_giraffe": lambda: giraffe.GIRAFFE_MIN_SAMPLES,
+    "run_porcupine": lambda: porcupine_io.MIN_SAMPLES,
     "run_otter": lambda: otter.OTTER_MIN_EXPRESSION_SAMPLES,
 })
 # Core decision phase 4a: a relation between two stated counts, read from the function the input check itself calls.
@@ -385,6 +387,10 @@ def combination_issues(conditions: WorkflowConditions, settings: list[StatedSett
         if (enabled("cluster") is True and kmax is not None and samples is not None
                 and (error := sambar.kmax_sample_error(int(kmax), samples))):
             found.append(f"SAMBAR: {error}")
+    if conditions.action == "run_porcupine":
+        low, high = number("min_pathway_size"), number("max_pathway_size")
+        if low is not None and high is not None and high < low:
+            found.append("PORCUPINE: max_pathway_size must be greater than or equal to min_pathway_size")
     if conditions.action == "run_bonobo" and enabled("sparsify") is True and (delta := number("delta")) is not None:
         if error := bonobo.bonobo_delta(delta, True)[1]:
             found.append(f"BONOBO: {error.split(':')[0]}")

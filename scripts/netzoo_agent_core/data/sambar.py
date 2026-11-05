@@ -95,6 +95,38 @@ def _parameter_errors(decision: Any) -> list[str]:
     return errors
 
 
+#: Below either bound the four-way gene overlap is reported as small (a warning, not an error).
+SAMBAR_MIN_OVERLAP_GENES = 50
+SAMBAR_MIN_OVERLAP_FRACTION = 0.10
+
+
+def _decision_value(decision: Any, name: str, default: Any) -> Any:
+    if decision is None:
+        return default
+    return decision.get(name, default) if isinstance(decision, dict) else getattr(decision, name, default)
+
+
+def _dropped_samples_warning(mutation: pd.DataFrame, genes: list[str], reason: str) -> str | None:
+    """A warning naming the samples netZooPy SAMBAR drops because they have no mutation in `genes`, or None.
+
+    Upstream ``corgenelength`` drops samples with no mutation in the scored genes (mutation genes with an exon size,
+    restricted to cancer genes unless ``subcangenes`` is off) before any per-patient normalization, and
+    ``desparsify`` drops samples whose pathway scores are all zero. Both happen without notice, so the samples are
+    named here.
+    """
+    columns = [column for column in mutation.columns if str(column).strip() in set(genes)]
+    numeric = mutation[columns].apply(pd.to_numeric, errors="coerce").fillna(0.0)
+    zero = [str(sample) for sample in numeric.index[(numeric == 0).all(axis=1)]]
+    if not zero:
+        return None
+    return (
+        f"  warning: {len(zero)} of {mutation.shape[0]} samples have no mutations in {reason}: "
+        + ", ".join(zero[:5])
+        + (f" (and {len(zero) - 5} more)" if len(zero) > 5 else "")
+        + "; netZooPy SAMBAR drops them, so they will be missing from every output"
+    )
+
+
 def inspect_sambar_inputs_impl(
     mutation_file: str,
     exon_size_file: str,
@@ -146,6 +178,33 @@ def inspect_sambar_inputs_impl(
             f"  GMT pathways: {pathway_count}",
             f"  four-way identifier overlap: {len(common)} genes",
         ])
+        subset = bool(_decision_value(decision, "subset_cancer_genes", True))
+        candidates = mutation_genes & cancer_genes if subset else mutation_genes
+        # Whole-exome mutations against a cancer-gene list overlap little by design, so the share is taken of the
+        # mutation genes SAMBAR can score at all, not of every mutation gene.
+        if common and candidates and (
+            len(common) < SAMBAR_MIN_OVERLAP_GENES or len(common) < SAMBAR_MIN_OVERLAP_FRACTION * len(candidates)
+        ):
+            lines.append(
+                f"  warning: only {len(common)} genes are shared by all four inputs, out of "
+                f"{len(candidates)} {'mutation genes in the cancer-gene list' if subset else 'mutation genes'} "
+                f"(fewer than {SAMBAR_MIN_OVERLAP_GENES} genes or {SAMBAR_MIN_OVERLAP_FRACTION:.0%}); pathway scores "
+                "rest on few genes"
+                + (
+                    ", so check that every file uses the same gene identifier type (for example HGNC symbols)"
+                    if len(common) < SAMBAR_MIN_OVERLAP_FRACTION * len(candidates) else
+                    "; every candidate gene is shared, so the input itself is small"
+                )
+            )
+        if not errors:
+            # A sample with no mutation in a scored gene of some pathway ends with all-zero pathway scores (or none
+            # at all), and upstream drops it; this covers both of upstream's drops.
+            scored = mutation_genes & length_genes & (cancer_genes if subset else mutation_genes) & pathway_genes
+            scope = "cancer genes with an exon size" if subset else "genes with an exon size"
+            if warning := _dropped_samples_warning(
+                mutation, sorted(scored), f"the {len(scored)} pathway {scope} that SAMBAR scores"
+            ):
+                lines.append(warning)
         if decision is not None and bool(decision.get("cluster", True) if isinstance(decision, dict) else getattr(decision, "cluster", True)):
             kmax = decision.get("kmax", 4) if isinstance(decision, dict) else getattr(decision, "kmax", 4)
             if error := kmax_sample_error(kmax, mutation.shape[0]):

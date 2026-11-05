@@ -17,7 +17,7 @@ from ..contracts import (
 from ..outcomes import effective_results, terminal_failed
 from ..data.paths import _resolve_user_path
 from workflow_registry import workflow_name
-from ..data.normalization import METHOD_LABELS
+from ..data.normalization import METHOD_LABELS, default_snail_reason, raw_counts_line
 
 def render_plan_evaluation(evaluation: PlanEvaluationResult) -> str:
     """Render the typed rubric as Markdown for audit; code never parses this table."""
@@ -257,6 +257,11 @@ def render_compact_execution_response(
                 "default": "the default: your request names no method and states no correction it needs",
             }.get(choice.get("source"), "")
             lines.append(f"- Method: {METHOD_LABELS[chosen]}" + (f" -- {why}" if why else ""))
+            if choice.get("source") == "default" and chosen == "snail":
+                has_groups = any(item.field == "groups_file" for item in input_evidence)
+                lines.append(f"- Why SNAIL here: {default_snail_reason(has_groups)}")
+        if plan.raw_counts is not None:
+            lines.append(raw_counts_line(plan.raw_counts, plan.workflow))
 
     inspection = next(
         (item for item in results if item.action.startswith("inspect_")), None

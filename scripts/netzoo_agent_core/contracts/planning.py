@@ -76,6 +76,19 @@ class WorkflowStep(BaseModel):
     purpose: str
     arguments: dict = Field(default_factory=dict)
 
+class RawCountSignal(BaseModel):
+    """The expression matrix a workflow will read looks like raw counts with uneven sample totals (2026-11-05).
+
+    Every number here was read from the file by code (`data.normalization.raw_count_signal`).
+    """
+
+    expression_file: str = Field(min_length=1, max_length=4_000)
+    samples: int = Field(ge=2)
+    max_value: float = Field(ge=0)
+    total_min: float = Field(gt=0)
+    total_max: float = Field(gt=0)
+
+
 class WorkflowPlan(BaseModel):
     workflow: str
     objective: str
@@ -98,10 +111,13 @@ class WorkflowPlan(BaseModel):
     )
     recovery_step_index: int | None = Field(default=None, ge=0)
     recovery_attempt: int = Field(default=0, ge=0, le=MAX_RECOVERY_ATTEMPTS)
+    raw_counts: RawCountSignal | None = Field(default=None, exclude_if=lambda value: value is None)
+    """Set when the workflow reads an expression matrix that looks like raw counts with uneven sample totals."""
 
 __all__ = [
     'InputBundleOption',
     'InputEvidence',
+    'RawCountSignal',
     'WorkflowStep',
     'WorkflowPlan',
     'WorkflowHandoff',

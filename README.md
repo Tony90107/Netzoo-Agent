@@ -28,6 +28,7 @@ runs the workflow in Docker after you approve the plan.
 | OTTER | TF → gene network by relaxed graph matching |
 | GIRAFFE | TF → gene regulation plus TF activity per sample |
 | SAMBAR | Pathway mutation scores and subtypes from somatic mutations |
+| PORCUPINE | Pathways whose regulation varies most between patients, from LIONESS sample networks (R package) |
 
 It can also download STRING protein networks (functional, physical or regulatory) for a species.
 
@@ -178,7 +179,7 @@ docker compose run --rm netzoo run-panda \
 ```
 
 The other wrappers are `run-puma`, `run-lioness {panda|puma|coexpression}`, `run-condor`,
-`run-cobra` and `run-sambar`. Run any of them with `--help` to see its arguments.
+`run-cobra`, `run-sambar` and `run-porcupine` (see `docs/PORCUPINE_INTEGRATION.md`). Run any of them with `--help` to see its arguments.
 
 ---
 

@@ -221,7 +221,8 @@ def test_claim_prompt_stays_within_small_model_instruction_budget():
     }
     prompt = claim_messages(TASK, selection_tags=tags)[0].content
 
-    assert len(prompt) <= 4200
+    # 4200 held 13 workflows (4194 chars); PORCUPINE's artifact type and tag add ~140.
+    assert len(prompt) <= 4350
 
 
 def test_unknown_and_not_applicable_support_do_not_become_scientific_evidence():

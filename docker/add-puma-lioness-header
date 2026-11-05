@@ -11,6 +11,7 @@ expression matrix used for the run.
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 
@@ -39,12 +40,14 @@ def add_header(expression_file: Path, lioness_file: Path) -> bool:
     if not lines:
         raise SystemExit(f"LIONESS-PUMA output is empty: {lioness_file}")
 
-    first_parts = lines[0].strip().split()
+    first_parts = re.split(r"[\s,]+", lines[0].strip())
     if first_parts[:3] == HEADER_PREFIX:
         return False
 
+    # The header takes the body's delimiter: netZooPy writes .csv comma-separated and .tsv tab-separated.
+    delimiter = "\t" if "\t" in lines[0] else "," if "," in lines[0] else " "
     n_samples = sample_count(expression_file)
-    header = " ".join([*HEADER_PREFIX, *(str(i) for i in range(1, n_samples + 1))])
+    header = delimiter.join([*HEADER_PREFIX, *(str(i) for i in range(1, n_samples + 1))])
     trailing_newline = "\n" if text.endswith("\n") else ""
     lioness_file.write_text(header + "\n" + "\n".join(lines) + trailing_newline, encoding="utf-8")
     return True

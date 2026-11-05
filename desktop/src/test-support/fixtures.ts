@@ -33,6 +33,7 @@ export function makePlan(overrides: Partial<WorkflowPlan> = {}): WorkflowPlan {
     recovery_error_code: null,
     recovery_step_index: null,
     recovery_attempt: 0,
+    raw_counts: null,
     ...overrides,
   };
 }

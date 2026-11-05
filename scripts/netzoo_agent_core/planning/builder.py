@@ -7,7 +7,7 @@ from typing import Any
 from .assembly import _assemble_workflow_plan
 from .context import _prepare_planning_context
 from .evidence import _build_evidence_ledger
-from ..normalization_request import method_choice_evidence
+from ..normalization_request import method_choice_evidence, with_raw_count_note
 from ..contracts.requirements import RequestRequirements
 from ..contracts import (
     Episode,
@@ -76,4 +76,4 @@ def build_workflow_plan(
     evidence = _build_evidence_ledger(context_or_plan)
     # A normalization whose stated needs fit several methods asks which one (normalization_request).
     evidence.extend(method_choice_evidence(context_or_plan.decision))
-    return _assemble_workflow_plan(context_or_plan, evidence)
+    return with_raw_count_note(_assemble_workflow_plan(context_or_plan, evidence), raw_decision.action)

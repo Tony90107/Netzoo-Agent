@@ -74,6 +74,26 @@ def test_dragon_rejects_sample_id_mismatch_duplicate_features_non_numeric_and_mi
     assert not ok
 
 
+def test_dragon_rejects_feature_by_sample_layers_even_when_their_ids_align(tmp_path):
+    # Gene-by-sample layers keyed by the same gene symbols would pass the
+    # sample-ID check and build a network over samples.
+    first = tmp_path / "expression.tsv"
+    first.write_text("gene\tS1\tS2\tS3\tS4\nTP53\t1\t2\t3\t4\nMYC\t2\t1\t4\t3\n"
+                     "EGFR\t5\t3\t2\t1\nKRAS\t1\t1\t2\t5\n", encoding="utf-8")
+    second = tmp_path / "methylation.tsv"
+    second.write_text("Gene\tS1\tS2\tS3\tS4\nTP53\t.1\t.2\t.3\t.5\nMYC\t.2\t.1\t.4\t.3\n"
+                      "EGFR\t.5\t.3\t.2\t.1\nKRAS\t.1\t.9\t.2\t.5\n", encoding="utf-8")
+    report, ok = inspect_dragon_inputs_impl(str(first), str(second))
+    assert not ok
+    assert "feature-by-sample" in report and "transpose" in report
+    ensembl = tmp_path / "ensembl.tsv"
+    ensembl.write_text("id\tS1\tS2\tS3\nENSG00000141510.17\t1\t2\t3\n"
+                       "ENSG00000136997\t3\t1\t2\nENSG00000146648\t2\t3\t1\n", encoding="utf-8")
+    report, ok = inspect_dragon_inputs_impl(str(ensembl), str(_layer(tmp_path / "ok.tsv", ids=("S1", "S2", "S3"))))
+    assert not ok
+    assert "ENSG00000141510.17" in report and "feature-by-sample" in report
+
+
 def test_dragon_requires_two_layers_and_rejects_more_than_two_without_pairwise_contract(tmp_path):
     first = _layer(tmp_path / "layer1.tsv")
     second = _layer(tmp_path / "layer2.tsv", features=("m1",))

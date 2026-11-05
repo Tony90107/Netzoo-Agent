@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from .. import settings
@@ -119,8 +120,8 @@ def _header_role(value: object) -> str:
     return "unknown"
 
 
-_ENSEMBL_GENE = re.compile(r"^ENS[A-Z0-9]*G[0-9]+(?:\.[0-9]+)?$", re.IGNORECASE)
-_ENSEMBL_TRANSCRIPT = re.compile(r"^ENS[A-Z0-9]*T[0-9]+(?:\.[0-9]+)?$", re.IGNORECASE)
+_ENSEMBL_GENE = re.compile(r"^ENS[A-Z0-9]*G[0-9]+(?:\.[0-9]+)?(?:_PAR_Y)?$", re.I)  # GENCODE Y copy
+_ENSEMBL_TRANSCRIPT = re.compile(r"^ENS[A-Z0-9]*T[0-9]+(?:\.[0-9]+)?(?:_PAR_Y)?$", re.I)
 _SYMBOL_LIKE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
 # High enough that a genuinely mixed file stays opaque, low enough that a
 # handful of spreadsheet-mangled labels do not disable the whole axis.
@@ -343,6 +344,33 @@ def _validate_expression(check: TableCheck) -> TableCheck:
         check.errors.append(
             f"expression values must be numeric; numeric cell ratio is {numeric_ratio:.1%}."
         )
+    elif not numeric_block.empty:
+        # netZooPy PANDA/PUMA/LIONESS take np.corrcoef of the matrix and then
+        # nan_to_num it, so one missing value silently zeroes that gene's
+        # co-expression with every other gene. Nothing here may be missing.
+        cells = numeric_block.apply(pd.to_numeric, errors="coerce").astype(float)
+        bad = ~np.isfinite(cells.to_numpy())
+        if bad.any():
+            row, column = (int(index[0]) for index in np.nonzero(bad))
+            gene = str(frame.iloc[row, 0]).strip()
+            check.errors.append(
+                f"expression matrix has {int(bad.sum())} missing, non-numeric or infinite "
+                f"value(s) (first: gene {gene!r}, value column {column + 1}). "
+                "netZooPy turns a gene with any missing value into zero co-expression with "
+                "every other gene; fill or remove these values (or the genes) first."
+            )
+        else:
+            constant = [
+                str(frame.iloc[index, 0]).strip()
+                for index in np.nonzero(cells.nunique(axis=1).to_numpy() <= 1)[0]
+            ]
+            if constant and cells.shape[1] >= 2:
+                check.warnings.append(
+                    f"{len(constant)} gene(s) are constant across samples (first: "
+                    f"{', '.join(constant[:5])}); their correlation is undefined and "
+                    "netZooPy sets their co-expression to zero, so they are scored from "
+                    "the priors alone."
+                )
     numeric_values = pd.to_numeric(numeric_block.stack(), errors="coerce").dropna()
     if (
         len(numeric_values) >= 100
@@ -360,8 +388,10 @@ def _validate_expression(check: TableCheck) -> TableCheck:
     duplicated = row_ids[row_ids.duplicated()].unique()
     if len(duplicated):
         preview = ", ".join(duplicated[:5])
-        check.warnings.append(
-            f"expression matrix contains duplicate gene IDs: {preview}"
+        check.errors.append(
+            f"expression matrix contains {len(duplicated)} duplicate gene ID(s): {preview}. "
+            "netZooPy maps each gene ID to one row, so duplicates are mis-assigned or "
+            "fail; collapse them (e.g. keep the most expressed probe, or sum counts) first."
         )
     if frame.shape[1] < 3:
         check.warnings.append(

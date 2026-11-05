@@ -620,3 +620,36 @@ def test_a_gap_card_offers_what_the_reply_names_in_the_users_terms():
     mirna = _prompt("test7").replace("TF-gene prior", "TF- and miRNA-gene prior")
     _, alternatives, _ = capability_gap_parts(_prior_gap(["run_panda", "run_puma"]), POLICY, mirna)
     assert [option.label for option in alternatives] == ["Use PANDA instead", "Use PUMA instead"]
+
+
+def test_a_raw_count_matrix_offers_normalizing_first():
+    # 2026-11-05: the plan's matrix looks like raw counts; "Normalize first" submits a request written from the plan.
+    from netzoo_agent_core.contracts import InputEvidence
+    from netzoo_agent_core.contracts.planning import RawCountSignal
+    from netzoo_agent_core.normalization_request import normalization_decision
+
+    made = decision(action="run_panda", should_execute=True, matched_actions=["run_panda"])
+    evidence = [InputEvidence(field=field, status="provided", value=value, reason="stated")
+                for field, value in (("expression_file", "/data/counts.tsv"), ("motif_file", "/data/motif.tsv"),
+                                     ("ppi_file", "/data/ppi.tsv"), ("output_file", "/data/panda.tsv"))]
+    signal = RawCountSignal(expression_file="/data/counts.tsv", samples=6, max_value=2400,
+                            total_min=10_000, total_max=60_000)
+    plan = WorkflowPlan(workflow="PANDA", objective="run", decision=made.model_dump(), status="ready",
+                        evidence=evidence, raw_counts=signal)
+    result = {"plan": plan.model_dump(), "messages": [AIMessage(content="ready")], "reply_kind": "execution",
+              "tool_results": [{"action": "run_panda", "status": "dry_run", "summary": "preview"}],
+              "evaluation": {"status": "completed"}}
+    prompt = NextTurnPrompt(kind="dry_run", question="Your PANDA plan is ready.")
+    card = build_reply_card(result, prompt, POLICY, task="run PANDA")
+    assert [step.key for step in card.next_steps] == ["execute", "normalize-first", "new-task"]
+    assert any("228,871" not in point and "(6.0-fold)" in point for point in card.points)
+    step = card.next_steps[1]
+    assert step.resolution == "new_request"
+    assert step.answer == ("Normalize the expression matrix expression_file=/data/counts.tsv first, then run PANDA "
+                           "with motif_file=/data/motif.tsv ppi_file=/data/ppi.tsv.")
+    # The request reads as "normalize, then PANDA" on that matrix; PANDA's output is not the normalization's.
+    read = normalization_decision(step.answer)
+    assert (read.expression_file, read.then_action) == ("/data/counts.tsv", "run_panda")
+    assert read.output_file != "/data/panda.tsv"
+    assert build_reply_card({**result, "plan": plan.model_copy(update={"raw_counts": None}).model_dump()},
+                            prompt, POLICY, task="run PANDA").next_steps[1].key == "new-task"

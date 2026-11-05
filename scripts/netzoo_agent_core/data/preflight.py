@@ -35,6 +35,7 @@ from .sambar import (
     _read_gmt,
     inspect_sambar_inputs_impl,
 )
+from .porcupine import inspect_porcupine_inputs_impl, porcupine_gene_axes
 from .transforms import (
     convert_expression_to_coexpression_impl,
     format_expression_for_netzoo_impl,
@@ -50,6 +51,7 @@ WORKFLOW_GENE_EXTRACTORS: dict[str, str] = {
     "run_lioness_coexpression": "expression_genes",
     "run_cobra": "cobra_expression_genes",
     "run_sambar": "sambar_gene_sets",
+    "run_porcupine": "porcupine_gene_sets",
     "run_otter": "otter_gene_and_tf_ids",
     "run_giraffe": "giraffe_gene_and_tf_ids",
     "run_bonobo": "bonobo_expression_genes",
@@ -219,6 +221,14 @@ def _workflow_gene_errors(action: str, decision: Any, taxon: str) -> list[str]:
             for identifiers, label in axes
             for error in _gene_axis_errors(identifiers, label, taxon)
         ]
+    if action == "run_porcupine":
+        return [
+            error
+            for identifiers, label in porcupine_gene_axes(
+                _value(decision, "sample_network_file"), _value(decision, "pathway_file")
+            )
+            for error in _gene_axis_errors(identifiers, label, taxon)
+        ]
     if action == "run_otter":
         bundle = load_otter_inputs(
             expression,
@@ -320,6 +330,13 @@ def _validate_workflow_inputs_impl(action: str, decision: Any) -> list[str]:
             decision,
         )
         errors.extend(_report_errors("SAMBAR inputs", report, ok))
+    elif action in {"inspect_porcupine_inputs", "run_porcupine"}:
+        report, ok = inspect_porcupine_inputs_impl(
+            _value(decision, "sample_network_file"),
+            _value(decision, "pathway_file"),
+            decision,
+        )
+        errors.extend(_report_errors("PORCUPINE inputs", report, ok))
     elif action in {"inspect_dragon_inputs", "run_dragon", "run_lioness_dragon"}:
         report, ok = inspect_dragon_inputs_impl(
             _value(decision, "omics_layer_1"),
@@ -449,6 +466,7 @@ WORKFLOW_INPUT_VALIDATORS: dict[str, Callable[[Any], list[str]]] = {
     "run_otter": _bound_validator("run_otter"),
     "run_giraffe": _bound_validator("run_giraffe"),
     "run_bonobo": _bound_validator("run_bonobo"),
+    "run_porcupine": _bound_validator("run_porcupine"),
 }
 
 

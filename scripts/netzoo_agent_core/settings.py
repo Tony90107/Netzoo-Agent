@@ -61,6 +61,7 @@ INPUT_ROLE_FIELDS = {
     "exon_size_file",
     "cancer_gene_file",
     "pathway_file",
+    "sample_network_file",
     "omics_layer_1",
     "omics_layer_2",
 }
@@ -73,6 +74,8 @@ PARAMETER_FIELDS = {
     "bonobo_confidence", "save_pvals", "keep_in_memory", "delta", "log_transformed",
     "centered", "lambda1", "lambda2", "snail_aggregation", "normalization_method",
     "computing", "precision", "lam", "gamma", "iterations", "eta", "bexp",
+    "min_pathway_size", "max_pathway_size", "n_permutations", "n_cores", "scale_data",
+    "fdr_threshold", "min_effect_size", "seed",
 }
 
 __all__ = [

@@ -141,6 +141,61 @@ def _format_path(path: Path) -> str:
     return str(path)
 
 
+#: Raw-count signature: non-negative, almost all whole numbers, and a count-scale maximum.
+_COUNT_WHOLE_FRACTION = 0.99
+_COUNT_MIN_MAXIMUM = 100.0
+#: Per-gene means count as not centered when their median magnitude exceeds this share of the median per-gene SD.
+_CENTERING_TOLERANCE = 0.1
+
+
+def _raw_count_error(values: np.ndarray) -> str | None:
+    """Why values declared log-transformed look like raw counts, or None.
+
+    BONOBO (netZooPy bonobo.py) builds each sample's network from Gaussian
+    covariance estimates, so it needs log-scale expression; the declaration
+    alone cannot show that, the values can.
+    """
+    if values.size == 0 or (values < 0).any():
+        return None
+    whole = float(np.mean(np.isclose(values, np.round(values), rtol=0.0, atol=1e-8)))
+    maximum = float(values.max())
+    if whole < _COUNT_WHOLE_FRACTION or maximum < _COUNT_MIN_MAXIMUM:
+        return None
+    return (
+        "BONOBO expression is declared log-transformed, but the values look like raw counts: "
+        f"all {values.size} values are non-negative, {whole:.1%} are whole numbers, and the "
+        f"maximum is {maximum:g}. BONOBO estimates Gaussian covariances and needs log-scale "
+        "expression; normalize and log-transform the counts (for example log2(count + 1)) and "
+        "run again, or correct the log_transformed declaration"
+    )
+
+
+def bonobo_centering_warning(values: np.ndarray) -> str | None:
+    """A note when values declared centered have per-gene means clearly away from zero.
+
+    It is a warning, not a refusal: netZooPy BONOBO subtracts each gene's mean
+    across all samples itself (``expression_mean`` in bonobo.py) and ``np.cov``
+    centers the background, so uncentered input gives the same networks. The
+    declaration is still inaccurate, so the report says so with the numbers.
+    """
+    if values.ndim != 2 or values.shape[0] == 0 or values.shape[1] < 2:
+        return None
+    means = np.abs(values.mean(axis=1))
+    sds = values.std(axis=1, ddof=1)
+    median_mean = float(np.median(means))
+    median_sd = float(np.median(sds))
+    if median_mean <= _CENTERING_TOLERANCE * median_sd:
+        return None
+    return (
+        "expression is declared centered, but per-gene means are not near zero: the median "
+        f"|gene mean| is {median_mean:.4g} against a median gene SD of {median_sd:.4g} "
+        f"(centered data would stay at or below {_CENTERING_TOLERANCE:g} x SD). BONOBO subtracts "
+        "each gene's mean itself, so the networks are unaffected; if you meant a different "
+        "preprocessing (for example per-sample centering), check the input, or subtract each "
+        "gene's mean across samples to make the declaration accurate"
+    )
+
+
 def load_bonobo_inputs(
     expression_file: str,
     sample_names: Any = None,
@@ -212,6 +267,8 @@ def load_bonobo_inputs(
         raise ValueError(
             "BONOBO requires centered expression data; declare centered=true after preprocessing"
         )
+    if (count_error := _raw_count_error(values)) is not None:
+        raise ValueError(count_error)
 
     requested = _normalise_sample_names(sample_names)
     missing = sorted(set(requested).difference(sample_ids))
@@ -266,6 +323,8 @@ def inspect_bonobo_inputs_impl(
                 f"  sample subset: {'requested' if requested else 'all samples'}",
             ]
         )
+        if (centering := bonobo_centering_warning(bundle.expression.to_numpy(dtype=float))) is not None:
+            lines.append(f"  warning: {centering}")
         if len(bundle.sample_ids) < 5:
             lines.append("  warning: fewer than five samples may make sample-specific estimates unstable")
         if output_dir is not None:
@@ -588,6 +647,7 @@ __all__ = [
     "BonoboInputBundle",
     "bonobo_api_output_folder",
     "bonobo_artifact_paths",
+    "bonobo_centering_warning",
     "inspect_bonobo_inputs_impl",
     "load_bonobo_inputs",
     "materialize_bonobo_sample_coexpression",

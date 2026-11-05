@@ -79,9 +79,10 @@ def test_the_first_pass_the_review_and_the_discriminator_are_not_touched():
     def digest(model):
         return hashlib.sha256(json.dumps(model.model_json_schema(), sort_keys=True).encode()).hexdigest()[:12]
 
-    # Values at 4d11fef, before Log 208.
-    assert digest(SemanticInterpretation) == "f9ef84d1326b"
-    assert digest(SemanticReview) == "c6fa6eb609a1"
+    # Values at 4d11fef, before Log 208; SemanticInterpretation and SemanticReview re-pinned when PORCUPINE added the
+    # pathway_heterogeneity_table artifact type (a registry enum, not a change to the call itself).
+    assert digest(SemanticInterpretation) == "723831030c83"
+    assert digest(SemanticReview) == "eb1734c20084"
     assert digest(SemanticDiscriminator) == "af2e0c9dff2f"
 
 

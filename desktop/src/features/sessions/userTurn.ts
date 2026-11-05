@@ -22,6 +22,7 @@ const WORKFLOW_NAMES: Record<string, string> = {
   run_otter: "OTTER",
   run_giraffe: "GIRAFFE",
   run_bonobo: "BONOBO",
+  run_porcupine: "PORCUPINE",
   download_string: "STRING download",
 };
 

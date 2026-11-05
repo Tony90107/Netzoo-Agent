@@ -138,6 +138,12 @@ ARTIFACT_SEMANTICS = {
     "multi_omic_network": ArtifactSemantics("Inferred associations between omics features", granularities=frozenset({"aggregate", "sample_specific"})),
     "gene_mutation_scores": ArtifactSemantics("Sample-by-gene mutation scores, not pathway scores", frozenset({"gene", "sample"}), frozenset({"aggregate"})),
     "pathway_mutation_matrix": ArtifactSemantics("Pathway-by-sample mutation scores, not cluster labels", frozenset({"pathway", "sample"}), frozenset({"aggregate"})),
+    "pathway_heterogeneity_table": ArtifactSemantics(
+        "Per-pathway regulatory variability across sample networks, with per-sample scores",
+        frozenset({"pathway", "sample"}),
+        frozenset({"aggregate"}),
+        frozenset({"analyze"}),
+    ),
     "sample_distance_matrix": ArtifactSemantics("Pairwise sample distances, not cluster labels", frozenset({"sample"}), frozenset({"aggregate"})),
     "sample_cluster_assignment": ArtifactSemantics(
         "Sample-to-cluster labels, separate from score and distance matrices",

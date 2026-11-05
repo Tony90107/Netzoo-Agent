@@ -406,8 +406,9 @@ def test_history_needs_a_token_and_lists_newest_first(client):
 def test_history_says_which_sessions_can_be_resumed(client):
     rows = client.get("/v1/history", headers=_auth()).json()["sessions"]
     for row in rows:
+        # history.RESUMABLE also holds "awaiting_answer" (unanswered clarifications, harness repair P3).
         assert row["resumable"] == (
-            row["status"] in {"needs_input", "needs_confirmation"}
+            row["status"] in {"needs_input", "needs_confirmation", "awaiting_answer"}
         )
 
 

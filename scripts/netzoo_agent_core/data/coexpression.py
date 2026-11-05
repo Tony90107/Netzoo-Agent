@@ -117,9 +117,16 @@ def adjusted_coexpression_from_cobra(
 
     COBRA represents each covariance component as ``Q diag(Psi[k, :]) Q.T``.
     With an intercept column, the intercept component is the covariance left
-    after removing the modeled covariate-associated components.  We convert it
-    to a correlation matrix because PANDA's expression-derived network input
+    after removing the modeled covariate-associated components: the covariance
+    where every other design column is 0.  ``run_cobra.py`` does not center the
+    covariates, since centered covariates make this component the unadjusted
+    correlation.  We convert it to a correlation matrix because PANDA's expression-derived network input
     is a correlation network, then preserve the gene IDs at both axes.
+
+    A negative intercept eigenvalue makes the component indefinite, and its
+    "correlations" can then leave [-1, 1] (psi = [1, -0.9] gives r = 19).  Such
+    a matrix is not a co-expression network, so it is refused rather than
+    handed to PANDA/PUMA.
     """
     psi = np.asarray(psi, dtype=float)
     q = np.asarray(q, dtype=float)
@@ -142,7 +149,19 @@ def adjusted_coexpression_from_cobra(
         raise ValueError("COBRA psi and Q must contain only finite values")
 
     intercept_index = columns.index(intercept_column)
-    covariance = q @ np.diag(psi[intercept_index, :]) @ q.T
+    intercept_psi = psi[intercept_index, :]
+    tolerance = 1e-8 * max(float(np.max(np.abs(intercept_psi))), 1.0)
+    negative = intercept_psi < -tolerance
+    if negative.any():
+        raise ValueError(
+            "COBRA intercept component is not positive semidefinite: "
+            f"{int(negative.sum())} of {intercept_psi.size} eigenvalues are negative "
+            f"(minimum {float(intercept_psi.min()):.6g}), so it is not a valid "
+            "co-expression matrix. This component is the co-expression where every "
+            "design covariate is 0; recode covariates so that 0 lies within the data "
+            "(for example a reference group, or age minus a reference age)"
+        )
+    covariance = q @ np.diag(intercept_psi) @ q.T
     covariance = (covariance + covariance.T) / 2.0
     diagonal = np.diag(covariance)
     if not np.isfinite(diagonal).all() or np.any(diagonal <= 0):
@@ -153,6 +172,15 @@ def adjusted_coexpression_from_cobra(
     correlation = covariance / scale
     correlation = (correlation + correlation.T) / 2.0
     np.fill_diagonal(correlation, 1.0)
+    # Backstop that does not rely on Q having orthonormal columns.
+    out_of_range = np.abs(correlation) > 1.0 + 1e-8
+    if out_of_range.any():
+        raise ValueError(
+            "COBRA adjusted co-expression has correlations outside [-1, 1] "
+            f"(max |r| = {float(np.abs(correlation).max()):.6g}); it is not a valid "
+            "co-expression matrix"
+        )
+    np.clip(correlation, -1.0, 1.0, out=correlation)
     return pd.DataFrame(correlation, index=genes, columns=genes)
 
 

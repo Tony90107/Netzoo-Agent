@@ -95,12 +95,15 @@ def _numeric(frame: pd.DataFrame, label: str) -> np.ndarray:
 def _drop_edge_header(frame: pd.DataFrame, label: str) -> pd.DataFrame:
     if frame.shape[0] == 0:
         return frame
-    first = [str(value).strip().casefold() for value in frame.iloc[0, :3]]
+    # A header row is one whose weight cell is not a number, or whose two ID
+    # cells are both column names. One ID cell that happens to equal a token
+    # (a gene literally named "TF" or "Target") is still a real edge.
+    first = [str(value).strip().casefold() for value in frame.iloc[0, :2]]
     header_tokens = {
-        "tf", "regulator", "source", "protein1", "gene", "target", "weight", "exists"
+        "tf", "regulator", "source", "protein1", "protein2", "gene", "target", "weight", "exists"
     }
     third_numeric = pd.to_numeric(frame.iloc[0, 2], errors="coerce") if frame.shape[1] >= 3 else np.nan
-    if any(value in header_tokens for value in first) or pd.isna(third_numeric):
+    if pd.isna(third_numeric) or (len(first) == 2 and all(value in header_tokens for value in first)):
         return frame.iloc[1:].reset_index(drop=True)
     return frame
 
@@ -160,6 +163,30 @@ def _read_coexpression(path: str) -> pd.DataFrame:
         raise ValueError("co-expression matrix must be square")
     if not np.allclose(values, values.T, rtol=1e-7, atol=1e-8):
         raise ValueError("co-expression matrix must be symmetric")
+    # OTTER's C is a correlation matrix (it is what the expression path builds
+    # with np.corrcoef); a covariance matrix has gene variances on the diagonal.
+    diagonal = np.diag(values)
+    off_diagonal = np.abs(diagonal - 1.0) > 1e-6
+    out_of_range = np.abs(values) > 1.0 + 1e-6  # float32 exports carry ~1e-7 noise
+    if off_diagonal.any() or out_of_range.any():
+        bad_genes = [genes[index] for index in np.flatnonzero(off_diagonal)]
+        details = []
+        if bad_genes:
+            details.append(
+                f"{len(bad_genes)} diagonal values differ from 1 (range "
+                f"{diagonal.min():.8g} to {diagonal.max():.8g}; first genes: {', '.join(bad_genes[:5])})"
+            )
+        if out_of_range.any():
+            details.append(
+                f"{int(out_of_range.sum())} values fall outside [-1, 1] (largest |value| "
+                f"{np.abs(values).max():.8g})"
+            )
+        raise ValueError(
+            "co-expression must be a correlation matrix with 1 on the diagonal and every value "
+            "in [-1, 1], but " + " and ".join(details) + ". This looks like a covariance or "
+            "unscaled matrix; convert it to a correlation matrix, or provide expression_file so "
+            "the correlation is computed from the expression"
+        )
     return pd.DataFrame(values, index=genes, columns=genes)
 
 

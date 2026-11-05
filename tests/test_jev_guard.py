@@ -147,7 +147,7 @@ def test_no_key_fails_inside_the_future(monkeypatch):
 
 def test_the_registry_lists_every_workflow():
     text = jev_guard_call.registry_text()
-    assert sum(line.startswith("- ") for line in text.splitlines()) == 13 and "LIONESS-DRAGON" in text
+    assert sum(line.startswith("- ") for line in text.splitlines()) == 14 and "LIONESS-DRAGON" in text
 
 
 def test_an_unreachable_jev_fails_inside_the_future(monkeypatch):
@@ -263,7 +263,7 @@ def test_a_link_question_is_never_judged_as_an_answer_to_a_contract_line():
 
 def test_the_result_menu_is_generated_for_every_workflow():
     menu = jev_guard_call.result_menu()
-    assert len(menu) == 15 and set(jev_guard_call.RESULT_NONE) <= set(menu) and "Result: " in menu["DRAGON"]
+    assert len(menu) == 16 and set(jev_guard_call.RESULT_NONE) <= set(menu) and "Result: " in menu["DRAGON"]
 
 
 def test_the_result_menu_lists_each_contracts_produced_artifacts():

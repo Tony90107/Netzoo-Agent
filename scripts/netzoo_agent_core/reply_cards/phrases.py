@@ -25,6 +25,7 @@ _NOUNS = {
     "sample_distance_matrix": "sample distance matrix",
     "pathway_mutation_matrix": "pathway mutation score matrix",
     "gene_mutation_scores": "gene mutation score matrix",
+    "pathway_heterogeneity_table": "table of pathways ranked by regulatory heterogeneity across samples",
     "multi_omic_network": "multi-omic network",
     "mutation_matrix": "mutation matrix",
     "expression_matrix": "expression matrix",

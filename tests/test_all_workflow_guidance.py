@@ -33,6 +33,7 @@ METHODS = {
     "run_otter": ["relaxed_graph_matching"], "run_panda": ["message_passing"],
     "run_puma": ["message_passing"], "run_sambar": ["somatic_mutation", "pathway_scores"],
     "run_lioness_dragon": ["leave_one_out_network_inference", "partial_correlation"],
+    "run_porcupine": ["pathway_heterogeneity"],
 }
 
 
@@ -289,6 +290,7 @@ def test_gap_renders_registered_mechanism_for_every_workflow_family():
         "run_puma": "miRNA-target predictions with",
         "run_sambar": "gene-length",
         "run_lioness_dragon": "two-layer Gaussian graphical model",
+        "run_porcupine": "share of variance on PC1",
     }
     assert set(mechanism_evidence) == set(POLICY.workflows)
     for action, expected in mechanism_evidence.items():

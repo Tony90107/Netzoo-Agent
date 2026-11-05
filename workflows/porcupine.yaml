@@ -1,0 +1,60 @@
+policy_version: 2
+workflow: PORCUPINE
+action: run_porcupine
+input_validator: run_porcupine
+description: Find pathways whose regulation varies coherently across a population of sample-specific networks with PORCUPINE.
+required_inputs: [sample_network_file, pathway_file, output_dir]
+optional_inputs: [min_pathway_size, max_pathway_size, n_permutations, n_cores, scale_data, fdr_threshold, min_effect_size, seed, taxon]
+validation_steps: [inspect_porcupine_inputs]
+controls:
+  - {name: min_pathway_size, type: integer, default: 5, minimum: 4, executor_argument: min_pathway_size, description: "Smallest pathway (genes among network targets) tested; PORCUPINE's PCA needs at least 4 edges."}
+  - {name: max_pathway_size, type: integer, default: 150, minimum: 4, executor_argument: max_pathway_size, description: Largest pathway tested; at least min_pathway_size.}
+  - {name: n_permutations, type: integer, default: 1000, minimum: 2, executor_argument: n_permutations, description: Random gene sets per pathway size for the null.}
+  - {name: n_cores, type: integer, default: 1, minimum: 1, executor_argument: n_cores, description: CPU cores.}
+  - {name: scale_data, type: boolean, default: true, executor_argument: scale_data, description: Scale each edge to unit variance before PCA.}
+  - {name: fdr_threshold, type: number, default: 0.05, minimum: 0, maximum: 1, executor_argument: fdr_threshold, description: BH-adjusted p-value cutoff.}
+  - {name: min_effect_size, type: number, default: 2.0, minimum: 0, executor_argument: min_effect_size, description: "Cohen's d cutoff."}
+  - {name: seed, type: integer, default: 1, executor_argument: seed, description: Random seed for the random gene sets.}
+execution_step: run_porcupine
+output_capability:
+  operation: analyze
+  artifact_type: pathway_heterogeneity_table
+  entity_types: [pathway, sample]
+  granularities: [aggregate]
+  accepted_input_modalities: [regulatory_network]
+  accepted_input_granularities: [sample_specific]
+  produced_artifacts: [pathway_heterogeneity_table]
+  transformations: [pathway_edge_extraction, edge_scaling, principal_component_analysis, random_gene_set_null, one_tailed_t_test, fdr_correction]
+  scientific_objectives: [inter_patient_regulatory_heterogeneity]
+  incompatible_input_artifacts: [expression_matrix, coexpression_network, mutation_matrix]
+  selection_phrases: [inter-patient heterogeneity, inter-tumour heterogeneity, pathways that vary across patients, 病患間異質性, 調控異質性]
+  regulator_types: []
+  target_types: []
+  guidance_predecessors: []
+  input_artifacts: [regulatory_network]
+  handoff_targets: []
+  selection_tags: [pathway_heterogeneity]
+  prefer_when: [cohort_size:many]
+  handoff_contract: >-
+    PORCUPINE takes sample-specific TF-to-gene networks as one labelled edges-by-samples
+    table (LIONESS-PANDA/PUMA text output) and a GMT whose genes match the network targets.
+    Per pathway it runs a PCA on the edges to the pathway's genes and tests PC1 variance
+    against size-matched random gene sets. Aggregate or co-expression networks and
+    expression matrices are not valid inputs.
+conventions:
+  - "Network table: rows are unique regulator-to-target edges, columns are tf/regulator, gene/target, optional prior, then one unique sample ID each; values are finite numbers."
+  - GMT gene IDs use the same namespace as the network target genes.
+  - Require at least 8 samples.
+  - With scale_data, edges constant across samples are dropped before PCA.
+  - Outputs are TSV; pathway statistics and PC1 scores have pathways as rows, scores have samples as columns.
+# Core decision spec, phase 2 (R5) and phase 4a: what the input check verifies before a run, in this file's own
+# words; scope request names the request-level limit (workflow_conditions) that decides it, scope file only
+# the files can.
+input_checks:
+  - text: "Require at least 8 samples."
+    scope: request
+    limit: "min_samples"
+  - text: "rows are unique regulator-to-target edges"
+    scope: file
+  - text: "GMT gene IDs use the same namespace as the network target genes."
+    scope: file

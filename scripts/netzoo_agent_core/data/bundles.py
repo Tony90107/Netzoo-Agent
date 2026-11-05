@@ -10,13 +10,14 @@ from workflow_registry import REQUIRED_INPUTS
 
 from ..presentation import _display_path
 from ..settings import INPUT_ROLE_FIELDS
-from .discovery import best_named_file, candidate_keywords
+from .discovery import best_named_file, candidate_keywords, top_named_files
 from .inspection import LIONESS_MIN_SAMPLES, expression_sample_count as _expression_sample_count
 from .paths import _resolve_user_path
 from .otter import inspect_otter_inputs_impl
 from .giraffe import inspect_giraffe_inputs_impl
 from .tables import _inspect_panda_inputs_impl
 from .sambar import inspect_sambar_inputs_impl
+from .porcupine import inspect_porcupine_inputs_impl
 
 __all__ = [
     "BundleDiscovery",
@@ -33,6 +34,7 @@ MULTI_FILE_ACTIONS = frozenset(
         "run_lioness_panda",
         "run_lioness_puma",
         "run_sambar",
+        "run_porcupine",
         "run_otter",
         "run_giraffe",
     }
@@ -130,6 +132,13 @@ def _content_verified_completion(
             if valid:
                 verified.append(candidate)
             continue
+        if action == "run_porcupine":
+            if not all(trial.get(name) for name in ("sample_network_file", "pathway_file")):
+                continue
+            _, valid = inspect_porcupine_inputs_impl(trial["sample_network_file"], trial["pathway_file"])
+            if valid:
+                verified.append(candidate)
+            continue
         if action == "run_giraffe":
             if not all(
                 trial.get(required)
@@ -182,15 +191,23 @@ def _bundle_in_directory(
         ]
     values = dict(explicit_inputs)
     candidates_by_field: dict[str, list[str]] = {}
+    ambiguous_fields: dict[str, list[str]] = {}
     content_verified_fields: list[str] = []
     for field_name in input_fields:
         if field_name in values:
             candidates_by_field[field_name] = [values[field_name]]
             continue
         keywords = candidate_keywords(action, field_name)
-        candidate = best_named_file(directory, keywords)
-        if candidate is None:
+        top = top_named_files(directory, keywords)
+        if not top:
             continue
+        if len(top) > 1:
+            # Equally good names: never pick one silently; leave the field open
+            # and name the candidates so the user chooses.
+            candidates_by_field[field_name] = [_display_path(path) for path in top]
+            ambiguous_fields[field_name] = candidates_by_field[field_name]
+            continue
+        candidate = top[0]
         rendered = _display_path(candidate)
         values[field_name] = rendered
         candidates_by_field[field_name] = [rendered]
@@ -223,6 +240,11 @@ def _bundle_in_directory(
                 f"Found a partial input bundle in {resolved_directory}; missing "
                 + ", ".join(missing_fields)
                 + "."
+                + "".join(
+                    f" Several files fit {field_name} equally well ({', '.join(paths)}); choose one."
+                    for field_name, paths in ambiguous_fields.items()
+                    if field_name in missing_fields
+                )
             ),
             candidates_by_field=candidates_by_field,
             missing_fields=missing_fields,
@@ -232,6 +254,8 @@ def _bundle_in_directory(
             values["mutation_file"], values["exon_size_file"],
             values["cancer_gene_file"], values["pathway_file"],
         )
+    elif action == "run_porcupine":
+        _, valid = inspect_porcupine_inputs_impl(values["sample_network_file"], values["pathway_file"])
     elif action == "run_otter":
         _, valid = inspect_otter_inputs_impl(
             values.get("expression_file", ""),

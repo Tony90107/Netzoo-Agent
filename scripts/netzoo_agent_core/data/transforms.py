@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 
 import pandas as pd
 
@@ -19,6 +21,19 @@ from .tables import (
 )
 
 __all__: list[str] = []
+
+_ENSEMBL_ID = re.compile(r"ENS[A-Z0-9]*[GT]\d+(?:\.\d+)?(?:_PAR_Y)?", re.IGNORECASE)
+
+
+def _ensembl_axis(raw: pd.DataFrame) -> str | None:
+    """'rows' or 'columns' when exactly one label axis is all Ensembl gene/transcript IDs."""
+    row_ids = [str(value).strip() for value in raw.iloc[1:, 0]]
+    column_ids = [str(value).strip() for value in raw.iloc[0, 1:]]
+    rows = bool(row_ids) and all(_ENSEMBL_ID.fullmatch(value) for value in row_ids)
+    columns = bool(column_ids) and all(_ENSEMBL_ID.fullmatch(value) for value in column_ids)
+    if rows != columns:
+        return "rows" if rows else "columns"
+    return None
 
 
 def format_expression_for_netzoo_impl(
@@ -82,10 +97,21 @@ def format_expression_for_netzoo_impl(
             orientation = "rows"
         elif first_cell in sample_labels:
             orientation = "columns"
+        elif has_header and _ensembl_axis(raw) is not None:
+            orientation = _ensembl_axis(raw)
+        elif has_header and raw.shape[0] - 1 > raw.shape[1] - 1:
+            # Genes on rows is the standard layout; keeping it needs no guess.
+            orientation = "rows"
         elif has_header and raw.shape[0] != raw.shape[1]:
-            data_rows = raw.shape[0] - 1
-            data_columns = raw.shape[1] - 1
-            orientation = "rows" if data_rows > data_columns else "columns"
+            # Transposing on shape alone would turn a small gene panel measured
+            # in many samples (30 TFs x 200 cells) into 200 "genes".
+            lines.append(
+                f"- error: gene orientation is ambiguous: the table has more columns "
+                f"({raw.shape[1] - 1}) than rows ({raw.shape[0] - 1}) and its first header "
+                f"cell {str(raw.iloc[0, 0]).strip()!r} does not name the axis; set genes_axis "
+                "to rows or columns."
+            )
+            return "\n".join(lines)
         else:
             lines.append(
                 "- error: gene orientation is ambiguous; set genes_axis to rows or columns."

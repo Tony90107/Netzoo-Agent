@@ -18,6 +18,7 @@ from .data.lioness_dragon import (
     LIONESS_DRAGON_MIN_SAMPLES,
     lioness_dragon_networks,
     lioness_dragon_size,
+    standardize_dragon_layer,
     write_lioness_dragon_table,
 )
 from .data.paths import _resolve_user_path
@@ -83,6 +84,7 @@ def run_lioness_dragon(
             "LIONESS-DRAGON Python API preview:\n"
             "- import: netZooPy.dragon\n"
             f"- {lambda_text}\n"
+            "- preprocessing: each layer standardized per feature (mean 0, SD 1) once on all samples\n"
             f"- calls: get_partial_correlation_dragon on all {n_samples} samples, then once per "
             "sample with that sample left out; N_k = n * (N_all - N_without_k) + N_without_k\n"
             f"- outputs: aggregate matrix at {outputs[0]}; {values:,} per-sample values "
@@ -93,8 +95,11 @@ def run_lioness_dragon(
             return input_report + "\n\n" + preview
 
         api = _load_dragon_api()
-        x1 = layer1.to_numpy(dtype=float)
-        x2 = layer2.to_numpy(dtype=float)
+        # Each layer is standardized once on all samples. This is the harness's choice: upstream
+        # lioness_for_dragon does not scale, and with fixed lambdas the partial correlations are
+        # scale-invariant; scaling changes the estimated lambdas and the p-values.
+        x1 = standardize_dragon_layer(layer1.to_numpy(dtype=float))
+        x2 = standardize_dragon_layer(layer2.to_numpy(dtype=float))
         if lambda1 is None:
             lambdas, _ = api.estimate_penalty_parameters_dragon(x1, x2)
         else:

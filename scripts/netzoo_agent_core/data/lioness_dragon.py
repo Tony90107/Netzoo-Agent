@@ -28,6 +28,19 @@ LIONESS_DRAGON_MIN_SAMPLES = 3
 LIONESS_DRAGON_MAX_VALUES = 20_000_000
 
 
+def standardize_dragon_layer(layer: np.ndarray) -> np.ndarray:
+    """Center and scale every feature to unit variance, as netZooPy ``dragon.Scale`` does.
+
+    DRAGON's shrinkage parameters are chosen by a risk computed on the raw
+    covariance of the two layers together, so a layer on a larger numeric scale
+    (log-TPM next to methylation beta values) dominates the estimate. The
+    netZooPy DRAGON tutorial scales each layer first; the harness does the same.
+    Zero-variance features are refused earlier by the input check.
+    """
+    values = np.asarray(layer, dtype=float)
+    return (values - values.mean(axis=0)) / values.std(axis=0)
+
+
 def lioness_dragon_size(n_samples: int, n_features: int) -> int:
     """Values the per-sample table holds: one per feature pair per sample."""
     return n_features * (n_features - 1) // 2 * n_samples

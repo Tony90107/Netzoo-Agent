@@ -219,20 +219,22 @@ SCHEMA_DIGESTS = {
     # lengths); omitted from dumps while unset.
     # Same day: optional code-owned TaskDecision.normalization_choice (named / need / default / answered, with the
     # verified need quotes and the candidate methods); omitted from dumps while unset.
-    "TaskDecision": "77011eb16814c382845bb7375de7901a239849116440d36d4f8889cefa0411e6",
-    "RouterDecision": "13c1ebd8e1885e01be7130848365eb48e9baa36d7a584a745c66a0be02e70aec",
-    "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
+    # Same day: PORCUPINE min/max_pathway_size are at least 4 (irlba's 3-component PCA needs 4 edges).
+    "TaskDecision": "a836d51a09b8482807564183df74d96c6d14ad620cbc095e206376e6a9a54784",
+    "RouterDecision": "4ae4171878f792713f81d63d503cf4d75be1d9dc3427eeb257f6a0261c8486d9",
+    "RequestedOutcome": "9be3f9457d9e5346db5ab185b4afe128039ca973e9e54dfb31b2748a5e7f567e",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
-    "OutcomeHypothesis": "90cdc308da7a0c3fb3099f7cdd31e8823668e1beb22925d1137df156272dbf9f",
-    "CapabilityMatch": "125ee25fdab1dfc33be4a9c0ee80b6c2f8ffb0024fb980c5de59048500fd989b",
-    "WorkflowPlan": "60754a779e0ad46bd409619063be6793cb9c68268fb23fe5bc61d2469777113c",
+    "OutcomeHypothesis": "67a1a3d39863756ea1ef20d3534a86cc82b4d78dd12acd3ad1268c44c14a1bbc",
+    "CapabilityMatch": "0b7805156d93f98bc6e8b0bc6ec537942c5cba570bbd06d3d58e1b25893486b1",
+    # 2026-11-05: WorkflowPlan.raw_counts (raw-count note before a workflow reads the matrix).
+    "WorkflowPlan": "5d45e4d5ab61199f1836038c52aacfa49e3c82a0622090dbfdfc42fc2b7dd70d",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "5612b4a6e53f12e9641b51170efc73531acfd0f804c79f0ea2443702ac5dda4f",
+    "ProjectPolicySnapshot": "dcf6b6c7e7018ee60884c834dff9953be733a7b47a4dcab00ec6dd8c04883362",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     # Updated deliberately on 2026-09-10: episodes retain the typed scientific
     # outcome used for semantic memory retrieval.
-    "Episode": "a503c11baa35dd1d27e50280e7525df00131427a107ce24a2be35ccb0503e451",  # harness repair P4: input_revisions
+    "Episode": "93fd3b12597043f940801781a4c91727ba349d209ccc197dbfc265b13ef27337",  # harness repair P4: input_revisions
 }
 
 

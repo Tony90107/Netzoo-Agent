@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import threading
 import time
@@ -695,18 +696,32 @@ def _structured_ncbi_lookup(
     return records
 
 
+_ENSEMBL_LOOKUP_SUFFIX = re.compile(r"(?:\.[0-9]+)?(?:_PAR_Y)?$", re.IGNORECASE)
+
+
+def _ensembl_lookup_id(identifier: str) -> str:
+    """The stable ID Ensembl REST resolves: no ".12" version, no GENCODE "_PAR_Y".
+
+    /lookup/id answers a versioned ID only when the version is the current
+    release's, so an older GENCODE annotation would read as invalid genes.
+    The caller's original ID is kept on the record for reporting.
+    """
+    return _ENSEMBL_LOOKUP_SUFFIX.sub("", identifier.strip(), count=1)
+
+
 def _structured_ensembl_lookup(
     identifiers: Sequence[str], namespace: str, taxon: str
 ) -> list[GeneRecord]:
+    lookup_ids = {identifier: _ensembl_lookup_id(identifier) for identifier in identifiers}
     response = _query_authority_json(
         "https://rest.ensembl.org/lookup/id",
         method="POST",
-        payload={"ids": list(identifiers)},
+        payload={"ids": list(dict.fromkeys(lookup_ids.values()))},
     )
     payload = response if isinstance(response, dict) else {}
     records: list[GeneRecord] = []
     for identifier in identifiers:
-        gene = payload.get(identifier)
+        gene = payload.get(lookup_ids[identifier])
         if not isinstance(gene, dict):
             records.append(
                 _invalid_record(

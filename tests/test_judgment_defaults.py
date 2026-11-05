@@ -161,7 +161,7 @@ def test_every_must_confirm_choice_has_a_trigger_a_question_and_a_source():
     assert sorted(c.n for c in must) == [1, 2, 3, 4, 5]
     assert all(c.trigger and c.question and c.source for c in must)
     defaults = [c for c in table.choices.values() if c.policy == "default_disclose"]
-    assert sorted(c.n for c in defaults) == list(range(6, 21)) and all(c.disclose and c.source for c in defaults)
+    assert sorted(c.n for c in defaults) == list(range(6, 23)) and all(c.disclose and c.source for c in defaults)
     assert set(table.workflow_logic) == set(table.workflow_data)
     assert all(logic and source for logic, source in table.workflow_logic.values())
 

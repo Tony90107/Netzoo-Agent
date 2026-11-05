@@ -498,6 +498,11 @@ class ConversationMachine:
         resolution = option.get("resolution")
         if resolution == "command":
             return self._submit_main_text(option["answer"])
+        if resolution == "new_request":
+            state.next_prompt = self._initial_prompt_factory()
+            state.follow_up_context = None
+            state.reply_card = None
+            return self._accept_task(option["answer"])
         if resolution == "open_outputs":
             paths = option.get("paths") or []
             return [Event("notice", _ui_text("Outputs from this run:") + "\n"

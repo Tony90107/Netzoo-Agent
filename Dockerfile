@@ -29,6 +29,17 @@ RUN micromamba create -y -n netzoo-r -c conda-forge -c bioconda \
     && micromamba clean -a -y \
     && /opt/conda/envs/netzoo-r/bin/Rscript -e 'suppressPackageStartupMessages({library(DESeq2); library(edgeR); library(preprocessCore); library(jsonlite)}); cat("R normalization packages OK\n")'
 
+# PORCUPINE (kuijjerlab/PORCUPINE, R): pathway-level PCA over sample-specific
+# LIONESS networks. Not on CRAN/Bioconductor and has no releases, so pin the
+# commit; dependencies come from conda in the same netzoo-r env. Tested 2026-11-05.
+ARG PORCUPINE_REF=96d68c057803473b0a1ee76631c7c0c78872d04c
+ENV PORCUPINE_REF=${PORCUPINE_REF}
+RUN micromamba install -y -n netzoo-r -c conda-forge -c bioconda \
+      bioconductor-fgsea=1.36.2 r-irlba=2.4.1 r-factoextra=2.2.0 r-lsr=1.0.0 \
+      r-data.table=1.18.6.1 r-dplyr=1.2.1 r-plyr=1.8.9 r-purrr=1.2.2 r-gridextra=2.3.1 r-remotes=2.5.0 \
+    && micromamba clean -a -y \
+    && /opt/conda/envs/netzoo-r/bin/Rscript -e 'remotes::install_github(paste0("kuijjerlab/PORCUPINE@", Sys.getenv("PORCUPINE_REF")), dependencies = FALSE, upgrade = "never", build_vignettes = FALSE); suppressPackageStartupMessages({library(PORCUPINE); library(DESeq2)}); stopifnot(all(c("pca_pathway", "porcupine", "get_pathway_ind_scores", "get_pathway_features_scores") %in% getNamespaceExports("PORCUPINE")), exists("create_gene_set", envir = asNamespace("PORCUPINE"), inherits = FALSE)); cat("PORCUPINE OK\n")'
+
 USER root
 ARG NETZOOPY_REF=60bcaf5ac69ac8f002db5fc6b1b10cbc101ee822
 ENV NETZOOPY_REF=${NETZOOPY_REF}
@@ -78,6 +89,7 @@ COPY docker/run-lioness /usr/local/bin/run-lioness
 COPY docker/run-condor /usr/local/bin/run-condor
 COPY docker/run-cobra /usr/local/bin/run-cobra
 COPY docker/run-sambar /usr/local/bin/run-sambar
+COPY docker/run-porcupine /usr/local/bin/run-porcupine
 COPY docker/run-pysnail /usr/local/bin/run-pysnail
 COPY docker/run-normalize-r /usr/local/bin/run-normalize-r
 COPY scripts/netzoo_table_io.py /opt/netzoo-harness/netzoo_table_io.py
@@ -85,7 +97,7 @@ COPY scripts /opt/netzoo-app/scripts
 COPY docker/add-puma-lioness-header /usr/local/bin/add-puma-lioness-header
 COPY docker/web-url /usr/local/bin/web-url
 COPY --from=web-ui /ui/dist /opt/netzoo-web
-RUN chmod +x /usr/local/bin/run-panda /usr/local/bin/run-panda-precomputed /usr/local/bin/run-puma /usr/local/bin/run-puma-precomputed /usr/local/bin/run-lioness /usr/local/bin/run-condor /usr/local/bin/run-cobra /usr/local/bin/run-sambar /usr/local/bin/run-pysnail /usr/local/bin/run-normalize-r /usr/local/bin/add-puma-lioness-header /usr/local/bin/web-url \
+RUN chmod +x /usr/local/bin/run-panda /usr/local/bin/run-panda-precomputed /usr/local/bin/run-puma /usr/local/bin/run-puma-precomputed /usr/local/bin/run-lioness /usr/local/bin/run-condor /usr/local/bin/run-cobra /usr/local/bin/run-sambar /usr/local/bin/run-porcupine /usr/local/bin/run-pysnail /usr/local/bin/run-normalize-r /usr/local/bin/add-puma-lioness-header /usr/local/bin/web-url \
     && mkdir -p /work /data /outputs \
     && chown -R $MAMBA_USER:$MAMBA_USER /work /data /outputs /opt/netZooPy /opt/netzoo-harness
 

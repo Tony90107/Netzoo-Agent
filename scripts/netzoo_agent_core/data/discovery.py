@@ -14,7 +14,7 @@ __all__: list[str] = ["SHIPPED_DATA_DIRECTORIES", "is_shipped_data"]
 SHIPPED_DATA_DIRECTORIES = frozenset({
     "auto-check-invalid", "auto-check-valid", "blind-neutral", "blind-tests", "bonobo-toy", "cobra-toy",
     "condor-toy", "dragon-toy", "format-demo", "giraffe-toy", "lioness-toy", "manual-tests", "official-toy",
-    "otter-toy", "role-mapping-fixtures", "sambar-official-toy", "sambar-toy", "teacher-demo",
+    "otter-toy", "porcupine-toy", "role-mapping-fixtures", "sambar-official-toy", "sambar-toy", "teacher-demo",
 })
 
 
@@ -48,6 +48,8 @@ def candidate_keywords(action: str, field_name: str) -> tuple[str, ...]:
         return ("exon", "length", "esize")
     if field_name == "cancer_gene_file":
         return ("cancer", "gene", "cangenes")
+    if field_name == "sample_network_file":
+        return ("lioness", "sample", "network")
     if field_name == "pathway_file":
         return ("pathway", "gmt", "signature")
     if action in {"run_dragon", "run_lioness_dragon"} and field_name == "omics_layer_1":
@@ -82,6 +84,10 @@ def score_candidate_file(
     for keyword in keywords:
         if keyword in name:
             score += 20
+    if _is_coexpression_name(name) and "expression" in keywords and "coexpression" not in keywords:
+        # "coexpression" contains "expression" and "expr", which would rank a
+        # gene-by-gene matrix above a real expression file.
+        score -= 100
     if "puma" in name and "panda" in keywords:
         score -= 25
     if "panda" in name and "puma" in keywords:
@@ -89,26 +95,46 @@ def score_candidate_file(
     return score
 
 
-def best_named_file(
+_COEXPRESSION_NAME_PARTS = ("coexpression", "co-expression", "co_expression", "correlation")
+
+
+def _is_coexpression_name(name: str) -> bool:
+    return any(part in name.casefold() for part in _COEXPRESSION_NAME_PARTS)
+
+
+def top_named_files(
     directory: Path,
     keywords: tuple[str, ...],
-) -> Path | None:
+) -> list[Path]:
+    """The files that tie for the best name score (empty when none matches).
+
+    More than one means the name alone cannot tell them apart (expression_raw.tsv
+    vs expression_log2.tsv); the caller must ask rather than pick one.
+    """
     if not directory.is_dir():
-        return None
+        return []
     candidates = [
         path
         for path in directory.iterdir()
         if path.is_file()
         and path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv", ".gmt"}
         and any(keyword in path.name.casefold() for keyword in keywords)
+        and not (
+            "expression" in keywords
+            and "coexpression" not in keywords
+            and _is_coexpression_name(path.name)
+        )
     ]
     if not candidates:
-        return None
-    candidates.sort(
-        key=lambda path: (
-            -score_candidate_file(path, keywords, directory),
-            len(path.name),
-            path.name,
-        )
-    )
-    return candidates[0]
+        return []
+    scores = {path: score_candidate_file(path, keywords, directory) for path in candidates}
+    best = max(scores.values())
+    return sorted((path for path in candidates if scores[path] == best), key=lambda path: (len(path.name), path.name))
+
+
+def best_named_file(
+    directory: Path,
+    keywords: tuple[str, ...],
+) -> Path | None:
+    top = top_named_files(directory, keywords)
+    return top[0] if top else None

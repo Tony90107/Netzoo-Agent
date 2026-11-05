@@ -47,6 +47,7 @@ _HIGHLIGHTS: dict[str, str] = {
     "run_lioness_dragon": "One two-layer partial-correlation network per sample, derived leave-one-out",
     "run_condor": "Finds TF-gene communities (modules) in a two-mode network",
     "run_sambar": "Pathway-level mutation scores, then patient subtypes by clustering",
+    "run_porcupine": "PCA on each pathway's edges across sample networks, tested against random gene sets",
 }
 
 # What the user gets from a workflow, in the user's terms and with its scale
@@ -68,6 +69,7 @@ _GIVES: dict[str, str] = {
     "run_lioness_dragon": "One two-layer partial-correlation network per sample",
     "run_condor": "TF-gene communities (modules) found in a network you already have",
     "run_sambar": "Pathway mutation scores per patient, then patient subtypes",
+    "run_porcupine": "Pathways whose regulation varies most between patients, with each patient's pathway score",
 }
 
 _CONDITIONS: dict[str, str] = {
@@ -124,6 +126,7 @@ _NOUNS = {
     "community_assignment": "network communities",
     "multi_omic_network": "a multi-omic network",
     "pathway_mutation_matrix": "pathway mutation scores",
+    "pathway_heterogeneity_table": "pathways ranked by regulatory heterogeneity",
 }
 
 

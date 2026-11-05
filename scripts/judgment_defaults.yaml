@@ -82,6 +82,9 @@ artifacts:
   patient_subtypes:
     means: Patient subtypes from somatic mutations, with gene and pathway mutation scores.
     entries: [sambar.subtypes]
+  pathway_heterogeneity:
+    means: Pathways whose regulation varies most between patients, from their sample-specific networks, with each patient's score on them.
+    entries: [porcupine.heterogeneous_pathways, porcupine.sample_scores, porcupine.patient_clusters]
   comparison:
     # A comparison is asked about one of the results above; `of` names it, so code matches the object, not the word.
     means: A result compared between groups, time points or clinical variables (a step outside NetZoo).
@@ -104,8 +107,8 @@ question_groups:
   # User-facing labels (agent output is English). Every artifact but `comparison` is in exactly one group; a
   # comparison belongs to the group of the result it compares.
   gene_gene:
-    label: How genes relate to each other (co-expression)
-    artifacts: [coexpression_network, covariate_adjustment]
+    label: How genes relate to each other (co-expression), or how gene regulation varies between patients
+    artifacts: [coexpression_network, covariate_adjustment, pathway_heterogeneity]
   regulator_gene:
     label: How regulators such as TFs or miRNAs control genes
     artifacts: [regulatory_network, targeting_scores, tf_activity]
@@ -196,6 +199,7 @@ workflow_data:
   LIONESS-DRAGON: {core: [two_layers], needs: [two_layers]}
   CONDOR: {core: [regulator_gene_network], needs: [regulator_gene_network]}
   SAMBAR: {core: [mutation_calls], needs: [mutation_calls]}
+  PORCUPINE: {core: [regulator_gene_network], needs: [regulator_gene_network]}
 
 required_settings:
   # Settings a workflow runs only with: stated otherwise -> FAIL; unsure -> asked; not stated -> listed as a need.
@@ -253,6 +257,8 @@ ruled_by:
   condor.no_variant_mapping: artifact=off_menu
   sambar.no_expression_subtypes: data_available=no_mutation_calls
   sambar.no_driver_calls: artifact=off_menu
+  porcupine.no_network_inference: artifact=regulatory_network
+  porcupine.no_differential_expression: artifact=off_menu
 
 limit_fields:
   # the `limit` of a request-scope input_check (its prefix before ":") -> the dimension that judges it
@@ -557,6 +563,7 @@ b4_conditions:
   DRAGON: [samples_matched, value_type]
   LIONESS-DRAGON: [samples_matched, value_type]
   CONDOR: [input_network]
+  PORCUPINE: [input_network]
   BONOBO: [setting:log_transformed, setting:centered]
 
 # Per-package algorithm core (user decision 2026-10-19): internal, for code and reviewers -- never shown to users and
@@ -597,6 +604,9 @@ workflow_logic:
   SAMBAR:
     logic: "Gene-length-normalised mutation scores -> pathway scores (cancer-gene list, pathway set) -> hierarchical clustering. Somatic mutations only."
     source: "workflows/sambar.yaml; capability sheet sambar.*; Kuijjer et al. 2018, Br J Cancer"
+  PORCUPINE:
+    logic: "Per pathway, the edges targeting its genes in every sample's LIONESS network are scaled and put through PCA; PC1 variance is tested (one-tailed t-test, Cohen's d) against size-matched random gene sets, then BH-adjusted. Finds coordinated variation across samples, not group differences; needs existing TF-gene sample networks and a GMT in the same gene namespace."
+    source: "workflows/porcupine.yaml; capability sheet porcupine.*; Belova et al. 2023 (kuijjerlab/PORCUPINE)"
 
 # Interpretation choices (user decision 2026-10-19): what keeps the workflow but changes what the result means.
 # must_confirm: triggered (`trigger`, code) and not verifiable from the files or the contract -> listed at run
@@ -753,3 +763,16 @@ interpretation_choices:
     workflows: [SAMBAR]
     disclose: "SAMBAR's subtypes depend on the pathway set and the cancer-gene list used."
     source: "workflow_logic SAMBAR"
+  porcupine_defaults:
+    n: 21
+    policy: default_disclose
+    workflows: [PORCUPINE]
+    unless_settings: [min_pathway_size, max_pathway_size, n_permutations, fdr_threshold, min_effect_size]
+    disclose: "PORCUPINE tests pathways of 5 to 150 network genes against 1000 random gene sets per size and calls a pathway significant at FDR < 0.05 with effect size > 2."
+    source: "workflows/porcupine.yaml controls"
+  porcupine_namespace:
+    n: 22
+    policy: default_disclose
+    workflows: [PORCUPINE]
+    disclose: "PORCUPINE's results depend on the pathway set, and its gene IDs must match the network's target genes."
+    source: "workflow_logic PORCUPINE"

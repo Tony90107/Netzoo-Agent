@@ -22,6 +22,7 @@ ActionName = Literal[
     "inspect_otter_inputs",
     "inspect_giraffe_inputs",
     "inspect_bonobo_inputs",
+    "inspect_porcupine_inputs",
     "format_expression",
     "convert_expression",
     "normalize_expression",
@@ -38,6 +39,7 @@ ActionName = Literal[
     "run_otter",
     "run_giraffe",
     "run_bonobo",
+    "run_porcupine",
     "query_context7",
     "web_search",
     "download_string",
@@ -61,6 +63,7 @@ RecommendedAction = Literal[
     "run_otter",
     "run_giraffe",
     "run_bonobo",
+    "run_porcupine",
 ]
 
 IntentType = Literal[
@@ -105,6 +108,7 @@ ArtifactType = Literal[
     "community_assignment",
     "validation_report",
     "multi_omic_network",
+    "pathway_heterogeneity_table",
     "unknown",
 ]
 InputModality = Literal[
@@ -167,6 +171,7 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
     "multi_omic_network": "infer one network spanning two omics layers",
     "partial_correlation": "infer conditional associations using partial correlation",
     "pathway_scores": "produce pathway-level mutation scores",
+    "pathway_heterogeneity": "pathways whose regulation varies coherently across sample networks",
     "relaxed_graph_matching": (
         "continuous relaxed graph-matching; explicit objective/loss, gradient descent, "
         "convergence; not heuristic message passing"
@@ -546,6 +551,14 @@ DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, tuple[str, ...]]] = {
         "Subtype labels can be compared with clinical variables -- survival between "
         "subtypes, for example; that needs a clinical table keyed by the same sample IDs.",
         "The pathway mutation scores show which pathways separate the subtypes.",
+    )),
+    "run_porcupine": ("Downstream use of the heterogeneous pathways:", (
+        "Each significant pathway's PC1 sample scores can stratify patients -- clustering "
+        "them or splitting at the median -- and the groups can then be compared with "
+        "clinical variables such as survival; that needs a clinical table keyed by the "
+        "same sample IDs.",
+        "The edge loadings name the TF-to-gene edges that drive each pathway's variation; "
+        "PC signs are arbitrary, so read a loading together with the sample scores.",
     )),
 }
 
@@ -1404,6 +1417,14 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         ),
         local=True,
     ),
+    "inspect_porcupine_inputs": ActionDefinition(
+        "inspect_porcupine_inputs",
+        "PORCUPINE-INPUTS",
+        required_inputs=("sample_network_file", "pathway_file"),
+        optional_inputs=("min_pathway_size", "max_pathway_size", "scale_data"),
+        executor_fields=("sample_network_file", "pathway_file", "min_pathway_size", "max_pathway_size", "scale_data"),
+        local=True,
+    ),
     "format_expression": ActionDefinition(
         "format_expression",
         "FORMAT-EXPRESSION",
@@ -1594,6 +1615,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             required_input_artifacts=frozenset({"motif_prior", "ppi_prior"}),
             guidance_predecessors=("run_panda",),
             input_artifacts=frozenset({"expression_matrix"}),
+            handoff_targets=("run_porcupine",),
             selection_tags=frozenset({
                 "sample_specific", "tf_gene_regulation", "message_passing",
                 "leave_one_out_network_inference",
@@ -1647,6 +1669,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             required_input_artifacts=frozenset({"motif_prior", "ppi_prior", "mirna_prior"}),
             guidance_predecessors=("run_puma",),
             input_artifacts=frozenset({"expression_matrix"}),
+            handoff_targets=("run_porcupine",),
             selection_tags=frozenset({
                 "sample_specific", "mirna_regulation", "message_passing",
                 "leave_one_out_network_inference",
@@ -2183,6 +2206,71 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             ),
         ),
     ),
+    "run_porcupine": ActionDefinition(
+        "run_porcupine",
+        "PORCUPINE",
+        required_inputs=("sample_network_file", "pathway_file", "output_dir"),
+        optional_inputs=(
+            "min_pathway_size", "max_pathway_size", "n_permutations", "n_cores",
+            "scale_data", "fdr_threshold", "min_effect_size", "seed", "taxon",
+        ),
+        executor_fields=(
+            "sample_network_file", "pathway_file", "output_dir",
+            "min_pathway_size", "max_pathway_size", "n_permutations", "n_cores",
+            "scale_data", "fdr_threshold", "min_effect_size", "seed",
+        ),
+        executor_defaults={
+            "min_pathway_size": 5,
+            "max_pathway_size": 150,
+            "n_permutations": 1000,
+            "n_cores": 1,
+            "scale_data": True,
+            "fdr_threshold": 0.05,
+            "min_effect_size": 2.0,
+            "seed": 1,
+        },
+        validation_steps=("inspect_porcupine_inputs",),
+        input_validator="run_porcupine",
+        local=True,
+        run=True,
+        memory_metadata={"method_family": "porcupine"},
+        cli_command="run-porcupine",
+        output_capability=OutputCapabilityDefinition(
+            operation="analyze",
+            artifact_type="pathway_heterogeneity_table",
+            entity_types=frozenset({"pathway", "sample"}),
+            granularities=frozenset({"aggregate"}),
+            accepted_input_modalities=frozenset({"regulatory_network"}),
+            accepted_input_granularities=frozenset({"sample_specific"}),
+            produced_artifacts=frozenset({"pathway_heterogeneity_table"}),
+            transformations=frozenset({
+                "pathway_edge_extraction", "edge_scaling", "principal_component_analysis",
+                "random_gene_set_null", "one_tailed_t_test", "fdr_correction",
+            }),
+            scientific_objectives=frozenset({"inter_patient_regulatory_heterogeneity"}),
+            incompatible_input_artifacts=frozenset({
+                "expression_matrix", "coexpression_network", "mutation_matrix",
+            }),
+            selection_phrases=(
+                "inter-patient heterogeneity",
+                "inter-tumour heterogeneity",
+                "pathways that vary across patients",
+                "病患間異質性",
+                "調控異質性",
+            ),
+            input_artifacts=frozenset({"regulatory_network"}),
+            required_input_artifacts=frozenset({"sample_specific_regulatory_network", "pathway_gmt"}),
+            selection_tags=frozenset({"pathway_heterogeneity"}),
+            prefer_when=("cohort_size:many",),
+            handoff_contract=(
+                "PORCUPINE takes sample-specific TF-to-gene networks as one labelled edges-by-samples "
+                "table (LIONESS-PANDA/PUMA text output) and a GMT whose genes match the network targets. "
+                "Per pathway it runs a PCA on the edges to the pathway's genes and tests PC1 variance "
+                "against size-matched random gene sets. Aggregate or co-expression networks and "
+                "expression matrices are not valid inputs."
+            ),
+        ),
+    ),
     "query_context7": ActionDefinition(
         "query_context7",
         "CONTEXT7",
@@ -2424,6 +2512,16 @@ WORKFLOW_CONTROLS: dict[ActionName, tuple[WorkflowControlDefinition, ...]] = {
             "centered", "boolean", None, nullable=True,
             description="The expression is declared centered; BONOBO requires it.",
         ),
+    ),
+    "run_porcupine": (
+        _control("min_pathway_size", "integer", 5, minimum=4, description="Smallest pathway (genes among network targets) tested; PORCUPINE's PCA needs at least 4 edges."),
+        _control("max_pathway_size", "integer", 150, minimum=4, description="Largest pathway tested; at least min_pathway_size."),
+        _control("n_permutations", "integer", 1000, minimum=2, description="Random gene sets per pathway size for the null."),
+        _control("n_cores", "integer", 1, minimum=1, description="CPU cores."),
+        _control("scale_data", "boolean", True, description="Scale each edge to unit variance before PCA."),
+        _control("fdr_threshold", "number", 0.05, minimum=0, maximum=1, description="BH-adjusted p-value cutoff."),
+        _control("min_effect_size", "number", 2.0, minimum=0, description="Cohen's d cutoff."),
+        _control("seed", "integer", 1, description="Random seed for the random gene sets."),
     ),
 }
 

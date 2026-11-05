@@ -319,6 +319,8 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             f" After it runs, {_workflow_name(decision.then_action)} is planned next with the normalized matrix."
             if decision.action == "normalize_expression" and decision.then_action else ""
         )
+        if plan.raw_counts is not None:
+            then += " Or pick 'Normalize first' to normalize the expression matrix before this workflow."
         return NextTurnPrompt(
             kind="dry_run",
             question=_ui_text(

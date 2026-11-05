@@ -23,6 +23,7 @@ from netzoo_agent_core.data.normalization import (  # noqa: E402
     normalization_record_path,
 )
 from netzoo_agent_core.data.artifacts import validate_output_artifacts  # noqa: E402
+from netzoo_agent_core.data.normalization import default_snail_reason  # noqa: E402
 from netzoo_agent_core.data.preflight import validate_workflow_inputs  # noqa: E402
 from netzoo_agent_core.interpretation.request_parameters import (  # noqa: E402
     extract_explicit_request_parameters,
@@ -416,6 +417,14 @@ class NeedBasedChoiceTests(unittest.TestCase):
         self.assertEqual((decision.normalization_method, decision.normalization_choice.source), ("snail", "default"))
         self.assertEqual(method_choice_evidence(decision), [])
 
+    def test_default_snail_says_why_it_fits(self):
+        with_groups, without = default_snail_reason(True), default_snail_reason(False)
+        for reason in (with_groups, without):
+            self.assertIn("false co-expression between lowly expressed genes", reason)
+        self.assertIn("only in proportion to how much the groups differ", with_groups)
+        self.assertNotIn("are kept", with_groups)  # not observed on raw counts (toy comparison 2026-11-05)
+        self.assertIn("all samples as one group", without)
+
     def test_named_method_needs_no_reading(self):
         decision = normalization_decision("Normalize /data/counts.tsv with TMM and save it to /data/out/t.tsv.")
         self.assertEqual((decision.normalization_method, decision.normalization_choice.source), ("tmm", "named"))
@@ -550,3 +559,56 @@ class PySnailRunnerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RawCountSignalTests(unittest.TestCase):
+    """2026-11-05: a workflow's matrix that reads as raw counts with uneven sample totals is pointed out."""
+
+    def signal(self, frame: pd.DataFrame):
+        from netzoo_agent_core.data.normalization import raw_count_signal
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "expr.tsv"
+            frame.to_csv(path, sep="\t", index_label="gene")
+            return raw_count_signal(str(path))
+
+    def test_raw_counts_with_uneven_totals_are_flagged_with_their_numbers(self):
+        from netzoo_agent_core.data.normalization import raw_counts_line
+
+        counts = _counts()
+        counts.iloc[:, 0] *= 4  # one sample sequenced four times deeper
+        found = self.signal(counts)
+        totals = counts.sum(axis=0)
+        self.assertEqual((found.samples, found.max_value), (counts.shape[1], float(counts.to_numpy().max())))
+        self.assertEqual((found.total_min, found.total_max), (float(totals.min()), float(totals.max())))
+        line = raw_counts_line(found, "PANDA")
+        self.assertIn(f"{totals.max() / totals.min():.1f}-fold", line)
+        self.assertIn("then plans PANDA on the normalized matrix", line)
+
+    def test_other_matrices_are_not_flagged(self):
+        counts = _counts()
+        counts.iloc[:, 0] *= 4
+        even = _counts().copy()
+        even.loc[:, :] = 500
+        for frame in (
+            even,                                      # equal sample totals
+            counts / counts.sum(axis=0) * 1e6 + 0.5,   # CPM-like, not whole numbers
+            np.log2(counts + 1),                       # log scale
+            counts - 10,                               # negative values
+            counts.clip(upper=50),                     # largest value below 100
+        ):
+            self.assertIsNone(self.signal(frame))
+        from netzoo_agent_core.data.normalization import raw_count_signal
+
+        self.assertIsNone(raw_count_signal("/nonexistent/expr.tsv"))
+
+
+class NormalizedOutputNameTests(unittest.TestCase):
+    def test_the_default_output_is_named_after_the_method(self):
+        # Live 2026-11-05: "Normalize ..., then run PANDA" wrote its normalized matrix to counts_int-panda.tsv.
+        from netzoo_agent_core.routing.discovery import _default_network_output
+
+        decision = normalization_decision("Normalize the counts in /data/raw/counts_int.tsv first, then run PANDA.")
+        self.assertEqual(decision.normalization_method, "snail")
+        self.assertEqual(Path(_default_network_output(decision.normalization_method, "/data/raw/counts_int.tsv",
+                                                      "outputs")).name, "counts_int-snail.tsv")

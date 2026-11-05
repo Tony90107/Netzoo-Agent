@@ -323,6 +323,10 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         | labeled_bindings
         | set(confirmed_bindings)
         | set(corrected_bindings)
+        # A normalization's files are bound by code from the request's own words (normalization_request); they
+        # are not re-read from file contents as roles to confirm (live 2026-11-05).
+        | ({name for name in input_fields if (value := getattr(decision, name, None)) and str(value) in task}
+           if action == "normalize_expression" else set())
     )
     # COBRA's ordered two paths are a fallback applied below, after a content mapping had its say.
     cobra_expression, cobra_design = _cobra_unlabeled_input_paths(task)
@@ -615,6 +619,8 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
             # result used to default to `panda.tsv`.
             mode = next((name for name in ("puma", "panda", "dragon", "otter", "giraffe")
                          if name in action), "coexpression" if "lioness" in action else "panda")
+            if action == "normalize_expression":  # a normalized matrix, named after its method, not "-panda"
+                mode = getattr(decision, "normalization_method", None) or "normalized"
             if "lioness" in action:
                 aggregate, sample_specific = _default_lioness_outputs(mode, seed, default_output_dir)
                 value = aggregate if field_name == "output_file" else sample_specific

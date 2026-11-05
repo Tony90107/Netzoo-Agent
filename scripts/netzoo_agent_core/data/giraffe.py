@@ -7,6 +7,7 @@ the three matrices required by ``netZooPy.giraffe.Giraffe``.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,6 +26,7 @@ __all__ = [
     "GiraffeInputBundle",
     "GiraffeInputError",
     "giraffe_output_paths",
+    "id_mismatch_hint",
     "inspect_giraffe_inputs_impl",
     "load_giraffe_inputs",
     "validate_giraffe_output",
@@ -33,6 +35,47 @@ __all__ = [
 
 
 _ID_TOKENS = {"id", "gene", "gene_id", "tf", "tf_id", "regulator", "node_id"}
+#: First-cell labels that name the gene axis of an expression matrix.
+_GENE_AXIS_TOKENS = _ID_TOKENS | {
+    "genes", "geneid", "gene_ids", "gene_name", "gene_symbol", "genesymbol", "symbol",
+    "hgnc_symbol", "ensembl", "ensembl_id", "ensembl_gene_id", "entrez", "entrez_id",
+    "feature", "feature_id", "probe", "probe_id",
+}
+_INTEGER_LABEL = re.compile(r"[0-9]+")
+_ENSEMBL_VERSIONED = re.compile(r"(ENS[A-Z0-9]*[GTP][0-9]+)\.[0-9]+((?:_PAR_Y)?)", re.IGNORECASE)
+
+
+def _strip_version(value: str) -> str:
+    match = _ENSEMBL_VERSIONED.fullmatch(value)
+    return match.group(1) + match.group(2) if match else value
+
+
+def id_mismatch_hint(left, right) -> str:
+    """Why two ID sets that differ would match, or "" when they genuinely differ.
+
+    Diagnoses only; IDs are never rewritten silently, because a version or case
+    difference can also mean the two files come from different annotations.
+    """
+    left, right = {str(value) for value in left}, {str(value) for value in right}
+    if left == right:
+        return ""
+
+    def same(normalise) -> bool:
+        return {normalise(value) for value in left} == {normalise(value) for value in right}
+
+    if same(_strip_version):
+        return (
+            " The IDs match after removing version suffixes (e.g. '.12'); strip them "
+            "so both files use unversioned IDs."
+        )
+    if same(str.casefold):
+        return " The IDs match when letter case is ignored; use the same case in both files."
+    if same(lambda value: _strip_version(value).casefold()):
+        return (
+            " The IDs match after removing version suffixes (e.g. '.12') and ignoring "
+            "letter case; strip the suffixes and use the same case in both files."
+        )
+    return ""
 _EDGE_HEADER_TOKENS = {
     ("source", "target"),
     ("regulator", "gene"),
@@ -107,9 +150,24 @@ def _looks_like_header(frame: pd.DataFrame) -> bool:
     if frame.shape[0] < 2 or frame.shape[1] < 2:
         return False
     first = [str(value).strip().casefold() for value in frame.iloc[0].tolist()]
-    if first[0] in _ID_TOKENS:
+    # A data row always starts with a gene/TF ID, so an empty first cell or a
+    # gene-axis label marks a header even when the sample IDs are numbers.
+    if not first[0] or re.sub(r"[^a-z0-9]+", "_", first[0]).strip("_") in _GENE_AXIS_TOKENS:
         return True
-    return not pd.to_numeric(frame.iloc[0, 1:], errors="coerce").notna().all()
+    if not pd.to_numeric(frame.iloc[0, 1:], errors="coerce").notna().all():
+        return True
+    # Numeric sample IDs (1001, 1002, ...) over continuous values: the first row
+    # is distinct bare integers while the body holds non-integer measurements.
+    # An integer first row over an integer body stays a data row (counts look
+    # exactly like that), so a genuine first data row is never swallowed.
+    labels = first[1:]
+    if not all(_INTEGER_LABEL.fullmatch(value) for value in labels):
+        return False
+    if len(set(labels)) != len(labels):
+        return False
+    body = frame.iloc[1:, 1:].apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
+    finite = body[np.isfinite(body)]
+    return finite.size > 0 and bool((finite != np.round(finite)).any())
 
 
 def _read_expression(path_value: str) -> tuple[np.ndarray, tuple[str, ...], tuple[str, ...]]:
@@ -163,6 +221,7 @@ def _read_prior(path_value: str, gene_ids: tuple[str, ...]) -> tuple[np.ndarray,
             raise GiraffeInputError(
                 "motif/prior gene IDs must exactly match expression gene IDs; "
                 f"missing={missing[:5] or 'none'}, extra={extra[:5] or 'none'}."
+                + id_mismatch_hint(targets, gene_ids)
             )
         tf_ids = tuple(dict.fromkeys(sources))
         matrix = np.zeros((len(tf_ids), len(gene_ids)), dtype=float)
@@ -179,7 +238,10 @@ def _read_prior(path_value: str, gene_ids: tuple[str, ...]) -> tuple[np.ndarray,
         columns = _clean_ids(list(frame.iloc[0, 1:]), "motif/prior gene IDs")
         data = frame.iloc[1:].reset_index(drop=True)
         if set(columns) != set(gene_ids) or len(columns) != len(gene_ids):
-            raise GiraffeInputError("motif/prior matrix gene headers must exactly match expression gene IDs.")
+            raise GiraffeInputError(
+                "motif/prior matrix gene headers must exactly match expression gene IDs."
+                + id_mismatch_hint(columns, gene_ids)
+            )
         tf_ids = _clean_ids(data.iloc[:, 0], "motif/prior regulator IDs")
         matrix = _numeric(data.iloc[:, 1:], "motif/prior matrix")
         matrix = matrix[:, [columns.index(gene) for gene in gene_ids]]
@@ -204,6 +266,17 @@ def _read_ppi(path_value: str, tf_ids: tuple[str, ...]) -> np.ndarray:
         and str(frame.iloc[0, 0]).strip().casefold() in _ID_TOKENS
         and {str(value).strip() for value in frame.iloc[0, 1:]} == tf_set
     )
+    header_ids = {str(value).strip() for value in frame.iloc[0, 1:]}
+    if (
+        frame.shape[0] == frame.shape[1]
+        and frame.shape[1] >= 3
+        and str(frame.iloc[0, 0]).strip().casefold() in _ID_TOKENS
+        and header_ids != tf_set
+        and (hint := id_mismatch_hint(header_ids, tf_set))
+    ):
+        raise GiraffeInputError(
+            "PPI matrix row/column IDs must exactly match motif/prior TF IDs." + hint
+        )
     if dense:
         columns = _clean_ids(list(frame.iloc[0, 1:]), "PPI matrix column IDs")
         rows = _clean_ids(frame.iloc[1:, 0], "PPI matrix row IDs")
@@ -225,6 +298,7 @@ def _read_ppi(path_value: str, tf_ids: tuple[str, ...]) -> np.ndarray:
             raise GiraffeInputError(
                 "PPI identifiers must cover exactly the motif/prior TF set; "
                 f"missing={missing[:5] or 'none'}, unknown={unknown[:5] or 'none'}."
+                + id_mismatch_hint(set(sources) | set(targets), tf_set)
             )
         if frame.shape[1] == 3:
             weights = _numeric(frame.iloc[:, 2:].iloc[:, :1], "PPI weights")[:, 0]

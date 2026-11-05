@@ -14,6 +14,7 @@ from workflow_registry import OUTPUT_CAPABILITIES, RUN_ACTIONS
 from ..interpretation.applicability import data_condition
 from ..contracts import ProjectPolicySnapshot, TaskDecision, ToolExecutionResult, WorkflowPlan
 from ..contracts.state import NextTurnPrompt
+from ..normalization_request import normalize_first_request
 from ..outcomes import effective_results
 from .choices import (
     describe,
@@ -377,6 +378,11 @@ def _run_card(plan: WorkflowPlan, results: list[ToolExecutionResult], evaluation
             clip("Will write: " + ", ".join(outputs) + ".", 300) if outputs else "",
             "Execution needs your explicit approval, and runs once.",
         ]
+        if (signal := plan.raw_counts) is not None:  # 2026-11-05: the reason for the "Normalize first" option
+            points.insert(2, clip(
+                f"Expression looks like raw counts: sample totals {signal.total_min:,.0f} to {signal.total_max:,.0f} "
+                f"({signal.total_max / signal.total_min:.1f}-fold), so depth alone can make genes vary together. "
+                f"'Normalize first' normalizes it before {workflow}.", 300))
         return ReplyCard(kind="plan_ready", headline=f"Your {workflow} plan passed validation. Nothing has run yet.",
                          points=[p for p in points if p])
     failed = [item for item in runs if item.status == "failed"]
@@ -728,6 +734,14 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
     ]
     steps = [*(card.next_steps if card else []),
              *next_steps(prompt, policy, outputs=outputs, has_choices=bool(card and card.choices))]
+    if prompt.kind == "dry_run" and (request := normalize_first_request(plan)) and len(request) <= 600:
+        # The matrix looks like raw counts (2026-11-05): normalizing first is offered right after "Execute".
+        steps.insert(1 if steps and steps[0].key == "execute" else 0, ReplyOption(
+            key="normalize-first", label="Normalize first",
+            description=f"Normalizes the expression matrix (SNAIL by default), then plans {plan.workflow} on the "
+                        "normalized matrix with the same other inputs; nothing runs until you approve it.",
+            answer=request, resolution="new_request",
+        ))
     if (card is not None and card.kind in {"workflow_guidance", "composition"} and not card.choices
             and prompt.kind == "completed" and prompt.allow_workflow_continuation
             and decision.capability_match_status == "exact"

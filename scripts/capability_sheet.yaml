@@ -50,7 +50,7 @@ result_forms:
 # family of the result it tests. The loader rejects a produces entry without a known family.
 result_families:
   - {key: regulatory_all, text: "one regulatory network (TF or miRNA to gene) built from all the samples together"}
-  - {key: regulatory_per_sample, text: "a separate regulatory network (TF or miRNA to gene) for each sample"}
+  - {key: regulatory_per_sample, text: "a separate regulatory network (TF or miRNA to gene) for each sample, or which pathways' regulation varies most between those sample networks"}
   - {key: coexpression_per_sample, text: "a separate gene-gene co-expression network for each sample"}
   - {key: covariate_coexpression, text: "how covariates such as group, batch or age change gene co-expression"}
   - {key: tf_activity, text: "each transcription factor's activity in each sample"}
@@ -489,3 +489,34 @@ workflows:
         result_asked: Which mutations are drivers, or mutation calling.
         why_not: SAMBAR summarizes given mutation calls; it does not call or rank driver mutations.
         source: "Kuijjer et al. 2018"
+
+  PORCUPINE:
+    action: run_porcupine
+    expects:
+      - {id: porcupine.sample_networks, state: "Takes existing sample-specific TF-to-gene networks as one labelled edges-by-samples table (LIONESS-PANDA or LIONESS-PUMA text output) with a GMT pathway file, never expression.", source: "[REG] porcupine.yaml conventions and accepted_input_granularities"}
+    files: ["porcupine_pathways.tsv: per-pathway PC1 variance, null mean, p-value, BH-adjusted p-value, effect size, significance", "porcupine_random_null.tsv: PC1 variance of size-matched random gene sets", "porcupine_pc1_sample_scores.tsv: pathways x samples PC1 scores", "porcupine_edge_loadings.tsv: PC1/PC2 loadings of each edge in significant pathways", "manifest.json"]
+    produces:
+      - id: porcupine.heterogeneous_pathways
+        family: regulatory_per_sample
+        level: direct
+        result: Pathways whose TF-to-gene regulation varies in a coordinated way across a population of sample-specific networks -- PCA on each pathway's edges, PC1 variance tested against size-matched random gene sets -- with p-values, FDR and effect sizes.
+        granularity: aggregate
+        inputs: [sample-specific regulator-gene networks (LIONESS), pathway sets (GMT)]
+        source: "Belova et al. 2023 (PORCUPINE, kuijjerlab); [EXEC] scripts/porcupine_run.R"
+      - id: porcupine.sample_scores
+        family: regulatory_per_sample
+        level: direct
+        result: Each sample's PC1 score on every tested pathway and each edge's loading in significant pathways, to stratify patients by a heterogeneous pathway.
+        granularity: [aggregate, sample_specific]
+        inputs: [sample-specific regulator-gene networks (LIONESS), pathway sets (GMT)]
+        source: "[EXEC] scripts/porcupine_run.R get_pathway_ind_scores / get_pathway_features_scores"
+      - {id: porcupine.patient_clusters, family: regulatory_per_sample, granularity: [aggregate, sample_specific], level: with_step, result: Patient groups from their scores on heterogeneous pathways., step: Clustering of the sample scores outside NetZoo; NetZoo writes PC1 scores only (porcupine_pc1_sample_scores.tsv), while PORCUPINE's select_number_clusters/visualize_clusters use PC1 and PC2., source: "[REG] PORCUPINE README"}
+    near_misses:
+      - id: porcupine.no_network_inference
+        result_asked: Building the sample-specific networks from expression.
+        why_not: PORCUPINE analyses existing LIONESS networks; LIONESS-PANDA or LIONESS-PUMA builds them first.
+        source: "[REG] porcupine.yaml guidance_predecessors"
+      - id: porcupine.no_differential_expression
+        result_asked: Pathways differentially expressed or enriched between predefined groups.
+        why_not: PORCUPINE finds variation in regulation across all samples without groups; it is not a group comparison or expression enrichment test.
+        source: "Belova et al. 2023"

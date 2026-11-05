@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from itertools import combinations
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+from .giraffe import id_mismatch_hint
 from .paths import _resolve_user_path
 
 DRAGON_OUTPUT_FORMATS = ("matrix", "edge_list")
@@ -20,6 +22,80 @@ def lambda_pair_error(lambda1, lambda2) -> str | None:
     return "lambda1 and lambda2 must be supplied together." if (lambda1 is None) != (lambda2 is None) else None
 EDGE_COLUMNS = ["source", "target", "partial_correlation", "precision"]
 PVALUE_COLUMNS = ["p_value", "adj_p_value"]
+
+
+#: First-column headers that name a feature axis, not a sample axis.
+_FEATURE_AXIS_HEADERS = frozenset({
+    "gene", "genes", "gene_id", "gene_ids", "geneid", "gene_name", "gene_symbol", "symbol",
+    "hgnc_symbol", "ensembl", "ensembl_id", "ensembl_gene_id", "entrez", "entrez_id",
+    "entrezgene", "feature", "feature_id", "features", "probe", "probe_id", "probeset",
+    "cpg", "cpg_id", "protein", "protein_id", "transcript", "transcript_id", "mirna",
+})
+#: Row identifiers that are unmistakably features: Ensembl gene/transcript/protein IDs and Illumina CpG probes.
+_FEATURE_ID = re.compile(r"(?:ENS[A-Z0-9]*[GTP]\d+(?:\.\d+)?|cg\d{8})", re.IGNORECASE)
+
+
+def _feature_by_sample_error(label: str, sample_column: str, sample_ids: pd.Series) -> str | None:
+    """Why the table looks transposed (features on rows), or None.
+
+    DRAGON layers are sample-by-feature. A gene-by-sample table that is read
+    the same way turns genes into "samples"; when both layers share their gene
+    IDs, the sample-ID check passes and the network is built over samples.
+    """
+    header = sample_column.strip().casefold().replace(" ", "_").replace(".", "_")
+    if header in _FEATURE_AXIS_HEADERS:
+        return (
+            f"{label} looks feature-by-sample: its first column is labelled "
+            f"{sample_column!r}; DRAGON needs samples as rows and features as columns, "
+            "so transpose it first."
+        )
+    ids = [value for value in sample_ids if value]
+    if ids and all(_FEATURE_ID.fullmatch(value) for value in ids):
+        return (
+            f"{label} looks feature-by-sample: its row IDs are feature identifiers "
+            f"(e.g. {ids[0]}); DRAGON needs samples as rows and features as columns, "
+            "so transpose it first."
+        )
+    return None
+
+
+#: First-column headers that name a sample axis.
+_SAMPLE_AXIS_HEADERS = frozenset({
+    "sample", "samples", "sample_id", "sample_ids", "sampleid", "sample_name", "subject",
+    "subject_id", "patient", "patient_id", "participant", "participant_id", "donor",
+    "donor_id", "individual", "case_id", "barcode", "id",
+})
+#: Entrez Gene IDs are positive integers written without sign, decimals or leading zeros.
+_INTEGER_FEATURE_ID = re.compile(r"[1-9][0-9]*")
+#: A feature's variance at or below this fraction of its mean square is rounding
+#: noise around a constant. DRAGON divides each feature by its standard deviation,
+#: which would blow that noise up to unit scale. Relative, so units do not matter.
+_NEAR_CONSTANT_RELATIVE_VARIANCE = 1e-12
+
+
+def _id_shape(value: str) -> str:
+    """Letters-vs-digits outline of an ID: "TCGA-01" -> "a-9", "sample_id" -> "a_a"."""
+    return re.sub(r"[0-9]+", "9", re.sub(r"[A-Za-z]+", "a", value))
+
+
+def _integer_feature_header(
+    sample_column: str, feature_ids: list[str], sample_ids: pd.Series
+) -> bool:
+    """Whether all-integer column names are a real header of Entrez-style feature IDs.
+
+    A headerless file shows up here too, its first data row read as the header.
+    That row starts with a sample ID shaped like the others ("S1" over "S2",
+    "S3") and usually holds decimals; a real header names its sample column
+    with a label ("sample_id") and lists bare integer IDs.
+    """
+    if not feature_ids or not all(_INTEGER_FEATURE_ID.fullmatch(value) for value in feature_ids):
+        return False
+    if not sample_column or np.isfinite(pd.to_numeric([sample_column], errors="coerce")).all():
+        return False
+    token = re.sub(r"[^a-z0-9]+", "_", sample_column.casefold()).strip("_")
+    if token in _SAMPLE_AXIS_HEADERS:
+        return True
+    return _id_shape(sample_column) not in {_id_shape(value) for value in sample_ids}
 
 
 def _delimiter(path: Path) -> str:
@@ -55,10 +131,18 @@ def _read_layer(path_value: str, label: str) -> tuple[pd.DataFrame | None, list[
             f"{label} contains duplicate feature IDs: {', '.join(duplicated_features[:5])}."
         )
     numeric_feature_ids = pd.to_numeric(feature_ids, errors="coerce")
-    if feature_ids and bool(np.isfinite(numeric_feature_ids).all()):
+    if (
+        feature_ids
+        and bool(np.isfinite(numeric_feature_ids).all())
+        and not _integer_feature_header(
+            sample_column, feature_ids, frame.iloc[:, 0].astype(str).str.strip()
+        )
+    ):
         errors.append(f"{label} appears to have no feature header; feature IDs must be column names.")
 
     sample_ids = frame.iloc[:, 0].astype(str).str.strip()
+    if (orientation := _feature_by_sample_error(label, sample_column, sample_ids)) is not None:
+        return None, [orientation]
     invalid_samples = sample_ids.isin({"", "nan", "none", "null"})
     if invalid_samples.any():
         errors.append(f"{label} contains empty sample identifiers.")
@@ -75,8 +159,17 @@ def _read_layer(path_value: str, label: str) -> tuple[pd.DataFrame | None, list[
         )
     elif not np.isfinite(values.to_numpy(dtype=float)).all():
         errors.append(f"{label} contains non-finite values; use finite continuous measurements.")
-    elif (values.var(axis=0, ddof=0) == 0).any():
-        errors.append(f"{label} contains zero-variance features; remove them before DRAGON.")
+    else:
+        variance = values.var(axis=0, ddof=0)
+        mean_square = (values.astype(float) ** 2).mean(axis=0)
+        flat = variance <= _NEAR_CONSTANT_RELATIVE_VARIANCE * mean_square
+        if flat.any():
+            names = [str(value).strip() for value in values.columns[flat.to_numpy()]]
+            errors.append(
+                f"{label} contains zero-variance or near-constant features "
+                f"({', '.join(names[:5])}{', ...' if len(names) > 5 else ''}); "
+                "remove them before DRAGON."
+            )
     if len(frame) < DRAGON_MIN_SAMPLES:
         errors.append(f"{label} must contain at least three samples for covariance estimation.")
     if errors:
@@ -104,6 +197,7 @@ def load_and_align_dragon_layers(
         errors.append(
             "omics layers must have exactly the same sample IDs; "
             f"only in layer 1: {only1}; only in layer 2: {only2}."
+            + id_mismatch_hint(ids1, ids2)
         )
         return layer1, layer2, errors
     return layer1, layer2.loc[layer1.index], errors

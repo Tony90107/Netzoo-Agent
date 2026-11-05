@@ -237,6 +237,17 @@ class TaskDecision(BaseModel):
     exon_size_file: str | None = None
     cancer_gene_file: str | None = None
     pathway_file: str | None = None
+    # PORCUPINE: a labelled edges-by-samples network (LIONESS text output) and its controls.
+    # Omitted from dumps while unset, so existing decisions dump unchanged; executor_defaults fill them.
+    sample_network_file: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    min_pathway_size: int | None = Field(default=None, ge=4, exclude_if=lambda value: value is None)
+    max_pathway_size: int | None = Field(default=None, ge=4, exclude_if=lambda value: value is None)
+    n_permutations: int | None = Field(default=None, ge=2, exclude_if=lambda value: value is None)
+    n_cores: int | None = Field(default=None, ge=1, exclude_if=lambda value: value is None)
+    scale_data: bool | None = Field(default=None, exclude_if=lambda value: value is None)
+    fdr_threshold: float | None = Field(default=None, gt=0.0, le=1.0, exclude_if=lambda value: value is None)
+    min_effect_size: float | None = Field(default=None, ge=0.0, exclude_if=lambda value: value is None)
+    seed: int | None = Field(default=None, exclude_if=lambda value: value is None)
     omics_layer_1: str | None = None
     omics_layer_2: str | None = None
     output_dir: str | None = None

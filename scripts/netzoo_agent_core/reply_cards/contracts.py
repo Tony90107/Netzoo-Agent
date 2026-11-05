@@ -52,6 +52,9 @@ OptionResolution = Literal[
     "command",
     # Handled by the window alone, e.g. open the Outputs view.
     "open_outputs",
+    # Submit the answer as a request of its own, without the previous goal (2026-11-05: "Normalize first",
+    # a request written by code from the plan's own input files).
+    "new_request",
     # Not selectable: shown so the user knows it exists and why it cannot run.
     "none",
 ]

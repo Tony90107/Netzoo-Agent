@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 from .contracts import InputEvidence, RequestedOutcome, TaskDecision
 from .contracts.normalization import NeedReading, NormalizationChoice
-from .data.normalization import METHOD_LABELS
+from .data.normalization import METHOD_LABELS, raw_count_signal
 from .interpretation.extraction import _task_path
 from workflow_registry import ACTION_DEFINITIONS
 
@@ -34,6 +34,7 @@ __all__ = [
     "CHAINABLE_ACTIONS", "NEED_METHODS", "build_normalization_decision", "chained_action", "decision_from_needs",
     "method_named", "methods_for_needs", "named_methods", "needs_normalization_reading", "normalization_decision",
     "normalization_requested", "verified_needs", "METHOD_OPTION_LINES", "method_choice_evidence",
+    "normalize_first_request", "with_raw_count_note",
 ]
 
 _METHOD_WORDS = {
@@ -297,3 +298,30 @@ def method_choice_evidence(decision: TaskDecision) -> list[InputEvidence]:
     return [InputEvidence(
         field="normalization_method", status="missing", reason=question, candidates=list(choice.candidates),
     )]
+
+
+def normalize_first_request(plan) -> str | None:
+    """The request "Normalize first" submits for a workflow plan whose matrix looks like raw counts (2026-11-05).
+
+    It names the matrix and the workflow's other input files as role=path, so the normalization binds the matrix
+    and, once it has run, the workflow is planned on the normalized matrix with those same files. The plan's
+    output paths are left out: they are the workflow's, not the normalization's.
+    """
+    signal = getattr(plan, "raw_counts", None)
+    action = (plan.decision or {}).get("action")
+    if signal is None or action not in CHAINABLE_ACTIONS:
+        return None
+    others = [
+        f"{item.field}={item.value}" for item in plan.evidence
+        if item.value and item.field in INPUT_ROLE_FIELDS and item.field != "expression_file"
+    ]
+    request = f"Normalize the expression matrix expression_file={signal.expression_file} first, then run {plan.workflow}"
+    return request + (" with " + " ".join(others) if others else "") + "."
+
+
+def with_raw_count_note(plan, action: str):
+    """The plan with `raw_counts` set when its workflow reads a matrix that looks like raw counts (2026-11-05)."""
+    expression = next((item.value for item in plan.evidence if item.field == "expression_file" and item.value), None)
+    if action not in CHAINABLE_ACTIONS or not expression or plan.status == "respond_only":
+        return plan
+    return plan.model_copy(update={"raw_counts": raw_count_signal(expression)})

@@ -3064,7 +3064,7 @@ class CapabilityGateTests(unittest.TestCase):
         payload = agent.json.loads(output.getvalue())
         self.assertEqual(status, 0)
         self.assertTrue(payload["code_enforced"])
-        self.assertEqual(len(payload["workflows"]), 13)
+        self.assertEqual(len(payload["workflows"]), 14)
 
     def test_confirmed_reuse_preference_can_reuse_validated_successful_inputs(self):
         # M2 (2026-10-14): a confirmed reuse preference reuses the user's own earlier inputs; the shipped toy

@@ -56,7 +56,7 @@ def test_every_request_scope_input_check_maps_to_a_limit_that_acts(policy):
     """The completeness test: a contract limit a request can decide never stays request-blind."""
     request = [(spec.workflow, check_text(item), check_limit(item)) for spec in policy.workflows.values()
                for item in spec.input_checks if check_scope(item) == "request"]
-    assert len(request) == 13  # ROUND-02 D: LIONESS-PANDA refuses an aggregate co-expression input; ROUND-10: DRAGON,
+    assert len(request) == 14  # PORCUPINE's sample minimum; ROUND-02 D: LIONESS-PANDA refuses an aggregate co-expression input; ROUND-10: DRAGON,
     # GIRAFFE and COBRA state the sample minimum their preflight enforces
     missing = [(workflow, text, limit) for workflow, text, limit in request if not _limit_holds(workflow, limit)]
     assert missing == []
@@ -68,7 +68,7 @@ def test_cobra_rule_is_one_function_the_input_check_and_the_request_check_both_f
         ids = [f"S{index}" for index in range(samples)]
         expression = tmp_path / f"expr_{genes}x{samples}.tsv"
         expression.write_text("gene\t" + "\t".join(ids) + "\n" + "".join(
-            f"G{g}\t" + "\t".join(str((g + 1) * (s + 2) % 7 + 0.5) for s in range(samples)) + "\n" for g in range(genes)))
+            f"G{g}\t" + "\t".join(str((g + 1) * (s + 2) % 11 + 0.5) for s in range(samples)) + "\n" for g in range(genes)))
         design = tmp_path / f"design_{genes}x{samples}.tsv"
         design.write_text("sample\tbatch\n" + "".join(f"{sample}\t{index % 2}\n" for index, sample in enumerate(ids)))
         return str(expression), str(design)

@@ -35,6 +35,9 @@ __all__ = [
     "load_normalization_inputs",
     "normalization_input_report",
     "normalization_record_path",
+    "default_snail_reason",
+    "raw_count_signal",
+    "raw_counts_line",
 ]
 
 SNAIL_AGGREGATIONS = ("median", "mean", "auto")
@@ -52,6 +55,9 @@ METHOD_LABELS = {
 # on log values is a different, unpublished use of the method.
 _LOG_SCALE_MAX = 20.0
 _LOG_SCALE_NONINTEGER_SHARE = 0.5
+# Non-integer columns whose totals agree this closely (relative range) are
+# TPM/CPM-like: real sequencing depths differ by far more than 1%.
+_NORMALIZED_TOTAL_SPREAD = 0.01
 
 
 @dataclass
@@ -114,13 +120,35 @@ def _check_expression(frame: pd.DataFrame, inputs: NormalizationInputs, label: s
             "(raw or expected counts), not log-transformed or centered values."
         )
         return
-    non_integer_share = float((np.abs(matrix - np.round(matrix)) > 1e-9).mean())
+    fractional = np.abs(matrix - np.round(matrix)) > 1e-9
+    non_integer_share = float(fractional.mean())
     maximum = float(matrix.max()) if matrix.size else 0.0
-    if maximum <= _LOG_SCALE_MAX and non_integer_share >= _LOG_SCALE_NONINTEGER_SHARE:
+    # Judge the non-zero values: log2(count + 1) keeps every zero count a whole
+    # zero, so a sparse log matrix is mostly integers overall.
+    nonzero = matrix > 0
+    nonzero_fractional_share = float(fractional[nonzero].mean()) if nonzero.any() else 0.0
+    if maximum <= _LOG_SCALE_MAX and nonzero_fractional_share >= _LOG_SCALE_NONINTEGER_SHARE:
         errors.append(
-            f"every value is at most {maximum:.3g} and {non_integer_share:.0%} are non-integer, "
-            f"which reads as log-scale data; {label} expects count-scale data (raw or expected counts). "
-            "Give the counts before any log transform."
+            f"every value is at most {maximum:.3g} and {nonzero_fractional_share:.0%} of the non-zero "
+            f"values are non-integer, which reads as log-scale data; {label} expects count-scale data "
+            "(raw or expected counts). Give the counts before any log transform."
+        )
+        return
+    totals = matrix.sum(axis=0)
+    # Quantile normalization (preprocessCore normalize.quantiles) only ranks values, so
+    # TPM or CPM input is ordinary for it; the other methods model counts.
+    if (
+        label != "quantile"
+        and matrix.shape[1] >= 2
+        and non_integer_share > 0
+        and float(np.median(totals)) > 0
+        and float((totals.max() - totals.min()) / np.median(totals)) < _NORMALIZED_TOTAL_SPREAD
+    ):
+        errors.append(
+            f"every sample sums to about {float(np.median(totals)):,.6g} (within "
+            f"{_NORMALIZED_TOTAL_SPREAD:.0%}), as TPM, CPM or other already-normalized values do; "
+            f"{label} expects count-scale data (raw or expected counts), and normalizing normalized "
+            "values twice distorts them. Give the counts before normalization."
         )
         return
     notes.append(
@@ -173,6 +201,15 @@ def _read_groups(path: Path, samples: list[str], inputs: NormalizationInputs) ->
         inputs.notes.append(
             "only one group: SNAIL then behaves like quantile normalization (every sample "
             "takes the same distribution, apart from tied values)."
+        )
+    singletons = sorted(str(name) for name, count in sizes.items() if count == 1)
+    if singletons and len(sizes) > 1:
+        inputs.notes.append(
+            f"warning: {len(singletons)} group(s) have a single sample ({', '.join(singletons[:5])}); "
+            "SNAIL keeps each group's own quantiles in proportion to the between-group difference, and "
+            "a one-sample group's quantiles are that sample itself, so its technical deviations "
+            "(depth, composition) are kept as if they were a real group difference. Merge it with a "
+            "related group or drop it."
         )
     inputs.groups = groups
 
@@ -321,3 +358,70 @@ def normalization_input_report(
     if not ok:
         lines.append("- no output file was written.")
     return "\n".join(lines), ok, inputs
+
+
+def default_snail_reason(has_groups: bool) -> str:
+    """Why SNAIL suits a request that names no method and states no need -- from what PySNAIL is published to do
+    (its README: smooth quantile normalization can create false co-expression between lowly expressed genes, which
+    affects co-expression network analysis; SNAIL corrects it), and from the groups the request did or did not give."""
+    base = (
+        "SNAIL avoids the false co-expression between lowly expressed genes that ordinary smooth quantile "
+        "normalization can create, and NetZoo's network methods (PANDA, LIONESS and others) build on gene co-expression"
+    )
+    if has_groups:
+        # Not "real group differences are kept" (toy comparison 2026-11-05): PySNAIL mixes the pooled and the group
+        # distributions with weight 1 - SSB/SST, which on raw counts with uneven depth was 0.92-0.97 (nearly pooled).
+        return base + ("; with your groups file each group keeps its own value distribution only in proportion to how "
+                       "much the groups differ beyond the spread within them, so on raw counts with uneven sequencing "
+                       "depth the groups can still be made nearly alike.")
+    return base + "; without a groups file it treats all samples as one group (see the groups line above)."
+
+
+# "Looks like raw counts" (2026-11-05): before a workflow reads an expression matrix, a matrix of whole numbers
+# with very different sample totals is pointed out, with the numbers, and normalizing first is offered.
+_RAW_WHOLE_SHARE = 0.99   # share of values that are whole numbers
+_RAW_MIN_MAX = 100.0      # a largest value below this is no count matrix worth flagging
+_RAW_TOTAL_RATIO = 1.5    # largest / smallest sample total
+
+
+def raw_count_signal(expression_file: str):
+    """A RawCountSignal when the matrix reads as raw counts with uneven sample totals, else None.
+
+    Whole numbers only (expected counts, CPM and every normalized output here are non-integer), none negative,
+    a largest value of at least 100, and sample totals at least 1.5-fold apart. Never raises: an unreadable
+    file gets no note (the workflow's own input check reports it).
+    """
+    from ..contracts.planning import RawCountSignal
+
+    try:
+        path = _resolve_user_path(expression_file)
+        if not path.is_file():
+            return None
+        frame = pd.read_csv(path, sep="\t", index_col=0, header=0)
+        matrix = frame.apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
+    except Exception:  # noqa: BLE001 - a note, never a failure
+        return None
+    if matrix.ndim != 2 or matrix.shape[1] < 2 or matrix.size == 0 or not np.isfinite(matrix).all():
+        return None
+    if (matrix < 0).any() or float(matrix.max()) < _RAW_MIN_MAX:
+        return None
+    if float((np.abs(matrix - np.round(matrix)) <= 1e-9).mean()) < _RAW_WHOLE_SHARE:
+        return None
+    totals = matrix.sum(axis=0)
+    if float(totals.min()) <= 0 or float(totals.max() / totals.min()) < _RAW_TOTAL_RATIO:
+        return None
+    return RawCountSignal(
+        expression_file=expression_file, samples=int(matrix.shape[1]), max_value=float(matrix.max()),
+        total_min=float(totals.min()), total_max=float(totals.max()),
+    )
+
+
+def raw_counts_line(signal, workflow: str) -> str:
+    """The preview line for a RawCountSignal: the numbers read from the file, what they mean, and the offer."""
+    return (
+        f"- Expression values: look like raw counts -- whole numbers up to {signal.max_value:,.0f}, and the "
+        f"{signal.samples} sample totals range from {signal.total_min:,.0f} to {signal.total_max:,.0f} "
+        f"({signal.total_max / signal.total_min:.1f}-fold). In raw counts every gene of a sample scales with its "
+        "sequencing depth, so depth alone can make genes vary together across samples. "
+        f"'Normalize first' normalizes this matrix (SNAIL by default), then plans {workflow} on the normalized matrix."
+    )
