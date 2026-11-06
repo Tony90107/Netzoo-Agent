@@ -134,3 +134,31 @@ def test_input_confirmation_and_ready_prompts_keep_input_on_a_new_line():
     }
     prompt = render_next_turn_prompt(build_next_turn_prompt(state))
     assert "validated workflow.\nOr describe" in prompt
+
+
+def test_normalization_confirmation_keeps_the_method_and_the_next_workflow():
+    # 2026-11-05: confirming an inferred expression file re-planned the normalization with SNAIL and no PANDA after it.
+    from netzoo_agent_core.normalization_request import normalization_decision
+
+    task = "Normalize data/official-toy/ToyExpressionData.txt with TMM, then run PANDA."
+    decision = normalization_decision(task)
+    assert (decision.normalization_method, decision.then_action) == ("tmm", "run_panda")
+    plan = build_workflow_plan(decision, task)
+
+    for answer, approved in (("y", True), ("expression_file=local/counts.tsv", False)):
+        replanned = normalization_decision(input_confirmation_continuation(plan, answer, approved=approved))
+        assert replanned is not None
+        assert (replanned.normalization_method, replanned.then_action) == ("tmm", "run_panda")
+    corrected = normalization_decision(
+        input_confirmation_continuation(plan, "expression_file=local/counts.tsv", approved=False))
+    assert corrected.expression_file == "local/counts.tsv"
+
+
+def test_the_output_folder_is_labelled_with_the_active_workflow():
+    # Live 2026-11-06: PORCUPINE's missing output_dir was shown as "CONDOR output directory".
+    from netzoo_agent_core.cli.clarification import workflow_input_label
+
+    assert workflow_input_label("output_dir", "run_porcupine") == "PORCUPINE output directory"
+    assert workflow_input_label("output_dir", "run_condor") == "CONDOR output directory"
+    assert workflow_input_label("output_dir", None) == "output directory"
+    assert workflow_input_label("pathway_file", "run_porcupine") == "GMT pathway file"

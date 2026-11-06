@@ -26,7 +26,7 @@ INPUT_LABELS = {
     "omics_layer_2": _ui_text("DRAGON omics layer 2"),
     "output_file": _ui_text("aggregate/network output"),
     "lioness_output": _ui_text("sample-specific LIONESS output"),
-    "output_dir": _ui_text("CONDOR output directory"),
+    "output_dir": _ui_text("output directory"),
 }
 INPUT_LABELS.update({"groups_file": _ui_text("sample groups file"), "gene_lengths_file": _ui_text("gene-lengths file"), "normalization_method": _ui_text("normalization method"), "mutation_file": _ui_text("somatic mutation matrix"), "exon_size_file": _ui_text("gene/exon-size CSV"), "cancer_gene_file": _ui_text("cancer-gene list"), "pathway_file": _ui_text("GMT pathway file")})
 

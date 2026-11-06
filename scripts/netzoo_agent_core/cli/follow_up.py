@@ -36,6 +36,7 @@ from ..interpretation.request_parameters import (
 from ..outcomes import effective_results, terminal_failed
 from ..interpretation.request_requirements import carried_parameters
 from ..routing_window import routing_window
+from ..settings import INPUT_ROLE_FIELDS
 
 __all__ = [
     "initial_next_turn_prompt",
@@ -573,3 +574,43 @@ def build_workflow_continuation(
     return WorkflowContinuation(
         action=action, task=routing_window(task), parameters=parameters,
     )
+
+
+def with_prior_inputs(
+    task: str, continuation: WorkflowContinuation | None, context: FollowUpContext,
+) -> tuple[str, WorkflowContinuation | None]:
+    """*task* with the input files the earlier request named for the continued workflow, as discovered values.
+
+    The planner trusts a path only when it is in the turn's text, and a role read from the words (not role=path)
+    is the user's to confirm, as it would be in a fresh request with the same words.
+    """
+    if continuation is None:
+        return task, continuation
+    found = {field: path for field, path in _prior_inputs(continuation.action, context.prior_user_goal).items()
+             if field not in continuation.parameters and path not in task}
+    if not found:
+        return task, continuation
+    task = (task + " Inputs named in the earlier request: "
+            + "; ".join(f"{field} is {path}" for field, path in found.items()) + ". "
+            + " ".join(f"CARRIED_DISCOVERED_FIELD={field}." for field in found))
+    # The continuation is checked against the turn's text, so it carries the same text.
+    return task, continuation.model_copy(update={"task": routing_window(task)})
+
+
+def _prior_inputs(action: str, prior: str) -> dict[str, str]:
+    """The input files the earlier request gives this workflow, read as a fresh request with the same words would be.
+
+    Live 2026-11-06: "I have ... networks in /data/porc/lioness_panda_network.txt. Which pathways in
+    /data/porc/pathways.gmt ...?" got a PORCUPINE guidance card, and "Plan PORCUPINE with my data" then asked for
+    both files again: their roles came from the words, not role=path, so no explicit binding carried them.
+    """
+    from ..contracts import TaskDecision
+    from ..interpretation import hydrate_router_decision
+
+    if not prior:
+        return {}
+    decision = TaskDecision(action=action, in_scope=True, should_execute=True, confidence=1.0,
+                            reason="Inputs named in the earlier request.")
+    hydrated = hydrate_router_decision(decision, prior)
+    return {field: value for field in sorted(INPUT_ROLE_FIELDS)
+            if (value := getattr(hydrated, field, None)) and isinstance(value, str)}

@@ -87,6 +87,9 @@ class RawCountSignal(BaseModel):
     max_value: float = Field(ge=0)
     total_min: float = Field(gt=0)
     total_max: float = Field(gt=0)
+    #: Share of the non-zero values that are whole numbers; below 0.99 the matrix reads as expected counts
+    #: (for example RSEM's expected_count, where reads shared between genes are split fractionally).
+    whole_share: float = Field(default=1.0, ge=0, le=1)
 
 
 class WorkflowPlan(BaseModel):

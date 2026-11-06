@@ -76,6 +76,15 @@ def solely_named_run_action(task: str) -> RecommendedAction | None:
     one is an artefact of the outer and is dropped. Labels count separately only
     when they occupy separate spans.
     """
+    distinct = _named_spans(task)
+    if len(distinct) != 1:
+        return None
+    action = distinct[0][2]
+    return action if action in RUN_ACTIONS else None
+
+
+def _named_spans(task: str) -> list[tuple[int, int, RecommendedAction]]:
+    """Every registered label the current request names, one per separate span (inner overlaps dropped)."""
     spans: list[tuple[int, int, RecommendedAction]] = []
     current = _current_scope_text(task).casefold()
     for action, definition in ACTION_DEFINITIONS.items():
@@ -90,17 +99,46 @@ def solely_named_run_action(task: str) -> RecommendedAction | None:
         found = re.search(_workflow_name_pattern(action), current)
         if found is not None:
             spans.append((found.start(), found.end(), action))
-    distinct = [
+    return [
         item for item in spans
         if not any(
             other is not item and other[0] <= item[0] and item[1] <= other[1]
             for other in spans
         )
     ]
-    if len(distinct) != 1:
+
+
+_RUN_VERB_BEFORE = re.compile(r"\b(?:run|execute|launch|plan)\s+(?:the\s+)?$")
+
+
+def run_target_with_named_inputs(task: str) -> RecommendedAction | None:
+    """The workflow a "run X on <Y's output>" request runs, when the other labels only name its input.
+
+    "Run PORCUPINE on the LIONESS-PANDA networks ..." names two labels, so `solely_named_run_action` refuses it.
+    Here the label right after the run verb is the target, and every other label must be a workflow whose
+    registered output artifact (and, where the target restricts it, granularity) the target registers as an
+    input. Anything else -- two run targets, a label that is not an input producer -- returns None.
+    """
+    distinct = _named_spans(task)
+    current = _current_scope_text(task).casefold()
+    if len(distinct) < 2 or "?" in task or "？" in task:  # a question about running it is not a run request
         return None
-    action = distinct[0][2]
-    return action if action in RUN_ACTIONS else None
+    targets = [item for item in distinct if _RUN_VERB_BEFORE.search(current[:item[0]])]
+    if len(targets) != 1 or targets[0][2] not in RUN_ACTIONS:
+        return None
+    target = ACTION_DEFINITIONS[targets[0][2]].output_capability
+    if target is None:
+        return None
+    for _, _, other in distinct:
+        if other == targets[0][2]:
+            continue
+        produced = ACTION_DEFINITIONS[other].output_capability
+        if produced is None or produced.artifact_type not in target.input_artifacts:
+            return None
+        wanted = target.accepted_input_granularities
+        if wanted and not set(produced.granularities) & set(wanted):
+            return None
+    return targets[0][2]
 
 
 def named_registered_action(task: str):
@@ -144,3 +182,23 @@ def named_registered_action(task: str):
             return action
     return None
 
+
+def named_input_artifacts(task: str, action: str) -> set[str]:
+    """The registered output artifacts of the workflows the request names as the producers of *action*'s input.
+
+    "Run PORCUPINE on the LIONESS-PANDA networks" names LIONESS-PANDA, whose registered output is a
+    regulatory_network that PORCUPINE accepts: the data's type is the registry's, not a reading of the words.
+    Only producers whose output *action* registers as an input (and, where it restricts it, granularity) count.
+    """
+    target = ACTION_DEFINITIONS[action].output_capability if action in ACTION_DEFINITIONS else None
+    if target is None:
+        return set()
+    found = set()
+    for _, _, other in _named_spans(task):
+        produced = ACTION_DEFINITIONS[other].output_capability
+        if other == action or produced is None or produced.artifact_type not in target.input_artifacts:
+            continue
+        wanted = target.accepted_input_granularities
+        if not wanted or set(produced.granularities) & set(wanted):
+            found.add(produced.artifact_type)
+    return found

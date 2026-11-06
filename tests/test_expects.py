@@ -12,7 +12,7 @@ from netzoo_agent_core.interpretation.expects import code_answer, expectations, 
 
 def test_every_expectation_has_a_source_and_ties_only_boolean_controls():
     bonobo = expectations("run_bonobo")
-    assert {(item.control, item.value) for item in bonobo} == {("log_transformed", True), ("centered", True)}
+    assert {(item.control, item.value) for item in bonobo} == {("log_transformed", True)}
     assert all(item.source.startswith("[REG]") and item.state for item in bonobo)
     assert expectations("run_panda") and all(item.control is None for item in expectations("run_panda"))
     assert expectations("run_lioness_panda") == ()
@@ -20,7 +20,6 @@ def test_every_expectation_has_a_source_and_ties_only_boolean_controls():
 
 def test_code_judges_only_a_stated_opposite_of_one_named_control():
     assert stated_opposite("run_bonobo", "The data are raw counts, not log-transformed").id == "bonobo.log_transformed"
-    assert stated_opposite("run_bonobo", "not centered per gene").id == "bonobo.centered"
     # ROUND-12 C52: the expected state itself is never judged by code (a sentence may add other demands)
     assert stated_opposite("run_bonobo", "The data are log2-transformed and centered per gene") is None
     # several controls named at once, or none of them: left to the condition check

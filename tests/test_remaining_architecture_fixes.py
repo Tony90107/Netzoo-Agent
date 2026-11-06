@@ -121,3 +121,41 @@ def test_accepted_workflow_keeps_prior_explicit_inputs_and_controls():
     assert decision.taxon == "human"
     assert decision.lam == 0.2
     assert decision.precision == "double"
+
+
+def test_accepted_guidance_card_carries_the_files_the_earlier_request_named():
+    # Live 2026-11-06: "Plan PORCUPINE with my data" asked for both files the guidance request had already named.
+    from netzoo_agent_core.cli.follow_up import with_prior_inputs
+    from netzoo_agent_core.routing_window import routing_window
+
+    prior = ("I have per-patient LIONESS-PANDA networks in /data/porc/lioness_panda_network.txt. Which pathways in "
+             "/data/porc/pathways.gmt have regulation that varies most across patients?")
+    prompt = NextTurnPrompt(
+        kind="recommended_workflow", question="Continue?", continuation_action="run_porcupine",
+    )
+    context = FollowUpContext(
+        prior_user_goal=prior, prompt_kind=prompt.kind, prompt_question=prompt.question,
+        candidate_actions=["run_porcupine"], continuation_action="run_porcupine",
+    )
+    resolution = ContextualReplyResolution(
+        kind="accept_workflow", reason="Accepted the recommendation.", selected_action="run_porcupine",
+    )
+    task = resolve_next_turn_input(prompt, resolution, "Plan PORCUPINE with my data")
+    continuation = build_workflow_continuation(prompt, context, resolution, task)
+    assert continuation is not None
+    task, continuation = with_prior_inputs(task, continuation, context)
+    assert "CARRIED_DISCOVERED_FIELD=network_file." in task
+    assert continuation.task == routing_window(task)  # live 2026-11-06: a stale task made it invalid  # read from the words: confirmed, not taken as given
+    graph_context = SimpleNamespace(
+        project_policy=ProjectPolicyLoader(Path(__file__).parents[1]).load(), recorder=Mock(),
+    )
+    invoked = continue_workflow(
+        graph_context, {"workflow_continuation": continuation.model_dump(), "run_id": "test"}, task, LLMUsage(),
+    )
+    assert (invoked.reason_code, invoked.decision.action) == ("workflow_continuation", "run_porcupine")
+    plan = build_workflow_plan(invoked.decision, task)
+    assert "sample_network_file" not in plan.missing_inputs and "pathway_file" not in plan.missing_inputs
+    # An explicit role=path in the earlier request is not repeated as a discovered value.
+    explicit = context.model_copy(update={"prior_user_goal": "Which workflow? expression_file=data/e.tsv"})
+    assert with_prior_inputs("t", continuation.model_copy(update={"parameters": {"expression_file": "data/e.tsv"}}),
+                             explicit)[0] == "t"

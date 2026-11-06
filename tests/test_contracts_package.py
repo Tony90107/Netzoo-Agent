@@ -227,7 +227,7 @@ SCHEMA_DIGESTS = {
     "OutcomeHypothesis": "67a1a3d39863756ea1ef20d3534a86cc82b4d78dd12acd3ad1268c44c14a1bbc",
     "CapabilityMatch": "0b7805156d93f98bc6e8b0bc6ec537942c5cba570bbd06d3d58e1b25893486b1",
     # 2026-11-05: WorkflowPlan.raw_counts (raw-count note before a workflow reads the matrix).
-    "WorkflowPlan": "5d45e4d5ab61199f1836038c52aacfa49e3c82a0622090dbfdfc42fc2b7dd70d",
+    "WorkflowPlan": "510c6cf395d983de84d4881ea24235bbe448ce77646bd3214678ce06bfa1cf51",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
     "ProjectPolicySnapshot": "dcf6b6c7e7018ee60884c834dff9953be733a7b47a4dcab00ec6dd8c04883362",

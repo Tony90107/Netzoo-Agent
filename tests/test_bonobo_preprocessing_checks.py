@@ -56,3 +56,13 @@ def test_uncentered_values_declared_centered_are_reported_not_refused(tmp_path):
 def test_toy_demo_bundle_still_inspects_cleanly():
     _, ok = inspect_bonobo_inputs_impl(str(TOY), log_transformed=True, centered=True)
     assert ok
+
+
+def test_uncentered_log_values_without_a_centered_declaration_pass_quietly(tmp_path):
+    # BONOBO centers each gene itself, so a centered declaration is not required
+    # and normal (uncentered) log input gets no centering warning.
+    values = np.log2(np.random.default_rng(3).poisson(400, size=(20, 6)) + 1.0)
+    path = _write(tmp_path / "plain.tsv", values)
+    assert len(load_bonobo_inputs(path, log_transformed=True).gene_ids) == 20
+    report, ok = inspect_bonobo_inputs_impl(path, log_transformed=True)
+    assert ok and "declared centered" not in report

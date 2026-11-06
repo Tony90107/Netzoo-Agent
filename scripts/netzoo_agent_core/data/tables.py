@@ -264,7 +264,7 @@ def _read_checked_table(label: str, path: str) -> TableCheck:
     return check
 
 
-def _validate_expression(check: TableCheck) -> TableCheck:
+def _validate_expression(check: TableCheck, *, precomputed_coexpression: bool = False) -> TableCheck:
     if check.frame is None or check.errors:
         return check
 
@@ -345,12 +345,13 @@ def _validate_expression(check: TableCheck) -> TableCheck:
             f"expression values must be numeric; numeric cell ratio is {numeric_ratio:.1%}."
         )
     elif not numeric_block.empty:
-        # netZooPy PANDA/PUMA/LIONESS take np.corrcoef of the matrix and then
-        # nan_to_num it, so one missing value silently zeroes that gene's
-        # co-expression with every other gene. Nothing here may be missing.
+        # netZooPy PANDA/PUMA/LIONESS take np.corrcoef of the matrix and then nan_to_num it, so one missing
+        # value silently zeroes that gene's co-expression with every other gene. Nothing here may be missing.
         cells = numeric_block.apply(pd.to_numeric, errors="coerce").astype(float)
         bad = ~np.isfinite(cells.to_numpy())
-        if bad.any():
+        if bad.any() and precomputed_coexpression:  # run_panda_precomputed.py reads only the expression gene list
+            check.notes.append(f"{int(bad.sum())} missing value(s) not used: precomputed co-expression file given.")
+        if bad.any() and not precomputed_coexpression:
             row, column = (int(index[0]) for index in np.nonzero(bad))
             gene = str(frame.iloc[row, 0]).strip()
             check.errors.append(
@@ -676,11 +677,10 @@ def _inspect_panda_inputs_impl(
     ppi_file: str,
     mirna_file: str = "",
     taxon: str = "",
-    check_gene_authority: bool = True,
+    check_gene_authority: bool = True, precomputed_coexpression: bool = False,
 ) -> tuple[str, bool, bool]:
-    expression = _validate_expression(
-        _read_checked_table("expression", expression_file)
-    )
+    expression = _validate_expression(_read_checked_table("expression", expression_file),
+                                      precomputed_coexpression=precomputed_coexpression)
     motif = _validate_edge_or_bed(_read_checked_table("motif", motif_file), "motif")
     ppi = _validate_edge_or_bed(_read_checked_table("PPI", ppi_file), "PPI")
     motif_regulator_validation: GeneValidationSummary | None = None

@@ -83,7 +83,7 @@ controls:
     default: null
     nullable: true
     executor_argument: centered
-    description: "The expression is declared centered; BONOBO requires it."
+    description: "The expression is declared centered per gene; optional, because BONOBO subtracts each gene's mean itself."
 execution_step: run_bonobo
 output_capability:
   operation: infer
@@ -155,7 +155,8 @@ conventions:
     Expression data must be numeric, finite, complete, gene-by-sample, and have
     at least three total samples so each leave-one-out background has at least
     two samples. The agent requires the caller to declare log_transformed=true
-    and centered=true because BONOBO assumes log-transformed centered expression.
+    because BONOBO assumes log-scale expression. A centered declaration is
+    optional: BONOBO subtracts each gene's mean itself.
   - >-
     sample_names is an explicit list of sample IDs, never positional indices.
     Unknown or duplicate names are rejected before the API call and the selected

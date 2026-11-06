@@ -151,7 +151,8 @@ def run_panda(
 ) -> str:
     """Run PANDA through the container wrapper."""
     validation_report, inputs_ok, inferred_header, _ = inspect_panda_inputs_with_provenance(
-        "run_panda", expression_file, motif_file, ppi_file, taxon=taxon
+        "run_panda", expression_file, motif_file, ppi_file, taxon=taxon,
+        precomputed_coexpression=bool(coexpression_file),
     )
     if not inputs_ok:
         return (

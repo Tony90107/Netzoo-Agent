@@ -2510,7 +2510,7 @@ WORKFLOW_CONTROLS: dict[ActionName, tuple[WorkflowControlDefinition, ...]] = {
         ),
         _control(
             "centered", "boolean", None, nullable=True,
-            description="The expression is declared centered; BONOBO requires it.",
+            description="The expression is declared centered per gene; optional, because BONOBO subtracts each gene's mean itself.",
         ),
     ),
     "run_porcupine": (

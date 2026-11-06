@@ -382,14 +382,19 @@ def default_snail_reason(has_groups: bool) -> str:
 _RAW_WHOLE_SHARE = 0.99   # share of values that are whole numbers
 _RAW_MIN_MAX = 100.0      # a largest value below this is no count matrix worth flagging
 _RAW_TOTAL_RATIO = 1.5    # largest / smallest sample total
+# Expected counts (RSEM expected_count) split reads shared between genes, so some values are fractional, but most
+# non-zero values stay whole numbers. Scaled or log values (CPM, TPM, FPKM, RLE/TMM-scaled counts, quantile, SNAIL)
+# are almost never exact whole numbers once zeros are set aside.
+_EXPECTED_WHOLE_SHARE = 0.5  # share of non-zero values that are whole numbers
 
 
 def raw_count_signal(expression_file: str):
     """A RawCountSignal when the matrix reads as raw counts with uneven sample totals, else None.
 
-    Whole numbers only (expected counts, CPM and every normalized output here are non-integer), none negative,
-    a largest value of at least 100, and sample totals at least 1.5-fold apart. Never raises: an unreadable
-    file gets no note (the workflow's own input check reports it).
+    Whole numbers (at least 99% of all values), or expected counts (at least half of the non-zero values whole
+    numbers, as in RSEM expected_count); none negative, a largest value of at least 100, and sample totals at least
+    1.5-fold apart. CPM, TPM, FPKM and every normalized output here have almost no whole non-zero values. Never
+    raises: an unreadable file gets no note (the workflow's own input check reports it).
     """
     from ..contracts.planning import RawCountSignal
 
@@ -405,7 +410,10 @@ def raw_count_signal(expression_file: str):
         return None
     if (matrix < 0).any() or float(matrix.max()) < _RAW_MIN_MAX:
         return None
-    if float((np.abs(matrix - np.round(matrix)) <= 1e-9).mean()) < _RAW_WHOLE_SHARE:
+    whole = np.abs(matrix - np.round(matrix)) <= 1e-9
+    nonzero = matrix != 0
+    whole_share = float(whole[nonzero].mean()) if nonzero.any() else 1.0
+    if float(whole.mean()) < _RAW_WHOLE_SHARE and whole_share < _EXPECTED_WHOLE_SHARE:
         return None
     totals = matrix.sum(axis=0)
     if float(totals.min()) <= 0 or float(totals.max() / totals.min()) < _RAW_TOTAL_RATIO:
@@ -413,13 +421,19 @@ def raw_count_signal(expression_file: str):
     return RawCountSignal(
         expression_file=expression_file, samples=int(matrix.shape[1]), max_value=float(matrix.max()),
         total_min=float(totals.min()), total_max=float(totals.max()),
+        whole_share=1.0 if float(whole.mean()) >= _RAW_WHOLE_SHARE else whole_share,
     )
 
 
 def raw_counts_line(signal, workflow: str) -> str:
     """The preview line for a RawCountSignal: the numbers read from the file, what they mean, and the offer."""
+    values = (
+        f"whole numbers up to {signal.max_value:,.0f}" if signal.whole_share >= _RAW_WHOLE_SHARE else
+        f"values up to {signal.max_value:,.0f}, {signal.whole_share:.0%} of the non-zero ones whole numbers "
+        "(as in expected counts such as RSEM's)"
+    )
     return (
-        f"- Expression values: look like raw counts -- whole numbers up to {signal.max_value:,.0f}, and the "
+        f"- Expression values: look like raw counts -- {values}, and the "
         f"{signal.samples} sample totals range from {signal.total_min:,.0f} to {signal.total_max:,.0f} "
         f"({signal.total_max / signal.total_min:.1f}-fold). In raw counts every gene of a sample scales with its "
         "sequencing depth, so depth alone can make genes vary together across samples. "

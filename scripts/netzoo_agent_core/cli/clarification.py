@@ -304,7 +304,7 @@ def _render_clarification_prompt(
 
     current = missing_items[0]
     completed = len(all_missing_items) - len(missing_items)
-    input_label = INPUT_LABELS.get(current.field, current.field)
+    input_label = workflow_input_label(current.field, TaskDecision.model_validate(plan.decision).action)
     input_label = input_label[:1].upper() + input_label[1:]
     lines = []
     if custom:
@@ -391,6 +391,14 @@ def preference_continuation(plan: WorkflowPlan, approved: bool) -> str:
     )
 
 
+def workflow_input_label(field: str, action: str | None) -> str:
+    """The input's label in the active workflow's words: an output folder is named after the workflow that writes it
+    (2026-11-06: PORCUPINE's was shown as "CONDOR output directory")."""
+    if field == "output_dir" and action in ACTION_DEFINITIONS:
+        return _ui_text(f"{ACTION_DEFINITIONS[action].workflow} output directory")
+    return INPUT_LABELS.get(field, field)
+
+
 def input_confirmation_prompt(plan: WorkflowPlan, *, correction: bool = False) -> str:
     """Render the common local-input confirmation, independent of workflow name."""
     if correction:
@@ -451,7 +459,7 @@ def input_confirmation_continuation(
                 and item.field not in {"output_file", "lioness_output", "output_dir"}
             ):
                 continuation += f" CONFIRMED_INPUT_{item.field}={item.value};"
-        return continuation
+        return _with_normalization_request(decision, {}, continuation)
 
     assignments = re.findall(
         r"([a-z_]+)\s*=\s*([^\s,;]+)",
@@ -475,4 +483,16 @@ def input_confirmation_continuation(
         )
     for field_name, value in corrected.items():
         continuation += f" CORRECTED_INPUT_{field_name}={value};"
-    return continuation
+    return _with_normalization_request(decision, corrected, continuation)
+
+
+def _with_normalization_request(decision: TaskDecision, corrected: dict[str, str], continuation: str) -> str:
+    """A normalization's confirmation continuation leads with the request itself (live 2026-11-05).
+
+    The generic "Continue the previous task" text names neither the chosen method nor the workflow to run
+    after it, so the second planning pass fell back to SNAIL and dropped then_action. The request is restated
+    with both as assignments, the same form the method-choice continuation uses.
+    """
+    if decision.action != "normalize_expression" or not decision.normalization_method:
+        return continuation
+    return _normalization_continuation(decision, corrected) + " " + continuation

@@ -305,6 +305,7 @@ def _validate_workflow_inputs_impl(action: str, decision: Any) -> list[str]:
             ppi,
             mirna if action in {"inspect_inputs", "run_puma", "run_lioness_puma"} else "",
             taxon,
+            precomputed_coexpression=bool(coexpression) and action == "run_panda",
         )
         bundled_demo = bundled_demo or panda_bundled_demo
         errors.extend(_report_errors("PANDA/PUMA inputs", report, ok))

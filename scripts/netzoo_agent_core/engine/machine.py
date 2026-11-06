@@ -62,9 +62,7 @@ from ..cli.clarification import (
     resolve_clarification,
 )
 from ..cli.follow_up import (
-    build_follow_up_context,
-    build_next_turn_prompt,
-    build_workflow_continuation,
+    build_follow_up_context, build_next_turn_prompt, build_workflow_continuation, with_prior_inputs,
     follow_up_returns_to_main,
     initial_next_turn_prompt,
     render_next_turn_prompt,
@@ -525,6 +523,7 @@ class ConversationMachine:
                     state.next_prompt, state.follow_up_context, decision, task,
                     requirements=state.follow_up_requirements,
                 )
+                task, state.pending_continuation = with_prior_inputs(task, state.pending_continuation, state.follow_up_context)
             except ValueError:
                 state.pending_continuation = None
                 return [_notice(
@@ -643,6 +642,7 @@ class ConversationMachine:
                 state.next_prompt, state.follow_up_context, resolution, task,
                 requirements=state.follow_up_requirements,
             )
+            task, state.pending_continuation = with_prior_inputs(task, state.pending_continuation, state.follow_up_context)
             prompt = state.next_prompt
             if (state.pending_continuation is None and prompt.held_run and resolution.kind == "follow_up"
                     and prompt.continuation_action in RUN_ACTIONS and not _is_question(answer)):

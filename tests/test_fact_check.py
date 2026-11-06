@@ -24,7 +24,7 @@ from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 TASK = ("Run BONOBO on lesions.tsv for my 9 biopsies. The matrix was mean-centered, but I can't tell whether the "
         "values were log-transformed before centering.")
 UNSURE = "I can't tell whether the values were log-transformed before centering"
-CONTRACT = "The agent requires the caller to declare log_transformed=true and centered=true"
+CONTRACT = "The agent requires the caller to declare log_transformed=true"
 
 
 @pytest.fixture(scope="module")

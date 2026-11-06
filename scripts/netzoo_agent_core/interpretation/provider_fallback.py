@@ -13,7 +13,7 @@ from ..routing.capability import (
     has_direct_execution_intent,
     has_direct_retrieval_request,
 )
-from ..routing.named_labels import named_registered_action, solely_named_run_action
+from ..routing.named_labels import named_registered_action, run_target_with_named_inputs, solely_named_run_action
 from ..routing.outcome_matching import guidance_actions_for
 from .request_parameters import has_explicit_request_parameters
 __all__: list[str] = []
@@ -131,7 +131,7 @@ def recover_explicit_run(
 
     if not has_direct_execution_intent(task):
         return None
-    action = solely_named_run_action(task)
+    action = solely_named_run_action(task) or run_target_with_named_inputs(task)
     if action is not None and action in workflows:
         return TaskDecision(
             action=action,
@@ -150,6 +150,18 @@ def recover_explicit_run(
         )
 
     return None
+
+
+def named_run_unmatched(task: str, workflows: Mapping[str, object]) -> TaskDecision | None:
+    """The run a request names when the semantic reading succeeded but matched no workflow (2026-11-06).
+
+    Same gates as `recover_explicit_run`: a direct run instruction, one run target, other labels only the producers
+    of its inputs, no question. Planning and input checks still decide whether it can run.
+    """
+    if "?" in task or "？" in task or not has_direct_execution_intent(task):
+        return None
+    action = solely_named_run_action(task) or run_target_with_named_inputs(task)
+    return recover_explicit_run(task, workflows, ValueError("no workflow matched")) if action else None
 
 
 def _is_fatal_exception(error: BaseException) -> bool:

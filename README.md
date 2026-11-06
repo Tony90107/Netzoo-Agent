@@ -218,6 +218,11 @@ untested.
 
 ---
 
+## Known limitations
+
+Deliberate trade-offs, unverified assumptions and known gaps are listed in
+[docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md).
+
 ## Troubleshooting
 
 | Symptom | Fix |

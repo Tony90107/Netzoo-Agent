@@ -151,6 +151,7 @@ export type RawCountSignal = {
   max_value: number;
   total_min: number;
   total_max: number;
+  whole_share: number;
 };
 
 /** Token, timing, and cost provenance for one provider call. */

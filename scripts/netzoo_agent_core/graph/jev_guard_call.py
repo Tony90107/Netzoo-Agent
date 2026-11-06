@@ -19,7 +19,7 @@ from pathlib import Path
 import yaml
 
 from ..contracts.core_decision import CoreDecision, DeclinedPart, FactQuestion
-from ..interpretation.ask_facts import CONFIRM_PLACED, CONFIRM_UNPLACED, REASK, YES_OR_NO
+from ..interpretation.ask_facts import CONFIRM_UNPLACED, REASK, YES_OR_NO
 from ..jev_client import decide
 from .context import record_event
 
@@ -325,6 +325,10 @@ def check_typed_data(task: str, workflows) -> dict:
                     and has[0] in (_typed_contracts().get(name) or {}).get("incompatible", ()):
                 reasons[name], ruled_by[name] = f"{name} incompatible_input_artifacts: {has[0]}", "has"
         result |= {"has": has}
+    for name in workflows:  # 2026-11-06: a named producer's registered output is the data's type; a read disagreeing
+        if reasons[name] and reasons[name] != SAME_SAMPLE_LINE and _registry_input(task, name):  # with it is no rule-out
+            reasons[name], result["registry_veto"] = None, {name: sorted(_registry_input(task, name))}
+            ruled_by.pop(name, None)
     result["ruled_by"] = ruled_by
     sentences = request_sentences(task)
     if workflows and all(reasons.values()) and sentences:
@@ -376,12 +380,23 @@ def check_result(task: str) -> dict:
             "cost": (out.get("usage") or {}).get("cost", 0)}
 
 
-def condition_question(typed: dict, line: str) -> str:
+def _registry_input(task: str, workflow: str) -> set[str]:
+    """Input artifacts the request gives *workflow* by naming the registered workflow that produced them."""
+    from workflow_registry import ACTION_DEFINITIONS
+    from ..routing.named_labels import named_input_artifacts
+
+    action = next((a for a, d in ACTION_DEFINITIONS.items() if d.workflow == workflow and a.startswith("run_")), None)
+    return named_input_artifacts(task, action) if action else set()
+
+
+def condition_question(typed: dict, line: str) -> str | None:
     """FIXES.md A: the confirm for a violation no sentence states -- the typed fact itself, in the closed menu's words."""
     if line == SAME_SAMPLE_LINE:
         return f"{CONFIRM_UNPLACED}were the two data layers measured on different samples or individuals?{YES_OR_NO}"
     kind = typed.get("ruled_kind") or (typed.get("data") or ("",))[0]  # has-incompatible: the read that ruled out
-    return f"{CONFIRM_UNPLACED}is the data you will use {DATA_CRITERIA.get(kind, kind)}?{YES_OR_NO}"
+    if not DATA_CRITERIA.get(kind):  # nothing specific to confirm: no question with a blank statement
+        return None
+    return f"{CONFIRM_UNPLACED}is the data you will use {DATA_CRITERIA[kind]}?{YES_OR_NO}"
 
 
 def condition_asked(task_state) -> bool:
@@ -405,8 +420,11 @@ def conditioned_core(core: CoreDecision, typed: dict, asked: set[str] = frozense
     if already or (sentence and sentence in asked):
         return core, "already_asked"
     workflow = typed.get("workflow") or core.workflows[0]
-    question = (f"{CONFIRM_PLACED}{YES_OR_NO}" if sentence
-                else condition_question(typed, line))
+    # 2026-11-06: the placed confirm showed only "could you confirm this about your data?" -- it now states the
+    # condition, as the unplaced one does; the user's sentence stays the quote.
+    question = condition_question(typed, line)
+    if question is None:
+        return core, "no_statement"
     fact = FactQuestion(question=question, user_quote=sentence,
                         workflows=[workflow, *(w for w in core.workflows if w != workflow)],
                         contract_quote=line, uncertainty="said_unknown", depends_on="jev:condition")

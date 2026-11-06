@@ -263,10 +263,9 @@ def load_bonobo_inputs(
             "BONOBO requires log-transformed expression data; declare log_transformed=true "
             "after preprocessing"
         )
-    if centered is not True:
-        raise ValueError(
-            "BONOBO requires centered expression data; declare centered=true after preprocessing"
-        )
+    # No centered requirement: netZooPy BONOBO subtracts each gene's mean across
+    # all samples itself (expression_mean in bonobo.py), so uncentered input
+    # gives the same networks.
     if (count_error := _raw_count_error(values)) is not None:
         raise ValueError(count_error)
 
@@ -304,7 +303,7 @@ def inspect_bonobo_inputs_impl(
         f"- expression_file: {_resolve_user_path(expression_file)}",
         "  required format: labelled gene-by-sample matrix",
         "  required header: first column is gene ID; remaining column names are sample IDs",
-        "  preprocessing: log-transformed and centered values must be declared",
+        "  preprocessing: log-transformed values must be declared (BONOBO centers each gene itself)",
     ]
     try:
         requested = _normalise_sample_names(sample_names)
@@ -323,7 +322,9 @@ def inspect_bonobo_inputs_impl(
                 f"  sample subset: {'requested' if requested else 'all samples'}",
             ]
         )
-        if (centering := bonobo_centering_warning(bundle.expression.to_numpy(dtype=float))) is not None:
+        if centered is True and (
+            centering := bonobo_centering_warning(bundle.expression.to_numpy(dtype=float))
+        ) is not None:
             lines.append(f"  warning: {centering}")
         if len(bundle.sample_ids) < 5:
             lines.append("  warning: fewer than five samples may make sample-specific estimates unstable")

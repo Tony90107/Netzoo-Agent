@@ -76,9 +76,18 @@ def stated_opposite(action: str, words: str) -> Expectation | None:
         return None
     conditions = conditions_for(tied[0].workflow)
     tokens = _tokens(words)
-    named = [item for item in tied
-             if {token for token in _tokens(item.control.replace("_", " ")) if len(token) > 3} & tokens]
-    if len(named) != 1 or conditions is None:
+    if conditions is None:
+        return None
+
+    def names(control: str) -> bool:
+        return bool({token for token in _tokens(control.replace("_", " ")) if len(token) > 3} & tokens)
+
+    # Every setting the words name counts, not only those with an expectation: "log2-transformed but not
+    # centered" names two settings, so its "not" is not read against log_transformed alone.
+    if sum(names(control) for control in conditions.settings) != 1:
+        return None
+    named = [item for item in tied if names(item.control)]
+    if len(named) != 1:
         return None
     item = named[0]
     value = control_boolean_value(conditions.settings[item.control], words, words)

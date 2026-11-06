@@ -18,6 +18,7 @@ def inspect_panda_inputs_with_provenance(
     ppi_file: str,
     mirna_file: str = "",
     taxon: str = "",
+    precomputed_coexpression: bool = False,
 ) -> tuple[str, bool, bool, bool]:
     """Validate inputs and report whether a registered demo authorized the bypass."""
 
@@ -36,6 +37,7 @@ def inspect_panda_inputs_with_provenance(
         mirna_file,
         taxon=taxon,
         check_gene_authority=not bundled_demo,
+        precomputed_coexpression=precomputed_coexpression,
     )
     if bundled_demo:
         report += "\n- " + bundled_demo_authority_note()

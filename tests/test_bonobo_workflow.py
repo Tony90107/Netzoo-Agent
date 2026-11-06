@@ -152,14 +152,14 @@ def test_bonobo_rejects_missing_or_duplicate_requested_sample_names(tmp_path):
     assert "duplicates" in report
 
 
-def test_bonobo_requires_log_transform_centering_and_pvalues_need_sparsify(tmp_path):
+def test_bonobo_requires_log_transform_and_pvalues_need_sparsify(tmp_path):
     expression = _expression(tmp_path)
     report, ok = inspect_bonobo_inputs_impl(str(expression), centered=True)
     assert not ok
     assert "log-transformed" in report
+    # No centered requirement: netZooPy BONOBO subtracts each gene's mean itself.
     report, ok = inspect_bonobo_inputs_impl(str(expression), log_transformed=True)
-    assert not ok
-    assert "centered" in report
+    assert ok
     report, ok = inspect_bonobo_inputs_impl(
         str(expression), log_transformed=True, centered=True,
         output_dir=str(tmp_path / "out"), save_pvals=True, sparsify=False,

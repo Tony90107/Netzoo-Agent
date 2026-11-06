@@ -23,6 +23,7 @@ from ..interpretation.stated_field_restoration import restore_stated_fields
 from ..interpretation.outcome_validation import evidence_census, validate_outcome_hypotheses
 from ..interpretation.provider_fallback import (
     _is_fatal_exception,
+    recover_explicit_run,
     recover_registry_guidance,
 )
 from ..interpretation.outcome_downgrade import interpretation_downgrades
@@ -725,6 +726,11 @@ def invoke_semantic_interpreter(
                     with_reduced_confidence(interpretation),
                     usage, budget_warnings, None, restored_tags,
                 )
+            if recover_explicit_run(user_task, context.project_policy.workflows, last_error) is not None:
+                # Live 2026-11-06: "Run PORCUPINE on the LIONESS-PANDA networks ..." -- the kept remainder matched
+                # PANDA-family workflows and the turn asked "Did you mean PORCUPINE's result?". A run request that
+                # names its workflow is recovered by that name (`_semantic_failure`), not by a partial reading.
+                return None, usage, budget_warnings, last_error, restored_tags
             if (kept := without_unsupported_claims(user_task, interpretation, validation.issues)) is not None:
                 # Only claims given no evidence (or a not_applicable scale of an unknown result) were wrong; they are
                 # taken out and the rest, every claim of it quoted, is kept (`interpretation.unsupported_claims`).

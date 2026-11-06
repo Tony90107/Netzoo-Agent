@@ -12,6 +12,7 @@ from ..interpretation.outcome_validation import validate_outcome_hypotheses
 from ..interpretation.provider_fallback import (
     deterministic_router_fallback,
     recover_ambiguous_input,
+    named_run_unmatched,
     recover_explicit_run,
     recover_registry_guidance,
 )
@@ -936,13 +937,12 @@ def _route_request(
             "classify",
             {"intent_mode": "execute"},
         )
-    decision = assemble_task_decision(
-        interpretation,
-        capability_match,
-        intent,
-        task=user_task,
-    )
-    decision = hydrate_router_decision(decision, user_task)
+    decision = hydrate_router_decision(assemble_task_decision(interpretation, capability_match, intent, task=user_task),
+                                       user_task)
+    if decision.action == "no_tool" and (named := named_run_unmatched(user_task, context.project_policy.workflows)):
+        decision = hydrate_router_decision(named, user_task)  # the user named the run; the reading matched none
+        record_event(context, state, "routing.explicit_run_recovered", "classify", {"matched_actions": [named.action],
+                     "reason_code": "named_run_unmatched", "match_status": named.capability_match_status})
     if direct_retrieval_action in {"web_search", "query_context7"}:
         decision = decision.model_copy(update={"intent_type": "answer_question"})
     if capability_match.match_basis == UNVERIFIED_BASIS:

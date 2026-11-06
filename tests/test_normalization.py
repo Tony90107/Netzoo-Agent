@@ -598,9 +598,46 @@ class RawCountSignalTests(unittest.TestCase):
             counts.clip(upper=50),                     # largest value below 100
         ):
             self.assertIsNone(self.signal(frame))
+
+    def test_cpm_and_log2_tpm_with_incidental_whole_numbers_are_not_flagged(self):
+        counts = _counts().astype(float)
+        counts.iloc[:, 0] *= 4
+        cpm = counts / counts.sum(axis=0) * 1e6
+        cpm.iloc[:5, :] = np.round(cpm.iloc[:5, :])           # a few values happen to be whole numbers
+        lengths = np.random.default_rng(9).uniform(0.5, 5.0, size=(counts.shape[0], 1))
+        rate = counts / lengths
+        log_tpm = np.log2(rate / rate.sum(axis=0) * 1e6 + 1) * 40  # scaled so the maximum passes 100
+        log_tpm.iloc[:5, :] = np.round(log_tpm.iloc[:5, :])
+        for frame in (cpm, log_tpm):
+            self.assertIsNone(self.signal(frame))
         from netzoo_agent_core.data.normalization import raw_count_signal
 
         self.assertIsNone(raw_count_signal("/nonexistent/expr.tsv"))
+
+    def test_expected_counts_with_some_fractional_values_are_flagged(self):
+        # RSEM expected_count: reads shared between genes are split, so a minority of values are fractional.
+        from netzoo_agent_core.data.normalization import raw_counts_line
+
+        counts = _counts().astype(float)
+        counts.iloc[:, 0] *= 4
+        rng = np.random.default_rng(7)
+        shared = (rng.random(counts.shape) < 0.3) & (counts.to_numpy() > 0)
+        counts = counts + np.where(shared, np.round(rng.random(counts.shape), 2) + 0.01, 0.0)
+        found = self.signal(counts)
+        self.assertIsNotNone(found)
+        self.assertLess(found.whole_share, 0.99)
+        self.assertIn("of the non-zero ones whole numbers (as in expected counts such as RSEM's)",
+                      raw_counts_line(found, "PANDA"))
+
+    def test_scaled_values_with_uneven_totals_are_not_flagged_as_expected_counts(self):
+        counts = _counts().astype(float)
+        counts.iloc[:, 0] *= 4
+        lengths = np.random.default_rng(8).uniform(0.5, 5.0, size=(counts.shape[0], 1))
+        for frame in (
+            counts / 1.37,                       # counts divided by a size factor (RLE/TMM-style scaling)
+            counts / lengths * 1000 / 3.1,       # FPKM-like: per-length scaling, totals still uneven
+        ):
+            self.assertIsNone(self.signal(frame))
 
 
 class NormalizedOutputNameTests(unittest.TestCase):
