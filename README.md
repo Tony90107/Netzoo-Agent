@@ -12,7 +12,7 @@ runs the workflow in Docker after you approve the plan.
 
 ## What it can run
 
-13 workflows, each with a versioned spec in [`workflows/`](workflows/):
+15 workflows, each with a versioned spec in [`workflows/`](workflows/):
 
 | Workflow | What it produces |
 |---|---|
@@ -29,8 +29,10 @@ runs the workflow in Docker after you approve the plan.
 | GIRAFFE | TF → gene regulation plus TF activity per sample |
 | SAMBAR | Pathway mutation scores and subtypes from somatic mutations |
 | PORCUPINE | Pathways whose regulation varies most between patients, from LIONESS sample networks (R package) |
+| SCORPION | TF → gene networks from single-cell RNA-seq, one per group of cells, and the edges that differ between groups (R package) |
 
-It can also download STRING protein networks (functional, physical or regulatory) for a species.
+It can also download STRING protein networks (functional, physical or regulatory) for a species, and build a human
+TF motif prior and TF PPI prior with SPONGE (see `docs/SPONGE_INTEGRATION.md`).
 
 ## How the agent works
 
@@ -179,7 +181,8 @@ docker compose run --rm netzoo run-panda \
 ```
 
 The other wrappers are `run-puma`, `run-lioness {panda|puma|coexpression}`, `run-condor`,
-`run-cobra`, `run-sambar` and `run-porcupine` (see `docs/PORCUPINE_INTEGRATION.md`). Run any of them with `--help` to see its arguments.
+`run-cobra`, `run-sambar`, `run-porcupine` (see `docs/PORCUPINE_INTEGRATION.md`), `run-scorpion`
+(`docs/SCORPION_INTEGRATION.md`) and `run-sponge` (`docs/SPONGE_INTEGRATION.md`). Run any of them with `--help` to see its arguments.
 
 ---
 

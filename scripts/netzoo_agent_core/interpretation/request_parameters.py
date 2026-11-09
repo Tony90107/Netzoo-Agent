@@ -207,6 +207,16 @@ def extract_explicit_workflow_controls(task: str, action: str) -> dict[str, obje
         )
         if prefix is None:
             continue
+        if control.control_type == "string_list":
+            # 2026-11-08 (SCORPION group_by=donor,region): a comma-separated list, bare, quoted or bracketed.
+            listed = re.match(r"\s*(?:\[(?P<bracket>[^\]]*)\]|\"(?P<double>[^\"]*)\"|'(?P<single>[^']*)'"
+                              r"|(?P<bare>[^\s;，；。!?！？]+))", task[prefix.end():])
+            raw = next((value for value in (listed.groupdict().values() if listed else ()) if value is not None), "")
+            items = [item.strip().strip("\"'") for item in raw.rstrip(".").split(",")]
+            if not any(items):
+                raise ValueError(f"Invalid {control.name}: expected a comma-separated list.")
+            parameters[control.name] = [item for item in items if item]
+            continue
         assignment = re.match(
             r"\s*"
             r"(?:\"(?P<double>[^\"]*)\"|'(?P<single>[^']*)'|(?P<bare>[^\s,;，；。!?！？]+))",
@@ -239,6 +249,9 @@ def extract_explicit_workflow_controls(task: str, action: str) -> dict[str, obje
             value = lowered
             if control.name == "bonobo_output_format" and not value.startswith("."):
                 value = "." + value
+            # Allowed values keep their own case (SCORPION assoc_method=pcNet).
+            value = next((allowed for allowed in control.allowed_values
+                          if str(allowed).casefold() == value), value)
             if value not in control.allowed_values:
                 raise ValueError(
                     f"Invalid {control.name}: expected one of {control.allowed_values}."

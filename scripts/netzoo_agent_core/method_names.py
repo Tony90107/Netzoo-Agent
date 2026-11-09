@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
+from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS, SINGLE_CELL_ACTIONS
 
 __all__ = ["LIONESS_FAMILY", "PROJECT_IDENTITIES", "UNREGISTERED", "is_project_identity", "method_names", "named_workflows", "registered_workflows",
            "setting_meanings", "setting_names", "workflows_in"]
@@ -68,15 +68,17 @@ def workflows_in(words: str) -> list[str]:
     return list(dict.fromkeys(pattern.findall(words or "")))
 
 
-def setting_names() -> tuple[str, ...]:
-    """Every setting a request can give, as WORKFLOW.control."""
+def setting_names(single_cell: bool = True) -> tuple[str, ...]:
+    """Every setting a request can give, as WORKFLOW.control (`single_cell` False: without SCORPION's, 2026-11-08)."""
     return tuple(f"{workflow}.{control.name}" for workflow, action in sorted(registered_workflows().items())
+                 if single_cell or action not in SINGLE_CELL_ACTIONS
                  for control in ACTION_DEFINITIONS[action].controls)
 
 
-def setting_meanings() -> tuple[str, ...]:
+def setting_meanings(single_cell: bool = True) -> tuple[str, ...]:
     """Each setting as WORKFLOW.control: what the registry says it does (m1a N11: "an L1 sparsity penalty" was
     typed OTTER.lam, the co-expression-versus-PPI weight, when the schema showed only the name)."""
     return tuple(f"{workflow}.{control.name}: {control.description}"
                  for workflow, action in sorted(registered_workflows().items())
+                 if single_cell or action not in SINGLE_CELL_ACTIONS
                  for control in ACTION_DEFINITIONS[action].controls)

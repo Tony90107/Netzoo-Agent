@@ -46,7 +46,7 @@ from .request_spans import same_words as _same_words
 __all__ = ["decide_core", "goal_unclear", "with_core"]
 
 _FAILED_BASES = frozenset({"semantic_validation_recovery", "provider_unavailable"})
-_TOOL_ACTIONS = frozenset({"download_string", "normalize_expression", "web_search", "query_context7"})
+_TOOL_ACTIONS = frozenset({"download_string", "normalize_expression", "build_priors", "web_search", "query_context7"})
 _READ = frozenset({"available", "with_step", "partial", "not_available", "needs_fact"})
 _GIVEN = frozenset({"available", "with_step", "partial"})
 _UNCHECKED_HOLDS = frozenset({"unread", "unconfirmed"})

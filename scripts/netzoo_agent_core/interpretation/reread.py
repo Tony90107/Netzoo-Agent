@@ -61,7 +61,21 @@ def _mask(task: str, quotes) -> list[bool]:
 
 
 def _covered(task: str, check) -> list[bool]:
-    return _mask(task, [item.quote for item in check.requirements])
+    """Words a requirement quotes, and every registered control the request sets as name=value: code binds those to
+    the run (`request_parameters.extract_explicit_workflow_controls`), so they are no result to read again (live
+    2026-11-08: "group_by=donor,region compare_by=region group1=T group2=N", unread by the check, came back from the
+    re-read as four results nothing produces and held a SCORPION run)."""
+    assigned = [found.group(0) for found in _control_assignments().finditer(task)]
+    return _mask(task, [item.quote for item in check.requirements] + assigned)
+
+
+@lru_cache(maxsize=1)
+def _control_assignments() -> re.Pattern:
+    from workflow_registry import WORKFLOW_CONTROLS
+
+    names = sorted({control.name for controls in WORKFLOW_CONTROLS.values() for control in controls}, key=len, reverse=True)
+    return re.compile(r"(?<![A-Za-z0-9_])(?:" + "|".join(map(re.escape, names)) + r")\s*=\s*"
+                      r"(?:\[[^\]]*\]|\"[^\"]*\"|'[^']*'|[^\s;，；。!?！？]+)", re.I)
 
 
 _LETTERS = re.compile(r"[^\W\d_]+")

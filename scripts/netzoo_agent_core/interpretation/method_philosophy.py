@@ -7,6 +7,7 @@ https://netzoo.github.io/zooanimals/cobra/
 https://netzoo.github.io/zooanimals/dragon/
 https://netzoo.github.io/zooanimals/sambar/
 https://github.com/kuijjerlab/PORCUPINE (Belova et al. 2023)
+https://github.com/kuijjerlab/SCORPION (Osorio, Capasso & Kuijjer 2024)
 https://netzoo.github.io/zooanimals/panda/panda/
 https://netzoo.github.io/zooanimals/panda/puma/ and netZooPy puma/calculations.py
 https://netzoo.github.io/netZooR/articles/TutorialOTTER.html
@@ -39,6 +40,13 @@ _PHILOSOPHIES = {
         " This is pathway aggregation followed by distance-based clustering, not "
         "non-negative matrix factorization; a mutation score does not establish "
         "permanent functional loss or equivalence of every mutation in a pathway."
+    ),
+    "single_cell": (
+        "SCORPION counters single-cell sparsity by coarse-graining: it builds a k-nearest-neighbour graph of "
+        "cells on principal components, merges similar cells into super-cells (about gamma cells each) and "
+        "averages their expression, then runs PANDA's message passing with the motif and PPI priors on the "
+        "super-cells. Built per group of cells with the same priors, the networks are comparable, and "
+        "testEdges compares them with a moderated t-test. It does not give one network per individual cell."
     ),
     "pathway_heterogeneity": (
         "PORCUPINE takes the edges that target each pathway's genes in every sample's "

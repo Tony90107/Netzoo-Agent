@@ -5,15 +5,13 @@ from __future__ import annotations
 import re
 from workflow_registry import get_controls
 
+from ..routing.data_unit import excluded_actions
 from ..contracts import OUTPUT_ROLE_FIELDS, ProjectPolicySnapshot, TaskDecision
 from ..interpretation.verified_guidance import guidance_contract
 from ..interpretation.guidance_catalog import compact_guidance_catalog
 from ..interpretation import INPUT_LABELS
 from ..interpretation.registry_guidance import (
-    build_registry_selection_constraints,
-    decision_with_registry_signals,
-    handoff_input_fields,
-    related_registry_actions,
+    build_registry_selection_constraints, decision_with_registry_signals, handoff_input_fields, related_registry_actions,
 )
 
 __all__: list[str] = []
@@ -53,9 +51,10 @@ def validated_workflow_context(
     """Return registry facts without granting execution authority."""
     seed_actions = list(dict.fromkeys([*decision.matched_actions, *decision.hypothesis_actions,
                                        *decision.recommended_actions, *decision.alternative_actions]))
+    excluded = excluded_actions(task) - set(seed_actions)  # 2026-11-08: SCORPION only for cells, bulk ones only for bulk
     if include_all:
         seed_actions.extend(action for action in policy.workflows if action not in seed_actions)
-    seed_actions = related_registry_actions(list(dict.fromkeys(seed_actions)), policy.workflows)
+    seed_actions = [a for a in related_registry_actions(list(dict.fromkeys(seed_actions)), policy.workflows) if a not in excluded]
     relevant_actions = []
     compositions = []
     handoffs = []

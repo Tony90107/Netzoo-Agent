@@ -17,6 +17,7 @@ import time
 
 from pydantic import BaseModel
 
+from ..prior_request import prior_decision
 from ..contracts import AgentState, HumanMessage, LLMUsage, SystemMessage
 from ..contracts.normalization import NeedReading, NormalizationNeedProposal
 from ..interpretation.provider_fallback import _is_fatal_exception
@@ -104,7 +105,13 @@ def normalization_route(
     context: _GraphContext, state: AgentState, user_task: str, interpretation, usage: LLMUsage,
     budget_warnings: list[str], *, after_match: bool = False,
 ) -> RouterInvocation | None:
-    """A normalize_expression routing for this request, or None to leave it to workflow routing."""
+    """A preparation step for this request -- SPONGE priors or a normalization -- or None to leave it to routing."""
+    if not after_match and (priors := prior_decision(user_task, interpretation)) is not None:
+        record_event(context, state, "routing.sponge_priors_selected", "classify", {
+            "tf_names": priors.sponge_tf_names, "then_action": priors.then_action})
+        return RouterInvocation(
+            decision=priors, usage=usage, budget_warnings=budget_warnings, reason_code="sponge_priors",
+            routing_state=outcome_routing_state(priors, interpretation.semantic_goal, interpretation.request_mode))
     if not after_match:
         decision = normalization_decision(user_task, interpretation)
         if decision is None:

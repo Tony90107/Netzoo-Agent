@@ -24,7 +24,7 @@ def test_each_ruled_out_form_says_why():
         "spatial": ({"spatial": "uses_neighbors"}, "uses where samples sit in space"),
         "overlap": ({"group_membership": "several_groups"}, "none returns overlapping memberships"),
         "dynamic": ({"time_model": "dynamic"}, "from one time point to the next"),
-        "cells": ({"data_unit": "single_cells"}, "none models single cells"),
+        "cells": ({"data_unit": "single_cells"}, "only SCORPION takes single cells"),
         "lncrna": ({"regulator_kinds": ["tf", "lncrna"]}, "none models lncRNA regulators"),
     }
     for name, (attrs, words) in cases.items():

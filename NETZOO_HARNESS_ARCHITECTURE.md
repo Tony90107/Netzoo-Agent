@@ -31,10 +31,19 @@ with governed long-term memory. It integrates these workflows:
 - LIONESS-PANDA, LIONESS-PUMA, LIONESS co-expression
 - CONDOR, COBRA, SAMBAR, OTTER, GIRAFFE, BONOBO
 - DRAGON, LIONESS-DRAGON
+- PORCUPINE (R; pathway heterogeneity across sample-specific networks)
+- SCORPION (R; single-cell networks per group of cells, with testEdges)
 
-plus expression formatting and co-expression conversion helpers, an official
-STRING network download (`download_string`), Context7 documentation lookup, and
-web search.
+plus expression formatting and co-expression conversion helpers, between-sample
+normalization (`normalize_expression`: SNAIL, RLE, TMM, quantile, FPKM), an
+official STRING network download (`download_string`), human motif and PPI priors
+built with SPONGE (`build_priors`), Context7 documentation lookup, and web search.
+
+SCORPION is matched only when the request's own words say the data are single
+cells; every other expression workflow takes bulk samples
+(`routing/data_unit.py`, see `docs/SCORPION_INTEGRATION.md`). Normalization,
+the STRING download and SPONGE are preparation steps read from the request's own
+words before workflow matching; they produce inputs, not results.
 
 It does not let an LLM choose shell commands freely. The LLM mainly reads the
 user's intent and writes general prose answers; all local tool authority,
@@ -97,6 +106,11 @@ scripts/
     ├── execution.py                 # workflow adapters and LOCAL_TOOL_EXECUTORS
     ├── execution_bonobo.py          # BONOBO runner (split out of execution.py)
     ├── execution_lioness_dragon.py  # LIONESS-DRAGON runner (split out of execution.py)
+    ├── execution_porcupine.py       # PORCUPINE runner (R, run-porcupine)
+    ├── execution_scorpion.py        # SCORPION runner (R, run-scorpion)
+    ├── execution_sponge.py          # SPONGE prior builder (run-sponge, own environment)
+    ├── normalization_request.py     # "normalize ..." requests, read before workflow matching
+    ├── prior_request.py             # "build the priors with SPONGE ..." requests, read before matching
     ├── routing/                     # capability gate, outcome matching, dispatch, result normalization
     ├── policy.py                    # fail-closed loader for AGENTS.md and workflow YAML
     ├── interpretation/              # deterministic hydration, repair, file discovery
@@ -554,7 +568,11 @@ Python registry only when there is no snapshot.
 | OTTER | `inspect_otter_inputs -> run_otter` |
 | GIRAFFE | `inspect_giraffe_inputs -> run_giraffe` |
 | BONOBO | `inspect_bonobo_inputs -> run_bonobo` |
+| PORCUPINE | `inspect_porcupine_inputs -> run_porcupine` |
+| SCORPION | `inspect_scorpion_inputs -> run_scorpion` |
 | Expression formatting | `format_expression` |
+| Expression normalization | `normalize_expression` |
+| SPONGE priors | `build_priors` |
 | Co-expression conversion | `convert_expression` |
 | STRING download | `download_string` |
 | Context7 | `query_context7` |

@@ -1,6 +1,6 @@
 # Known limitations and trade-offs
 
-Last updated 2026-11-06. These are deliberate trade-offs or known gaps, not hidden behaviour.
+Last updated 2026-11-08. These are deliberate trade-offs or known gaps, not hidden behaviour.
 
 ## Trade-offs
 
@@ -16,6 +16,14 @@ Last updated 2026-11-06. These are deliberate trade-offs or known gaps, not hidd
   named workflows only as input producers, not a question) goes to X's input flow even when the semantic reading
   failed or matched nothing.
 
+- **SCORPION is only for single cells, and only single cells go to SCORPION.** The data unit is read by code from
+  the request's own words (single-cell, scRNA-seq, snRNA-seq, 10x, single nuclei, or SCORPION named; pseudo-bulk
+  counts as bulk). A single-cell request is matched against SCORPION and the network readers (CONDOR, PORCUPINE)
+  only; any other request never sees SCORPION. A single-cell request that never says so is routed as bulk.
+- **A missing motif prior is not routed through SPONGE automatically.** When the user says they have no motif
+  prior, a workflow that needs one stays unavailable as asked, and the reason says SPONGE can build a human prior
+  first; the user asks for it.
+
 ## Unverified assumptions
 
 - RSEM-style expected counts are flagged as raw counts when at least half of the non-zero values are whole
@@ -30,3 +38,7 @@ Last updated 2026-11-06. These are deliberate trade-offs or known gaps, not hidd
 - PORCUPINE: if dropping constant edges empties pathways, the error blames the gene namespace.
 - Folder autofill asks when two files share a name.
 - "Run PANDA then CONDOR" still asks "Did you mean CONDOR's result?".
+- SPONGE builds human priors only, and needs internet access at run time. Without a TF list it downloads one
+  genome-wide binding-site track for each of the 1,019 vertebrate JASPAR2026 CORE motifs, which takes hours.
+- SCORPION's testEdges p-values come from an empirical null over all edges; with few networks per side (3 vs 3 on
+  the toy data) they are very small and should be read with the effect sizes.

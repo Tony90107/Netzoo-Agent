@@ -34,6 +34,7 @@ METHODS = {
     "run_puma": ["message_passing"], "run_sambar": ["somatic_mutation", "pathway_scores"],
     "run_lioness_dragon": ["leave_one_out_network_inference", "partial_correlation"],
     "run_porcupine": ["pathway_heterogeneity"],
+    "run_scorpion": ["single_cell"],
 }
 
 
@@ -107,8 +108,9 @@ def test_subject_recovery_covers_every_registered_output_family(artifact, granul
     outcome = interpretation.outcome_hypotheses[0].outcome
     assert (outcome.artifact_type, outcome.granularity) == (artifact, granularity)
     match = match_semantic_request(task, interpretation.outcome_hypotheses, request_mode="guidance")
+    # SCORPION is matched only when the request says its data are single cells (routing.data_unit).
     expected = {c["expected_action"] for c in SCIENTIFIC if c["expected_artifact"] == artifact
-                and c["expected_granularity"] == granularity}
+                and c["expected_granularity"] == granularity and c["expected_action"] != "run_scorpion"}
     assert expected <= set(match.matched_actions + match.hypothesis_actions)
 
 
@@ -291,6 +293,7 @@ def test_gap_renders_registered_mechanism_for_every_workflow_family():
         "run_sambar": "gene-length",
         "run_lioness_dragon": "two-layer Gaussian graphical model",
         "run_porcupine": "share of variance on PC1",
+        "run_scorpion": "super-cells",
     }
     assert set(mechanism_evidence) == set(POLICY.workflows)
     for action, expected in mechanism_evidence.items():

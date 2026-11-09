@@ -48,6 +48,7 @@ _HIGHLIGHTS: dict[str, str] = {
     "run_condor": "Finds TF-gene communities (modules) in a two-mode network",
     "run_sambar": "Pathway-level mutation scores, then patient subtypes by clustering",
     "run_porcupine": "PCA on each pathway's edges across sample networks, tested against random gene sets",
+    "run_scorpion": "Aggregates similar cells into super-cells, then runs PANDA; one network per group of cells",
 }
 
 # What the user gets from a workflow, in the user's terms and with its scale
@@ -70,6 +71,7 @@ _GIVES: dict[str, str] = {
     "run_condor": "TF-gene communities (modules) found in a network you already have",
     "run_sambar": "Pathway mutation scores per patient, then patient subtypes",
     "run_porcupine": "Pathways whose regulation varies most between patients, with each patient's pathway score",
+    "run_scorpion": "TF-gene networks from single cells, one per donor, cell type or condition, and the edges that differ between two groups",
 }
 
 _CONDITIONS: dict[str, str] = {

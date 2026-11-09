@@ -120,9 +120,11 @@ Then read `scripts/netzoo_agent_core/execution.py`, which turns an approved step
 into a PANDA, PUMA, LIONESS, CONDOR, or other adapter call. The decorated
 LangChain tools are in `scripts/netzoo_agent_core/tool_adapters.py`; pure data
 validation does not belong in this layer. `execution.py` is close to its
-1000-line cap, so the BONOBO and LIONESS-DRAGON runners live in
-`execution_bonobo.py` and `execution_lioness_dragon.py` and are imported and
-registered by `execution.py`.
+1000-line cap, so the BONOBO, LIONESS-DRAGON, SAMBAR, PORCUPINE, SCORPION,
+normalization and SPONGE runners live in their own `execution_*.py` modules and
+are imported and registered by `execution.py`. Which of SCORPION (single cells)
+and the bulk expression workflows a request is matched against is decided in
+`routing/data_unit.py`.
 
 ### 8. The reply (1 minute)
 

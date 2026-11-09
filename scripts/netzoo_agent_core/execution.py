@@ -51,6 +51,8 @@ from .data.otter import inspect_otter_inputs_impl, load_otter_inputs, write_otte
 from .data.panda_preflight import inspect_panda_inputs_with_provenance
 from .execution_bonobo import inspect_bonobo_inputs, run_bonobo
 from .execution_porcupine import inspect_porcupine_inputs, run_porcupine
+from .execution_scorpion import inspect_scorpion_inputs, run_scorpion
+from .execution_sponge import build_priors
 from .execution_sambar import inspect_sambar_inputs, run_sambar
 from .execution_lioness_dragon import run_lioness_dragon
 from .data.lioness_dragon import standardize_dragon_layer
@@ -92,6 +94,8 @@ __all__ = [
     "run_sambar",
     "inspect_porcupine_inputs",
     "run_porcupine",
+    "inspect_scorpion_inputs",
+    "run_scorpion",
     "run_dragon",
     "run_lioness_dragon",
     "inspect_giraffe_inputs",
@@ -965,10 +969,13 @@ LOCAL_TOOL_EXECUTORS = {
     "inspect_cobra_inputs": inspect_cobra_inputs,
     "run_cobra": run_cobra,
     "normalize_expression": normalize_expression,
+    "build_priors": build_priors,
     "inspect_sambar_inputs": inspect_sambar_inputs,
     "run_sambar": run_sambar,
     "inspect_porcupine_inputs": inspect_porcupine_inputs,
     "run_porcupine": run_porcupine,
+    "inspect_scorpion_inputs": inspect_scorpion_inputs,
+    "run_scorpion": run_scorpion,
     "inspect_dragon_inputs": inspect_dragon_inputs,
     "run_dragon": run_dragon,
     "run_lioness_dragon": run_lioness_dragon,

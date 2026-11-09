@@ -29,16 +29,30 @@ Freshness = Literal["unchanged", "changed", "rules_changed", "missing", "unverif
 _OUTPUTS = frozenset({"output_file", "lioness_output", "output_dir"})
 _FILE_FIELDS = frozenset({
     "expression_file", "design_file", "motif_file", "ppi_file", "mirna_file", "coexpression_file", "network_file",
-    "mutation_file", "exon_size_file", "cancer_gene_file", "pathway_file", "omics_layer_1", "omics_layer_2"})
+    "mutation_file", "exon_size_file", "cancer_gene_file", "pathway_file", "omics_layer_1", "omics_layer_2",
+    "cell_expression_file", "cell_metadata_file"})
 _CHUNK = 1 << 20
 
 
+def _files(path: Path) -> list[Path]:
+    """The file itself, or every file under a directory input (a 10x Matrix Market directory, 2026-11-08)."""
+    return [path] if path.is_file() else sorted(item for item in path.rglob("*") if item.is_file())
+
+
 def _sha256(path: Path) -> str:
+    """The file's content; for a directory, each file's path relative to it and its content, in order."""
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(_CHUNK):
-            digest.update(chunk)
+    for item in _files(path):
+        if item != path:
+            digest.update(str(item.relative_to(path)).encode() + b"\0")
+        with item.open("rb") as handle:
+            while chunk := handle.read(_CHUNK):
+                digest.update(chunk)
     return digest.hexdigest()
+
+
+def _size(path: Path) -> int:
+    return sum(item.stat().st_size for item in _files(path))
 
 
 @lru_cache(maxsize=1)
@@ -68,14 +82,14 @@ def input_files(action: str, decision) -> dict[str, Path]:
     for field in dict.fromkeys([*required, *optional]):
         value = getattr(decision, field, None)
         path = _resolve_user_path(str(value)) if value else None
-        if path is not None and path.is_file():
+        if path is not None and (path.is_file() or path.is_dir()):
             found[field] = path
     return found
 
 
 def revision(path: Path, action: str, policy=None) -> InputRevision:
-    stat = path.stat()
-    return InputRevision(path=str(path), size=stat.st_size, mtime_ns=stat.st_mtime_ns, sha256=_sha256(path),
+    mtime = max((item.stat().st_mtime_ns for item in _files(path)), default=path.stat().st_mtime_ns)
+    return InputRevision(path=str(path), size=_size(path), mtime_ns=mtime, sha256=_sha256(path),
                          validator=action, validator_hash=validator_hash(), contract_hash=contract_hash(policy, action),
                          policy_hash=getattr(policy, "policy_hash", None))
 
@@ -90,10 +104,9 @@ def freshness(old: InputRevision | None, path: str, action: str, policy=None) ->
     if old is None:
         return "unverified", "no fingerprint was recorded for it then"
     current = _resolve_user_path(path)
-    if not current.is_file():
+    if not (current.is_file() or current.is_dir()):
         return "missing", "the file is no longer there"
-    stat = current.stat()
-    if stat.st_size != old.size or _sha256(current) != old.sha256:
+    if _size(current) != old.size or _sha256(current) != old.sha256:
         return "changed", "its content changed since"
     rules = [name for name, before, now in (
         ("the input checks", old.validator_hash, validator_hash()),

@@ -19,6 +19,7 @@ from workflow_registry import (
     GUIDANCE_COMPOSITIONS,
 )
 
+from ..routing.data_unit import scoped_capabilities
 from ..contracts.outcomes import StatedHypothesis, StatedConcernClaims
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..interpretation.provider_fallback import _is_fatal_exception
@@ -110,7 +111,7 @@ def hypothesis_options(decision, task: str) -> list[tuple[str, str]]:
     return [
         (action, spec.workflow)
         for action, spec in ACTION_DEFINITIONS.items()
-        if action in OUTPUT_CAPABILITIES
+        if action in scoped_capabilities(task, OUTPUT_CAPABILITIES)  # 2026-11-08: SCORPION only for single cells
     ] + [("unsupported", "No registered method fits this hypothesis")]
 
 

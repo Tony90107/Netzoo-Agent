@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from typing import Mapping
 
-from ..capability_sheet import data_units, entry, result_forms, sheet_entries
+from ..capability_sheet import entry, result_forms, sheet_entries
 from ..contracts.capability_check import CheckedRequirement
 from ..routing.study_purpose_verify import _locate
 from ..workflow_conditions import UNCLEAR_CHOICE, unpassed_setting
@@ -46,8 +46,8 @@ _FORM_REASONS = {
         "No registered workflow models how the system changes from one time point to the next; time points can "
         "only be compared as separate results."),
     ("data_unit", "single_cells"): (
-        "Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none "
-        "models single cells."),
+        "Of the registered workflows only SCORPION takes single cells: it builds TF-to-gene networks for all cells "
+        "or per group of cells and tests edges between groups; the other expression workflows take bulk samples."),
 }
 _REGULATOR_LABELS = {"tf": "TF", "mirna": "miRNA", "lncrna": "lncRNA"}
 
@@ -57,7 +57,12 @@ def _form_reasons(item: CheckedRequirement) -> list[str]:
     attrs, reasons = item.attrs, []
     doubted = set(getattr(item, "doubted_forms", ()) or ())  # jev-overlap ROUND-2: a form Jev found unasked
     for (name, value), text in _FORM_REASONS.items():
-        allowed = data_units() if name == "data_unit" else result_forms().get(name, frozenset())
+        if name == "data_unit":  # 2026-11-08: single cells are SCORPION's; said when this row was not SCORPION's
+            if attrs.get(name) == value and name not in doubted and not any(
+                    entry(key).action == "run_scorpion" for key in item.delivered_by if key in sheet_entries()):
+                reasons.append(text)
+            continue
+        allowed = result_forms().get(name, frozenset())
         if attrs.get(name) == value and value not in allowed and name not in doubted:
             reasons.append(text)
     # No layer-count reason: replayed over the recorded full gaps, 11 of 12 came from motif, PPI and expression

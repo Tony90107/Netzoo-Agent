@@ -24,7 +24,8 @@ __all__ = [
 ]
 
 _RETRIEVAL_ACTIONS = frozenset({"web_search", "query_context7"})
-_TRANSFORM_ACTIONS = frozenset({"format_expression", "normalize_expression"})
+# build_priors (SPONGE) downloads for minutes to hours, so it waits for /execute like a transform.
+_TRANSFORM_ACTIONS = frozenset({"format_expression", "normalize_expression", "build_priors"})
 
 
 def action_operation_kind(action: str) -> str | None:

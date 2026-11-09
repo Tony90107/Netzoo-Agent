@@ -20,7 +20,8 @@
 #   stated scale ruled out every credited entry; now a stated scale rules entries out (`capability_check._fitting`).
 # - Typed attributes code compares with each ask (Log 389): `regulators`, the regulator
 #   kinds an entry's result contains ([] for co-expression); `signed`, whether it says
-#   activation versus repression. Every workflow takes bulk samples (`data_units`).
+#   activation versus repression. `data_units` is what a workflow's units are: bulk samples unless the workflow
+#   gives its own list (SCORPION: single cells only, 2026-11-08).
 #   `input_network` (Log 394): the kind of existing network an entry's result is computed
 #   from -- CONDOR partitions a bipartite regulator-gene network, never a gene-gene one.
 #   `groups: one_group` (Log 413): the result puts each node or sample in exactly one group
@@ -435,6 +436,8 @@ workflows:
 
   CONDOR:
     action: run_condor
+    # Reads an existing network, so it also takes networks SCORPION built from single cells (2026-11-08).
+    data_units: [bulk_samples, single_cells]
     expects:
       - {id: condor.edge_list, state: "Takes an existing regulator-gene network as source, target and optional numeric weight columns, never expression.", source: "[REG] condor.yaml conventions and input_artifacts"}
     files: ["<prefix>-edges.tsv", "<prefix>-reg_memb.tsv and -tar_memb.tsv: community memberships", "<prefix>-reg_qscores.tsv and -tar_qscores.tsv: core scores", "<prefix>-summary.txt (modularity)"]
@@ -489,8 +492,56 @@ workflows:
         why_not: SAMBAR summarizes given mutation calls; it does not call or rank driver mutations.
         source: "Kuijjer et al. 2018"
 
+  SCORPION:
+    action: run_scorpion
+    # 2026-11-08: the one workflow built for single cells; every other entry takes bulk samples (`data_units`).
+    data_units: [single_cells]
+    expects:
+      - {id: scorpion.counts, state: "Takes single-cell counts and log-normalizes them itself (normalize_data); values already normalized need normalize_data set to false.", source: "[REG] scorpion.yaml conventions; SCORPION runSCORPION normalizeData"}
+    files: ["scorpion_networks.tsv: tf, target, one column per network (all_cells, or group_by values joined by '--')", "scorpion_network_cells.tsv: cells per requested network and whether it was built", "scorpion_differential_edges.tsv: testEdges statistics per edge (with a comparison)", "manifest.json"]
+    produces:
+      - id: scorpion.tf_gene_network
+        family: regulatory_all
+        regulators: [tf]
+        signed: false
+        level: direct
+        result: One weighted TF-to-gene regulatory network from all the single cells given, built by PANDA on super-cells of similar cells.
+        granularity: aggregate
+        inputs: [single-cell expression (genes x cells), TF motif prior, PPI network]
+        reading: Edge weights are PANDA support scores (z-scaled by default), not probabilities or signed effects.
+        source: "Osorio, Capasso & Kuijjer 2024, Nat Comput Sci; [EXEC] scripts/scorpion_run.R runSCORPION"
+      - id: scorpion.per_group_networks
+        family: regulatory_per_sample
+        regulators: [tf]
+        signed: false
+        level: direct
+        result: One TF-to-gene network per group of cells -- per donor, sample, cell type or condition, or their combinations -- from a cell metadata table, all on the same priors so they can be compared.
+        granularity: [aggregate, sample_specific]
+        inputs: [single-cell expression (genes x cells), TF motif prior, PPI network, cell metadata table with the grouping columns]
+        source: "[EXEC] scripts/scorpion_run.R runSCORPION(groupBy)"
+      - id: scorpion.differential_edges
+        family: regulatory_per_sample
+        regulators: [tf]
+        signed: false
+        level: direct
+        result: Which TF-to-gene edges differ between two groups of cells (for example tumor versus normal), tested over per-donor networks with a two-sample or paired moderated t-test, with effect sizes and adjusted p-values.
+        granularity: [aggregate, sample_specific]
+        inputs: [single-cell expression (genes x cells), TF motif prior, PPI network, cell metadata table with a replicate column (e.g. donor) and the compared column]
+        source: "[EXEC] scripts/scorpion_run.R testEdges"
+    near_misses:
+      - id: scorpion.no_per_cell
+        result_asked: Networks for individual cells.
+        why_not: SCORPION merges similar cells into super-cells; it gives one network per group of cells, not per cell.
+        source: "Osorio, Capasso & Kuijjer 2024; [REG] OUTSIDE_STEPS per_cell_networks"
+      - id: scorpion.no_bulk
+        result_asked: Networks from bulk samples (tissues, patients, cell lines or pseudo-bulk profiles).
+        why_not: SCORPION takes single cells; PANDA and the other expression workflows take bulk samples.
+        source: "[REG] scorpion.yaml handoff_contract"
+
   PORCUPINE:
     action: run_porcupine
+    # Reads an existing network, so it also takes networks SCORPION built from single cells (2026-11-08).
+    data_units: [bulk_samples, single_cells]
     expects:
       - {id: porcupine.sample_networks, state: "Takes existing sample-specific TF-to-gene networks as one labelled edges-by-samples table (LIONESS-PANDA or LIONESS-PUMA text output) with a GMT pathway file, never expression.", source: "[REG] porcupine.yaml conventions and accepted_input_granularities"}
     files: ["porcupine_pathways.tsv: per-pathway PC1 variance, null mean, p-value, BH-adjusted p-value, effect size, significance", "porcupine_random_null.tsv: PC1 variance of size-matched random gene sets", "porcupine_pc1_sample_scores.tsv: pathways x samples PC1 scores", "porcupine_edge_loadings.tsv: PC1/PC2 loadings of each edge in significant pathways", "manifest.json"]

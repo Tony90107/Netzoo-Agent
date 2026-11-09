@@ -39,7 +39,7 @@ MAX_SENTENCES = 12
 
 
 @lru_cache(maxsize=4)
-def _method_fields(compact: bool = False, described: bool = True) -> dict[str, Any]:
+def _method_fields(compact: bool = False, described: bool = True, single_cell: bool = True) -> dict[str, Any]:
     """M1 (2026-10-14): the method, settings and data size an ask states, as typed values with their words.
 
     Final acceptance a24b: OTTER "with an L1 sparsity penalty of 0.1", GIRAFFE with "its regularisation lambda",
@@ -61,9 +61,9 @@ def _method_fields(compact: bool = False, described: bool = True) -> dict[str, A
     method = str if compact else Literal[(*method_names(), UNREGISTERED, "none")]  # type: ignore[valid-type]
     setting = create_model(
         "StatedSetting", __config__=ConfigDict(extra="forbid"),
-        name=(str if compact else Literal[(*setting_names(), UNREGISTERED)], Field(description=(  # type: ignore
+        name=(str if compact else Literal[(*setting_names(single_cell), UNREGISTERED)], Field(description=(  # type: ignore
             "The registered setting the words set, as WORKFLOW.setting; unregistered when none of these is it. "
-            + ("What each registered setting does (the registry's own description): " + " | ".join(setting_meanings())
+            + ("What each registered setting does (the registry's own description): " + " | ".join(setting_meanings(single_cell))
                if described else "What each registered setting does is described under conditions.settings.")))),
         quote=(str, Field(description="Exact words of the request naming the setting.")),
         value_quote=(str, Field(description="Exact words of the request giving its value; empty when none is given.")))
@@ -118,8 +118,8 @@ _ASK_METHOD_FIELDS_V2 = ("adds", "named_method", "named_method_quote")
 """ROUND-04: what an ask still says of its method in shape 2 -- the counts and settings are the request's."""
 
 
-@lru_cache(maxsize=2)
-def _scoped_fields(compact: bool = False) -> dict[str, Any]:
+@lru_cache(maxsize=4)
+def _scoped_fields(compact: bool = False, single_cell: bool = True) -> dict[str, Any]:
     """ROUND-04, shape 2: the request's counts and settings, each once, with the asked results it applies to.
 
     ROUND-03 (979 recorded readings): 94% of the counts and settings an ask wrote repeated the request's own; the
@@ -134,10 +134,10 @@ def _scoped_fields(compact: bool = False) -> dict[str, Any]:
         "asked-for result (another dataset, a later step); null only when it applies to every asked-for result.")))
     setting = create_model(
         "ScopedSetting", __config__=ConfigDict(extra="forbid"),
-        name=(str if compact else Literal[(*setting_names(), UNREGISTERED)], Field(description=(  # type: ignore
+        name=(str if compact else Literal[(*setting_names(single_cell), UNREGISTERED)], Field(description=(  # type: ignore
             "The registered setting the words set, as WORKFLOW.setting; unregistered when none of these is it. "
             "What each registered setting does (the registry's own description): "
-            + " | ".join(setting_meanings())))),
+            + " | ".join(setting_meanings(single_cell))))),
         quote=(str, Field(description="Exact words of the request naming the setting.")),
         value_quote=(str, Field(description="Exact words of the request giving its value; empty when none is given.")),
         applies_to=applies)
@@ -167,14 +167,14 @@ def _scoped_fields(compact: bool = False) -> dict[str, Any]:
     }
 
 
-@lru_cache(maxsize=4)
-def _ask_model(compact: bool = False, version: int = 1) -> type[BaseModel]:
+@lru_cache(maxsize=8)
+def _ask_model(compact: bool = False, version: int = 1, single_cell: bool = False) -> type[BaseModel]:
     """One asked-for result and the sheet entries that give it (shared by the check and its re-read).
 
     `compact`: entry ids and names as strings, for the backup model's provider (see `_method_fields`); code drops
     ids not on the sheet."""
-    produces = str if compact else Literal[produces_ids()]  # type: ignore[valid-type]
-    not_produced = str if compact else Literal[not_produced_ids()]  # type: ignore[valid-type]
+    produces = str if compact else Literal[produces_ids(single_cell)]  # type: ignore[valid-type]
+    not_produced = str if compact else Literal[not_produced_ids(single_cell)]  # type: ignore[valid-type]
     return create_model(
         "Ask",
         __config__=ConfigDict(extra="forbid"),
@@ -236,7 +236,7 @@ def _ask_model(compact: bool = False, version: int = 1) -> type[BaseModel]:
         asked_as=(Literal["request", "question"], Field(description=(
             "request: the user wants the result produced. question: the user asks whether, or which, method "
             "produces it."))),
-        **{name: field for name, field in _method_fields(compact, described=version != 3).items()
+        **{name: field for name, field in _method_fields(compact, described=version != 3, single_cell=single_cell).items()
            if version != 2 or name in _ASK_METHOD_FIELDS_V2},
     )
 
@@ -285,8 +285,8 @@ UnknownAbout = Literal["data_unit", "input_network", "samples_matched", "sample_
 the fact agent's words to agree with (the fixed dimensions above still drive only the legacy asks)."""
 
 
-@lru_cache(maxsize=4)
-def conditions_model(compact: bool = False, version: int = 1) -> type[BaseModel]:
+@lru_cache(maxsize=8)
+def conditions_model(compact: bool = False, version: int = 1, single_cell: bool = False) -> type[BaseModel]:
     fields = {}
     for name, (values, _rules_out, description) in CONDITIONS.items():
         fields[name] = (Literal[values], Field(default=values[-1], description=description))  # type: ignore[valid-type]
@@ -353,14 +353,14 @@ def conditions_model(compact: bool = False, version: int = 1) -> type[BaseModel]
         quote=(str, Field(description="Exact words of the request saying the choice is not made.")),
         differs_in=(Literal["result", "method"], Field(description=(
             "result: the options give different results. method: the options are methods for the same result."))),
-        options=(list[_ask_model(compact, version)], Field(description=(
+        options=(list[_ask_model(compact, version, single_cell)], Field(description=(
             "Each option the user names, one ask per option, its quote the exact words naming it."))))
     fields["open_choices"] = (list[choice], Field(default_factory=list, description=(
         "Each choice among options the user names but says they have not made; empty when there is none.")))
     # M1 (live m1a F1): "Can you run PANDA with its alpha update rate set to 0.25 ...?" was read as a question about
     # the methods with no ask, so its setting had nothing to attach to and the run went ahead. The method the request
     # names and the settings it gives are read for the request too (`interpretation.method_conditions`).
-    method = _method_fields(compact)
+    method = _method_fields(compact, single_cell=single_cell)
     fields["named_method"] = (method["named_method"][0], Field(default="none", description=(
         "The method the request names for what it asks, including a method it asks to run: a registered workflow, "
         "or LIONESS for any LIONESS version; unregistered when it names a method, model or variant not in this list; "
@@ -368,7 +368,7 @@ def conditions_model(compact: bool = False, version: int = 1) -> type[BaseModel]
     fields["named_method_quote"] = (str, Field(default="", description=(
         "Exact words of the request naming that method; empty when none is named.")))
     if version == 2:
-        fields.update(_scoped_fields(compact))  # ROUND-04: the only place counts and settings are read
+        fields.update(_scoped_fields(compact, single_cell))  # ROUND-04: the only place counts and settings are read
     else:
         fields["settings"] = (method["settings"][0], Field(default_factory=list, description=(
             "Each setting of a method the request gives anywhere -- a parameter, penalty, threshold, precision, "
@@ -482,15 +482,16 @@ def condition_check_model(pairs: int) -> type[BaseModel]:
     return model
 
 
-@lru_cache(maxsize=4 * (MAX_SENTENCES + 1))
-def proposal_model(sentences: int = 1, compact: bool = False, version: int = 1) -> type[BaseModel]:
+@lru_cache(maxsize=8 * (MAX_SENTENCES + 1))
+def proposal_model(sentences: int = 1, compact: bool = False, version: int = 1,
+                   single_cell: bool = False) -> type[BaseModel]:
     """The provider-facing schema: one required field per request sentence, sheet ids as enums.
 
     Log 387 smoke run: with one free-length list of sentences gpt-4o-mini returned
     only the first (the data sentence) 3 times in 4, so the goal was never read.
     Strict mode requires every property, so a field per sentence cannot be skipped.
     """
-    ask = _ask_model(compact, version)
+    ask = _ask_model(compact, version, single_cell)  # single_cell: SCORPION's entries too (capability_sheet.in_view)
     # Log 387 dev round: with a kind beside the entry lists, a data sentence was given
     # 16 not-produced entries. Only an ask can name entries now.
     # Log 387 dev round 2: data sentences ("We have expression from 50 kidney samples ...")
@@ -515,8 +516,8 @@ def proposal_model(sentences: int = 1, compact: bool = False, version: int = 1) 
         for index in range(1, max(1, min(sentences, MAX_SENTENCES)) + 1)
     }
     # The provider's strict schema still requires it; the default reads recordings and fixtures from before Log 412.
-    fields["conditions"] = (conditions_model(compact, version), Field(
-        default_factory=lambda: conditions_model(compact, version)(**unstated_conditions(version)), description=(
+    fields["conditions"] = (conditions_model(compact, version, single_cell), Field(
+        default_factory=lambda: conditions_model(compact, version, single_cell)(**unstated_conditions(version)), description=(
         "Conditions the request states anywhere -- in another sentence, or a follow-up to an earlier request -- "
         "about the user's data or about what every asked-for result must satisfy.")))
     model = create_model("CapabilityCheckProposal", __config__=ConfigDict(extra="forbid"), **fields)
@@ -525,8 +526,9 @@ def proposal_model(sentences: int = 1, compact: bool = False, version: int = 1) 
     return model
 
 
-@lru_cache(maxsize=4 * (MAX_SENTENCES + 1))
-def reread_model(sentences: int = 1, compact: bool = False, version: int = 1) -> type[BaseModel]:
+@lru_cache(maxsize=8 * (MAX_SENTENCES + 1))
+def reread_model(sentences: int = 1, compact: bool = False, version: int = 1,
+                 single_cell: bool = False) -> type[BaseModel]:
     """Log 406: a second reading of words the check left unread, with only one thing to say about them.
 
     The check's sentence reading can file a sentence as background or as a question about methods
@@ -536,7 +538,7 @@ def reread_model(sentences: int = 1, compact: bool = False, version: int = 1) ->
     Asked again with the same choices it chooses the same; here the only field is what results
     the words ask for -- an empty list is a normal answer.
     """
-    ask = _ask_model(compact, version)
+    ask = _ask_model(compact, version, single_cell)
     sentence = create_model(
         "SentenceAsks",
         __config__=ConfigDict(extra="forbid"),
@@ -563,7 +565,7 @@ def reread_as_proposal(reread, conditions=None) -> BaseModel:
     """
     count = len(type(reread).model_fields)
     version = reading_version(conditions) if conditions is not None else 1
-    return proposal_model(count, version=version).model_validate({
+    return proposal_model(count, version=version, single_cell=True).model_validate({  # accepts every entry id
         **{f"s{index}": {"role": "asks", "has": [], "about_methods": [],
                          "asks": [item.model_dump() for item in getattr(reread, f"s{index}").asks]}
            for index in range(1, count + 1)},

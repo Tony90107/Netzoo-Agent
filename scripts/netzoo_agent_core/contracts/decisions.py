@@ -248,6 +248,32 @@ class TaskDecision(BaseModel):
     fdr_threshold: float | None = Field(default=None, gt=0.0, le=1.0, exclude_if=lambda value: value is None)
     min_effect_size: float | None = Field(default=None, ge=0.0, exclude_if=lambda value: value is None)
     seed: int | None = Field(default=None, exclude_if=lambda value: value is None)
+    # SCORPION (2026-11-08): single-cell genes x cells counts (a table or a 10x directory), a cell metadata table and
+    # the networks to build and compare. Omitted from dumps while unset; executor_defaults fill them.
+    cell_expression_file: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    cell_metadata_file: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    group_by: list[str] | None = Field(default=None, max_length=4, exclude_if=lambda value: value is None)
+    compare_by: str | None = Field(default=None, min_length=1, max_length=120, exclude_if=lambda value: value is None)
+    group1: str | None = Field(default=None, min_length=1, max_length=200, exclude_if=lambda value: value is None)
+    group2: str | None = Field(default=None, min_length=1, max_length=200, exclude_if=lambda value: value is None)
+    paired: bool | None = Field(default=None, exclude_if=lambda value: value is None)
+    normalize_data: bool | None = Field(default=None, exclude_if=lambda value: value is None)
+    gamma_value: float | None = Field(default=None, ge=1.0, exclude_if=lambda value: value is None)
+    n_pc: int | None = Field(default=None, ge=2, exclude_if=lambda value: value is None)
+    assoc_method: Literal["pearson", "spearman", "pcNet"] | None = Field(
+        default=None, exclude_if=lambda value: value is None,
+    )
+    alpha_value: float | None = Field(default=None, ge=0.0, le=1.0, exclude_if=lambda value: value is None)
+    min_cells: int | None = Field(default=None, ge=1, exclude_if=lambda value: value is None)
+    z_scaling: bool | None = Field(default=None, exclude_if=lambda value: value is None)
+    # SPONGE priors (build_priors, 2026-11-08): read from the request's own words; unset values take SPONGE's defaults.
+    sponge_tf_names: list[str] | None = Field(default=None, max_length=400, exclude_if=lambda value: value is None)
+    jaspar_release: str | None = Field(default=None, pattern=r"^JASPAR20\d\d$", exclude_if=lambda value: value is None)
+    genome_assembly: Literal["hg38", "hg19", "hs1"] | None = Field(default=None, exclude_if=lambda value: value is None)
+    promoter_upstream: int | None = Field(default=None, ge=0, le=100_000, exclude_if=lambda value: value is None)
+    promoter_downstream: int | None = Field(default=None, ge=0, le=100_000, exclude_if=lambda value: value is None)
+    motif_score_threshold: int | None = Field(default=None, ge=0, le=1000, exclude_if=lambda value: value is None)
+    ppi_score_threshold: int | None = Field(default=None, ge=0, le=1000, exclude_if=lambda value: value is None)
     omics_layer_1: str | None = None
     omics_layer_2: str | None = None
     output_dir: str | None = None

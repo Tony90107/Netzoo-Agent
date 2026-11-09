@@ -37,11 +37,24 @@ def test_a_reading_is_titled_by_its_result_quote_even_when_the_quote_ends_differ
 
 
 def test_many_workflows_for_one_reading_get_one_line_each():
-    text, _, _ = _reply("test4")
+    # 2026-11-08: single-cell data now go to SCORPION alone (next test); the same request about bulk RNA-seq keeps
+    # the bulk tie this test pins.
+    item = RECORDED["test4"]
+    bulk = item["prompt"].replace("single-cell RNA-seq", "bulk RNA-seq")
+    text, _, _ = respond_and_card(bulk, TaskDecision.model_validate(item["decision"]))
     reading = text.split("**Reading 1", 1)[1].split("**Reading 2", 1)[0]
     assert "Mathematical interpretation" not in reading and "Registered purpose" not in reading
     assert "- TF-only regulatory network:\n  - **PANDA** —" in reading
     assert "Per-sample version: **LIONESS-PANDA**." in reading
+
+
+def test_a_single_cell_reading_lists_scorpion_and_no_bulk_workflow():
+    # 2026-11-08: SCORPION is registered; the bulk expression workflows are not offered for single cells.
+    text, _, _ = _reply("test4")
+    reading = text.split("**Reading 1", 1)[1].split("**Reading 2", 1)[0]
+    assert "TF-only regulatory network — SCORPION" in reading
+    assert "**PANDA**" not in reading and "LIONESS" not in reading
+    assert "1 (SCORPION)" in text
 
 
 def test_the_single_cell_note_comes_before_the_question():

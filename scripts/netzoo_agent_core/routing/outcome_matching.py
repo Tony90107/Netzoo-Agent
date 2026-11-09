@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+from .data_unit import excluded_actions, scoped_capabilities
 from ..acquisition_intent import explicit_acquisition_request
 
 from workflow_registry import (
@@ -521,7 +522,7 @@ def _enforce_input_compatibility(
         return match
     if request_mode == "guidance":
         registry_guidance = match_registry_guidance_features(
-            task, OUTPUT_CAPABILITIES, input_artifacts=input_artifacts,
+            task, scoped_capabilities(task, OUTPUT_CAPABILITIES), input_artifacts=input_artifacts,
         )
         if registry_guidance is not None:
             return registry_guidance
@@ -571,7 +572,7 @@ def _named_execution_repair(
         return None
     available = tuple(input_artifacts or ())
     action = solely_named_run_action(task)
-    capability = OUTPUT_CAPABILITIES.get(action) if action else None
+    capability = scoped_capabilities(task, OUTPUT_CAPABILITIES).get(action) if action else None
     if action is None or capability is None:
         return None
 
@@ -642,6 +643,9 @@ def _match_semantic_request(
     ignore_tags: frozenset[str] = frozenset(),
 ) -> CapabilityMatch:
     """Match typed meaning, using explicit registry identifiers only as a fallback."""
+    # 2026-11-08: the request's data unit (single cells or bulk samples) decides which of SCORPION and the bulk
+    # expression workflows it is matched against (`routing.data_unit`).
+    capabilities = scoped_capabilities(task, OUTPUT_CAPABILITIES)
     if request_mode == "execute" and explicit_acquisition_request(task):
         # A clear request to obtain existing data cannot authorize an inference
         # workflow just because the semantic model confused the operations.
@@ -659,7 +663,7 @@ def _match_semantic_request(
         item.outcome.operation not in {_UNKNOWN, "explain"}
         and not any(
             capability.operation == item.outcome.operation
-            for capability in OUTPUT_CAPABILITIES.values()
+            for capability in capabilities.values()
         )
         for item in hypotheses
     ):
@@ -701,7 +705,7 @@ def _match_semantic_request(
         ]
     match = match_outcome_hypotheses(
         matching_hypotheses,
-        OUTPUT_CAPABILITIES,
+        capabilities,
         assumed_guidance=request_mode != "execute",
         ignore_tags=ignore_tags,
         available_inputs=availability,
@@ -743,7 +747,7 @@ def _match_semantic_request(
             }))
         open_match = match_outcome_hypotheses(
             unresolved_hypotheses,
-            OUTPUT_CAPABILITIES,
+            capabilities,
             assumed_guidance=request_mode != "execute",
             ignore_tags=ignore_tags,
             available_inputs=availability,
@@ -770,11 +774,11 @@ def _match_semantic_request(
         and (
             matching_hypotheses[0].outcome.entity_types
             or hypotheses[0].outcome.operation == "explain"
-            or not OUTPUT_CAPABILITIES[match.hypothesis_actions[0]].entity_types
+            or not capabilities[match.hypothesis_actions[0]].entity_types
         )
         and _complete_guidance_match(
             matching_hypotheses[0].outcome,
-            OUTPUT_CAPABILITIES[match.hypothesis_actions[0]],
+            capabilities[match.hypothesis_actions[0]],
         )
     ):
         # Explanatory operation was withheld above. A single compatible, fully
@@ -783,7 +787,7 @@ def _match_semantic_request(
             "status": "exact", "matched_actions": list(match.hypothesis_actions),
         })
     if match.status == "fallback" and match.match_basis == "partial_evidence":
-        capability = OUTPUT_CAPABILITIES[match.matched_actions[0]]
+        capability = capabilities[match.matched_actions[0]]
         if request_mode == "guidance" and all(
             _complete_guidance_match(item.outcome, capability)
             for item in matching_hypotheses
@@ -802,14 +806,14 @@ def _match_semantic_request(
         if (
             named is not None
             and named not in match.matched_actions
-            and (named_capability := OUTPUT_CAPABILITIES.get(named)) is not None
+            and (named_capability := capabilities.get(named)) is not None
             and matching_hypotheses
             and all(
                 _matches(item.outcome, named_capability)
                 for item in matching_hypotheses
             )
             and any(
-                _compatible_candidate_count(item.outcome) > 1
+                _compatible_candidate_count(item.outcome, capabilities) > 1
                 for item in matching_hypotheses
             )
         ):
@@ -833,7 +837,7 @@ def _match_semantic_request(
         and all(
             _complete_guidance_match(
                 hypothesis.outcome,
-                OUTPUT_CAPABILITIES[match.hypothesis_actions[0]],
+                capabilities[match.hypothesis_actions[0]],
             )
             for hypothesis in hypotheses
         )
@@ -886,8 +890,10 @@ def _match_semantic_request(
     # requested scientific result. This keeps historical, questioned, or rejected
     # method mentions from overriding a uniquely compatible typed outcome.
     explicit_action = named_registered_action(_current_scope_text(task))
+    if explicit_action is not None and explicit_action in excluded_actions(task):
+        return match  # a bulk workflow named for single cells, or SCORPION for bulk samples
     if explicit_action is not None:
-        capability = OUTPUT_CAPABILITIES.get(explicit_action)
+        capability = capabilities.get(explicit_action)
         if capability is not None and matching_hypotheses and not any(
             _partially_compatible(hypothesis.outcome, capability)
             for hypothesis in matching_hypotheses
@@ -901,7 +907,7 @@ def _match_semantic_request(
         # name: an execute request naming LIONESS-COEXPRESSION resolved to
         # BONOBO. Where exactly one capability is compatible, nothing changes.
         preference_resolved = match.status == "exact" and any(
-            _compatible_candidate_count(item.outcome) > 1
+            _compatible_candidate_count(item.outcome, capabilities) > 1
             for item in matching_hypotheses
         )
         named_match = CapabilityMatch(

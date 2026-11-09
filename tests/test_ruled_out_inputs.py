@@ -26,7 +26,10 @@ def _condor_row(network="none"):
 
 
 def test_a_ruled_out_input_no_registered_route_provides_makes_the_workflow_unavailable():
-    assert "PANDA needs a TF motif prior and no registered workflow or tool provides it" in route_available("run_panda", NO_PRIORS)
+    # 2026-11-08: a motif prior can be built with SPONGE, so the reason says so instead of "nothing provides it".
+    assert "PANDA needs a TF motif prior; SPONGE (registered) can build" in route_available("run_panda", NO_PRIORS)
+    assert "PUMA needs a miRNA list and no registered workflow or tool provides it" in route_available(
+        "run_puma", {"mirna_list": "we have no miRNA list"})
     assert route_available("run_panda", {"ppi": "no PPI"}) is None  # a PPI network can be downloaded from STRING
     assert route_available("run_lioness_coexpression", NO_PRIORS) is None  # it needs neither
     assert "COBRA needs a covariate table" in route_available("run_cobra", {"covariates": "we have no covariate table"})

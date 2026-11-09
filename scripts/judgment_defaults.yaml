@@ -53,7 +53,8 @@ artifacts:
   regulatory_network:
     means: A weighted regulator-to-gene network (TF, or TF and miRNA).
     entries: [panda.tf_gene_network, puma.regulator_gene_network, lioness_panda.per_sample_networks,
-              lioness_puma.per_sample_networks, otter.tf_gene_network, giraffe.signed_regulation]
+              lioness_puma.per_sample_networks, otter.tf_gene_network, giraffe.signed_regulation,
+              scorpion.tf_gene_network, scorpion.per_group_networks]
   targeting_scores:
     means: Each regulator's out-degree or each gene's in-degree in a regulatory network.
     entries: [panda.targeting_scores, puma.targeting_scores, lioness_panda.per_sample_targeting,
@@ -97,6 +98,7 @@ artifacts:
       lioness_dragon.association_tests: multi_omic_network
       lioness_coexpression.comparisons: coexpression_network
       sambar.clinical_comparison: patient_subtypes
+      scorpion.differential_edges: regulatory_network
 
 generic:
   # Words that name a kind of result but not which one; code expands them.
@@ -200,6 +202,7 @@ workflow_data:
   CONDOR: {core: [regulator_gene_network], needs: [regulator_gene_network]}
   SAMBAR: {core: [mutation_calls], needs: [mutation_calls]}
   PORCUPINE: {core: [regulator_gene_network], needs: [regulator_gene_network]}
+  SCORPION: {core: [expression], needs: [expression, motif_prior, ppi]}
 
 required_settings:
   # Settings a workflow runs only with: stated otherwise -> FAIL; unsure -> asked; not stated -> listed as a need.
@@ -220,6 +223,7 @@ entry_attributes:
   input_network: input_network
   groups: group_membership
   compared: compare
+  data_units: data_unit
 
 ruled_by:
   causal_proof: claims=causal
@@ -259,6 +263,8 @@ ruled_by:
   sambar.no_driver_calls: artifact=off_menu
   porcupine.no_network_inference: artifact=regulatory_network
   porcupine.no_differential_expression: artifact=off_menu
+  scorpion.no_per_cell: artifact=off_menu
+  scorpion.no_bulk: data_unit=bulk_samples
 
 limit_fields:
   # the `limit` of a request-scope input_check (its prefix before ":") -> the dimension that judges it
@@ -393,7 +399,7 @@ dimensions:
       single_cells: Single cells
     condition: data_unit
     not_stated: {policy: default, value: bulk_samples}
-    note: Every registered workflow takes bulk samples; single cells are off the menu (lioness.no_single_cell).
+    note: Every expression workflow takes bulk samples except SCORPION, which takes single cells only (lioness.no_single_cell, scorpion.no_bulk).
 
   data_stage:
     class: condition
@@ -607,6 +613,9 @@ workflow_logic:
   PORCUPINE:
     logic: "Per pathway, the edges targeting its genes in every sample's LIONESS network are scaled and put through PCA; PC1 variance is tested (one-tailed t-test, Cohen's d) against size-matched random gene sets, then BH-adjusted. Finds coordinated variation across samples, not group differences; needs existing TF-gene sample networks and a GMT in the same gene namespace."
     source: "workflows/porcupine.yaml; capability sheet porcupine.*; Belova et al. 2023 (kuijjerlab/PORCUPINE)"
+  SCORPION:
+    logic: "Single cells are log-normalized, merged into super-cells of about gamma similar cells on a PCA kNN graph, and PANDA runs on the super-cells with the motif and PPI priors; per group of cells (group_by) with the same priors, so networks are comparable. testEdges: moderated two-sample or paired t-test per edge across networks, BH-adjusted. One network per group, never per cell; groups under 30 cells are skipped."
+    source: "workflows/scorpion.yaml; capability sheet scorpion.*; Osorio, Capasso & Kuijjer 2024, Nat Comput Sci"
 
 # Interpretation choices (user decision 2026-10-19): what keeps the workflow but changes what the result means.
 # must_confirm: triggered (`trigger`, code) and not verifiable from the files or the contract -> listed at run
@@ -776,3 +785,10 @@ interpretation_choices:
     workflows: [PORCUPINE]
     disclose: "PORCUPINE's results depend on the pathway set, and its gene IDs must match the network's target genes."
     source: "workflow_logic PORCUPINE"
+  scorpion_groups:
+    n: 23
+    policy: default_disclose
+    workflows: [SCORPION]
+    unless_settings: [min_cells, gamma_value]
+    disclose: "SCORPION builds a network only for a group of at least 30 cells, from super-cells of about 10 cells each; a comparison tests edges across the networks of each side, so it needs a replicate column such as the donor in group_by."
+    source: "workflows/scorpion.yaml controls and conventions"

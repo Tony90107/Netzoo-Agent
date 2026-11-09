@@ -36,6 +36,7 @@ from .sambar import (
     inspect_sambar_inputs_impl,
 )
 from .porcupine import inspect_porcupine_inputs_impl, porcupine_gene_axes
+from .scorpion import inspect_scorpion_inputs_impl, scorpion_gene_axes
 from .transforms import (
     convert_expression_to_coexpression_impl,
     format_expression_for_netzoo_impl,
@@ -52,6 +53,7 @@ WORKFLOW_GENE_EXTRACTORS: dict[str, str] = {
     "run_cobra": "cobra_expression_genes",
     "run_sambar": "sambar_gene_sets",
     "run_porcupine": "porcupine_gene_sets",
+    "run_scorpion": "scorpion_motif_genes",
     "run_otter": "otter_gene_and_tf_ids",
     "run_giraffe": "giraffe_gene_and_tf_ids",
     "run_bonobo": "bonobo_expression_genes",
@@ -221,6 +223,12 @@ def _workflow_gene_errors(action: str, decision: Any, taxon: str) -> list[str]:
             for identifiers, label in axes
             for error in _gene_axis_errors(identifiers, label, taxon)
         ]
+    if action == "run_scorpion":
+        return [
+            error
+            for identifiers, label in scorpion_gene_axes(_value(decision, "motif_file"))
+            for error in _gene_axis_errors(identifiers, label, taxon)
+        ]
     if action == "run_porcupine":
         return [
             error
@@ -331,6 +339,14 @@ def _validate_workflow_inputs_impl(action: str, decision: Any) -> list[str]:
             decision,
         )
         errors.extend(_report_errors("SAMBAR inputs", report, ok))
+    elif action in {"inspect_scorpion_inputs", "run_scorpion"}:
+        report, ok = inspect_scorpion_inputs_impl(
+            _value(decision, "cell_expression_file"),
+            _value(decision, "motif_file"),
+            _value(decision, "ppi_file"),
+            decision,
+        )
+        errors.extend(_report_errors("SCORPION inputs", report, ok))
     elif action in {"inspect_porcupine_inputs", "run_porcupine"}:
         report, ok = inspect_porcupine_inputs_impl(
             _value(decision, "sample_network_file"),
@@ -411,6 +427,9 @@ def _validate_workflow_inputs_impl(action: str, decision: Any) -> list[str]:
             execute=False,
         )
         errors.extend(_report_errors("Expression formatting", report, "- error:" not in report))
+    elif action == "build_priors":
+        from ..execution_sponge import sponge_input_errors
+        errors.extend(sponge_input_errors(decision))
     elif action == "normalize_expression":
         report, ok, _ = normalization_input_report(
             expression,
@@ -468,6 +487,7 @@ WORKFLOW_INPUT_VALIDATORS: dict[str, Callable[[Any], list[str]]] = {
     "run_giraffe": _bound_validator("run_giraffe"),
     "run_bonobo": _bound_validator("run_bonobo"),
     "run_porcupine": _bound_validator("run_porcupine"),
+    "run_scorpion": _bound_validator("run_scorpion"),
 }
 
 

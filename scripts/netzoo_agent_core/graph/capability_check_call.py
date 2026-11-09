@@ -19,7 +19,8 @@ from functools import lru_cache
 
 from pydantic import BaseModel
 
-from ..capability_sheet import sheet_entries
+from ..routing.data_unit import single_cell_request
+from ..capability_sheet import in_view, sheet_entries
 from ..contracts import AgentState, HumanMessage, LLMUsage, SystemMessage
 from ..contracts.capability_check import (
     MAX_SENTENCES, condition_check_model, proposal_model, reread_model, schema_version, second_opinion_model,
@@ -63,11 +64,13 @@ _INSTRUCTIONS = (
 )
 
 
-@lru_cache(maxsize=1)
-def capability_check_system() -> str:
-    """The instructions plus the sheet, one line per entry."""
+@lru_cache(maxsize=2)
+def capability_check_system(single_cell: bool = False) -> str:
+    """The instructions plus the sheet, one line per entry (SCORPION's only for a single-cell request)."""
     produces, not_produced = [], []
     for key, item in sheet_entries().items():
+        if not in_view(item, single_cell):
+            continue
         if item.kind == "produces":
             produces.append(f"- {key} [{item.workflow}]: {item.text}")
         else:
@@ -83,7 +86,7 @@ def build_capability_check_messages(user_task: str) -> tuple[list, int]:
     sentences = [task[start:end].strip() for start, end in request_sentences(task)][:MAX_SENTENCES]
     numbered = "\n".join(f"{index}. {text}" for index, text in enumerate(sentences, 1))
     return [
-        SystemMessage(content=capability_check_system()),
+        SystemMessage(content=capability_check_system(single_cell_request(user_task))),
         HumanMessage(content=f"Request:\n{task}\n\nSentences:\n{numbered}"),
     ], max(1, len(sentences))
 
@@ -386,12 +389,13 @@ def request_capability_check(
         return None, usage, budget_warnings, "blocked"
     messages, count = build_capability_check_messages(user_task)
     version = schema_version()  # ROUND-04: reading shape 1 or 2 (NETZOO_CHECK_SCHEMA)
-    schema = proposal_model(count, version=version)
+    cells = single_cell_request(user_task)
+    schema = proposal_model(count, version=version, single_cell=cells)
     input_text = _serialized_structured_input(messages, schema)
     budget_context = reading = with_reading_allowance(context)
     for attempt in (1, 2):
         if _enum_limited(model, llm, fallback_llm) and expanded_enum_values(schema.model_json_schema()) > _ENUM_LIMIT:
-            schema, compacted = proposal_model(count, compact=True, version=version), True
+            schema, compacted = proposal_model(count, compact=True, version=version, single_cell=cells), True
         input_text = _serialized_structured_input(messages, schema)
         if spent(usage):
             return None, usage, budget_warnings, "blocked"
@@ -449,7 +453,7 @@ def build_reread_messages(user_task: str, passages: list[str]) -> list:
     """The whole request for context, then only the passages to read, numbered as the schema's fields."""
     task = user_task[-ROUTER_CONTEXT_MAX_CHARS:]
     numbered = "\n".join(f"{index}. {text}" for index, text in enumerate(passages[:MAX_SENTENCES], 1))
-    return [SystemMessage(content=capability_check_system()),
+    return [SystemMessage(content=capability_check_system(single_cell_request(user_task))),
             HumanMessage(content=f"Request:\n{task}\n\nPassages to read:\n{numbered}")]
 
 
@@ -463,10 +467,11 @@ def request_capability_reread(context, state, user_task: str, passages: list[str
     if llm is None or not passages or usage.budget_exhausted:
         return None, usage, budget_warnings
     messages = build_reread_messages(user_task, passages)
-    schema = reread_model(min(len(passages), MAX_SENTENCES), version=schema_version())
+    cells = single_cell_request(user_task)
+    schema = reread_model(min(len(passages), MAX_SENTENCES), version=schema_version(), single_cell=cells)
     if (_enum_limited(model, llm, getattr(context, "study_purpose_llm", None))
             and expanded_enum_values(schema.model_json_schema()) > _ENUM_LIMIT):  # check-enum-limit
-        schema = reread_model(min(len(passages), MAX_SENTENCES), compact=True, version=schema_version())
+        schema = reread_model(min(len(passages), MAX_SENTENCES), compact=True, version=schema_version(), single_cell=cells)
     input_text = _serialized_structured_input(messages, schema)
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(

@@ -490,6 +490,10 @@ def validate_task_text(
         flags=re.IGNORECASE,
     ):
         return "The user must explicitly request a co-expression or correlation matrix."
+    if action == "build_priors" and not re.search(
+        r"(sponge|prior|先驗)", normalized, flags=re.IGNORECASE,
+    ):
+        return "The user must explicitly request motif and PPI priors (SPONGE)."
     if action == "normalize_expression" and not re.search(
         r"(normali[sz]|snail|qsmooth|smooth[- _]?quantile|quantile normali|\brle\b|\btmm\b|\b[fr]pkm\b|deseq2|edger"
         r"|preprocesscore"

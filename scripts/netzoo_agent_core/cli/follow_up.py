@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import re
 
 from workflow_registry import (
@@ -318,7 +320,9 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
     if any(item.status == "dry_run" for item in results):
         then = (
             f" After it runs, {_workflow_name(decision.then_action)} is planned next with the normalized matrix."
-            if decision.action == "normalize_expression" and decision.then_action else ""
+            if decision.action == "normalize_expression" and decision.then_action
+            else f" After it runs, {_workflow_name(decision.then_action)} is planned next with the two priors."
+            if decision.action == "build_priors" and decision.then_action else ""
         )
         if plan.raw_counts is not None:
             then += " Or pick 'Normalize first' to normalize the expression matrix before this workflow."
@@ -355,6 +359,23 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             continuation_action=decision.then_action,
             expected_field="expression_file",
             carried_inputs={"expression_file": decision.output_file},
+        )
+
+    if (results and result_evaluation.get("status") == "completed" and decision.action == "build_priors"
+            and decision.then_action and decision.output_dir):
+        # "Build the priors, then run X" (SPONGE, 2026-11-08): X is offered with the two prior files.
+        motif, ppi = (str(Path(decision.output_dir) / name) for name in ("motif_prior.tsv", "ppi_prior.tsv"))
+        return NextTurnPrompt(
+            kind="recommended_workflow",
+            question=_ui_text_with_user_data(
+                f"The SPONGE priors are built. Reply 'continue' to plan {_workflow_name(decision.then_action)} with "
+                f"{user_data_token(0)} as its motif prior and {user_data_token(1)} as its PPI network, ask a "
+                "follow-up question, or describe another NetZoo goal.",
+                [motif, ppi],
+            ),
+            continuation_action=decision.then_action,
+            expected_field="motif_file",
+            carried_inputs={"motif_file": motif, "ppi_file": ppi},
         )
 
     if results and result_evaluation.get("status") == "completed":

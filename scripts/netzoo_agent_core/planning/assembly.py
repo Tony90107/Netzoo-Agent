@@ -247,6 +247,7 @@ def _assemble_workflow_plan(
             purpose=(
                 f"Normalize the expression matrix with {METHOD_LABELS[decision.normalization_method or 'snail']}."
                 if execution_action == "normalize_expression"
+                else "Build the motif and PPI priors with SPONGE." if execution_action == "build_priors"
                 else "Execute the requested NetZoo workflow."
             ),
         )

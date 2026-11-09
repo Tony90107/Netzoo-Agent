@@ -52,6 +52,8 @@ _FILE_INPUT_FIELDS = frozenset(
         "pathway_file",
         "omics_layer_1",
         "omics_layer_2",
+        "cell_expression_file",
+        "cell_metadata_file",
     }
 )
 
@@ -636,8 +638,9 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 )
             )
             continue
-        if field_name == "output_dir" and action in {"run_condor", "run_cobra", "run_sambar", "run_bonobo"}:
-            value = default_output_dir
+        if field_name == "output_dir" and action in {"run_condor", "run_cobra", "run_sambar", "run_bonobo",
+                                                     "run_scorpion", "build_priors"}:
+            value = f"{default_output_dir}/sponge_priors" if action == "build_priors" else default_output_dir
             decision.output_dir = value
             evidence.append(
                 InputEvidence(

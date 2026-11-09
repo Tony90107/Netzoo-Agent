@@ -40,6 +40,27 @@ RUN micromamba install -y -n netzoo-r -c conda-forge -c bioconda \
     && micromamba clean -a -y \
     && /opt/conda/envs/netzoo-r/bin/Rscript -e 'remotes::install_github(paste0("kuijjerlab/PORCUPINE@", Sys.getenv("PORCUPINE_REF")), dependencies = FALSE, upgrade = "never", build_vignettes = FALSE); suppressPackageStartupMessages({library(PORCUPINE); library(DESeq2)}); stopifnot(all(c("pca_pathway", "porcupine", "get_pathway_ind_scores", "get_pathway_features_scores") %in% getNamespaceExports("PORCUPINE")), exists("create_gene_set", envir = asNamespace("PORCUPINE"), inherits = FALSE)); cat("PORCUPINE OK\n")'
 
+# SCORPION (kuijjerlab/SCORPION, R): single-cell PANDA networks per group of cells and testEdges. Pinned to the
+# 1.3.5 commit that makes its PANDA match netZooPy (CRAN has 1.3.4); dependencies from conda in netzoo-r, added
+# without changing any installed package. Tested 2026-11-08.
+ARG SCORPION_REF=5c0fff00eb08c4b49b807150566e0a31ff592ab4
+ENV SCORPION_REF=${SCORPION_REF}
+RUN micromamba install -y -n netzoo-r -c conda-forge \
+      r-igraph=2.3.4 r-rann=2.6.2 r-pbapply=1.7_4 r-furrr=0.4.0 r-future=1.82.0 \
+    && micromamba clean -a -y \
+    && /opt/conda/envs/netzoo-r/bin/Rscript -e 'remotes::install_github(paste0("kuijjerlab/SCORPION@", Sys.getenv("SCORPION_REF")), dependencies = FALSE, upgrade = "never", build_vignettes = FALSE); suppressPackageStartupMessages(library(SCORPION)); stopifnot(packageVersion("SCORPION") == "1.3.5", all(c("runSCORPION", "testEdges") %in% getNamespaceExports("SCORPION"))); cat("SCORPION OK\n")'
+
+# SPONGE (netzoopy-sponge, kuijjerlab/sponge): human motif and PPI priors from JASPAR, Ensembl and STRING. Its
+# pybbi/bioframe/pyjaspar stack lives in an environment of its own so the agent's packages never move. Tested
+# 2026-11-08 (2.2.2; JASPAR2026 has 1,019 vertebrate CORE motifs).
+ARG SPONGE_VERSION=2.2.2
+RUN micromamba create -y -n netzoo-sponge -c conda-forge -c bioconda \
+      python=3.12 pybbi=0.4.2 bioframe=0.8.0 pyjaspar=4.0.0 pandas=2.3.3 matplotlib-base=3.10 \
+      scikit-learn=1.7.2 tqdm pyyaml requests \
+    && micromamba clean -a -y \
+    && /opt/conda/envs/netzoo-sponge/bin/python -m pip install --no-cache-dir --no-deps "netzoopy-sponge==${SPONGE_VERSION}" \
+    && /opt/conda/envs/netzoo-sponge/bin/python -c 'from sponge.sponge import Sponge; from importlib.metadata import version; print("SPONGE", version("netzoopy-sponge"))'
+
 USER root
 ARG NETZOOPY_REF=60bcaf5ac69ac8f002db5fc6b1b10cbc101ee822
 ENV NETZOOPY_REF=${NETZOOPY_REF}
@@ -90,6 +111,8 @@ COPY docker/run-condor /usr/local/bin/run-condor
 COPY docker/run-cobra /usr/local/bin/run-cobra
 COPY docker/run-sambar /usr/local/bin/run-sambar
 COPY docker/run-porcupine /usr/local/bin/run-porcupine
+COPY docker/run-scorpion /usr/local/bin/run-scorpion
+COPY docker/run-sponge /usr/local/bin/run-sponge
 COPY docker/run-pysnail /usr/local/bin/run-pysnail
 COPY docker/run-normalize-r /usr/local/bin/run-normalize-r
 COPY scripts/netzoo_table_io.py /opt/netzoo-harness/netzoo_table_io.py
@@ -97,7 +120,7 @@ COPY scripts /opt/netzoo-app/scripts
 COPY docker/add-puma-lioness-header /usr/local/bin/add-puma-lioness-header
 COPY docker/web-url /usr/local/bin/web-url
 COPY --from=web-ui /ui/dist /opt/netzoo-web
-RUN chmod +x /usr/local/bin/run-panda /usr/local/bin/run-panda-precomputed /usr/local/bin/run-puma /usr/local/bin/run-puma-precomputed /usr/local/bin/run-lioness /usr/local/bin/run-condor /usr/local/bin/run-cobra /usr/local/bin/run-sambar /usr/local/bin/run-porcupine /usr/local/bin/run-pysnail /usr/local/bin/run-normalize-r /usr/local/bin/add-puma-lioness-header /usr/local/bin/web-url \
+RUN chmod +x /usr/local/bin/run-panda /usr/local/bin/run-panda-precomputed /usr/local/bin/run-puma /usr/local/bin/run-puma-precomputed /usr/local/bin/run-lioness /usr/local/bin/run-condor /usr/local/bin/run-cobra /usr/local/bin/run-sambar /usr/local/bin/run-porcupine /usr/local/bin/run-scorpion /usr/local/bin/run-sponge /usr/local/bin/run-pysnail /usr/local/bin/run-normalize-r /usr/local/bin/add-puma-lioness-header /usr/local/bin/web-url \
     && mkdir -p /work /data /outputs \
     && chown -R $MAMBA_USER:$MAMBA_USER /work /data /outputs /opt/netZooPy /opt/netzoo-harness
 

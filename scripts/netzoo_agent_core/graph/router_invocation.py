@@ -46,7 +46,7 @@ from ..capability_sheet import entry
 from ..contracts.capability_check import CapabilityCheck, reread_as_proposal
 from ..interpretation.checked_match import _USER_CHOSEN, checked_match, credited_workflows
 from ..routing.capability import validate_task_text
-from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
+from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS, PREPARATION_ACTIONS
 from ..interpretation.reread import merge_reread, reread_passages
 from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candidates
 from ..interpretation.capability_check import (
@@ -75,6 +75,7 @@ from .input_inspection import invoke_input_inspection
 from ..routing.reading_selection import drop_input_only_readings, drop_unwitnessed_readings, matchable_readings
 from ..routing.scale_relaxation import drop_unnamed_scale, note_unstated_scale, relax_unstated_scale
 from ..string_download import continued_string_download_decision, string_download_decision
+from ..prior_request import prior_decision
 from .normalization_need_call import normalization_route
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
@@ -182,7 +183,7 @@ def invoke_router(
         result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
     else:
         proposal, check_status = None, "no_model"
-        if result.decision.action not in ("download_string", "normalize_expression"):  # preparation steps: no result to check
+        if result.decision.action not in PREPARATION_ACTIONS:  # preparation steps: no result to check
             # Log 387: the safety check is asked before the advisory reads; verdict layer step 1: a run too.
             proposal, usage, warnings, check_status = request_capability_check(
                 context, state, user_task, result.usage, result.budget_warnings)
@@ -369,7 +370,7 @@ def _with_run_check(context, state, user_task: str, result: _RouterInvocation, p
     methylation subtypes -> SAMBAR, gene embeddings -> PANDA); the check found all 8 a gap and, with the second
     opinion, judged none of 9 correct runs one (r17 PQ3-2 had been, on the first reading alone).
     """
-    if result.decision.action in ("no_tool", "download_string", "normalize_expression"):
+    if result.decision.action == "no_tool" or result.decision.action in PREPARATION_ACTIONS:
         return result
     if proposal is None:
         _record_shadow(context, state, result.decision, None, check_status)
@@ -713,11 +714,10 @@ def _route_request(
         return compared
     if state.get("workflow_continuation") is not None:
         return continue_workflow(context, state, user_task, usage)
-    if continued := continued_string_download_decision(user_task):
-        return _RouterInvocation(
-            decision=continued, routing_state=outcome_routing_state(continued),
-            usage=usage, budget_warnings=[], reason_code="string_download_continuation",
-        )
+    if continued := continued_string_download_decision(user_task) or prior_decision(user_task):
+        return _RouterInvocation(decision=continued, routing_state=outcome_routing_state(continued), usage=usage,
+                                 budget_warnings=[], reason_code="sponge_priors" if continued.action == "build_priors"
+                                 else "string_download_continuation")
     # A question explicitly contrasting biological hypotheses is a comparison
     # first. Do not spend the outcome-repair budget collapsing it to one result.
     if explicit_research_choice(user_task):

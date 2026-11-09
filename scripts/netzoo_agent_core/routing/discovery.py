@@ -54,10 +54,12 @@ def _extract_named_path(task: str, names: tuple[str, ...]) -> str | None:
 def _extract_explicit_role_path(task: str, role: str) -> str | None:
     prefix = rf"(?<![A-Za-z0-9_]){re.escape(role)}\s*=\s*"
     # A quoted location ends at its closing quote. For an unquoted data file,
-    # the extension bounds the location before trailing English prose.
+    # the extension bounds the location before trailing English prose. It never
+    # runs into the next assignment: a 10x directory has no extension, and
+    # "counts_10x with motif_file=motif.tsv" was read as one path (2026-11-08).
     bounded = re.search(
         prefix + r"(?:(?P<q>['\"])(?P<quoted>.*?)(?P=q)|"
-        r"(?P<file>[^\n，,、；;'\"]+?\.[A-Za-z][A-Za-z0-9]{0,7}(?:\.gz)?)"
+        r"(?P<file>[^\n，,、；;'\"=]+?\.[A-Za-z][A-Za-z0-9]{0,7}(?:\.gz)?)"
         r"(?=\s|[，,、；;。.]|$))", task, re.IGNORECASE,
     )
     if bounded:
@@ -65,7 +67,8 @@ def _extract_explicit_role_path(task: str, role: str) -> str | None:
     match = re.search(
         rf"(?<![A-Za-z0-9_]){re.escape(role)}\s*=\s*"
         rf"(?:(?P<q>['\"])(?P<quoted>.*?)(?P=q)|(?P<plain>.*?)"
-        r"(?=\s+[A-Za-z_]+\s*=|\s+[\u3400-\u9fff]|[，,、；;]|$))",
+        r"(?=\s+[A-Za-z_]+\s*=|\s+(?:with|and|using|plus|then|for|from|as|to|into)\s"
+        r"|\s+[\u3400-\u9fff]|[，,、；;]|$))",
         task,
         re.IGNORECASE,
     )

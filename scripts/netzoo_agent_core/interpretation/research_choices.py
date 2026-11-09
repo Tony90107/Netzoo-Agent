@@ -41,7 +41,8 @@ def render_research_choices(decision, policy, *, task):
             if a in policy.workflows and a in OUTPUT_CAPABILITIES
         ]
         if not actions:
-            actions = [a for a in policy.workflows if a in OUTPUT_CAPABILITIES]
+            routable = set(OUTPUT_CAPABILITIES)  # iteration: the bulk routing candidates (SCORPION only for cells)
+            actions = [a for a in policy.workflows if a in routable]
     comparison = len(actions) >= 2
     gaps = list(dict.fromkeys(h.text_span for h in items if h.basis == "unsupported"))
     if len(actions) == 1 and not gaps:

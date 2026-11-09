@@ -23,6 +23,7 @@ an empty match is never a refusal.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from itertools import combinations
 
@@ -33,6 +34,7 @@ from ..contracts.menu_reading import (
 )
 from ..judgment_defaults import JudgmentDefaults, judgment_defaults
 from ..method_names import LIONESS_FAMILY, registered_workflows, workflows_in
+from workflow_registry import PER_CELL_WITNESS
 from ..workflow_conditions import (
     UNREGISTERED, StatedSetting, all_conditions, combination_issues, data_issue, setting_issue,
 )
@@ -55,7 +57,9 @@ _OFF["input_network"] = "gene_gene"
 
 
 def _ruled_out(table: JudgmentDefaults, name: str, item) -> bool:
-    if name in ("data_unit", "time_model", "spatial"):
+    if name == "data_unit":  # 2026-11-08: single cells rule out every entry but SCORPION's (and network readers')
+        return "single_cells" not in getattr(item, "data_units", frozenset({"bulk_samples"}))
+    if name in ("time_model", "spatial"):
         return True
     if name == "mutation_origin":
         return item.workflow == "SAMBAR"
@@ -290,6 +294,12 @@ def _evaluate(ctx: _Context, item: _Item) -> None:
             item.result_open = True
         elif restricted := {key for key in failed if sheet[key].workflow in ctx.named}:
             keep(lambda entry, key: key in restricted, "named")
+    # 2026-11-08: SCORPION is on the menu only for single cells (stated, or named), never per cell; bulk is the default.
+    unit = reading.conditions.get("data_unit")
+    if "SCORPION" not in ctx.named and (unit is None or unit.known() != "single_cells"):
+        [failed.pop(key) for key in list(failed) if "bulk_samples" not in sheet[key].data_units]
+    elif re.search(PER_CELL_WITNESS, w.quote or "", re.I):
+        [failed[key].append("near_miss:scorpion.no_per_cell") for key in failed if sheet[key].workflow == "SCORPION"]
     considered = {sheet[key].workflow for key in failed}
     # An open result is narrowed to the workflows whose core data the user says they have.
     if item.result_open and reading.data:

@@ -81,7 +81,7 @@ export type NextTurnPrompt = {
   continuation_action: string | null;
   expected_field: string | null;
   required_fields: string[];
-  alternative_action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | "run_porcupine" | null;
+  alternative_action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | "run_porcupine" | "run_scorpion" | null;
   alternative_granularity: "aggregate" | "sample_specific" | "not_applicable" | "unknown" | null;
   held_run: boolean;
   carried_inputs: Record<string, string>;
@@ -127,7 +127,7 @@ export type ReplyCard = {
 
 /** A registry-validated producer-to-consumer workflow boundary. */
 export type WorkflowHandoff = {
-  producer_action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | "run_porcupine";
+  producer_action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | "run_porcupine" | "run_scorpion";
   producer_workflow: string;
   source_artifact_type: "measurement_dataset" | "expression_matrix" | "tf_activity_matrix" | "regulatory_network_and_tf_activity" | "signed_regulatory_effect_network" | "regulatory_network" | "coexpression_network" | "pvalue_matrix" | "mutation_matrix" | "pathway_mutation_matrix" | "gene_mutation_scores" | "sample_distance_matrix" | "sample_cluster_assignment" | "community_assignment" | "validation_report" | "multi_omic_network" | "pathway_heterogeneity_table" | "unknown";
   source_granularity: "aggregate" | "sample_specific" | "not_applicable" | "unknown";
@@ -136,7 +136,7 @@ export type WorkflowHandoff = {
   artifact_paths: Record<string, string[]>;
   sample_ids: string[];
   gene_ids: string[];
-  consumer_action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | "run_porcupine" | null;
+  consumer_action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | "run_porcupine" | "run_scorpion" | null;
   consumer_workflow: string | null;
   consumer_input_field: string | null;
   required_prior_inputs: string[];
@@ -192,11 +192,11 @@ export type ReplyOption = {
   badge: "" | "Recommended" | "Best match";
   available: boolean;
   reason: string;
-  action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | "run_porcupine" | null;
+  action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | "run_porcupine" | "run_scorpion" | null;
   granularity: "aggregate" | "sample_specific" | null;
   resolution: "confirm_workflow" | "plan_workflow" | "follow_up" | "compare_workflows" | "command" | "open_outputs" | "new_request" | "none";
   paths: string[];
-  compare_actions: ("inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | "run_porcupine")[];
+  compare_actions: ("inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | "run_porcupine" | "run_scorpion")[];
 };
 
 /** Immutable model rates used for one historical cost estimate. */

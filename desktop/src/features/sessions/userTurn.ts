@@ -23,7 +23,9 @@ const WORKFLOW_NAMES: Record<string, string> = {
   run_giraffe: "GIRAFFE",
   run_bonobo: "BONOBO",
   run_porcupine: "PORCUPINE",
+  run_scorpion: "SCORPION",
   download_string: "STRING download",
+  build_priors: "SPONGE priors",
 };
 
 export type UserTurn = { text: string; kind: "said" | "chose" | "continued" | "follow_up" };

@@ -37,6 +37,10 @@ _TOOLS = {"ppi": "STRING download"}
 """A registered tool that provides the input (`download_string` writes a PPI network)."""
 NO_PROVIDER = "and no registered workflow or tool provides it"
 """How `route_available` ends at an input kind nothing registered provides."""
+SPONGE_PROVIDES = ("SPONGE (registered) can build a human motif prior and PPI network first -- ask to build the "
+                   "priors with SPONGE")
+"""2026-11-08: how `route_available` ends at a motif prior the user does not have. The route stays unavailable as
+asked (C18: a run the user cannot start from what they have), but a prior can be built, so NO_PROVIDER would be false."""
 
 
 def _producers(kind: str, consumer: str) -> list[str]:
@@ -71,6 +75,8 @@ def route_available(action: str, ruled_out: dict[str, str], lacking: frozenset[s
             continue
         name = definition.workflow
         if kind in ruled_out and not producers:
+            if kind == "motif_prior":
+                return f'You said "{ruled_out[kind]}"; {name} needs {_LABEL[kind]}; {SPONGE_PROVIDES}'
             return f'You said "{ruled_out[kind]}"; {name} needs {_LABEL[kind]} {NO_PROVIDER}'
         said = f'You said "{ruled_out[kind]}"; ' if kind in ruled_out else ""
         blocked = sorted({workflow_name(producer) for producer in producers})
@@ -90,7 +96,8 @@ def rests_on_inference(check, reason: str) -> bool:
     motif or PPI files") is said; the network CONDOR needs on the way there is not the end of the route.
     """
     said = set(getattr(check, "ruled_out", None) or {})
-    ends = [kind for kind, label in _LABEL.items() if f"needs {label} {NO_PROVIDER}" in reason]
+    ends = [kind for kind, label in _LABEL.items()
+            if f"needs {label} {NO_PROVIDER}" in reason or f"needs {label}; {SPONGE_PROVIDES}" in reason]
     return any(kind not in said for kind in ends)
 
 

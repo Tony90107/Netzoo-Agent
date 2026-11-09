@@ -18,6 +18,7 @@ from ..outcomes import effective_results, terminal_failed
 from ..data.paths import _resolve_user_path
 from workflow_registry import workflow_name
 from ..data.normalization import METHOD_LABELS, default_snail_reason, raw_counts_line
+from ..prior_request import sponge_plan_lines
 
 def render_plan_evaluation(evaluation: PlanEvaluationResult) -> str:
     """Render the typed rubric as Markdown for audit; code never parses this table."""
@@ -263,6 +264,9 @@ def render_compact_execution_response(
         if plan.raw_counts is not None:
             lines.append(raw_counts_line(plan.raw_counts, plan.workflow))
 
+    if plan.workflow == "SPONGE-PRIORS":  # 2026-11-08: SPONGE takes no input file; its settings and the download
+        lines.extend(["", "Settings", *sponge_plan_lines(plan.decision or {})])
+
     inspection = next(
         (item for item in results if item.action.startswith("inspect_")), None
     )
@@ -327,6 +331,10 @@ def render_compact_execution_response(
             label = ("Normalized expression matrix" if plan.workflow == "NORMALIZE-EXPRESSION" and item.field == "output_file"
                      else _compact_field_label(item.field))
             lines.append(f"- {label}: {item.value}{suffix}")
+    if plan.workflow == "SPONGE-PRIORS" and (then := (plan.decision or {}).get("then_action")):
+        lines.extend(["", "Then", f"- {workflow_name(then)} with the two priors: "
+                      + ("planned after this step runs, once you confirm it; its other inputs are asked then."
+                         if has_dry_run else "reply 'continue' to plan it; its other inputs are asked then.")])
     if plan.workflow == "NORMALIZE-EXPRESSION" and (then := (plan.decision or {}).get("then_action")):
         lines.extend(["", "Then", f"- {workflow_name(then)} on the normalized matrix: "
                       + ("planned after this step runs, once you confirm it; its other inputs are asked then."

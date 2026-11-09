@@ -1,0 +1,64 @@
+policy_version: 2
+workflow: SCORPION
+action: run_scorpion
+input_validator: run_scorpion
+description: Infer TF-to-gene regulatory networks from single-cell RNA-seq with SCORPION (super-cells, then PANDA), one per group of cells, and test edges between groups.
+required_inputs: [cell_expression_file, motif_file, ppi_file, output_dir]
+optional_inputs: [cell_metadata_file, group_by, compare_by, group1, group2, paired, normalize_data, gamma_value, n_pc, assoc_method, alpha_value, min_cells, z_scaling, n_cores, seed, taxon]
+validation_steps: [inspect_scorpion_inputs]
+controls:
+  - {name: group_by, type: string_list, default: [], executor_argument: group_by, description: "Cell metadata columns; one network per combination of their values (e.g. donor, region)."}
+  - {name: compare_by, type: string, default: null, nullable: true, executor_argument: compare_by, description: The group_by column whose two values testEdges compares.}
+  - {name: group1, type: string, default: null, nullable: true, executor_argument: group1, description: compare_by value of the first side (log2 fold change is group1 minus group2).}
+  - {name: group2, type: string, default: null, nullable: true, executor_argument: group2, description: compare_by value of the second side.}
+  - {name: paired, type: boolean, default: false, executor_argument: paired, description: "Pair the two sides' networks on their other group_by values (e.g. the same donor)."}
+  - {name: normalize_data, type: boolean, default: true, executor_argument: normalize_data, description: "Log-normalize counts (counts per 10,000, log1p) before super-cells; turn off for already normalized values."}
+  - {name: gamma_value, type: number, default: 10.0, minimum: 1, executor_argument: gamma_value, description: Cells per super-cell (coarse-graining level).}
+  - {name: n_pc, type: integer, default: 25, minimum: 2, executor_argument: n_pc, description: Principal components for the cell kNN graph.}
+  - {name: assoc_method, type: enum, default: pearson, allowed_values: [pearson, spearman, pcNet], executor_argument: assoc_method, description: Gene association between super-cells.}
+  - {name: alpha_value, type: number, default: 0.1, minimum: 0, maximum: 1, executor_argument: alpha_value, description: "PANDA update rate: weight of the priors against the expression data."}
+  - {name: min_cells, type: integer, default: 30, minimum: 1, executor_argument: min_cells, description: Fewest cells a group needs for a network; SCORPION never uses fewer than 30.}
+  - {name: z_scaling, type: boolean, default: true, executor_argument: z_scaling, description: Write z-scored edge weights; false writes the 0-1 scale.}
+  - {name: n_cores, type: integer, default: 1, minimum: 1, executor_argument: n_cores, description: CPU cores (networks run in parallel).}
+  - {name: seed, type: integer, default: 1, executor_argument: seed, description: Random seed.}
+execution_step: run_scorpion
+output_capability:
+  operation: infer
+  artifact_type: regulatory_network
+  entity_types: [tf, gene]
+  granularities: [aggregate, sample_specific]
+  regulator_types: [tf]
+  target_types: [gene]
+  guidance_predecessors: []
+  accepted_input_modalities: [gene_expression]
+  accepted_input_granularities: [aggregate]
+  produced_artifacts: [regulatory_network]
+  transformations: [log_normalization, super_cell_aggregation, message_passing, edge_t_test]
+  scientific_objectives: [single_cell_regulatory_networks]
+  incompatible_input_artifacts: [mutation_matrix, coexpression_network]
+  selection_phrases: [single-cell regulatory network, scRNA-seq gene regulatory network, networks per cell type, 單細胞調控網路]
+  input_artifacts: [expression_matrix]
+  handoff_targets: [run_porcupine]
+  selection_tags: [tf_gene_regulation, single_cell]
+  prefer_when: []
+  handoff_contract: >-
+    SCORPION takes a single-cell genes-by-cells count matrix (a table or a 10x Matrix Market
+    directory) with the same three-column motif and PPI priors as PANDA. It aggregates similar
+    cells into super-cells and runs PANDA on them: one TF-to-gene network for all cells, or one
+    per group of cells from a cell metadata table (group_by), written as one edges-by-networks
+    table. testEdges compares the networks of two values of one group_by column. With eight or
+    more networks (one per donor or sample) the table is a PORCUPINE input. Bulk expression
+    is not a SCORPION input.
+conventions:
+  - "Single-cell expression: genes as rows and cells as columns, as a table (header gene, then one column per cell) or a 10x Matrix Market directory (matrix.mtx, features.tsv, barcodes.tsv)."
+  - Use raw counts with normalize_data (the default); set normalize_data to false for values already normalized.
+  - Motif and PPI priors are three-column edge lists whose gene and TF identifiers match the expression genes.
+  - "Cell metadata: a header, one row per cell, the cell IDs in the first column (or a cell_id/barcode column), and the group_by columns."
+  - A network is built only for a group of at least 30 cells (min_cells).
+  - A comparison needs compare_by in group_by and at least two built networks on each side; add a replicate column such as the donor to group_by.
+  - "Output: tf, target, then one column per network (group_by values joined by '--'), the cells per network, and the testEdges table sorted by pAdj."
+input_checks:
+  - text: "A network is built only for a group of at least 30 cells (min_cells)."
+    scope: file
+  - text: "Motif and PPI priors are three-column edge lists whose gene and TF identifiers match the expression genes."
+    scope: file

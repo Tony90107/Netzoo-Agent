@@ -253,11 +253,11 @@ def _latest(settings: list[dict]) -> list[dict]:
 def _ruled_out_by_data(keys: list[str], conditions: dict[str, str], quotes: dict[str, str]) -> tuple[list[str], str]:
     """The entries the user's data rules out -- single cells, layers not measured on the same samples (Log 412) --
     and the words that say so (M2, a24b K02 asked to run DRAGON, then said the layers came from different mice)."""
-    from ..capability_sheet import data_units
+    from ..capability_sheet import takes_unit
 
     known = sheet_entries()
-    if conditions.get("data_unit") and conditions["data_unit"] not in data_units():
-        return list(keys), quotes.get("data_unit", "")
+    if conditions.get("data_unit") and (out := [key for key in keys if not takes_unit(known[key], conditions["data_unit"])]):
+        return out, quotes.get("data_unit", "")
     if conditions.get("samples_matched") == "different_samples":
         return [key for key in keys if known[key].layers], quotes.get("samples_matched", "")
     return [], ""

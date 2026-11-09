@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import re
 import uuid
 from datetime import datetime
@@ -35,6 +37,8 @@ __all__ = [
 def _expected_artifacts(decision: TaskDecision, action: str) -> list[str]:
     if action in {"format_expression", "convert_expression", "run_panda", "run_puma", "run_otter"}:
         return [decision.output_file] if decision.output_file else []
+    if action == "build_priors" and decision.output_dir:
+        return [str(Path(decision.output_dir) / name) for name in ("motif_prior.tsv", "ppi_prior.tsv", "manifest.json")]
     if action == "normalize_expression" and decision.output_file:
         return [decision.output_file, str(normalization_record_path(decision.output_file))]
     if action == "run_giraffe" and decision.output_file:

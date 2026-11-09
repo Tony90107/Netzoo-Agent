@@ -68,7 +68,8 @@ def test_policy_and_registry_agree_and_lioness_hands_off_to_porcupine():
     assert set(capability.incompatible_input_artifacts) >= {"expression_matrix", "coexpression_network"}
     producers = {action for action, other in policy.workflows.items()
                  if "run_porcupine" in other.output_capability.handoff_targets}
-    assert producers == {"run_lioness_panda", "run_lioness_puma"}
+    # 2026-11-08: SCORPION per-donor networks (single cells) are an edges-by-networks table too.
+    assert producers == {"run_lioness_panda", "run_lioness_puma", "run_scorpion"}
     for producer in producers:
         assert "sample_specific" in OUTPUT_CAPABILITIES[producer].granularities
     # A gene-gene co-expression producer is never a handoff source.

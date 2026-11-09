@@ -18,6 +18,7 @@ from .giraffe import inspect_giraffe_inputs_impl
 from .tables import _inspect_panda_inputs_impl
 from .sambar import inspect_sambar_inputs_impl
 from .porcupine import inspect_porcupine_inputs_impl
+from .scorpion import inspect_scorpion_inputs_impl
 
 __all__ = [
     "BundleDiscovery",
@@ -35,6 +36,7 @@ MULTI_FILE_ACTIONS = frozenset(
         "run_lioness_puma",
         "run_sambar",
         "run_porcupine",
+        "run_scorpion",
         "run_otter",
         "run_giraffe",
     }
@@ -129,6 +131,13 @@ def _content_verified_completion(
             if not all(trial.get(name) for name in required):
                 continue
             _, valid = inspect_sambar_inputs_impl(*(trial[name] for name in required))
+            if valid:
+                verified.append(candidate)
+            continue
+        if action == "run_scorpion":
+            if not all(trial.get(name) for name in ("cell_expression_file", "motif_file", "ppi_file")):
+                continue
+            _, valid = inspect_scorpion_inputs_impl(trial["cell_expression_file"], trial["motif_file"], trial["ppi_file"])
             if valid:
                 verified.append(candidate)
             continue
@@ -253,6 +262,10 @@ def _bundle_in_directory(
         _, valid = inspect_sambar_inputs_impl(
             values["mutation_file"], values["exon_size_file"],
             values["cancer_gene_file"], values["pathway_file"],
+        )
+    elif action == "run_scorpion":
+        _, valid = inspect_scorpion_inputs_impl(
+            values["cell_expression_file"], values["motif_file"], values["ppi_file"],
         )
     elif action == "run_porcupine":
         _, valid = inspect_porcupine_inputs_impl(values["sample_network_file"], values["pathway_file"])

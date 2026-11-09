@@ -23,9 +23,11 @@ ActionName = Literal[
     "inspect_giraffe_inputs",
     "inspect_bonobo_inputs",
     "inspect_porcupine_inputs",
+    "inspect_scorpion_inputs",
     "format_expression",
     "convert_expression",
     "normalize_expression",
+    "build_priors",
     "run_panda",
     "run_puma",
     "run_lioness_panda",
@@ -40,6 +42,7 @@ ActionName = Literal[
     "run_giraffe",
     "run_bonobo",
     "run_porcupine",
+    "run_scorpion",
     "query_context7",
     "web_search",
     "download_string",
@@ -64,6 +67,7 @@ RecommendedAction = Literal[
     "run_giraffe",
     "run_bonobo",
     "run_porcupine",
+    "run_scorpion",
 ]
 
 IntentType = Literal[
@@ -172,6 +176,10 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
     "partial_correlation": "infer conditional associations using partial correlation",
     "pathway_scores": "produce pathway-level mutation scores",
     "pathway_heterogeneity": "pathways whose regulation varies coherently across sample networks",
+    "single_cell": (
+        "infer regulatory networks from single-cell or single-nucleus RNA-seq, aggregating similar "
+        "cells into super-cells first"
+    ),
     "relaxed_graph_matching": (
         "continuous relaxed graph-matching; explicit objective/loss, gradient descent, "
         "convergence; not heuristic message passing"
@@ -196,6 +204,19 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
 # the tags that separate PANDA, OTTER and GIRAFFE are listed; read per key and
 # never shown to the model.
 _TF_ACTIVITY_WITNESS = r"\bactiv(?:e|ity|ities)\b|活性|活躍|活跃"
+# 2026-11-08: words that state the data are single cells (SCORPION). Shared with the data-unit scope
+# (`routing.data_unit`) and the per-cell outside step below.
+SINGLE_CELL_WITNESS = (
+    r"\bsingle[- ]?cells?\b(?![- ]lines?\b)|\bsc[- ]?RNA|\bsn[- ]?RNA|\bsingle[- ]nucle(?:us|i)\b|\bscATAC|"
+    r"\b10x\s+(?:Genomics|Chromium|Visium|data|run|librar(?:y|ies)|counts?|matri(?:x|ces)|director(?:y|ies)|"
+    r"output|cells?)\b|單細胞|单细胞|單核|单核"
+)
+# A result for each individual cell, which SCORPION does not give (it gives one per group of cells).
+_CELL_GROUP = r"(?![- ](?:types?|states?|lines?|populations?|clusters?|groups?|subsets?|subtypes?|identit))"
+PER_CELL_WITNESS = (
+    rf"\b(?:each|every|per|individual)\s+(?:of\s+(?:our|the|my)\s+)?(?:[\d,]+\s+)?(?:single\s+)?cells?\b{_CELL_GROUP}|"
+    rf"cell[- ]specific{_CELL_GROUP}|cell[- ]level\s+network|每個細胞(?!類型|型|狀態)|每一個細胞|單一細胞"
+)
 SELECTION_TAG_WITNESSES: Mapping[str, str] = {
     "message_passing": (
         r"message[- ]?passing|pass(?:es|ing)?\s+messages|iterat|"
@@ -268,6 +289,7 @@ STATED_TAG_PHRASES: Mapping[str, str] = {
     "sparse_pvalue_coexpression": "you asked for a p-value or confidence for each connection",
     "leave_one_out_network_inference": "you asked for leave-one-out (LIONESS) sample networks",
     "mirna_regulation": "your regulators include miRNAs",
+    "single_cell": "your data are single cells",
     "batch_correction": "you asked to separate batch or covariate effects",
     "covariate_association": "you asked to separate batch or covariate effects",
     "hospital_effect_assessment": "you asked to separate batch or covariate effects",
@@ -560,6 +582,13 @@ DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, tuple[str, ...]]] = {
         "The edge loadings name the TF-to-gene edges that drive each pathway's variation; "
         "PC signs are arbitrary, so read a loading together with the sample scores.",
     )),
+    "run_scorpion": ("Downstream use of the single-cell networks:", (
+        "With one network per donor or sample (group_by such as donor and condition), the networks "
+        "file is an edges-by-networks table like LIONESS output: testEdges compares two conditions "
+        "(compare_by, group1, group2), and eight or more networks can go to PORCUPINE.",
+        "Each network is built from that group's super-cells, so groups with few cells give noisier "
+        "edges; the cells file lists how many cells each network used and which groups were skipped.",
+    )),
 }
 
 
@@ -751,6 +780,9 @@ class OutsideStep:
     concern_answer: str = ""
     advises_against: frozenset[str] = frozenset()
     caveat: str = ""
+    # 2026-11-08: False when the note points to a registered workflow (SCORPION), so the card shows no
+    # "not available here" row for it.
+    card_row: bool = True
 
 
 # Verified 2026-10-03 against the cited pages (TEST_PROMPTS Tests 4, 7, 8, 9).
@@ -758,23 +790,46 @@ OUTSIDE_STEPS: tuple[OutsideStep, ...] = (
     OutsideStep(
         key="single_cell",
         name="SCORPION (single-cell networks)",
-        witnesses=(r"\bsingle[- ]cell|\bscRNA|\bsnRNA|\bsingle[- ]nucle(?:us|i)\b|單細胞|單核",),
+        witnesses=(SINGLE_CELL_WITNESS,),
         note=(
-            "**Single-cell data.** The registered workflows are built for bulk samples. Co-expression "
-            "between individual cells is dominated by dropout, so per-cell LIONESS or BONOBO networks are "
-            "not advised. A registered route: sum cells into pseudo-bulk profiles per donor and cell state, "
-            "then run PANDA (or OTTER) once per state with the same genes and the same motif and PPI priors; "
-            "this needs several donors per state to estimate co-expression. To look within a state, "
-            "SCORPION (an R package from the Kuijjer lab, not registered here) first aggregates similar "
-            "cells into metacells and then runs PANDA on them, giving comparable networks per sample or "
-            "state."
+            "**Single-cell data.** The workflows listed here are built for bulk samples. SCORPION, registered here, "
+            "is the single-cell workflow: it merges similar cells into super-cells and runs PANDA on them, giving "
+            "one network per group of cells (cell state, donor or condition, from a cell metadata table), and "
+            "testEdges compares two groups. Co-expression between individual cells is dominated by dropout, so "
+            "per-cell LIONESS or BONOBO networks are not advised. A bulk route: sum cells into pseudo-bulk profiles "
+            "per donor and state, then run PANDA (or OTTER) once per state with the same genes and priors; this "
+            "needs several donors per state."
         ),
-        reason="Not registered here; SCORPION is an R package (CRAN). Pseudo-bulk per state with PANDA is the registered route.",
-        source="Osorio, Capasso & Kuijjer 2024, Nat Comput Sci, doi:10.1038/s43588-024-00597-5; CRAN SCORPION",
-        # "per-cell LIONESS or BONOBO networks are not advised" (the note above).
+        reason="SCORPION is the registered single-cell workflow; the listed workflows take bulk or pseudo-bulk samples.",
+        source="Osorio, Capasso & Kuijjer 2024, Nat Comput Sci, doi:10.1038/s43588-024-00597-5; kuijjerlab/SCORPION",
+        # Said only beside a bulk expression workflow: a SCORPION reply needs no warning.
+        workflows=frozenset({
+            "run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma", "run_lioness_coexpression",
+            "run_cobra", "run_otter", "run_giraffe", "run_bonobo", "run_dragon", "run_lioness_dragon",
+        }),
         advises_against=frozenset({"run_lioness_coexpression", "run_bonobo", "run_lioness_panda",
                                    "run_lioness_puma", "run_lioness_dragon"}),
         caveat="Not on single cells: run it on pseudo-bulk profiles, one per donor and state",
+        card_row=False,
+    ),
+    OutsideStep(
+        key="per_cell_networks",
+        name="A network for each individual cell",
+        witnesses=(
+            SINGLE_CELL_WITNESS,
+            PER_CELL_WITNESS,
+        ),
+        note=(
+            "**One network per individual cell.** No registered workflow builds one. Co-expression between "
+            "individual cells is dominated by dropout, so per-cell LIONESS or BONOBO networks are not advised. "
+            "SCORPION (registered here) first aggregates similar cells into super-cells and runs PANDA on them, "
+            "giving one network per group of cells -- per donor, cell type or condition, chosen with group_by "
+            "from a cell metadata table."
+        ),
+        reason="Not available here; SCORPION gives one network per group of cells (group_by), not per cell.",
+        source="Osorio, Capasso & Kuijjer 2024, Nat Comput Sci, doi:10.1038/s43588-024-00597-5; kuijjerlab/SCORPION runSCORPION",
+        # Said beside SCORPION; beside a bulk workflow the single_cell note above says the same.
+        workflows=frozenset({"run_scorpion"}),
     ),
     OutsideStep(
         key="chromatin_prior",
@@ -1425,6 +1480,21 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         executor_fields=("sample_network_file", "pathway_file", "min_pathway_size", "max_pathway_size", "scale_data"),
         local=True,
     ),
+    "inspect_scorpion_inputs": ActionDefinition(
+        "inspect_scorpion_inputs",
+        "SCORPION-INPUTS",
+        required_inputs=("cell_expression_file", "motif_file", "ppi_file"),
+        optional_inputs=("cell_metadata_file", "group_by", "compare_by", "group1", "group2", "paired", "min_cells"),
+        executor_fields=(
+            "cell_expression_file", "motif_file", "ppi_file", "cell_metadata_file", "group_by", "compare_by",
+            "group1", "group2", "paired", "min_cells",
+        ),
+        executor_defaults={
+            "cell_metadata_file": "", "group_by": [], "compare_by": "", "group1": "", "group2": "",
+            "paired": False, "min_cells": 30,
+        },
+        local=True,
+    ),
     "format_expression": ActionDefinition(
         "format_expression",
         "FORMAT-EXPRESSION",
@@ -1458,6 +1528,26 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         ),
         executor_defaults={
             "groups_file": "", "snail_aggregation": "median", "normalization_method": "snail", "gene_lengths_file": "",
+        },
+        local=True,
+    ),
+    # SPONGE (kuijjerlab/sponge, 2026-11-08): a human TF motif prior and a TF PPI prior from JASPAR, Ensembl promoters and
+    # STRING -- a preparation step the user asks for by name or as "build the priors", never a menu workflow.
+    "build_priors": ActionDefinition(
+        "build_priors",
+        "SPONGE-PRIORS",
+        required_inputs=("output_dir",),
+        optional_inputs=(
+            "sponge_tf_names", "jaspar_release", "genome_assembly", "promoter_upstream", "promoter_downstream",
+            "motif_score_threshold", "ppi_score_threshold", "n_cores",
+        ),
+        executor_fields=(
+            "output_dir", "sponge_tf_names", "jaspar_release", "genome_assembly", "promoter_upstream",
+            "promoter_downstream", "motif_score_threshold", "ppi_score_threshold", "n_cores",
+        ),
+        executor_defaults={
+            "sponge_tf_names": [], "jaspar_release": "", "genome_assembly": "hg38", "promoter_upstream": 750,
+            "promoter_downstream": 250, "motif_score_threshold": 400, "ppi_score_threshold": 400, "n_cores": 1,
         },
         local=True,
     ),
@@ -2271,6 +2361,67 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             ),
         ),
     ),
+    "run_scorpion": ActionDefinition(
+        "run_scorpion",
+        "SCORPION",
+        required_inputs=("cell_expression_file", "motif_file", "ppi_file", "output_dir"),
+        optional_inputs=(
+            "cell_metadata_file", "group_by", "compare_by", "group1", "group2", "paired", "normalize_data",
+            "gamma_value", "n_pc", "assoc_method", "alpha_value", "min_cells", "z_scaling", "n_cores", "seed",
+            "taxon",
+        ),
+        executor_fields=(
+            "cell_expression_file", "motif_file", "ppi_file", "output_dir", "cell_metadata_file", "group_by",
+            "compare_by", "group1", "group2", "paired", "normalize_data", "gamma_value", "n_pc", "assoc_method",
+            "alpha_value", "min_cells", "z_scaling", "n_cores", "seed",
+        ),
+        executor_defaults={
+            "cell_metadata_file": "", "group_by": [], "compare_by": "", "group1": "", "group2": "",
+            "paired": False, "normalize_data": True, "gamma_value": 10.0, "n_pc": 25, "assoc_method": "pearson",
+            "alpha_value": 0.1, "min_cells": 30, "z_scaling": True, "n_cores": 1, "seed": 1,
+        },
+        validation_steps=("inspect_scorpion_inputs",),
+        input_validator="run_scorpion",
+        local=True,
+        run=True,
+        memory_metadata={"method_family": "scorpion"},
+        cli_command="run-scorpion",
+        output_capability=OutputCapabilityDefinition(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=frozenset({"tf", "gene"}),
+            regulator_types=frozenset({"tf"}),
+            target_types=frozenset({"gene"}),
+            granularities=frozenset({"aggregate", "sample_specific"}),
+            accepted_input_modalities=frozenset({"gene_expression"}),
+            accepted_input_granularities=frozenset({"aggregate"}),
+            produced_artifacts=frozenset({"regulatory_network"}),
+            transformations=frozenset({
+                "log_normalization", "super_cell_aggregation", "message_passing", "edge_t_test",
+            }),
+            scientific_objectives=frozenset({"single_cell_regulatory_networks"}),
+            incompatible_input_artifacts=frozenset({"mutation_matrix", "coexpression_network"}),
+            selection_phrases=(
+                "single-cell regulatory network",
+                "scRNA-seq gene regulatory network",
+                "networks per cell type",
+                "單細胞調控網路",
+            ),
+            input_artifacts=frozenset({"expression_matrix"}),
+            required_input_artifacts=frozenset({"motif_prior", "ppi_prior"}),
+            handoff_targets=("run_porcupine",),
+            selection_tags=frozenset({"tf_gene_regulation", "single_cell"}),
+            handoff_contract=(
+                "SCORPION takes a single-cell genes-by-cells count matrix (a table or a 10x Matrix Market "
+                "directory) with the same three-column motif and PPI priors as PANDA. It aggregates similar "
+                "cells into super-cells and runs PANDA on them: one TF-to-gene network for all cells, or one "
+                "per group of cells from a cell metadata table (group_by), written as one edges-by-networks "
+                "table. testEdges compares the networks of two values of one group_by column. With eight or "
+                "more networks (one per donor or sample) the table is a PORCUPINE input. Bulk expression "
+                "is not a SCORPION input."
+            ),
+        ),
+    ),
     "query_context7": ActionDefinition(
         "query_context7",
         "CONTEXT7",
@@ -2523,6 +2674,22 @@ WORKFLOW_CONTROLS: dict[ActionName, tuple[WorkflowControlDefinition, ...]] = {
         _control("min_effect_size", "number", 2.0, minimum=0, description="Cohen's d cutoff."),
         _control("seed", "integer", 1, description="Random seed for the random gene sets."),
     ),
+    "run_scorpion": (
+        _control("group_by", "string_list", [], description="Cell metadata columns; one network per combination of their values (e.g. donor, region)."),
+        _control("compare_by", "string", None, nullable=True, description="The group_by column whose two values testEdges compares."),
+        _control("group1", "string", None, nullable=True, description="compare_by value of the first side (log2 fold change is group1 minus group2)."),
+        _control("group2", "string", None, nullable=True, description="compare_by value of the second side."),
+        _control("paired", "boolean", False, description="Pair the two sides' networks on their other group_by values (e.g. the same donor)."),
+        _control("normalize_data", "boolean", True, description="Log-normalize counts (counts per 10,000, log1p) before super-cells; turn off for already normalized values."),
+        _control("gamma_value", "number", 10.0, minimum=1, description="Cells per super-cell (coarse-graining level)."),
+        _control("n_pc", "integer", 25, minimum=2, description="Principal components for the cell kNN graph."),
+        _control("assoc_method", "enum", "pearson", allowed_values=("pearson", "spearman", "pcNet"), description="Gene association between super-cells."),
+        _control("alpha_value", "number", 0.1, minimum=0, maximum=1, description="PANDA update rate: weight of the priors against the expression data."),
+        _control("min_cells", "integer", 30, minimum=1, description="Fewest cells a group needs for a network; SCORPION never uses fewer than 30."),
+        _control("z_scaling", "boolean", True, description="Write z-scored edge weights; false writes the 0-1 scale."),
+        _control("n_cores", "integer", 1, minimum=1, description="CPU cores (networks run in parallel)."),
+        _control("seed", "integer", 1, description="Random seed."),
+    ),
 }
 
 ACTION_DEFINITIONS = {
@@ -2555,11 +2722,54 @@ CODE_VALIDATION_STEPS = {
 WORKFLOW_MEMORY_METADATA = {
     action: dict(ACTION_DEFINITIONS[action].memory_metadata) for action in RUN_ACTIONS
 }
-OUTPUT_CAPABILITIES = {
+# 2026-11-08: workflows built for single cells (SCORPION). Every other expression workflow takes bulk samples.
+SINGLE_CELL_ACTIONS = frozenset({"run_scorpion"})
+# Preparation steps read from the request's own words before workflow matching; they produce an input, not a result,
+# so no result is checked against the capability sheet.
+PREPARATION_ACTIONS = frozenset({"download_string", "normalize_expression", "build_priors"})
+
+
+class RoutingCapabilities(Mapping):
+    """Output capabilities: iterating lists the bulk-sample routing candidates, a lookup finds every run workflow.
+
+    SCORPION builds the same TF-to-gene network as PANDA, so typed readings alone would tie them on every bulk
+    request. Iteration -- what every matcher, menu and comparison walks to list candidates -- leaves the single-cell
+    workflows out, so bulk routing is unchanged; `routing.data_unit.scoped_capabilities` adds them back, and leaves
+    the bulk expression workflows out, when the request says its data are single cells. A lookup by action
+    (`OUTPUT_CAPABILITIES[action]`, `.get`, `in`) still finds SCORPION, so a SCORPION decision is described like any
+    other.
+    """
+
+    __slots__ = ("_all", "_visible")
+
+    def __init__(self, capabilities: Mapping[str, OutputCapabilityDefinition], hidden: frozenset[str]):
+        self._all = dict(capabilities)
+        self._visible = tuple(action for action in self._all if action not in hidden)
+
+    def __getitem__(self, action):
+        return self._all[action]
+
+    def __iter__(self):
+        return iter(self._visible)
+
+    def __len__(self):
+        return len(self._visible)
+
+    def __contains__(self, action):
+        return action in self._all
+
+    def including(self, actions) -> dict[str, OutputCapabilityDefinition]:
+        """The visible capabilities plus `actions` (registry order)."""
+        wanted = set(self._visible) | set(actions)
+        return {action: capability for action, capability in self._all.items() if action in wanted}
+
+
+ALL_OUTPUT_CAPABILITIES = {
     action: definition.output_capability
     for action, definition in ACTION_DEFINITIONS.items()
     if definition.run and definition.output_capability is not None
 }
+OUTPUT_CAPABILITIES = RoutingCapabilities(ALL_OUTPUT_CAPABILITIES, SINGLE_CELL_ACTIONS)
 # Log 283 (user decision): downstream-use notes answer a stated concern, like any
 # other registry note, instead of being appended to every reply. The notes are
 # DOWNSTREAM_ANALYSES's own; only when they are shown changes.
@@ -2586,7 +2796,7 @@ REQUEST_CONCERNS = {
                 artifacts=(OUTPUT_CAPABILITIES[action].artifact_type,),
             ),
         )
-        for action in OUTPUT_CAPABILITIES if action in DOWNSTREAM_ANALYSES
+        for action in ALL_OUTPUT_CAPABILITIES if action in DOWNSTREAM_ANALYSES
     },
 }
 

@@ -21,6 +21,7 @@ from .giraffe import giraffe_output_paths, load_giraffe_inputs, validate_giraffe
 from .bonobo import load_bonobo_inputs, validate_bonobo_output
 from .otter import load_otter_inputs, validate_otter_output
 from .porcupine import validate_porcupine_output
+from .scorpion import validate_scorpion_output
 from .normalization import normalization_record_path
 
 __all__ = [
@@ -34,6 +35,7 @@ ARTIFACT_WRITE_ACTIONS = frozenset(
         "format_expression",
         "convert_expression",
         "normalize_expression",
+        "build_priors",
         "run_panda",
         "run_puma",
         "run_lioness_panda",
@@ -48,6 +50,7 @@ ARTIFACT_WRITE_ACTIONS = frozenset(
         "run_giraffe",
         "run_bonobo",
         "run_porcupine",
+        "run_scorpion",
     }
 )
 
@@ -489,6 +492,23 @@ def validate_output_artifacts(
                 metrics.update(giraffe_metrics)
             except (OSError, ValueError) as error:
                 errors.append(f"GIRAFFE output contract could not be checked: {error}")
+    elif action == "build_priors":
+        from ..execution_sponge import validate_sponge_output
+        if not decision.output_dir:
+            errors.append("SPONGE output_dir is missing")
+        else:
+            sponge_errors, sponge_artifacts, sponge_metrics = validate_sponge_output(decision.output_dir)
+            artifacts.extend(sponge_artifacts)
+            errors.extend(sponge_errors)
+            metrics.update(sponge_metrics)
+    elif action == "run_scorpion":
+        if not decision.output_dir:
+            errors.append("SCORPION output_dir is missing")
+        else:
+            ok, scorpion_errors, scorpion_artifacts, scorpion_metrics = validate_scorpion_output(decision.output_dir)
+            artifacts.extend(scorpion_artifacts)
+            errors.extend(scorpion_errors)
+            metrics.update(scorpion_metrics)
     elif action == "run_porcupine":
         if not decision.output_dir:
             errors.append("PORCUPINE output_dir is missing")

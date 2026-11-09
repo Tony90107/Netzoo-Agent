@@ -62,6 +62,8 @@ INPUT_ROLE_FIELDS = {
     "cancer_gene_file",
     "pathway_file",
     "sample_network_file",
+    "cell_expression_file",
+    "cell_metadata_file",
     "omics_layer_1",
     "omics_layer_2",
 }
@@ -76,6 +78,10 @@ PARAMETER_FIELDS = {
     "computing", "precision", "lam", "gamma", "iterations", "eta", "bexp",
     "min_pathway_size", "max_pathway_size", "n_permutations", "n_cores", "scale_data",
     "fdr_threshold", "min_effect_size", "seed",
+    "group_by", "compare_by", "group1", "group2", "paired", "normalize_data", "gamma_value", "n_pc",
+    "assoc_method", "alpha_value", "min_cells", "z_scaling",
+    "sponge_tf_names", "jaspar_release", "genome_assembly", "promoter_upstream", "promoter_downstream",
+    "motif_score_threshold", "ppi_score_threshold",
 }
 
 __all__ = [

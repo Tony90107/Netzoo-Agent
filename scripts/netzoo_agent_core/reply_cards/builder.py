@@ -637,7 +637,7 @@ def _with_outside_steps(card: ReplyCard, decision, task: str) -> ReplyCard:
 
     rows = [ReplyOption(key=f"outside-{step.key}", label=clip(step.name, 80), available=False,
                         resolution="none", reason=clip(step.reason, 260))
-            for step in outside_steps(decision, task)]
+            for step in outside_steps(decision, task) if step.card_row]
     if not rows:
         return card
     return card.model_copy(update={"unavailable": [*card.unavailable, *rows][:8]})

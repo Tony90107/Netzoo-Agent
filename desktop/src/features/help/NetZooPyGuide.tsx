@@ -61,6 +61,14 @@ const METHODS = [
     outputs: "Per-pathway statistics (PC1 variance, p-value, FDR, effect size), pathway-by-sample PC1 scores, and edge loadings for significant pathways.",
   },
   {
+    name: "SCORPION",
+    family: "Single-cell regulatory networks",
+    principle:
+      "Merges similar cells into super-cells to overcome single-cell sparsity, then runs PANDA message passing with the motif and PPI priors. Built per group of cells with the same priors, the networks are comparable, and testEdges tests which edges differ between two groups.",
+    inputs: "Single-cell counts (genes x cells table or 10x Matrix Market directory), motif prior, PPI network, and optionally a cell metadata table with grouping columns.",
+    outputs: "One TF-gene network per group of cells (edges x networks), the cells per network, and an edge test table for a comparison.",
+  },
+  {
     name: "DRAGON",
     family: "Multi-omics conditional association network",
     principle:

@@ -14,7 +14,7 @@ __all__: list[str] = ["SHIPPED_DATA_DIRECTORIES", "is_shipped_data"]
 SHIPPED_DATA_DIRECTORIES = frozenset({
     "auto-check-invalid", "auto-check-valid", "blind-neutral", "blind-tests", "bonobo-toy", "cobra-toy",
     "condor-toy", "dragon-toy", "format-demo", "giraffe-toy", "lioness-toy", "manual-tests", "official-toy",
-    "otter-toy", "porcupine-toy", "role-mapping-fixtures", "sambar-official-toy", "sambar-toy", "teacher-demo",
+    "otter-toy", "porcupine-toy", "scorpion-toy", "role-mapping-fixtures", "sambar-official-toy", "sambar-toy", "teacher-demo",
 })
 
 
@@ -48,6 +48,10 @@ def candidate_keywords(action: str, field_name: str) -> tuple[str, ...]:
         return ("exon", "length", "esize")
     if field_name == "cancer_gene_file":
         return ("cancer", "gene", "cangenes")
+    if field_name == "cell_expression_file":
+        return ("10x", "counts", "single", "cell", "matrix")
+    if field_name == "cell_metadata_file":
+        return ("metadata", "cell", "obs", "annotation")
     if field_name == "sample_network_file":
         return ("lioness", "sample", "network")
     if field_name == "pathway_file":

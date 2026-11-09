@@ -179,6 +179,9 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # Phase 5c (spec 13.4): optional code-owned FactCheck.open_results (a wanted result the user is unsure of with fewer
 # than two options named: CLARIFY, never a fact); older sessions load unchanged.
 SCHEMA_DIGESTS = {
+    # 2026-11-08: SCORPION (run_scorpion, inspect_scorpion_inputs, its file roles and controls) and SPONGE
+    # (build_priors and its settings) widen the action literals and add optional TaskDecision fields omitted while
+    # unset; policy optional inputs allow 20.
     # 2026-09-27: optional advisory philosophy rationale, quotes, assumptions and capability gap;
     # existing condition recommendations remain valid. Execution fields unchanged.
     # 2026-09-29: optional quoted research hypotheses; no execution authority.
@@ -220,17 +223,17 @@ SCHEMA_DIGESTS = {
     # Same day: optional code-owned TaskDecision.normalization_choice (named / need / default / answered, with the
     # verified need quotes and the candidate methods); omitted from dumps while unset.
     # Same day: PORCUPINE min/max_pathway_size are at least 4 (irlba's 3-component PCA needs 4 edges).
-    "TaskDecision": "a836d51a09b8482807564183df74d96c6d14ad620cbc095e206376e6a9a54784",
-    "RouterDecision": "4ae4171878f792713f81d63d503cf4d75be1d9dc3427eeb257f6a0261c8486d9",
+    "TaskDecision": "0c06ad4ca6cea9d0c72aa883f9c5a51ef688512eb47f1c187c47221753c00577",
+    "RouterDecision": "bef9d4bafb13d9ac1ff69128869e41ab6234866cf28e47623eedfd25abea8a41",
     "RequestedOutcome": "9be3f9457d9e5346db5ab185b4afe128039ca973e9e54dfb31b2748a5e7f567e",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
     "OutcomeHypothesis": "67a1a3d39863756ea1ef20d3534a86cc82b4d78dd12acd3ad1268c44c14a1bbc",
-    "CapabilityMatch": "0b7805156d93f98bc6e8b0bc6ec537942c5cba570bbd06d3d58e1b25893486b1",
+    "CapabilityMatch": "977e93ae089153e17a8e24e262891082b87571d17ac69cbab32eb53b20c2cc7f",
     # 2026-11-05: WorkflowPlan.raw_counts (raw-count note before a workflow reads the matrix).
-    "WorkflowPlan": "510c6cf395d983de84d4881ea24235bbe448ce77646bd3214678ce06bfa1cf51",
+    "WorkflowPlan": "8f4d999af958c4742d05eb1ae4cf7450fdeef366ad6b0336caaa02b4344eec95",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "dcf6b6c7e7018ee60884c834dff9953be733a7b47a4dcab00ec6dd8c04883362",
+    "ProjectPolicySnapshot": "37eeddd90198d34b52903d119ac38b94400c5c5c13ab207a513586b11683616b",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     # Updated deliberately on 2026-09-10: episodes retain the typed scientific
     # outcome used for semantic memory retrieval.

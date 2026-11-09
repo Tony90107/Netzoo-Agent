@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 from types import SimpleNamespace
 
-from ..capability_sheet import data_units, entry, per_group_entries, result_forms, sheet_entries
+from ..capability_sheet import entry, per_group_entries, result_forms, sheet_entries, takes_unit
 from .needed_facts import (
     applicable_unknowns, check_unknowns, fact_line, fact_update, file_checked_note, needed_fact_reply, resolve_unknowns,
     verified_unknown_domains, verified_unknown_scopes, verified_unknowns,
@@ -336,8 +336,7 @@ def _fitting(keys: list[str], item) -> list[str]:
     misread as DRAGON (`docs/research-log/scale-hard-2026-10-14`).
     """
     known = sheet_entries()
-    if item.data_unit != "not_stated" and item.data_unit not in data_units():
-        return []
+    keys = [k for k in keys if takes_unit(known[k], item.data_unit)]  # 2026-11-08: SCORPION single cells, others bulk
     if any(getattr(item, form, None) not in (None, *allowed) for form, allowed in result_forms().items()):
         return []  # Log 402: overlapping groups, dynamics or spatial neighbours
     wanted = set(item.regulator_kinds)
@@ -876,7 +875,7 @@ def implied_actions(requirement: CheckedRequirement) -> list[str]:
     """The workflows a blank verdict's own typed attributes point to (Log 397).
 
     Only attributes that single out a few workflows count: two or more omics layers
-    (the DRAGON family), a sign (GIRAFFE), miRNA regulators (the PUMA family) and a
+    (the DRAGON family), a sign (GIRAFFE), miRNA regulators (the PUMA family), single cells (SCORPION) and a
     regulator-gene input network (CONDOR). TF regulators or a scale point to most of
     the registry and imply nothing, so a blank verdict on, say, copy-number calling has
     no workflow to ask and its gap stands. heldout6 NC6: a metabolite-lipid network
@@ -893,7 +892,8 @@ def implied_actions(requirement: CheckedRequirement) -> list[str]:
                 or (attrs.needs_sign and item.signed is True)
                 or ("mirna" in attrs.regulator_kinds and item.regulators is not None and "mirna" in item.regulators)
                 or (getattr(attrs, "input_network", "none") == "regulator_gene"
-                    and item.input_network == "regulator_gene"))
+                    and item.input_network == "regulator_gene")
+                or (getattr(attrs, "data_unit", None) == "single_cells" and "bulk_samples" not in item.data_units))
     keys = [key for key, item in known.items() if item.kind == "produces" and picks(item)]
     return list(dict.fromkeys(known[key].action for key in _fitting(keys, attrs)))
 

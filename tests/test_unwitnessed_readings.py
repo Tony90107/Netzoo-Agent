@@ -81,7 +81,9 @@ def test_the_recorded_test_4_annotation_read_as_clustering_is_dropped():
     kept, dropped = drop_unwitnessed_readings(task, _interpretation(readings))
     assert dropped == ["sample_cluster_assignment"]
     after = match_semantic_request(task, kept.outcome_hypotheses, request_mode="guidance")
-    assert "run_sambar" not in after.hypothesis_actions and "run_panda" in after.hypothesis_actions
+    found = [*after.matched_actions, *after.hypothesis_actions]
+    # 2026-11-08: the request's data are single cells, so the network reading is SCORPION's, not PANDA's.
+    assert "run_sambar" not in found and "run_scorpion" in found and "run_panda" not in found
 
 
 def test_a_request_asking_to_cluster_keeps_the_clustering_reading():

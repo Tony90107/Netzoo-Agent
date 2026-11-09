@@ -34,7 +34,7 @@ from netzoo_agent_core.workflow_conditions import (  # noqa: E402
 def test_every_registered_run_workflow_has_one_record():
     found = all_conditions()
     expected = {workflow_registry.ACTION_DEFINITIONS[action].workflow for action in workflow_registry.RUN_ACTIONS}
-    assert set(found) == expected and len(found) == 14
+    assert set(found) == expected and len(found) == 15
     assert {item.action for item in found.values()} == set(workflow_registry.RUN_ACTIONS)
     assert conditions_for("run_dragon") is not None and conditions_for("run_dragon").workflow == "DRAGON"
 

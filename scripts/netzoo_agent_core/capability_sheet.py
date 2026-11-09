@@ -27,8 +27,8 @@ import yaml
 
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
-__all__ = ["SheetEntry", "SHEET_PATH", "data_units", "result_forms", "RESULT_FORMS", "load_sheet", "sheet_entries",
-           "entry", "produced_text", "produces_ids", "not_produced_ids", "result_families"]
+__all__ = ["SheetEntry", "SHEET_PATH", "data_units", "takes_unit", "result_forms", "RESULT_FORMS", "load_sheet", "sheet_entries",
+           "entry", "in_view", "produced_text", "produces_ids", "not_produced_ids", "result_families"]
 
 SHEET_PATH = Path(__file__).resolve().parents[1] / "capability_sheet.yaml"
 
@@ -68,6 +68,9 @@ class SheetEntry:
     writes; a result asked once per group is credited to it (`per_group_entries`)."""
     family: str | None = None
     """clarify-menu-2026-11-01: the result family (`result_families`) a produces entry belongs to."""
+    data_units: frozenset[str] = frozenset({"bulk_samples"})
+    """2026-11-08: what each unit of the workflow's data is (bulk_samples, single_cells); the sheet's `data_units`
+    unless the workflow lists its own (SCORPION: single cells)."""
 
 
 def _resolve(raw: dict, by_id: dict[str, dict]) -> dict:
@@ -84,6 +87,8 @@ def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
     """Every entry by id, validated; raises ValueError on any malformed entry."""
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     family_keys = {item["key"] for item in data.get("result_families") or []}
+    sheet_units = frozenset(data.get("data_units") or ())
+    units_of: dict[str | None, frozenset[str]] = {None: sheet_units or frozenset({"bulk_samples"})}
     raw_items: list[tuple[str, str | None, str | None, dict]] = []
     for item in data.get("registry_wide_not_produced") or []:
         raw_items.append(("registry_wide", None, None, item))
@@ -91,6 +96,10 @@ def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
         action = spec.get("action")
         if action not in ACTION_DEFINITIONS:
             raise ValueError(f"capability sheet: {workflow} names unknown action {action!r}")
+        units = frozenset(spec.get("data_units") or sheet_units or {"bulk_samples"})
+        if not units or not units <= {"bulk_samples", "single_cells"}:
+            raise ValueError(f"capability sheet: {workflow} has unknown data_units {sorted(units)!r}")
+        units_of[action] = units
         for item in spec.get("produces") or []:
             raw_items.append(("produces", action, workflow, item))
         for item in spec.get("near_misses") or []:
@@ -142,6 +151,7 @@ def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
             inputs=tuple(str(value) for value in resolved.get("inputs") or ()),
             aggregate_entry=resolved.get("aggregate_entry"),
             family=resolved.get("family") if kind == "produces" else None,
+            data_units=units_of[action],
         )
         if kind == "registry_wide" and not entries[item["id"]].claim:
             raise ValueError(f"capability sheet: registry-wide entry {item['id']} must name its claim")
@@ -170,8 +180,14 @@ def result_families() -> tuple[tuple[str, str], ...]:
 
 @lru_cache(maxsize=1)
 def data_units() -> frozenset[str]:
-    """The data units every registered workflow takes (Log 389: bulk samples, never single cells)."""
-    return frozenset(yaml.safe_load(SHEET_PATH.read_text(encoding="utf-8")).get("data_units") or ())
+    """The data units some registered workflow takes (Log 389: bulk samples; 2026-11-08: SCORPION takes single
+    cells). Which entry takes which is each entry's `data_units`."""
+    return frozenset().union(*(item.data_units for item in sheet_entries().values() if item.kind == "produces"))
+
+
+def takes_unit(item: SheetEntry, unit: str | None) -> bool:
+    """The entry's workflow takes data of this unit; an unstated unit is bulk samples (judgment default)."""
+    return (unit if unit and unit != "not_stated" else "bulk_samples") in item.data_units
 
 
 RESULT_FORMS = {
@@ -210,9 +226,16 @@ def entry(key: str) -> SheetEntry:
     return sheet_entries()[key]
 
 
-def produces_ids() -> tuple[str, ...]:
-    return tuple(key for key, item in sheet_entries().items() if item.kind == "produces")
+def in_view(item: SheetEntry, single_cell: bool) -> bool:
+    """2026-11-08: the entries a request is checked against. A request about bulk samples (or not saying) never sees
+    the single-cell workflow's entries, so its check prompt and schema stay as they were; a single-cell request sees
+    every entry, and `capability_check._fitting` keeps only the ones that take single cells."""
+    return single_cell or ("bulk_samples" in item.data_units and item.action != "run_scorpion")
 
 
-def not_produced_ids() -> tuple[str, ...]:
-    return tuple(key for key, item in sheet_entries().items() if item.kind != "produces")
+def produces_ids(single_cell: bool = False) -> tuple[str, ...]:
+    return tuple(key for key, item in sheet_entries().items() if item.kind == "produces" and in_view(item, single_cell))
+
+
+def not_produced_ids(single_cell: bool = False) -> tuple[str, ...]:
+    return tuple(key for key, item in sheet_entries().items() if item.kind != "produces" and in_view(item, single_cell))

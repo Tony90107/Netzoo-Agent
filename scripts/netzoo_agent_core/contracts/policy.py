@@ -142,16 +142,18 @@ class WorkflowPolicySpec(BaseModel):
         "run_giraffe",
         "run_bonobo",
         "run_porcupine",
+        "run_scorpion",
     ]
     description: str = Field(min_length=1, max_length=500)
     required_inputs: list[str] = Field(max_length=12)
     required_input_groups: list[list[str]] = Field(default_factory=list, max_length=8)
-    optional_inputs: list[str] = Field(default_factory=list, max_length=12)
+    optional_inputs: list[str] = Field(default_factory=list, max_length=20)
     output_files: list[str] = Field(default_factory=list, max_length=20)
     validation_steps: list[Literal[
         "inspect_inputs", "inspect_condor_inputs", "inspect_cobra_inputs",
         "inspect_sambar_inputs", "inspect_dragon_inputs", "inspect_otter_inputs",
         "inspect_giraffe_inputs", "inspect_bonobo_inputs", "inspect_porcupine_inputs",
+        "inspect_scorpion_inputs",
     ]] = Field(
         default_factory=list, max_length=4
     )
@@ -159,7 +161,7 @@ class WorkflowPolicySpec(BaseModel):
         "run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma",
         "run_lioness_coexpression", "run_condor", "run_cobra", "run_sambar",
         "run_dragon", "run_lioness_dragon", "run_otter", "run_giraffe", "run_bonobo",
-        "run_porcupine",
+        "run_porcupine", "run_scorpion",
     ]
     controls: list[WorkflowControlSpec] = Field(default_factory=list, max_length=32)
     execution_step: Literal[
@@ -174,7 +176,7 @@ class WorkflowPolicySpec(BaseModel):
         "run_dragon",
         "run_lioness_dragon",
         "run_otter",
-        "run_giraffe", "run_bonobo", "run_porcupine",
+        "run_giraffe", "run_bonobo", "run_porcupine", "run_scorpion",
     ]
     output_capability: WorkflowOutputCapabilitySpec
     conventions: list[str] = Field(default_factory=list, max_length=20)
