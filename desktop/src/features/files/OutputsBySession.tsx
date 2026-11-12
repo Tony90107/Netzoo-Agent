@@ -14,6 +14,7 @@ import { DaemonConfig } from "../../transport/daemon";
 import { OutputsIndex, SessionOutputFile, SessionOutputs, formatBytes, listSessionOutputs } from "../../transport/files";
 import { clockLabel, fullTime, relativeTime } from "../timeline/time";
 import { useTimeZone } from "../timeline/timeZone";
+import { AutoTagChips, UserTagChips, allTags } from "./OutputTags";
 
 function label(entry: SessionOutputs): string {
   return entry.name || entry.title || `Session ${entry.session_id}`;
@@ -56,6 +57,7 @@ export function OutputsBySession({
   const [index, setIndex] = useState<OutputsIndex | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string> | null>(null);
+  const [tagFilter, setTagFilter] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -80,8 +82,50 @@ export function OutputsBySession({
 
   if (error) return <div className="fv__error" role="alert">{error}</div>;
   if (!index) return <div className="pane__empty" role="status">Reading outputs…</div>;
+  const counts = new Map<string, { count: number; auto: boolean }>();
+  for (const entry of index.sessions) for (const file of entry.files) {
+    for (const tag of file.tags?.auto ?? []) counts.set(tag, { count: (counts.get(tag)?.count ?? 0) + 1, auto: true });
+    for (const tag of file.tags?.user ?? []) counts.set(tag, { count: (counts.get(tag)?.count ?? 0) + 1, auto: counts.get(tag)?.auto ?? false });
+  }
+  const options = [...counts].sort(([a, x], [b, y]) => Number(y.auto) - Number(x.auto) || a.localeCompare(b));
+  const matches = tagFilter ? index.sessions.flatMap((entry) => entry.files
+    .filter((file) => allTags(file.tags).some((tag) => tag.toLowerCase() === tagFilter.toLowerCase()))
+    .map((file) => ({ entry, file }))) : [];
+  const chips = (file: SessionOutputFile) => file.tags && (file.tags.auto.length || file.tags.user.length)
+    ? <span className="ob__tags"><AutoTagChips tags={file.tags.auto} /><UserTagChips tags={file.tags.user} /></span> : null;
   return (
     <div className="ob">
+      {options.length ? (
+        <div className="ob__filter">
+          <label>Filter by tag
+            <select aria-label="Filter outputs by tag" value={tagFilter} onChange={(event) => setTagFilter(event.target.value)}>
+              <option value="">All outputs</option>
+              <optgroup label="Set by NetZoo">{options.filter(([, item]) => item.auto).map(([tag, item]) => <option key={tag} value={tag}>{tag} ({item.count})</option>)}</optgroup>
+              {options.some(([, item]) => !item.auto) ? <optgroup label="Your tags">{options.filter(([, item]) => !item.auto).map(([tag, item]) => <option key={tag} value={tag}>{tag} ({item.count})</option>)}</optgroup> : null}
+            </select>
+          </label>
+          {tagFilter ? <button type="button" className="btn btn--quiet btn--small" onClick={() => setTagFilter("")}>Clear</button> : null}
+        </div>
+      ) : null}
+      {tagFilter ? (
+        <ul className="fl ob__list" aria-label={`Outputs tagged ${tagFilter}`}>
+          {matches.length === 0 ? <li className="fl__empty">No output has this tag.</li> : null}
+          {matches.map(({ entry, file }) => (
+            <li key={file.path} className="ob__item">
+              <button type="button" className="fl__row ob__row" title={file.path} onClick={() => onOpenFile(file.path)}>
+                <span className="fl__icon">·</span>
+                <span className="ob__main">
+                  <span className="ob__label">{file.name}</span>
+                  <span className="ob__sub">{label(entry)}</span>
+                  {chips(file)}
+                </span>
+                <span className="ob__meta">{relativeTime(file.modified_at)}</span>
+                <span className="fl__size">{formatBytes(file.size_bytes)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : <>
       {index.sessions.length === 0 ? (
         <div className="fl__empty">
           No session has written results yet. Each session's results appear here as one entry, the newest first.
@@ -113,6 +157,7 @@ export function OutputsBySession({
                 <span className="ob__main">
                   <span className="ob__label">{label(entry)}</span>
                   <span className="ob__sub">{single ? single.name : `${entry.files.length} files`}</span>
+                  {single ? chips(single) : null}
                 </span>
                 <span className="ob__meta">{[entry.workflow, when].filter(Boolean).join(" · ")}</span>
                 <span className="fl__size">{formatBytes(single ? single.size_bytes : size)}</span>
@@ -138,6 +183,7 @@ export function OutputsBySession({
                         <span className="fl__icon">·</span>
                         <span className="fl__name">{name(file)}</span>
                         {file.result ? <span className="ob__badge">result</span> : null}
+                        {chips(file)}
                         <span className="fl__size">{formatBytes(file.size_bytes)}</span>
                       </button>
                     </li>
@@ -155,6 +201,7 @@ export function OutputsBySession({
           );
         })}
       </ul>
+      </>}
       {index.other_files > 0 ? (
         <div className="ob__other">
           {index.other_files.toLocaleString()} other file{index.other_files === 1 ? " was" : "s were"} not written by a saved session.

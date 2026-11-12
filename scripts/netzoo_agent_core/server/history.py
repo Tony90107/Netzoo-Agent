@@ -18,6 +18,7 @@ from pathlib import Path
 
 from .. import settings as runtime_settings
 from ..session_meta import card_for, load_meta, normalize_tags, readable_request, set_details, set_tags
+from ..output_tags import tags_for
 from ..session_outputs import SESSION_OUTPUT_ROOT
 from ..settings import SESSION_ROOT
 from . import files as output_files
@@ -405,6 +406,10 @@ def outputs_by_session(limit: int = 500) -> dict:
             ],
         })
     entries.sort(key=lambda entry: (entry["added_at"], entry["session_id"]), reverse=True)
+    tagged = tags_for([file["path"] for entry in entries for file in entry["files"]])
+    for entry in entries:
+        for file in entry["files"]:
+            file["tags"] = tagged.get(file["path"], {"auto": [], "user": []})
     others = [item for item in output_files.files_under(output_files.FILE_ROOT, limit=2000, skip=("sessions",))
               if item.path not in taken]
     return {"sessions": entries, "other_files": len(others)}

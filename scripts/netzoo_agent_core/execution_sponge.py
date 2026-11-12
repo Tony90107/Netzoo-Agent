@@ -85,7 +85,8 @@ def validate_sponge_output(output_dir: str) -> tuple[list[str], list[str], dict[
         metrics.update({f"sponge_{key}": value for key, value in summary.items()
                         if key in ("motif_edges", "motif_tfs", "target_genes", "ppi_edges")})
         if missing := summary.get("requested_tfs_without_motif_edges"):
-            metrics["sponge_requested_tfs_without_motif_edges"] = missing
+            # A metric is a number or a string: the list failed ArtifactValidationResult (2026-11-10, MAX).
+            metrics["sponge_requested_tfs_without_motif_edges"] = ", ".join(missing)
     except (OSError, ValueError) as error:
         errors.append(f"SPONGE manifest.json could not be read: {error}")
     return errors, artifacts, metrics

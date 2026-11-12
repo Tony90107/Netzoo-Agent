@@ -10,6 +10,7 @@ import { clockLabel, fullTime, durationLabel } from "./time";
 
 import { useTimeZone } from "./timeZone";
 import { RunResults } from "./RunResults";
+import { RunDescriptionView } from "./RunDescription";
 
 const SYSTEM_NODES = new Set(["apply_project_policy", "retrieve_memory", "consolidate_memory"]);
 
@@ -67,9 +68,9 @@ type TimelineItem =
   | { kind: "run"; at: number; run: ActivityRun; index: number }
   | { kind: "user"; at: number; entry: Extract<Entry, { kind: "user" }> };
 
-export function Timeline({ trace, entries, sessionId, busy, incomplete, onOpenOutput, onExpand, initialTab = "timeline" }: { trace: TraceEvent[]; entries: Entry[]; sessionId: string; busy: boolean; incomplete: boolean; onOpenOutput?: (path: string) => void; onExpand?: () => void; initialTab?: "timeline" | "log" | "results" }) {
+export function Timeline({ trace, entries, sessionId, busy, incomplete, onOpenOutput, onExpand, initialTab = "timeline" }: { trace: TraceEvent[]; entries: Entry[]; sessionId: string; busy: boolean; incomplete: boolean; onOpenOutput?: (path: string) => void; onExpand?: () => void; initialTab?: "timeline" | "log" | "results" | "description" }) {
   const { zone } = useTimeZone();
-  const [tab, setTab] = useState<"timeline" | "log" | "results">(initialTab);
+  const [tab, setTab] = useState<"timeline" | "log" | "results" | "description">(initialTab);
   const log = useMemo(() => buildLog(trace, entries), [trace, entries]);
   const runs = useMemo(() => buildRuns(trace), [trace]);
   const userEntries = entries.filter(
@@ -102,6 +103,7 @@ export function Timeline({ trace, entries, sessionId, busy, incomplete, onOpenOu
             Timeline
           </button>
           <button type="button" aria-pressed={tab === "results"} onClick={() => setTab("results")}>Results</button>
+          <button type="button" aria-pressed={tab === "description"} onClick={() => setTab("description")}>Description</button>
           <button
             type="button"
             aria-pressed={tab === "log"}
@@ -112,7 +114,7 @@ export function Timeline({ trace, entries, sessionId, busy, incomplete, onOpenOu
         </div>
       </header>
       {incomplete ? <p className="tl__incomplete" role="status">Activity is incomplete: some events are missing, still loading, or the run has no sealed end record. Exports contain only the available snapshot.</p> : null}
-      {tab === "results" ? <RunResults trace={trace} onOpenOutput={onOpenOutput} /> : tab === "log" ? (
+      {tab === "results" ? <RunResults trace={trace} onOpenOutput={onOpenOutput} /> : tab === "description" ? <RunDescriptionView trace={trace} entries={entries} onOpenOutput={onOpenOutput} /> : tab === "log" ? (
         <RunLog rows={log} sessionId={sessionId} incomplete={incomplete} />
       ) : items.length === 0 ? (
         <div className="pane__empty">The agent's steps appear here while it works.</div>

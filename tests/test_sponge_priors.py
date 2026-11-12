@@ -89,7 +89,8 @@ def test_the_output_check_reads_both_priors_and_the_manifest(tmp_path):
                                             '"requested_tfs_without_motif_edges": ["NOTATF"]}}')
     errors, artifacts, metrics = validate_sponge_output(str(tmp_path))
     assert errors == [] and len(artifacts) == 3
-    assert metrics["sponge_motif_edges"] == 2 and metrics["sponge_requested_tfs_without_motif_edges"] == ["NOTATF"]
+    # A string: a list failed the artifact-result schema once a requested TF had no edges (2026-11-10, MAX).
+    assert metrics["sponge_motif_edges"] == 2 and metrics["sponge_requested_tfs_without_motif_edges"] == "NOTATF"
 
 
 def test_once_built_the_next_workflow_is_offered_with_both_priors(tmp_path):

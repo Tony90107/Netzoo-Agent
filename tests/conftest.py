@@ -11,6 +11,8 @@ def isolated_gene_authority(tmp_path_factory, monkeypatch):
     or overrides these variables itself.
     """
     monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    # Output tags written by a test run go to its own store, never the project's.
+    monkeypatch.setenv("NETZOO_OUTPUT_TAGS_PATH", str(tmp_path_factory.mktemp("output-tags") / "output_tags.json"))
     monkeypatch.setenv(
         "NETZOO_GENE_CACHE_PATH",
         str(tmp_path_factory.mktemp("gene-cache") / "gene_validation.sqlite3"),

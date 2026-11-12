@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 __all__ = [
     "CHAINABLE_ACTIONS", "NEED_METHODS", "build_normalization_decision", "chained_action", "decision_from_needs",
     "method_named", "methods_for_needs", "named_methods", "needs_normalization_reading", "normalization_decision",
-    "normalization_requested", "verified_needs", "METHOD_OPTION_LINES", "method_choice_evidence",
+    "named_normalization_decision", "normalization_requested", "verified_needs", "METHOD_OPTION_LINES", "method_choice_evidence",
     "normalize_first_request", "with_raw_count_note",
 ]
 
@@ -260,6 +260,16 @@ def normalization_decision(task: str, interpretation: SemanticInterpretation | N
         source = "answered" if re.search(r"\bPREVIOUS_ACTION=normalize_expression\b", task) else "named"
         return build_normalization_decision(task, method, NormalizationChoice(source=source, candidates=[method]))
     return build_normalization_decision(task, "snail", NormalizationChoice(source="default"))
+
+
+def named_normalization_decision(task: str) -> TaskDecision | None:
+    """A commanded normalization whose method the request names, read from its words alone (2026-11-10).
+
+    Like SPONGE, it is decided before the semantic interpreter: a named method needs no reading, and an interpreter
+    whose output fails validation dropped "Normalize counts.tsv with SNAIL, using the tissue groups in groups.tsv"
+    to "no registered workflow" (live 2026-11-09, 1 of 2). A request naming no method still goes to the need reader.
+    """
+    return normalization_decision(task) if method_named(task) else None
 
 
 # One line per method for the choice: what you get · how it differs · when to use it.

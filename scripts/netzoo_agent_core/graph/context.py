@@ -74,6 +74,9 @@ def record_core_view(context: _GraphContext, state: AgentState, result: dict) ->
             "reply_kind": kind, "core_kind": core.get("kind"), "basis": core.get("basis"),
             # Phase 3: the convergence check -- a renderer that is not one of its call's.
             "mismatch": bool(core.get("kind")) and kind not in ALLOWED.get(core.get("kind"), frozenset())})
+        from ..operation_summary import record_operation_summary  # the desktop Description view's account
+        record_operation_summary(lambda kind, payload: record_event(context, state, kind, "respond", payload),
+                                 state, result, getattr(context, "project_policy", None))
     return result
 
 

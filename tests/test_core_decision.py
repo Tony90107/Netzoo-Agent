@@ -279,11 +279,13 @@ def test_the_view_record_marks_a_reply_that_is_not_its_calls():
     from netzoo_agent_core.graph.context import record_core_view
 
     events = []
-    context = SimpleNamespace(recorder=SimpleNamespace(append=lambda run, kind, node, payload: events.append(payload)))
+    context = SimpleNamespace(recorder=SimpleNamespace(append=lambda run, kind, node, payload: events.append((kind, payload))))
     state = {"decision": {"core": {"kind": "DO", "basis": "routed"}}}
     record_core_view(context, state, {"reply_kind": "capability_check_gap"})
     record_core_view(context, state, {"reply_kind": "verified_guidance"})
-    assert [event["mismatch"] for event in events] == [True, False]
+    assert [payload["mismatch"] for kind, payload in events if kind == "core.view"] == [True, False]
+    # Each reply is also described in plain English for the desktop Description view.
+    assert [kind for kind, _ in events].count("operation.summary") == 2
 
 
 def test_the_run_gates_read_the_call():

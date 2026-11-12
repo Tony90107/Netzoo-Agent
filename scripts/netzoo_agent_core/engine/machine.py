@@ -532,11 +532,13 @@ class ConversationMachine:
                 )]
             state.reply_card = None
             return self._accept_task(task)
+        if str(option.get("key", "")).startswith("answer-"):  # binds what it shows, as typed (2026-11-09 e6: "no")
+            self._ensure_run()  # the binding is traced on the run the answer continues
+            reply_answers(state, self.runtime.recorder, option["answer"], "follow_up")
         task = follow_up_task(state.follow_up_context, option["answer"])
         if resolution == "compare_workflows":
-            # The answer text is what the transcript shows; which workflows are
-            # compared travels as typed state (Log 302). An invalid list is an
-            # ordinary follow-up, as before.
+            # The answer text is what the transcript shows; which workflows are compared travels as typed
+            # state (Log 302). An invalid list is an ordinary follow-up, as before.
             try:
                 state.pending_comparison = MethodComparison(
                     actions=list(option.get("compare_actions") or []),
@@ -584,16 +586,15 @@ class ConversationMachine:
             return self._resolve_follow_up(answer)
         return self._accept_task(answer)
 
+    def _ensure_run(self) -> None:
+        state, runtime = self.state, self.runtime
+        if state.run_id is None:
+            state.run_id = str(runtime.recorder.start_run(session_id=state.session_id, profile_id=runtime.memory.profile_id))
+            runtime.ensure_trace_sync(state.run_id)
+
     def _resolve_follow_up(self, answer: str) -> list[Event]:
         state = self.state
-        if state.run_id is None:
-            state.run_id = str(
-                self.runtime.recorder.start_run(
-                    session_id=state.session_id,
-                    profile_id=self.runtime.memory.profile_id,
-                )
-            )
-            self.runtime.ensure_trace_sync(state.run_id)
+        self._ensure_run()
         reply_result = self.runtime.reply_resolver.resolve(
             state.follow_up_context,
             answer,

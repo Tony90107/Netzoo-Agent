@@ -35,28 +35,40 @@ export function TagChips({ tags, onPick }: { tags: string[]; onPick?: (tag: stri
   );
 }
 
+/** What a tag editor saves to, and how it describes itself; a session's tags by default. */
+export type TagTarget = {
+  key: string;
+  save: (tags: string[]) => Promise<string[]>;
+  label: string;
+  placeholder: string;
+  help: string;
+};
+
 export function TagEditor({
   config,
   sessionId,
   tags,
   onSaved,
+  target,
 }: {
   config: DaemonConfig;
   sessionId: string;
   tags: string[];
   onSaved?: (tags: string[]) => void;
+  /** Save somewhere other than the session (an output file's own tags). */
+  target?: TagTarget;
 }) {
   const [current, setCurrent] = useState(tags ?? []);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { setCurrent(tags ?? []); }, [sessionId, (tags ?? []).join("\u0000")]);
+  useEffect(() => { setCurrent(tags ?? []); }, [target?.key ?? sessionId, (tags ?? []).join("\u0000")]);
 
   const save = async (next: string[]) => {
     setSaving(true); setError(null);
     try {
-      const saved = (await saveTags(config, sessionId, next)).tags;
+      const saved = target ? await target.save(next) : (await saveTags(config, sessionId, next)).tags;
       setCurrent(saved);
       onSaved?.(saved);
     } catch (problem) {
@@ -95,9 +107,9 @@ export function TagEditor({
         className="tagedit__input"
         value={draft}
         maxLength={48}
-        placeholder={current.length ? "Add tag" : "Add a tag, e.g. pilot or dataset:batch-2"}
-        aria-label="Add a tag to this session"
-        title={"Your own labels for finding and comparing sessions: a label such as pilot, or a field such as "
+        placeholder={current.length ? "Add tag" : target?.placeholder ?? "Add a tag, e.g. pilot or dataset:batch-2"}
+        aria-label={target?.label ?? "Add a tag to this session"}
+        title={target?.help ?? "Your own labels for finding and comparing sessions: a label such as pilot, or a field such as "
           + "dataset:batch-2 or hypothesis:dna-damage. A field holds one value per session, and Compare lines "
           + "fields up side by side. Filter by tags in Sessions; tagged sessions are kept from routine cleanup. "
           + "The agent never reads them."}

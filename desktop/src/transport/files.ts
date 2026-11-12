@@ -143,6 +143,14 @@ export function saveTags(config: DaemonConfig, sessionId: string, tags: string[]
   return post(config, `/v1/history/${encodeURIComponent(sessionId)}/tags`, { tags });
 }
 
+export function readOutputTags(config: DaemonConfig, path: string, signal?: AbortSignal): Promise<OutputTags & { path: string }> {
+  return get(config, `/v1/outputs/tags?path=${encodeURIComponent(path)}`, signal);
+}
+/** Replace a file's user tags; the daemon refuses a reserved key (method:, result:, scale:, mode:) with the reason. */
+export function saveOutputTags(config: DaemonConfig, path: string, tags: string[]): Promise<OutputTags & { path: string }> {
+  return post(config, "/v1/outputs/tags", { path, tags });
+}
+
 export type SessionDetails = {
   session_id: string; name: string; notes: string; tags: string[]; models: Record<string, string>;
 };
@@ -164,7 +172,10 @@ export type SessionOutputFile = {
   name: string; path: string; size_bytes: number; modified_at: number; result: boolean;
   /** "report" is a run's execution record, "manifest" its manifest; absent from an older daemon. */
   role?: "result" | "report" | "manifest" | "file";
+  /** Auto tags come from the run that wrote the file; user tags are a person's own. Absent from an older daemon. */
+  tags?: OutputTags;
 };
+export type OutputTags = { auto: string[]; user: string[] };
 /** One session's files: its folder under outputs/sessions/ and what its runs recorded. */
 export type SessionOutputs = {
   session_id: string; name: string; title: string; workflow: string; status: string;

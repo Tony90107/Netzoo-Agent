@@ -501,6 +501,12 @@ def validate_output_artifacts(
             artifacts.extend(sponge_artifacts)
             errors.extend(sponge_errors)
             metrics.update(sponge_metrics)
+            if missing := sponge_metrics.get("sponge_requested_tfs_without_motif_edges"):
+                # 2026-11-10 (MAX, MA0058.4): a TF with no binding site at the score threshold gets no edges and no
+                # PPI row; the run goes on, and the user is told rather than finding it missing from the files.
+                warnings.append("No motif edges (and so no PPI rows) for: " + missing + " -- SPONGE "
+                                "found no JASPAR motif for it, or none of its binding sites at or above "
+                                "motif_score_threshold fell in a promoter window.")
     elif action == "run_scorpion":
         if not decision.output_dir:
             errors.append("SCORPION output_dir is missing")

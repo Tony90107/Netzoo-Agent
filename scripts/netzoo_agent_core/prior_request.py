@@ -25,6 +25,7 @@ from workflow_registry import ACTION_DEFINITIONS
 from .contracts import RequestedOutcome, TaskDecision
 from .method_names import LIONESS_FAMILY, registered_workflows
 from .routing.capability import has_explicit_advice_intent, is_workflow_information_request
+from .routing.path_tokens import output_directory
 
 if TYPE_CHECKING:
     from .contracts.outcomes import SemanticInterpretation
@@ -150,9 +151,8 @@ def _window(task: str) -> tuple[int | None, int | None]:
 
 
 def _output_dir(task: str) -> str | None:
-    found = re.search(r"\b(?:write|save|store|output|put)\b[^/~.]{0,40}?\b(?:to|in|into|at|under)\s+((?:/|\./|~|data/|outputs?/)\S+)",
-                      task, re.I) or re.search(r"\boutput_dir\s*=\s*(\S+)", task, re.I)
-    return found.group(1).rstrip(".,;:)") if found else None
+    found = re.search(r"\boutput_dir\s*=\s*(\S+)", task, re.I)
+    return found.group(1).rstrip(".,;:)") if found else output_directory(task)  # any folder, not only /, data/ (2026-11-10)
 
 
 def prior_decision(task: str, interpretation: SemanticInterpretation | None = None) -> TaskDecision | None:

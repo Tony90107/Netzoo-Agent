@@ -266,6 +266,9 @@ def render_compact_execution_response(
 
     if plan.workflow == "SPONGE-PRIORS":  # 2026-11-08: SPONGE takes no input file; its settings and the download
         lines.extend(["", "Settings", *sponge_plan_lines(plan.decision or {})])
+    if plan.workflow == "SCORPION":  # 2026-11-10: the networks it builds, said, since they may be read from words
+        from ..data.scorpion_grouping import scorpion_plan_lines
+        lines.extend(["", "Networks", *scorpion_plan_lines(plan.decision or {})])
 
     inspection = next(
         (item for item in results if item.action.startswith("inspect_")), None

@@ -74,9 +74,8 @@ from .hypothesis_bases import (
 from .input_inspection import invoke_input_inspection
 from ..routing.reading_selection import drop_input_only_readings, drop_unwitnessed_readings, matchable_readings
 from ..routing.scale_relaxation import drop_unnamed_scale, note_unstated_scale, relax_unstated_scale
-from ..string_download import continued_string_download_decision, string_download_decision
-from ..prior_request import prior_decision
-from .normalization_need_call import normalization_route
+from ..string_download import string_download_decision
+from .normalization_need_call import early_preparation, normalization_route
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
 # Re-exported for callers and tests that imported them from here before the
@@ -714,10 +713,9 @@ def _route_request(
         return compared
     if state.get("workflow_continuation") is not None:
         return continue_workflow(context, state, user_task, usage)
-    if continued := continued_string_download_decision(user_task) or prior_decision(user_task):
-        return _RouterInvocation(decision=continued, routing_state=outcome_routing_state(continued), usage=usage,
-                                 budget_warnings=[], reason_code="sponge_priors" if continued.action == "build_priors"
-                                 else "string_download_continuation")
+    if early := early_preparation(user_task):  # read from the words, before the interpreter (normalization_need_call)
+        return _RouterInvocation(decision=early[0], routing_state=outcome_routing_state(early[0]), usage=usage,
+                                 budget_warnings=[], reason_code=early[1])
     # A question explicitly contrasting biological hypotheses is a comparison
     # first. Do not spend the outcome-repair budget collapsing it to one result.
     if explicit_research_choice(user_task):
@@ -945,8 +943,8 @@ def _route_request(
                      "reason_code": "named_run_unmatched", "match_status": named.capability_match_status})
     if direct_retrieval_action in {"web_search", "query_context7"}:
         decision = decision.model_copy(update={"intent_type": "answer_question"})
-    if capability_match.match_basis == UNVERIFIED_BASIS:
-        # The second half of the bound. A reading whose quotes were not found is
+    if capability_match.match_basis == UNVERIFIED_BASIS and decision.match_basis != "workflow_name":
+        # The second half of the bound (a run the user named in words is not the reading's: c6, 2026-11-10). A reading whose quotes were not found is
         # something to show the user, never something to act on, whatever the
         # intent router concluded about the request's mood.
         decision = decision.model_copy(update={

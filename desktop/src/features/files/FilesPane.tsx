@@ -22,6 +22,7 @@ import {
 } from "../../transport/files";
 import { TagChips } from "../sessions/TagEditor";
 import { OutputsBySession } from "./OutputsBySession";
+import { OutputTagEditor } from "./OutputTags";
 import { ReportDialog } from "./ReportDialog";
 import { ReportView } from "./ReportView";
 
@@ -277,6 +278,7 @@ export function FilesPane({ config, initialPath, onOpenSession, refreshToken }: 
             </div>
             <div className="fv__path" title={preview.host_path}>{preview.host_path}</div>
             <Provenance config={config} path={preview.path} onOpenSession={onOpenSession} />
+            {preview.path.startsWith("outputs/") ? <OutputTagEditor key={preview.path} config={config} path={preview.path} /> : null}
             <PreviewBody preview={preview} readable={readable} onOpenFile={(path) => void open(path)} />
           </div>
         ) : mode === "sessions" ? (

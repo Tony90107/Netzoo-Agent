@@ -116,13 +116,17 @@ def _scan_text(path: Path, matrix: CellMatrix) -> None:
         matrix.errors.append("cell_expression_file cell IDs (column names) must be unique")
     genes: list[str] = []
     whole, finite, negative = True, True, False
+    text_values = values_seen = 0
     try:
         names = [f"c{index}" for index in range(len(columns))]
         reader = pd.read_csv(path, sep=separator, header=0, names=names, chunksize=SCAN_CHUNK_ROWS,
                              dtype={names[0]: str}, engine="c" if separator != r"\s+" else "python")
         for chunk in reader:
             genes.extend(chunk.iloc[:, 0].astype(str).str.strip().str.strip('"'))
-            values = chunk.iloc[:, 1:].apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
+            raw = chunk.iloc[:, 1:]
+            values = raw.apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
+            text_values += int((pd.isna(values) & raw.notna().to_numpy()).sum())
+            values_seen += int(values.size)
             finite = finite and bool(pd.notna(values).all()) and bool((abs(values) != float("inf")).all())
             if finite and values.size:
                 negative = negative or bool((values < 0).any())
@@ -130,7 +134,12 @@ def _scan_text(path: Path, matrix: CellMatrix) -> None:
     except (ValueError, OSError, pd.errors.ParserError, EOFError) as error:
         matrix.errors.append(f"cell_expression_file could not be parsed as a delimited table: {error}")
         return
-    if not finite:
+    if not finite and values_seen and text_values * 2 > values_seen:
+        # Mostly words, not numbers: the file is a table of cell annotations (2026-11-10: a request's cell metadata
+        # was bound as the matrix, and "values must be finite" did not say why).
+        matrix.errors.append(f"cell_expression_file {path.name} holds mostly text, not counts: it looks like a cell "
+                             "metadata or annotation table; give the genes x cells matrix or 10x directory instead")
+    elif not finite:
         matrix.errors.append("cell_expression_file values must all be finite numbers")
     if negative:
         matrix.errors.append("cell_expression_file values must be non-negative (counts or normalized expression)")

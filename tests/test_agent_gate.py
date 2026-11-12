@@ -1031,10 +1031,12 @@ class CapabilityGateTests(unittest.TestCase):
 
         replanned = agent.build_workflow_plan(repaired, continuation)
 
-        self.assertEqual(replanned.status, "needs_confirmation")
+        # 2026-11-10: the motif the user gave stays the user's (it was re-found in the folder as "discovered" and asked
+        # to be confirmed again; PORCUPINE's files, not found again, were asked for again).
+        self.assertEqual(replanned.status, "ready")
         statuses = {item.field: item.status for item in replanned.evidence}
         self.assertEqual(statuses["expression_file"], "selected")
-        self.assertEqual(statuses["motif_file"], "discovered")
+        self.assertEqual(statuses["motif_file"], "provided")
         self.assertEqual(statuses["ppi_file"], "selected")
 
     def test_clarification_marker_preserves_previous_action_against_reroute(self):

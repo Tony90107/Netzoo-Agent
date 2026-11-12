@@ -63,6 +63,29 @@ def _errors(args) -> list[str]:
     return errors
 
 
+def _skip_empty_tracks() -> list[str]:
+    """Let a TF whose binding-site track has no site at the score threshold give no edges instead of ending the run.
+
+    SPONGE 2.2.2 `process_motif` concatenates one table per chromosome; a track with no site at or above the
+    threshold has no chromosome, and `pd.concat([])` raised "No objects to concatenate", so MYC, MAX and SOX2 all
+    failed because of MAX (MA0058.4, 2026-11-10). The TF is listed in the manifest with the reason instead.
+    """
+    import pandas as pd
+    from sponge.modules.utils import tfbs_filtering
+
+    original, skipped = tfbs_filtering.process_motif, []
+
+    def process_motif(motif_df, bed_df, n_processes=1):
+        if motif_df.empty:
+            skipped.append("track had no binding site at or above motif_score_threshold")
+            print("No binding site at or above the score threshold in this TF's track; it gets no motif edges.")
+            return pd.DataFrame({"score": pd.Series(dtype=float), "transcript": pd.Series(dtype=object)})
+        return original(motif_df, bed_df, n_processes)
+
+    tfbs_filtering.process_motif = process_motif
+    return skipped
+
+
 def _table(path: Path) -> list[list[str]]:
     with path.open("r", encoding="utf-8") as handle:
         return [line.rstrip("\n").split("\t") for line in handle if line.strip()]
@@ -76,6 +99,8 @@ def main() -> int:
     output_dir = Path(args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     from sponge.sponge import Sponge  # imported late so --help works without the package
+
+    without_sites = _skip_empty_tracks()
 
     config = {
         "default_workflow": True,
@@ -128,6 +153,8 @@ def main() -> int:
             "motif_edges": len(motif), "motif_tfs": len(motif_tfs), "target_genes": len({row[1] for row in motif}),
             "ppi_edges": len(ppi), "ppi_proteins": len({name for row in ppi for name in row[:2]}),
             "requested_tfs_without_motif_edges": sorted(set(tf_names) - set(motif_tfs)),
+            # Requested TFs above whose track had no site at the score threshold (the rest found none in a promoter).
+            "tracks_without_sites_at_threshold": len(without_sites),
         },
         "artifacts": [MOTIF, PPI, "sponge_provenance/fingerprint.yaml"],
         "orientation": {

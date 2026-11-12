@@ -42,8 +42,14 @@ __all__ = [
     "input_confirmation_continuation",
 ]
 
+_NOT_A_PATH = frozenset({"y", "yes", "n", "no", "ok", "okay"})
+
+
 def _candidate_selection(evidence: InputEvidence, value: str) -> str:
     cleaned = value.strip("'\".。")
+    if cleaned.casefold() in _NOT_A_PATH and evidence.field.endswith(("_file", "_dir", "_output")):
+        # "y" was taken as PORCUPINE's output folder (live 2026-11-09 a6): a yes or no never names a file.
+        raise ClarificationInputError(f"{evidence.field} needs a path or a candidate number, not {cleaned!r}.")
     if not cleaned.isdigit():
         return cleaned
     index = int(cleaned) - 1
@@ -121,10 +127,17 @@ def clarification_continuation(
     carried = [
         item
         for item in plan.evidence
-        if item.status == "discovered" and item.value and item.bundle_id
+        if item.status == "discovered" and item.value and item.field not in assignments
+    ]
+    # The files the user already gave stay given: a continuation is a new text, and without them "Run PORCUPINE on
+    # <network> with <gmt>" asked for both again once the output folder was answered (live 2026-11-09 b6).
+    kept = [
+        item
+        for item in plan.evidence
+        if item.status in {"provided", "selected"} and item.value and item.field not in assignments
     ]
     selected_fields = [
-        *[f"{item.field} is {item.value}" for item in carried],
+        *[f"{item.field} is {item.value}" for item in (*kept, *carried)],
         *[f"{field_name} is {value}" for field_name, value in assignments.items()],
     ]
     selected_markers = " ".join(

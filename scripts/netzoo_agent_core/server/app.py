@@ -64,6 +64,13 @@ class SessionRequest(BaseModel):
     name: str = Field(default="", max_length=200)
 
 
+class OutputTagsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    path: str = Field(min_length=1, max_length=1024)
+    tags: list[str] = Field(default_factory=list, max_length=24)
+
+
 class TagsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -349,6 +356,26 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
     @app.get("/v1/outputs/sessions")
     def outputs_by_session(_scope: None = Depends(require_token)) -> dict:
         return history.outputs_by_session()
+
+    @app.get("/v1/outputs/tags")
+    def output_tags(
+        path: str = Query(max_length=1024),
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        from ..output_tags import tags_for
+
+        return {"path": path, **tags_for([path]).get(path, {"auto": [], "user": []})}
+
+    @app.post("/v1/outputs/tags")
+    def save_output_tags(request: OutputTagsRequest, _scope: None = Depends(require_token)) -> dict:
+        from ..output_tags import set_user_tags
+
+        try:
+            return set_user_tags(request.path, request.tags)
+        except FileNotFoundError as error:
+            raise HTTPException(status_code=404, detail="no such output file") from error
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
 
     @app.get("/v1/outputs/provenance")
     def provenance(

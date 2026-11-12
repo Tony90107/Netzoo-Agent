@@ -10,7 +10,7 @@ from ..contracts import PROSE_PATH_TERMINATORS, PreferenceProposal, _ui_text
 from ..routing import CONTEXT7_LIBRARY_ALIASES, _extract_named_path, is_workflow_information_request
 from ..routing.discovery import _extract_explicit_role_path
 from ..routing.role_paths import _alias_pattern, _parenthesized_role_path
-from ..routing.path_tokens import without_path_tokens
+from ..routing.path_tokens import output_directory, tenx_directories, without_path_tokens
 
 __all__: list[str] = []
 
@@ -102,9 +102,10 @@ def _task_path(task: str, field_name: str) -> str | None:
             "輸出",
         ),
     }
-    aliases_by_field.update({"groups_file": ("groups_file", "groups file", "group file", "sample groups", "groups", "分組檔", "分組"), "gene_lengths_file": ("gene_lengths_file", "gene lengths", "gene-lengths file", "gene length file", "lengths", "基因長度"), "mutation_file": ("mutation_file", "mutation", "mutations", "somatic mutation", "突變矩陣"), "exon_size_file": ("exon_size_file", "exon size", "gene length", "esize", "外顯子長度"), "cancer_gene_file": ("cancer_gene_file", "cancer genes", "cancer-gene list", "cangenes", "癌症基因"), "pathway_file": ("pathway_file", "pathway", "GMT", "gene set", "路徑")})
+    aliases_by_field.update({"groups_file": ("groups_file", "groups file", "group file", "sample groups", "groups", "分組檔", "分組"), "gene_lengths_file": ("gene_lengths_file", "gene lengths", "gene-lengths file", "gene length file", "lengths", "基因長度"), "mutation_file": ("mutation_file", "mutation", "mutations", "somatic mutation", "突變矩陣"), "exon_size_file": ("exon_size_file", "exon size", "gene length", "esize", "外顯子長度"), "cancer_gene_file": ("cancer_gene_file", "cancer genes", "cancer-gene list", "cangenes", "癌症基因"), "pathway_file": ("pathway_file", "pathway", "GMT", "gene set", "路徑"), "cell_metadata_file": ("cell_metadata_file", "cell metadata", "cell annotations", "cell annotation", "細胞註解", "細胞資訊")})
     if explicit := _extract_explicit_role_path(task, field_name):
         return explicit
+    if field_name == "cell_expression_file" and len(tenx := tenx_directories(task)) == 1: return tenx[0]  # by content
     aliases = aliases_by_field.get(field_name, (field_name,))
     parenthesized = _parenthesized_role_path(task, aliases)
     if parenthesized and _looks_like_path(parenthesized):
@@ -113,11 +114,9 @@ def _task_path(task: str, field_name: str) -> str | None:
     if reversed_path:
         return reversed_path
     parsed = _extract_named_path(task, aliases)
-    if parsed and (
-        _looks_like_path(parsed) or _has_explicit_file_binding(task, aliases)
-    ):
-        return parsed
-    return None
+    if parsed and (_looks_like_path(parsed) or _has_explicit_file_binding(task, aliases)):  # a folder is no output file:
+        return None if field_name == "output_file" and parsed == output_directory(task) else parsed  # r7 2026-11-10
+    return output_directory(task) if field_name == "output_dir" else None
 
 
 def _mentions_unspecified_data_directory(task: str) -> bool:

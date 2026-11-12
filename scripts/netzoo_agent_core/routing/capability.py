@@ -123,6 +123,11 @@ EXPLICIT_EXECUTION_PATTERNS = (
     r"(?:^|[,.!?;\n])\s*(?:(?:please|can you|could you)\s+|"
     r"i\s+(?:want|need)\s+to\s+)?(?:directly\s+)?"
     r"(?:run|execute|perform|test|dry[- ]?run|inspect|validate|check)\b",
+    # Asking where to write the results asks for them now (2026-11-10: "Find which pathways vary ... Save the results
+    # to tmp/run" was read as a question, so PORCUPINE was only described). A location with a folder is required.
+    r"(?:^|[,.!?;\n])\s*(?:please\s+|and\s+)?(?:save|write|store|put|output)\s+(?:the\s+|all\s+|my\s+)?"
+    r"(?:results?|outputs?|networks?|them|it)\s+(?:to|in|into|under)\s+[\"'`]?[^\s\"'`]*[/\\]",
+    r"(?:結果|輸出)?\s*(?:存到|儲存到|存在|輸出到|寫到)\s*[^\s，,。]*[/\\]",
 )
 
 

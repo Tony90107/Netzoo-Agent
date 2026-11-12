@@ -61,3 +61,45 @@ def without_path_tokens(text: str, root: Path = PROJECT_ROOT) -> str:
         lambda found: " " if is_path_token(found.group(), root) else found.group(),
         text,
     )
+
+
+_TENX_MATRIX = ("matrix.mtx", "matrix.mtx.gz")
+
+
+def tenx_directories(text: str, root: Path = PROJECT_ROOT) -> list[str]:
+    """The path tokens in `text` that name a 10x Matrix Market directory (one holding matrix.mtx[.gz]).
+
+    Such a directory has no extension, so prose ("counts in data/run/counts_10x") binds it by what it holds, never
+    by its name (2026-11-10: unbound, the request's cell metadata table was read as the single-cell matrix).
+    """
+    found: list[str] = []
+    for chunk in _CHUNK.findall(text):
+        token = chunk.rstrip(".,;:!?")
+        if "/" not in token and "\\" not in token:
+            continue
+        try:
+            directory = Path(token).expanduser()
+            directory = directory if directory.is_absolute() else root / token
+            if directory.is_dir() and any((directory / name).is_file() for name in _TENX_MATRIX):
+                found.append(token)
+        except (OSError, ValueError):
+            continue
+    return list(dict.fromkeys(found))
+
+
+_OUTPUT_DIRECTORY = re.compile(
+    r"\b(?:write|save|store|output|put)\b[^/~.\n]{0,40}?\b(?:to|in|into|at|under)\s+(\S+)", re.IGNORECASE)
+
+
+def output_directory(text: str) -> str | None:
+    """The folder a request says to write to ("output to tmp/run", "save the results to /data/out/").
+
+    A path whose last part has an extension names a file, not a folder, and is left to the file roles. Before
+    2026-11-10 "output to <folder>" was not read: PORCUPINE asked for it again and SPONGE silently wrote elsewhere.
+    """
+    for found in _OUTPUT_DIRECTORY.finditer(text):
+        token = found.group(1).rstrip(".,;:!?)")
+        last = re.split(r"[\\/]", token.rstrip("/\\"))[-1]
+        if ("/" in token or "\\" in token or token.startswith(("~", "."))) and not _EXTENSION.search(last):
+            return token
+    return None

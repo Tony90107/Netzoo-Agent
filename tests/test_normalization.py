@@ -649,3 +649,31 @@ class NormalizedOutputNameTests(unittest.TestCase):
         self.assertEqual(decision.normalization_method, "snail")
         self.assertEqual(Path(_default_network_output(decision.normalization_method, "/data/raw/counts_int.tsv",
                                                       "outputs")).name, "counts_int-snail.tsv")
+
+
+def test_a_named_method_normalization_is_routed_before_the_semantic_reading(monkeypatch):
+    """Live 2026-11-09 a2: the interpreter's output failed validation and the SNAIL request read as 'no workflow'."""
+    from types import SimpleNamespace
+    import netzoo_agent_core.graph.router_invocation as router
+
+    def fail(*args, **kwargs):
+        raise AssertionError("the semantic interpreter must not be asked")
+    monkeypatch.setattr(router, "_invoke_semantic_interpreter", fail)
+    monkeypatch.setattr(router, "_current_usage", lambda context, state: None)
+    state = {"method_comparison": None, "workflow_continuation": None}
+    task = ("Normalize tmp/t/counts.tsv with SNAIL, using the tissue groups in tmp/t/groups.tsv, "
+            "and save it to tmp/t/snail.tsv")
+    result = router._route_request(SimpleNamespace(), state, task)
+    decision = result.decision
+    assert decision.action == "normalize_expression" and result.reason_code == "snail_normalization"
+    assert (decision.normalization_method, decision.expression_file, decision.groups_file, decision.output_file) == (
+        "snail", "tmp/t/counts.tsv", "tmp/t/groups.tsv", "tmp/t/snail.tsv")
+
+
+def test_unnamed_or_descriptive_mentions_are_not_routed_early():
+    from netzoo_agent_core.normalization_request import named_normalization_decision
+    for task in ("Please normalize my RNA-seq counts in /data/counts.tsv and write them to /data/out/n.tsv.",
+                 "Run PANDA on my SNAIL-normalized counts /data/n.tsv.",
+                 "What is TMM normalization?",
+                 "Normalize /data/counts.tsv with RLE and with TMM, output /data/out/x.tsv."):
+        assert named_normalization_decision(task) is None, task

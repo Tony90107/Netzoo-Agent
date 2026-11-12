@@ -74,6 +74,25 @@ def _diagnostic_messages(
     return messages
 
 
+_EXCEPTION_LINE = re.compile(r"^(?:[A-Za-z_][\w.]*\.)?([A-Za-z_]\w*(?:Error|Exception)): (.+)$")
+
+
+def crash_reason(raw_output: str) -> str | None:
+    """The reason a command died: the exception of its first traceback (not one raised while cleaning up), else its
+    last stderr line. Before 2026-11-10 a SPONGE crash ("No objects to concatenate") or an Ensembl 504 showed only
+    "The tool or its validation failed"."""
+    lines = raw_output.splitlines()
+    for index, line in enumerate(lines):
+        if line.strip() == "Traceback (most recent call last):" and not (
+                index and lines[index - 1].startswith("Exception ignored")):
+            for later in lines[index + 1:]:
+                if found := _EXCEPTION_LINE.match(later):
+                    return f"{found.group(1)}: {found.group(2).strip()[:400]}"
+    _, marker, stderr = raw_output.rpartition("\nSTDERR:\n")
+    tail = [line.strip() for line in stderr.splitlines() if line.strip()] if marker else []
+    return tail[-1][:400] if tail else None
+
+
 def structure_tool_result(
     action: str,
     decision: TaskDecision,
@@ -138,7 +157,7 @@ def structure_tool_result(
         "failed": "The tool or its validation failed.",
     }[status]
     if failed and not error_lines:
-        error_lines = [summary]
+        error_lines = [reason] if (reason := crash_reason(raw_output)) else [summary]
     log_file = None
     if persist_log:
         _ensure_private_directory(TOOL_LOG_ROOT)

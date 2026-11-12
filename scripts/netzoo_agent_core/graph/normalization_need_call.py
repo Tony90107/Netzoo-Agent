@@ -26,17 +26,31 @@ from ..interpretation.semantic_goal import outcome_routing_state
 from ..llm import append_llm_usage
 from ..normalization_request import (
     decision_from_needs,
+    named_normalization_decision,
     needs_normalization_reading,
     normalization_decision,
     verified_needs,
 )
 from ..settings import ROUTER_CONTEXT_MAX_CHARS
+from ..string_download import continued_string_download_decision
 from .capability_check_call import with_reading_allowance
 from .context import _GraphContext, preflight_budget, record_event
 from .invocation_types import RouterInvocation
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
-__all__ = ["invoke_need_reader", "normalization_route"]
+__all__ = ["early_preparation", "invoke_need_reader", "normalization_route"]
+
+
+def early_preparation(user_task: str):
+    """(decision, reason code) for a preparation step read from the request's words before the semantic interpreter:
+    a STRING download continuation, SPONGE priors, or a normalization whose method is named. None otherwise."""
+    if decision := continued_string_download_decision(user_task):
+        return decision, "string_download_continuation"
+    if decision := prior_decision(user_task):
+        return decision, "sponge_priors"
+    if decision := named_normalization_decision(user_task):
+        return decision, "snail_normalization"
+    return None
 
 NEED_READER_SYSTEM = """You read one request to a gene-regulatory-network toolkit.
 Say whether it asks, now, to normalize (rescale, make comparable) the values of an expression or count matrix,

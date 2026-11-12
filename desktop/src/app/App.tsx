@@ -12,6 +12,7 @@ import { SessionsPane } from "../features/sessions/SessionsPane";
 import { SettingsView } from "../features/sessions/SettingsView";
 import { TagEditor } from "../features/sessions/TagEditor";
 import { TranscriptView } from "../features/sessions/TranscriptView";
+import { RunDescriptionView } from "../features/timeline/RunDescription";
 import { Timeline } from "../features/timeline/Timeline";
 import {
   DaemonConfig,
@@ -108,11 +109,11 @@ export function App() {
   const [phase, setPhase] = useState<Phase>({ name: "idle" });
   const [outputPath, setOutputPath] = useState<string | undefined>();
   const [historyOutputPath, setHistoryOutputPath] = useState<string | null>(null);
-  const [outputReturn, setOutputReturn] = useState<"conversation" | "activity" | null>(null);
+  const [outputReturn, setOutputReturn] = useState<"conversation" | "activity" | "description" | null>(null);
   const [layout, setLayout] = useState<LayoutChoice>(savedLayout);
   const [startupEnvironment, setStartupEnvironment] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [centerTab, setCenterTab] = useState<"conversation" | "outputs" | "guide" | "environment" | "activity">("conversation");
+  const [centerTab, setCenterTab] = useState<"conversation" | "outputs" | "guide" | "environment" | "activity" | "description">("conversation");
   // An earlier session being read. Reading one never touches the live session.
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
   const [compareIds, setCompareIds] = useState<string[] | null>(null);
@@ -220,7 +221,7 @@ export function App() {
     if (sessionId === session.sessionId) { setViewingSessionId(null); setCenterTab("conversation"); return; }
     setCenterTab("conversation"); setViewingSessionId(sessionId);
   };
-  const openLiveOutput = (path: string, from: "conversation" | "activity") => {
+  const openLiveOutput = (path: string, from: "conversation" | "activity" | "description") => {
     setViewingSessionId(null); setShowSettings(false); setHistoryOutputPath(null);
     setOutputPath(path); setOutputReturn(from); setCenterTab("outputs");
   };
@@ -307,7 +308,7 @@ export function App() {
           <button className="btn btn--quiet btn--small" type="button" onClick={() => {
             if (historyOutputPath) setHistoryOutputPath(null);
             else { setCenterTab(outputReturn!); setOutputReturn(null); }
-          }}>{historyOutputPath ? "← Back to saved Activity" : outputReturn === "activity" ? "← Back to Activity" : "← Back to conversation"}</button>
+          }}>{historyOutputPath ? "← Back to saved Activity" : outputReturn === "activity" ? "← Back to Activity" : outputReturn === "description" ? "← Back to Description" : "← Back to conversation"}</button>
           <span>Output preview · {historyOutputPath ?? outputPath}</span>
         </div> : null}
         {!showSettings && !viewingSessionId && !compareIds ? (
@@ -335,6 +336,7 @@ export function App() {
             </button>
             <button type="button" aria-pressed={centerTab === "environment"} onClick={() => { setOutputReturn(null); setCenterTab("environment"); }}>Environment</button>
             <button type="button" aria-pressed={centerTab === "activity"} onClick={() => { setOutputReturn(null); setCenterTab("activity"); }}>Activity</button>
+            <button type="button" aria-pressed={centerTab === "description"} title="What each run did, in words: the request, the method, what ran and the conclusion" onClick={() => { setOutputReturn(null); setCenterTab("description"); }}>Description</button>
           </nav>
         ) : null}
         <div className="workspace__content">
@@ -377,6 +379,10 @@ export function App() {
           ) : null}
           <div className="workspace__page" hidden={showSettings || !!viewingSessionId || !!compareIds || centerTab !== "activity"}>
             <Timeline key={`activity-${session.sessionId}`} trace={session.trace} entries={session.entries} sessionId={session.sessionId} busy={session.busy} incomplete={session.missedEvents} onOpenOutput={(path) => openLiveOutput(path, "activity")} />
+          </div>
+          <div className="workspace__page" hidden={showSettings || !!viewingSessionId || !!compareIds || centerTab !== "description"}>
+            <section className="pane"><header className="pane__header"><span>Run description</span></header>
+              <RunDescriptionView trace={session.trace} entries={session.entries} onOpenOutput={(path) => openLiveOutput(path, "description")} /></section>
           </div>
           <div className="workspace__page" hidden={showSettings || !!viewingSessionId || !!compareIds || centerTab !== "conversation"}>
             <Conversation

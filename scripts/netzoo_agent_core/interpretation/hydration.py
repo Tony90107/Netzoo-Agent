@@ -71,6 +71,10 @@ def hydrate_router_decision(
         if field_name in PARAMETER_FIELDS
     }
     parameter_updates.update(extract_explicit_workflow_controls(task, decision.action))
+    if decision.action == "run_scorpion" and not parameter_updates.get("group_by"):  # stated in words (2026-11-10)
+        from ..data.scorpion_grouping import stated_grouping
+        stated = stated_grouping(task, decision.cell_metadata_file)
+        parameter_updates.update({k: v for k, v in stated.items() if parameter_updates.get(k) is None})
     if parameter_updates:
         decision = TaskDecision.model_validate({
             **decision.model_dump(),
