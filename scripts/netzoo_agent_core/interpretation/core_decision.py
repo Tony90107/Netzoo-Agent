@@ -175,7 +175,9 @@ def goal_unclear(check, decision=None, task: str = "") -> bool:
     if len(named) > 1 and check.goal == "method_named" and not any(row.kind == "result" for row in check.requirements):
         return True
     if check.goal == "purpose_only":
-        return True
+        # 2026-11-12: a result row a workflow is credited with is a named result ("..., what tools do I need?" was
+        # read purpose_only and asked "Did you mean LIONESS-PUMA's result?" although the result was credited).
+        return not any(row.kind == "result" and row.status in _GIVEN and row.delivered_by for row in check.requirements)
     asked = [row.quote for row in check.requirements if row.kind in ("result", "about_methods")]
     return check.goal == "result_named" and not any(_overlaps(check.goal_quote, quote) for quote in asked)
 

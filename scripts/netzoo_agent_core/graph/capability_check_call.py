@@ -159,9 +159,13 @@ def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], us
     Asked only when a full gap would clear an exact routing match: on heldouts 1-3 every false
     gap (HC7, JC6, KC8) had routing exact and an empty `delivered_by`.
     """
+    from ..interpretation.asked_words import confirmed_links, result_words
+
     model, llm = _check_model(context)
     if llm is None or not pairs:
         return None, usage, budget_warnings
+    # 2026-11-12: "..., what tools do I need?" asks for the result's method; the second opinion weighs the result words.
+    pairs = [(result_words(quote), workflow, result) for quote, workflow, result in pairs]
     answers, usage, budget_warnings = _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnings,
                                                            situation)
     fallback = getattr(context, "study_purpose_llm", None)
@@ -170,7 +174,31 @@ def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], us
         answers, usage, budget_warnings = _second_opinion_call(
             context, state, getattr(context, "semantic_model_name", None), fallback, pairs, usage, budget_warnings,
             situation)
-    return answers, usage, budget_warnings
+    return confirmed_answers(context, state, pairs, answers, confirmed_links(state.get("task_state"))), usage, \
+        budget_warnings
+
+
+def confirmed_answers(context, state, pairs, answers, confirmed: dict[str, str]):
+    """A result the user confirmed as X's ("Did you mean X's result?" -> Yes) is X's for the goal it was asked about.
+
+    2026-11-12: on the answer turn a second "part" reading declined it with "couldn't match this to anything" (2 of
+    3). Only pairs whose words come from that goal are credited, so a sentence added later is weighed as before.
+    """
+    if answers is None or not confirmed:
+        return answers
+    goals = {workflow: " ".join(goal.casefold().split()) for workflow, goal in confirmed.items()}
+    changed = []
+    for index, ((quote, workflow, _result), answer) in enumerate(zip(pairs, answers)):
+        words = " ".join(quote.casefold().split())
+        if workflow in goals and words and words in goals[workflow] and answer not in ("all", True, "named"):
+            changed.append({"pair": index, "workflow": workflow, "answer_before": answer})
+    if not changed:
+        return answers
+    answers = list(answers)
+    for item in changed:
+        answers[item["pair"]] = "all"
+    record_event(context, state, "routing.capability_link_confirmed", "classify", {"credited": changed})
+    return answers
 
 
 def request_condition_check(context, state, pairs: list[tuple[str, str, str, str]], usage, budget_warnings,
