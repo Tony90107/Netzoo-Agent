@@ -15,6 +15,7 @@ from ..data.discovery import is_shipped_data
 from ..data.gene_repair_hints import suggest_gene_corrections
 from ..data.gene_validation import UNRECOGNIZED_PHRASE
 from ..data.preflight import validate_workflow_inputs
+from .. import settings
 from ..contracts import InputEvidence, OUTPUT_ROLE_FIELDS, PROJECT_ROOT, _is_demo_request
 from ..interpretation import (
     _candidate_keywords,
@@ -205,7 +206,27 @@ def _search_root(task: str, selections, pending_named: list[str] | tuple[str, ..
         return named, False
     if selections.named_paths or selections.missing_directories:
         return None, False
-    return PROJECT_ROOT / "data", _is_demo_request(task)
+    # 2026-11-12 (user decision): Synthetic test mode may run on the shipped toy data, as a demo request may.
+    return PROJECT_ROOT / "data", _is_demo_request(task) or settings.TEST_DATA_MODE
+
+
+TOY_ONLY = "The only complete input sets here are NetZoo's bundled toy data"
+
+
+def toy_only_reason(directories: list[str]) -> str:
+    """Planning mode, nothing of the user's found, but toy data would fit: say so and how to use it (2026-11-12).
+
+    The old reason ("no folder with a complete, valid set") was false when a complete toy set was withheld.
+    """
+    listed = ", ".join(directories[:3]) + (f" and {len(directories) - 3} more" if len(directories) > 3 else "")
+    return (f"{TOY_ONLY} ({listed}). Toy data is used only in Synthetic test mode: switch the mode to Synthetic "
+            "test to run on it, or give the paths of your own files.")
+
+
+def _toy_directories(paths) -> list[str]:
+    folders = {str(_resolve_user_path(str(path)).resolve().parent.relative_to(PROJECT_ROOT.resolve())) + "/"
+               for path in paths if is_shipped_data(str(path))}
+    return sorted(folders)
 
 
 NOT_SEARCHED = ("The folder named in your request", "Your request names", "Give the path of")
@@ -500,6 +521,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     # Outputs are safe and reversible defaults; input datasets require evidence.
     nearby = search_root
 
+    toy_bundles: list[str] = []
     if action in MULTI_FILE_ACTIONS and not autonomous_values and nearby is not None:
         discovery_anchors = {
             **explicit_input_values,
@@ -509,9 +531,12 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 for field_name, assignment in content_bindings.items()
             },
         }
-        candidates = [item for item in discover_bundle_candidates(action, nearby, discovery_anchors)
-                      if all(_offerable(value, nearby, demo_data) for value in item.values.values())]
+        found = discover_bundle_candidates(action, nearby, discovery_anchors)
+        candidates = [item for item in found if all(_offerable(value, nearby, demo_data) for value in item.values.values())]
         bundles = [item for item in candidates if not item.missing_fields]
+        if not bundles:  # what was withheld: complete toy sets, named in the reason (planning mode)
+            toy_bundles = _toy_directories([next(iter(item.values.values())) for item in found
+                                            if not item.missing_fields and item.values])
         bundle = bundles[0] if len(bundles) == 1 else None
         if bundle is not None:
             for field_name, value in bundle.values.items():
@@ -653,8 +678,10 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
             continue
 
         keywords = _candidate_keywords(action, field_name)
-        candidates = [path for path in (_find_candidate_files(keywords, nearby) if keywords and nearby else [])
-                      if _offerable(path, nearby, demo_data)]
+        found_files = _find_candidate_files(keywords, nearby) if keywords and nearby else []
+        candidates = [path for path in found_files if _offerable(path, nearby, demo_data)]
+        toy_files = (_toy_directories(found_files)
+                     if found_files and not candidates and action not in MULTI_FILE_ACTIONS else [])
         if nearby is None:
             # M2: the request named its own files or folders; only those are offered, never other data.
             candidates = list(named_unbound)
@@ -671,6 +698,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 "Multiple complete validated input bundles are available; "
                 "choose one before execution."
                 if bundle_choices_by_field
+                else toy_only_reason(toy_bundles) if toy_bundles
                 else "I found no folder with a complete, valid set of the remaining "
                 "inputs, so each one is asked for separately."
             )
@@ -680,6 +708,8 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 keywords,
                 nearby,
             )
+            if not selected and toy_files:
+                reason = toy_only_reason(toy_files)
         if selected:
             setattr(decision, field_name, selected)
             evidence.append(

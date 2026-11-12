@@ -126,3 +126,53 @@ def test_p33_the_wizard_says_the_named_folder_does_not_exist():
                             "and PPI priors in /proj/mac/priors.")
     text = clarification_prompt(plan)
     assert "/proj/mac/priors) does not exist" in text and "dragon-toy" not in text and "-toy/" not in text
+
+
+# 2026-11-12 (user decision): toy data runs in Synthetic test mode; Planning mode says so instead of claiming that
+# no complete set exists ("use with existing data" for LIONESS-PUMA, sessions a2f53774 and 1c3ec896).
+EXISTING = "PREVIOUS_ACTION=run_lioness_puma. Continue the recommended LIONESS-PUMA workflow. User reply: use with existing data"
+
+
+def test_planning_mode_names_the_withheld_toy_sets_and_the_mode_that_runs_them(monkeypatch):
+    from netzoo_agent_core import settings
+
+    monkeypatch.setattr(settings, "TEST_DATA_MODE", False)
+    plan, evidence = _plan("run_lioness_puma", EXISTING)
+    assert plan.status == "needs_input" and _no_shipped_data(evidence)
+    reason = evidence["expression_file"].reason
+    assert reason.startswith("The only complete input sets here are NetZoo's bundled toy data (")
+    assert "data/lioness-toy/" in reason and "data/official-toy/" in reason
+    assert "used only in Synthetic test mode" in reason and "no folder with a complete" not in reason
+    assert plan.question.startswith(reason) and plan.question.endswith("I will ask for them one at a time.")
+
+
+def test_the_toy_note_is_said_once_in_the_reply_not_again_in_the_wizard(monkeypatch):
+    from netzoo_agent_core import settings
+    from netzoo_agent_core.cli.clarification import clarification_prompt
+
+    monkeypatch.setattr(settings, "TEST_DATA_MODE", False)
+    plan, _evidence = _plan("run_lioness_puma", EXISTING)
+    assert plan.question.count("used only in Synthetic test mode") == 1
+    assert clarification_prompt(plan).count("used only in Synthetic test mode") == 1
+
+
+def test_synthetic_test_mode_offers_the_toy_sets_to_choose_from(monkeypatch):
+    from netzoo_agent_core import settings
+
+    monkeypatch.setattr(settings, "TEST_DATA_MODE", True)
+    plan, evidence = _plan("run_lioness_puma", EXISTING)
+    folders = {option.directory.rstrip("/").rsplit("data/", 1)[-1] for option in plan.input_bundle_options}
+    assert {"lioness-toy", "official-toy"} <= folders
+    assert "Synthetic test mode" not in (plan.question or "")
+
+
+def test_a_single_file_workflow_gets_the_same_note(monkeypatch):
+    from netzoo_agent_core import settings
+
+    monkeypatch.setattr(settings, "TEST_DATA_MODE", False)
+    _plan_, evidence = _plan("run_bonobo", "Run BONOBO on the existing expression data.")
+    missing = evidence["expression_file"]
+    assert missing.status == "missing" and missing.reason.startswith("The only complete input sets here are")
+    monkeypatch.setattr(settings, "TEST_DATA_MODE", True)
+    _plan_, evidence = _plan("run_bonobo", "Run BONOBO on the existing expression data.")
+    assert evidence["expression_file"].status != "missing" or evidence["expression_file"].candidates

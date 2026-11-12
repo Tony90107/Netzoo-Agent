@@ -99,6 +99,13 @@ def _assemble_workflow_plan(
             question = (
                 "Please provide the missing inputs; I will ask for them one at a time."
             )
+            # Planning mode with only the bundled toy data at hand: say so, and how to run on it (2026-11-12).
+            from .evidence import TOY_ONLY
+
+            toy_note = next((item.reason for item in evidence
+                             if item.status == "missing" and (item.reason or "").startswith(TOY_ONLY)), None)
+            if toy_note:
+                question = f"{toy_note}\n\n{question}"
         return WorkflowPlan(
             workflow=workflow,
             objective=decision.reason,
