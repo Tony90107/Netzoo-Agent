@@ -100,3 +100,47 @@ def _check(status, delivered):
 def test_a_purpose_read_whose_result_is_credited_is_not_an_unclear_goal():
     assert goal_unclear(_check("available", ["lioness_puma.per_sample_networks"])) is False
     assert goal_unclear(_check("not_available", [])) is True
+
+
+# 2026-11-12 (cross-workflow round X05, X06): two more ways a supported "which tool" question was refused.
+WORDS = "a partial correlation network between two omics layers"
+SHARED = [(WORDS, "DRAGON", "one two-layer network"), (WORDS, "LIONESS-DRAGON", "one network per sample"),
+          ("p-values for each edge", "DRAGON", "edge p-values")]
+
+
+def test_only_part_answers_whose_words_another_pair_shows_are_asked_again():
+    from netzoo_agent_core.graph.capability_check_call import shared_parts
+
+    assert shared_parts(SHARED, ["part", "part", "part"]) == [0, 1]
+    assert shared_parts(SHARED, ["all", "part", "none"]) == [1]
+    assert shared_parts(SHARED[:1] + SHARED[2:], ["part", "part"]) == []  # alone already: nothing to ask again
+
+
+def test_a_shared_part_is_replaced_by_the_pair_asked_alone(monkeypatch):
+    from netzoo_agent_core.graph import capability_check_call as call
+
+    asked = []
+
+    def alone(context, state, model, llm, pairs, usage, warnings, situation):
+        asked.append(pairs)
+        return (["all"] if pairs[0][1] == "DRAGON" else ["part"]), usage, warnings
+
+    monkeypatch.setattr(call, "_second_opinion_call", alone)
+    events = []
+    answers, _usage, _warnings = call._alone_where_shared(_context(events), {}, "m", object(), SHARED,
+                                                         ["part", "part", "none"], None, [], ())
+    assert answers == ["all", "part", "none"]
+    assert asked == [[SHARED[0]], [SHARED[1]]]
+    assert events == [("routing.capability_second_opinion_alone", {"asked": [0, 1], "changed": [
+        {"pair": 0, "workflow": "DRAGON", "shared": "part", "alone": "all"}]})]
+
+
+def test_the_projects_own_name_is_never_a_named_method():
+    from netzoo_agent_core.interpretation.method_conditions import verified_method
+
+    task = "Can NetZoo build regulatory networks for each cell type from single-cell data?"
+    item = SimpleNamespace(named_method="unregistered", named_method_quote="NetZoo", quote=task, settings=[])
+    assert "named" not in verified_method(task, item)
+    other = "Run NetZoo-TIGER on my data"
+    item = SimpleNamespace(named_method="unregistered", named_method_quote="NetZoo-TIGER", quote=other, settings=[])
+    assert verified_method(other, item)["named"] == "unregistered"  # a real unknown method still is one

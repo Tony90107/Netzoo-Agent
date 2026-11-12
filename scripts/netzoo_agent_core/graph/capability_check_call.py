@@ -174,8 +174,43 @@ def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], us
         answers, usage, budget_warnings = _second_opinion_call(
             context, state, getattr(context, "semantic_model_name", None), fallback, pairs, usage, budget_warnings,
             situation)
+    if answers is not None:
+        answers, usage, budget_warnings = _alone_where_shared(context, state, model, llm, pairs, answers, usage,
+                                                              budget_warnings, situation)
     return confirmed_answers(context, state, pairs, answers, confirmed_links(state.get("task_state"))), usage, \
         budget_warnings
+
+
+MAX_ALONE = 4
+
+
+def shared_parts(pairs, answers) -> list[int]:
+    """Pairs answered part whose words another pair also shows (at most MAX_ALONE).
+
+    2026-11-12: the same words shown beside two workflows were answered part for both, 4 of 4 (DRAGON with
+    LIONESS-DRAGON for "a partial correlation network between two omics layers"; LIONESS-PUMA with PUMA), and all
+    when shown alone, 4 of 4: side by side, the model splits one asked result between the workflows.
+    """
+    words = [" ".join(quote.casefold().split()) for quote, _workflow, _result in pairs]
+    return [index for index, answer in enumerate(answers)
+            if answer == "part" and words.count(words[index]) > 1][:MAX_ALONE]
+
+
+def _alone_where_shared(context, state, model, llm, pairs, answers, usage, budget_warnings, situation):
+    """Each shared pair answered part is asked again on its own; its own answer replaces the shared one."""
+    again = shared_parts(pairs, answers)
+    if not again:
+        return answers, usage, budget_warnings
+    answers, changed = list(answers), []
+    for index in again:
+        alone, usage, budget_warnings = _second_opinion_call(context, state, model, llm, [pairs[index]], usage,
+                                                             budget_warnings, situation)
+        if alone and alone[0] != answers[index]:
+            changed.append({"pair": index, "workflow": pairs[index][1], "shared": answers[index], "alone": alone[0]})
+            answers[index] = alone[0]
+    record_event(context, state, "routing.capability_second_opinion_alone", "classify",
+                 {"asked": again, "changed": changed})
+    return answers, usage, budget_warnings
 
 
 def confirmed_answers(context, state, pairs, answers, confirmed: dict[str, str]):

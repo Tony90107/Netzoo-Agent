@@ -43,12 +43,16 @@ def verified_method(task: str, item) -> dict:
 
     Recordings from before M1 state none of these, so nothing is kept and no rule fires on them.
     """
-    from ..method_names import method_names, setting_names
+    from ..method_names import is_project_identity, method_names, setting_names
 
     found: dict = {}
     named, said = getattr(item, "named_method", "none"), _stated(task, getattr(item, "named_method_quote", ""))
     if named not in (None, "none", UNREGISTERED, *method_names()):
         named = UNREGISTERED  # the compact schema's names are strings (M2, live m2b P30)
+    if named == UNREGISTERED and said and is_project_identity(said):
+        # 2026-11-12: "Can NetZoo build ... per cell type?" named the toolkit, not a method; read as an unregistered
+        # one it ruled out every workflow (SCORPION declined). The project's own name is never a method (ROUND-02 B2).
+        named = "none"
     if named not in (None, "none") and said and (named == UNREGISTERED or _folded(named) in _folded(said)):
         found.update(named=named, named_quote=said)
         asked = _stated(task, getattr(item, "quote", "")) or ""
