@@ -677,3 +677,28 @@ def test_unnamed_or_descriptive_mentions_are_not_routed_early():
                  "What is TMM normalization?",
                  "Normalize /data/counts.tsv with RLE and with TMM, output /data/out/x.tsv."):
         assert named_normalization_decision(task) is None, task
+
+
+def test_a_question_about_doing_a_named_normalization_gets_its_plan():
+    """Live 2026-11-12: 4 of 6 smooth-quantile questions got the list of network results, never naming SNAIL."""
+    from netzoo_agent_core.normalization_request import SMOOTH_QUANTILE_NOTE
+    for task in ("I want smooth quantile normalization on my RNA-seq counts, what tool should I use?",
+                 "Can I do smooth quantile normalization on data/official-toy/ToyExpressionData.txt?",
+                 "How do I run qsmooth on my counts?",
+                 "smooth quantile normalization"):
+        decision = normalization_decision(task)
+        assert decision is not None and decision.normalization_method == "snail", task
+        assert decision.reason.startswith("Normalize the expression matrix with SNAIL (PySNAIL). NetZoo runs smooth")
+        assert SMOOTH_QUANTILE_NOTE in decision.reason, task  # said as SNAIL, and why
+    assert normalization_decision("Which tool does TMM normalization?").normalization_method == "tmm"
+    assert SMOOTH_QUANTILE_NOTE not in normalization_decision("Normalize /data/counts.tsv with SNAIL.").reason
+    chained = normalization_decision("Apply smooth quantile normalization to /data/x.tsv, then run PANDA")
+    assert chained.then_action == "run_panda"
+
+
+def test_a_question_about_the_method_itself_is_not_a_plan():
+    for task in ("What is SNAIL?", "What is smooth quantile normalization?", "What does qsmooth mean?",
+                 "How does SNAIL differ from quantile normalization?", "Why use smooth quantile normalization?",
+                 "Is TMM better than RLE?", "Compare SNAIL and TMM normalization"):
+        assert normalization_decision(task) is None, task
+

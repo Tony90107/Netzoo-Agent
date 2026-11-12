@@ -34,7 +34,7 @@ __all__ = [
     "CHAINABLE_ACTIONS", "NEED_METHODS", "build_normalization_decision", "chained_action", "decision_from_needs",
     "method_named", "methods_for_needs", "named_methods", "needs_normalization_reading", "normalization_decision",
     "named_normalization_decision", "normalization_requested", "verified_needs", "METHOD_OPTION_LINES", "method_choice_evidence",
-    "normalize_first_request", "with_raw_count_note",
+    "normalize_first_request", "with_raw_count_note", "SMOOTH_QUANTILE_NOTE",
 ]
 
 _METHOD_WORDS = {
@@ -80,10 +80,27 @@ CHAINABLE_ACTIONS = frozenset(
 )
 # The act of normalizing, not a description of data already normalized ("my SNAIL-normalized counts").
 _NORMALIZE_ACT = re.compile(
-    r"\bnormali[sz](?:e|ing)\b|\b(?:run|apply|use|with)\s+(?:the\s+)?(?:py)?(?:snail|qsmooth|rle|tmm|[fr]pkm|deseq2?|edger)\b"
+    r"\bnormali[sz](?:e|ing)\b|\b(?:run|apply|use|with)\s+(?:the\s+)?(?:py)?(?:snail|qsmooth|smooth[- _]?quantile|rle|tmm|[fr]pkm|deseq2?|edger)\b"
     r"|(?:先|請|幫我).{0,10}(?:標準化|正規化|常態化)",
     re.I,
 )
+
+# A question about doing the one normalization it names ("which tool does smooth quantile normalization?", "how do I
+# run qsmooth on my counts?", or the bare "smooth quantile normalization"): 4 of 6 went to workflow matching and got
+# the list of network results, with no word of normalization (live 2026-11-12). Like a "which tool" question about
+# a network, it is answered with the method's plan; nothing runs before the matrix is given and the plan confirmed.
+_DOING = re.compile(r"normali[sz]|\b(?:run|apply|use|do|perform|get)\b|\b(?:tool|method|workflow)s?\b", re.I)
+# ... but not a question about the method itself: what it is, how it works, or how it compares.
+_ABOUT_METHOD = re.compile(
+    r"^\s*what(?:'s|\s+is|\s+are|\s+does)\s+(?:an?\s+|the\s+)?(?:py)?(?:snail|qsmooth|smooth[- _]?quantile|quantile"
+    r"|rle|tmm|[fr]pkm|deseq2?|edger)\b"
+    r"|\bhow\s+does\b|\bwhy\b|\bexplain\b|\bdifferen(?:ce|t)\b|\bcompar|\bversus\b|\bvs\.?\s|\bbetter\b|\bmean(?:s|ing)?\b",
+    re.I,
+)
+
+
+def _asks_named_method(task: str) -> bool:
+    return len(named_methods(task)) == 1 and bool(_DOING.search(task)) and not _ABOUT_METHOD.search(task)
 
 
 def _named_workflows(task: str) -> list[str]:
@@ -123,12 +140,13 @@ def normalization_requested(task: str, interpretation: SemanticInterpretation | 
         return False
     if len(named_methods(task)) > 1:  # one method per step; "compare RLE and TMM" is not read as one of them
         return False
-    if _NEGATED.search(task) or is_workflow_information_request(task) or has_explicit_advice_intent(task):
+    asked = _asks_named_method(task)
+    if _NEGATED.search(task) or (not asked and (is_workflow_information_request(task) or has_explicit_advice_intent(task))):
         return False
     if _names_network_workflow(task) and chained_action(task) is None:
         return False
     commanded = interpretation is not None and interpretation.request_mode == "execute"
-    return commanded or bool(_COMMAND.search(task.strip()))
+    return asked or commanded or bool(_COMMAND.search(task.strip()))
 
 
 def _request_paths(task: str) -> dict[str, str]:
@@ -163,6 +181,14 @@ def _request_paths(task: str) -> dict[str, str]:
         if len(rest) == 1:
             paths["expression_file"] = rest[0]
     return paths
+
+
+# Asked for as smooth quantile normalization (qsmooth): said to be SNAIL, and why (PySNAIL's README, 2026-11-12).
+SMOOTH_QUANTILE_NOTE = (
+    ". NetZoo runs smooth quantile normalization with SNAIL: it is smooth quantile normalization adapted so that it "
+    "does not create false co-expression between lowly expressed genes, which matters for NetZoo's co-expression "
+    "based networks"
+)
 
 
 # What each stated need is corrected by. Sequencing depth fits two methods, so it is asked, never picked.
@@ -224,6 +250,8 @@ def build_normalization_decision(
     then_action = chained_action(task, normalizing_read=choice.source == "need")
     """normalize_expression for this request; `method` None leaves the choice among `choice.candidates` asked."""
     label = METHOD_LABELS[method] if method else " or ".join(METHOD_LABELS[c] for c in choice.candidates)
+    if method == "snail" and not re.search(r"(?<![A-Za-z0-9])(?:py)?snail(?![A-Za-z0-9])", task, re.I) and _METHODS["snail"].search(task):
+        label += SMOOTH_QUANTILE_NOTE
     return TaskDecision(
         **_request_paths(task),
         action="normalize_expression", in_scope=True, should_execute=True,

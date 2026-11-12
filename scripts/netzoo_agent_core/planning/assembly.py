@@ -106,6 +106,8 @@ def _assemble_workflow_plan(
                              if item.status == "missing" and (item.reason or "").startswith(TOY_ONLY)), None)
             if toy_note:
                 question = f"{toy_note}\n\n{question}"
+            if decision.action == "normalize_expression" and decision.reason:
+                question = f"{decision.reason}\n\n{question}"  # the method, named before the inputs (2026-11-12)
         return WorkflowPlan(
             workflow=workflow,
             objective=decision.reason,
