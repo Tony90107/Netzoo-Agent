@@ -139,12 +139,30 @@ class WorkerDriver:
             if message.type == "cancel":
                 self.machine.stop(0)
                 return None
+            if message.type == "set_model":
+                # Read only here, between turns: a turn in progress keeps the
+                # model it started on, and this prompt stays open afterwards.
+                self._switch_model(message.model)
+                continue
             if prompt.kind == "execution_confirmation":
                 answer = self._answer_execution_prompt(message)
             else:
                 answer = self._answer_ordinary_prompt(message)
             if answer is not None:
                 return answer
+
+    def _switch_model(self, model: str) -> None:
+        from ..cli.bootstrap import switch_session_model
+
+        try:
+            switched = switch_session_model(self.machine.args, self.machine.runtime, model)
+        except (ValueError, SystemExit) as error:
+            self._send("error", {"error_type": "ModelNotAllowed", "message": str(error)})
+            return
+        except Exception as error:  # noqa: BLE001 - the session must survive a bad switch
+            self._send("error", {"error_type": "ModelSwitchFailed", "message": str(error)})
+            return
+        self._send("model_changed", switched)
 
     def _answer_ordinary_prompt(self, message: ClientMessage) -> str | None:
         if message.type == "answer":

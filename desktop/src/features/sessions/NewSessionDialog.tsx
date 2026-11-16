@@ -1,10 +1,12 @@
 /**
- * Start a session as an experiment: name it, pick its model once, and tag it.
+ * Start a session as an experiment: name it, pick its starting model, and tag it.
  *
  * The model runs every role of the session (reply, routing, interpretation),
- * so the list holds only models both daemon allowlists permit; nothing here
- * widens them. A session keeps its model for its whole life, including when
- * it is resumed. OpenRouter's free models (ids ending in ":free") are labelled.
+ * so the list holds only models the daemon permits under the saved provider:
+ * both .env allowlists plus the curated OpenRouter free models, or the models
+ * listed for another provider. The model can be switched between turns from
+ * the session header; the session records each switch. OpenRouter's free
+ * models (ids ending in ":free") are labelled.
  */
 import { FormEvent, useEffect, useRef, useState } from "react";
 
@@ -45,7 +47,7 @@ export function NewSessionDialog({
     let current = true;
     readSettings(config).then((settings) => {
       if (!current) return;
-      const allowed = sessionModels(settings.allowlists);
+      const allowed = settings.model_choices?.length ? settings.model_choices : sessionModels(settings.allowlists);
       const fallback = settings.models?.response && settings.models.response !== "(unset)" ? [settings.models.response] : [];
       const options = allowed.length ? allowed : fallback;
       setModels(options);
@@ -72,7 +74,7 @@ export function NewSessionDialog({
     <dialog ref={dialog} className="nsd" aria-label="Start a new session" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
       <form onSubmit={submit}>
         <h2 className="nsd__title">New session</h2>
-        <p className="nsd__note">One session is one experiment: its model is fixed for its whole life, and its outputs go to their own folder.</p>
+        <p className="nsd__note">One session is one experiment: its outputs go to their own folder. You can switch model between turns from the session header; each switch is recorded.</p>
         <label className="nsd__field">Name (optional)
           <input value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Batch 2: DNA damage vs rewiring" maxLength={80} />
           <span className="nsd__hint">Shown instead of your first request in the session list and in Compare.</span>
@@ -84,7 +86,7 @@ export function NewSessionDialog({
           </select>
           {models.length === 1 ? <span className="nsd__hint">The only model the allowlist permits.</span> : null}
           {model.endsWith(":free") ? (
-            <span className="nsd__hint">Free on OpenRouter: at most 20 requests a minute and 1000 a day, often slower; its routing has not been measured like the default model's.</span>
+            <span className="nsd__hint">Free on OpenRouter: at most 20 requests a minute and 1000 a day (fewer without account credit), often slower; its routing has not been measured like the default model's.</span>
           ) : null}
         </label>
         <label className="nsd__field">Tags

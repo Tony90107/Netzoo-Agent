@@ -110,7 +110,9 @@ def _keep_session_models(args, resume_id: str) -> None:
     from .. import session as session_store
     from ..session_meta import load_meta
 
-    recorded = load_meta(resume_id, sessions_root=session_store.SESSION_ROOT).get("models") or {}
+    meta = load_meta(resume_id, sessions_root=session_store.SESSION_ROOT)
+    # After a mid-conversation switch, a resume continues with the switched-to model.
+    recorded = meta.get("current_models") or meta.get("models") or {}
     defaults = {
         "model": os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
         "router_model": os.environ.get("OPENROUTER_ROUTER_MODEL", DEFAULT_ROUTER_MODEL),
@@ -216,9 +218,12 @@ def bootstrap_runtime(
     ``LocalTraceStore`` first; a UI may not see an event the hash chain does
     not have.
     """
-    if not os.environ.get("OPENROUTER_API_KEY"):
+    from ..provider_config import llm_api_key
+
+    if not llm_api_key():
         raise SystemExit(
-            "Missing OPENROUTER_API_KEY. Export it first, for example:\n"
+            "Missing OPENROUTER_API_KEY (or a provider key saved in the desktop Settings). "
+            "Export it first, for example:\n"
             "export OPENROUTER_API_KEY='sk-or-v1-...'"
         )
 
@@ -240,6 +245,7 @@ def bootstrap_runtime(
     resume_id = resolve_resume_id(args.resume, memory_runtime.profile_id)
     if resume_id:
         _keep_session_models(args, resume_id)
+    args._parsed_limits = {name: getattr(args, name) for name in _LIMIT_NAMES}
     _widen_limits_for_free_models(args)
     if min(args.router_max_tokens, args.response_max_tokens, args.max_task_tokens) <= 0:
         raise SystemExit("Token limits must be positive integers.")
@@ -300,6 +306,39 @@ def bootstrap_runtime(
     else:
         _trace("done", f"Session: {session_id}")
 
+    app, reply_resolver = build_model_layer(args, memory_runtime, policy, recorder)
+    return CliRuntime(
+        session_models=_session_models(args),
+        memory=memory_runtime,
+        project_policy=policy,
+        session_id=session_id,
+        resume_id=resume_id,
+        conversation=conversation,
+        pending_plan=pending_plan,
+        active_usage=active_usage,
+        run_id=run_id,
+        recorder=recorder,
+        trace_store=trace_store,
+        ensure_trace_sync=ensure_trace_sync,
+        app=app,
+        input_func=input,
+        invoke_graph_turn_func=invoke_graph_turn,
+        reply_resolver=reply_resolver,
+        resumed_turn=resumed_turn,
+        task_state=task_state,
+    )
+
+
+def _session_models(args) -> dict:
+    return {
+        "response": args.model,
+        "router": args.router_model,
+        "semantic": args.semantic_model or args.router_model,
+    }
+
+
+def build_model_layer(args, memory_runtime: MemoryRuntime, policy: ProjectPolicySnapshot, recorder):
+    """The graph and the reply resolver: everything in a session bound to its models."""
     app = build_graph(
         args.model,
         args.temperature,
@@ -334,27 +373,53 @@ def bootstrap_runtime(
         price_catalog=PriceCatalog.from_environment(),
         max_output_tokens=min(args.router_max_tokens, 256),
     )
-    return CliRuntime(
-        session_models={
-            "response": args.model,
-            "router": args.router_model,
-            "semantic": args.semantic_model or args.router_model,
-        },
-        memory=memory_runtime,
-        project_policy=policy,
-        session_id=session_id,
-        resume_id=resume_id,
-        conversation=conversation,
-        pending_plan=pending_plan,
-        active_usage=active_usage,
-        run_id=run_id,
-        recorder=recorder,
-        trace_store=trace_store,
-        ensure_trace_sync=ensure_trace_sync,
-        app=app,
-        input_func=input,
-        invoke_graph_turn_func=invoke_graph_turn,
-        reply_resolver=reply_resolver,
-        resumed_turn=resumed_turn,
-        task_state=task_state,
-    )
+    return app, reply_resolver
+
+
+_LIMIT_NAMES = tuple(_FREE_MODEL_FLOORS)
+
+
+def switch_session_model(args, runtime: CliRuntime, model: str) -> dict:
+    """Run the rest of a conversation on another model, keeping everything else.
+
+    The conversation, the open task (TaskState), a pending plan or question and
+    the trace run all stay as they are: only the LLM-bound layer (the graph and
+    the reply resolver) is rebuilt. The saved provider is re-read first, so a
+    key or provider saved in Settings mid-session takes effect here. Raises
+    ValueError, and changes nothing, when the model is not allowed.
+    """
+    from ..provider_config import apply_to_environment
+    from ..session_meta import record_model_switch
+    from .. import session as session_store
+
+    model = str(model or "").strip()
+    if not model:
+        raise ValueError("Choose a model.")
+    # The limits as parsed, before any free-model widening, so leaving a free
+    # model for a billed one also brings the billed caps back.
+    original = getattr(args, "_parsed_limits", None)
+    if original is None:
+        original = {name: getattr(args, name) for name in _LIMIT_NAMES}
+    previous = {name: getattr(args, name) for name in ("model", "router_model", "semantic_model", *_LIMIT_NAMES)}
+    config = apply_to_environment()
+    try:
+        validate_response_model(model)
+        validate_router_model(model)
+        args.model = args.router_model = args.semantic_model = model
+        for name, value in original.items():
+            setattr(args, name, value)
+        _widen_limits_for_free_models(args)
+        app, reply_resolver = build_model_layer(args, runtime.memory, runtime.project_policy, runtime.recorder)
+    except Exception:
+        for name, value in previous.items():
+            setattr(args, name, value)
+        raise
+    runtime.app = app
+    runtime.reply_resolver = reply_resolver
+    runtime.session_models = _session_models(args)
+    try:
+        record_model_switch(runtime.session_id, runtime.session_models, provider=config["provider"],
+                            sessions_root=session_store.SESSION_ROOT)
+    except Exception:  # noqa: BLE001 - bookkeeping must not undo a switch
+        pass
+    return {"models": dict(runtime.session_models), "provider": config["provider"]}

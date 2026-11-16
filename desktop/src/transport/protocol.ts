@@ -44,7 +44,8 @@ export type ClientMessage =
   | { type: "approve_execution"; plan_hash: string; prompt_seq: number }
   | { type: "decline_execution"; prompt_seq: number }
   | { type: "cancel" }
-  | { type: "ping" };
+  | { type: "ping" }
+  | { type: "set_model"; model: string };
 
 /** What the daemon sends. Mirrors `ServerMessageType` in protocol.py. */
 export type ServerMessageType =
@@ -57,6 +58,7 @@ export type ServerMessageType =
   | "turn_started"
   | "turn_finished"
   | "usage"
+  | "model_changed"
   | "error"
   | "stopped"
   | "pong";

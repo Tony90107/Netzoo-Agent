@@ -5,7 +5,40 @@ import re
 
 from workflow_registry import OUTPUT_CAPABILITIES, workflow_name
 
-from ..method_names import registered_workflows, workflows_in
+from ..method_names import LIONESS_FAMILY, named_workflows, registered_workflows, workflows_in
+
+
+def compared_workflows(words: str) -> list[str]:
+    """The registered workflows the words name, in order, with a bare "LIONESS" read as one LIONESS-X version.
+
+    "What is the difference between PANDA and LIONESS?" names the LIONESS family, which is no workflow, so the
+    comparison fell back to all fourteen (2026-11-16 live). LIONESS is read as the version the other named methods
+    point to: LIONESS-X when X is named ("PANDA and LIONESS" -> LIONESS-PANDA); else the one version whose network
+    is what the other methods give or take ("SCORPION" gives, "PORCUPINE" takes, a TF-gene network: LIONESS-PANDA).
+    miRNA versions only when the words say miRNA. No single version -> LIONESS is left out, never guessed.
+    """
+    known = registered_workflows()
+    named = workflows_in(words)
+    others = [name for name in named if name in known]
+    mirna = bool(re.search(r"\bmi(?:cro)?-?RNAs?\b", words or "", re.I))
+    picked: list[str] = []
+    for name in named:
+        if name in known:
+            picked.append(name)
+            continue
+        if name != LIONESS_FAMILY or not others:
+            continue
+        versions = sorted(named_workflows(LIONESS_FAMILY))
+        direct = [f"{LIONESS_FAMILY}-{other}" for other in others if f"{LIONESS_FAMILY}-{other}" in known]
+        if not direct:
+            networks = {item for other in others for item in (
+                OUTPUT_CAPABILITIES[known[other]].artifact_type, *OUTPUT_CAPABILITIES[known[other]].input_artifacts)}
+            direct = [version for version in versions
+                      if OUTPUT_CAPABILITIES[known[version]].artifact_type in networks
+                      and (mirna or "mirna_regulation" not in OUTPUT_CAPABILITIES[known[version]].selection_tags)]
+        if len(direct) == 1:
+            picked.append(direct[0])
+    return list(dict.fromkeys(picked))
 
 
 def source_granularity_choice(task: str) -> list[str]:
@@ -50,7 +83,7 @@ def _considered(check, decision) -> set[str]:
 
 
 def method_choice(check, decision=None, task: str = "") -> list[str]:
-    """Positive evidence of an open choice between different results, not a generic unmatched-row escape."""
+    """Positive evidence of an open choice between the methods named, not a generic unmatched-row escape."""
     if check is None or check.unconfirmed():
         return []
     rows = check.results()
@@ -70,12 +103,23 @@ def method_choice(check, decision=None, task: str = "") -> list[str]:
     choices = [check.goal_quote, *check.uncertain_quotes,
                *(row.method.get("named_quote", "") for row in rows)]
     known = registered_workflows()
+    # The methods named are the subject when the goal names no result: read purpose only, or method_named with every
+    # row a question about the methods ("How do PANDA, OTTER and GIRAFFE differ?", 2026-11-16: one about_methods row).
+    # Not method_named with other rows: replaying 3874 saved checks, "Run PANDA ..., then run CONDOR on the result" and
+    # "run CONDOR on panda_lung_edges.csv; it's my PANDA network" were read method_named with only context rows.
+    subject_only = check.goal == "purpose_only" or (
+        check.goal == "method_named" and bool(check.requirements)
+        and all(row.kind == "about_methods" for row in check.requirements))
     for quote in choices:
-        names = [name for name in workflows_in(quote) if name in known]
-        if len(names) < 2 or not re.search(r"\b(?:or|either|versus|vs)\b", quote, re.I):
+        names = compared_workflows(quote)
+        # A subject-only goal is a choice without an "or": "What is the difference between PANDA and LIONESS-PANDA?"
+        if len(names) < 2 or (not subject_only and not re.search(r"\b(?:or|either|versus|vs)\b", quote, re.I)):
             continue
         signatures = {(OUTPUT_CAPABILITIES[known[name]].artifact_type,
                        OUTPUT_CAPABILITIES[known[name]].granularities) for name in names}
-        if len(signatures) > 1:
+        # Methods that give the same result are still a choice -- between two ways of fitting one network, separated by
+        # their assumptions -- when the goal names no result, or when the words set them against each other: "PANDA or
+        # OTTER: which one should I use?" was read purpose_only in two live runs and method_named in a third.
+        if len(signatures) > 1 or subject_only or re.search(r"\b(?:or|either|versus|vs)\b", quote, re.I):
             return names
     return []

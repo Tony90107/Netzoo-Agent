@@ -151,6 +151,18 @@ class UserProfileStore:
             _write_json_atomic(self.path_for(profile_id), profile.model_dump())
         return profile
 
+    def forget(self, profile_id: str, key: str) -> bool:
+        """Remove one confirmed preference; the others stay."""
+        with _exclusive_file_lock(self.lock_path):
+            profile = self._load_unlocked(profile_id)
+            if key not in profile.preferences:
+                return False
+            profile.preferences.pop(key, None)
+            profile.sources.pop(key, None)
+            profile.updated_at = time.time()
+            _write_json_atomic(self.path_for(profile_id), profile.model_dump())
+            return True
+
     def delete(self, profile_id: str) -> bool:
         with _exclusive_file_lock(self.lock_path):
             path = self.path_for(profile_id)

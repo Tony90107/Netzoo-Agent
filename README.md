@@ -101,10 +101,29 @@ plan review, option cards, session history and an output browser.
 | `./netzoo-web stop` | Stop the service |
 | `./netzoo-web logs` | Follow the agent's output |
 | `./netzoo-chat` | The same agent in the terminal instead of the browser |
+| `./netzoo-mcp` | The same agent as a local MCP server, for Claude Code, Codex and other MCP clients |
 
 To try it, type a request such as:
 
 > Run PANDA on the toy data in data/official-toy and save the network to outputs/panda.tsv
+
+### Use it from Claude Code, Codex or another MCP client
+
+`./netzoo-mcp` serves the agent over the Model Context Protocol. Any MCP client that can start a
+local (stdio) server can then pass your requests to NetZoo and show you its answers. Register the
+script by its absolute path:
+
+```bash
+claude mcp add --scope user netzoo -- /absolute/path/to/netzoo_agent/netzoo-mcp   # Claude Code
+codex mcp add netzoo -- /absolute/path/to/netzoo_agent/netzoo-mcp                 # Codex
+```
+
+Claude Desktop, Cursor and others take the same path as the `command` of a server entry in their
+configuration file. `./netzoo-mcp --check` reports whether the server can start.
+
+The client can ask, plan and preview. Running an analysis from the client is off until you add
+`NETZOO_MCP_EXECUTE=on` to `.env`. See [docs/MCP_SERVER.md](docs/MCP_SERVER.md) for a first
+conversation, the tools, and troubleshooting.
 
 ### Windows without a Bash shell
 

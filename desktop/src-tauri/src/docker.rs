@@ -93,6 +93,9 @@ pub fn project_root() -> Result<PathBuf, DaemonFault> {
     if let Ok(exe) = std::env::current_exe() {
         candidates.extend(exe.ancestors().map(Path::to_path_buf));
     }
+    // A copy moved out of the repository (/Applications, the Dock) has no
+    // compose file above it: fall back to the checkout it was built from.
+    candidates.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")));
     for candidate in candidates {
         for ancestor in candidate.ancestors() {
             if ancestor.join("docker-compose.yml").is_file() {

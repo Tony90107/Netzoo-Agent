@@ -103,6 +103,32 @@ services:
       - --port
       - "8765"
 
+  # The agent as a local MCP server (`./netzoo-mcp`). An MCP client (Claude
+  # Code, Codex, ...) starts it with `docker compose run` and speaks the protocol
+  # over the container's stdin and stdout, so it publishes no port and needs
+  # no token.
+  netzoo-mcp:
+    extends:
+      service: netzoo
+    stdin_open: true
+    tty: false
+    environment:
+      # Where the project lives on the host, so paths a person names can be
+      # read and output paths can be shown as they will find them.
+      NETZOO_HOST_PROJECT_ROOT: ${NETZOO_HOST_PROJECT_ROOT:-}
+      # Off: the client can plan and preview, never run. On: netzoo_execute
+      # exists and runs a previewed plan, named by its hash, once.
+      NETZOO_MCP_EXECUTE: ${NETZOO_MCP_EXECUTE:-off}
+      # How long a tool call waits for a turn before answering "running".
+      NETZOO_MCP_WAIT_SECONDS: ${NETZOO_MCP_WAIT_SECONDS:-45}
+      # As for the daemon: run the mounted working tree, not the code baked
+      # into the image.
+      PYTHONPATH: /work/scripts:/opt/netZooPy:/opt/netzoo-harness
+    command:
+      - python
+      - -m
+      - netzoo_agent_core.mcp_server
+
 # The optional observer stack lives in docker-compose.observer.yml. Keeping
 # its required secrets out of this default file lets `docker compose run
 # netzoo ...` work without pretending observer credentials exist.

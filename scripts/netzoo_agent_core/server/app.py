@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import os
 import secrets
-import uuid
 from contextlib import asynccontextmanager
 from typing import Literal
 
@@ -21,11 +20,13 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.websockets import WebSocketDisconnect
 
-from . import activity, files, history
+from . import activity, files, history, memory_view
+from .. import provider_config
 from ..environment import environment_report
 from ..session_meta import set_details, set_tags
 from .path_mapper import PathMapper, PathOutsideProject
 from .protocol import PROTOCOL_VERSION, ClientMessage, Envelope
+from .session_open import SessionRequest, open_session
 from .supervisor import SessionSupervisor, SupervisorError, UnknownSession
 
 __all__ = ["DESKTOP_ORIGINS", "WS_TOKEN_SUBPROTOCOL", "create_app", "resolve_token"]
@@ -53,17 +54,6 @@ DESKTOP_ORIGINS = (
 )
 
 
-class SessionRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    session_id: str = Field(default="", max_length=64)
-    profile: str = Field(default="", max_length=64)
-    model: str = Field(default="", max_length=200)
-    resume: str = Field(default="", max_length=64)
-    tags: list[str] = Field(default_factory=list, max_length=12)
-    name: str = Field(default="", max_length=200)
-
-
 class OutputTagsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -84,6 +74,18 @@ class DetailsRequest(BaseModel):
 
     name: str | None = Field(default=None, max_length=200)
     notes: str | None = Field(default=None, max_length=8000)
+
+
+class ProviderRequest(BaseModel):
+    """The provider sessions talk to; an empty api_key keeps the saved one."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: Literal["openrouter", "openai", "custom"] = "openrouter"
+    base_url: str = Field(default="", max_length=300)
+    api_key: str = Field(default="", max_length=400)
+    clear_key: bool = False
+    models: list[str] = Field(default_factory=list, max_length=provider_config.MAX_MODELS)
 
 
 def resolve_token() -> tuple[str, bool]:
@@ -171,30 +173,7 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
         request: SessionRequest,
         _scope: None = Depends(require_token),
     ) -> dict:
-        # Resuming continues a saved session under its own id, as `--resume`
-        # does in the terminal, so its name, notes, tags and output folder stay
-        # one experiment. A worker still running it is attached to instead,
-        # the way a reconnect is; one that has stopped is replaced.
-        resumed = request.resume if not request.session_id and history.has_checkpoint(request.resume) else ""
-        if resumed:
-            live = next((item for item in supervisor.list_sessions() if item["session_id"] == resumed), None)
-            if live and live["alive"] and not live["stopped"]:
-                return {"session_id": resumed, "tags": history.session_details(resumed)["tags"], "attached": True}
-            if live:
-                await supervisor.close(resumed)
-        session_id = request.session_id or resumed or uuid.uuid4().hex[:8]
-        await supervisor.create(
-            session_id,
-            {
-                key: value
-                for key, value in request.model_dump().items()
-                if value and key not in {"session_id", "tags", "name"}
-            },
-        )
-        tags = set_tags(session_id, request.tags, sessions_root=history.SESSION_ROOT) if request.tags else []
-        name = (set_details(session_id, name=request.name, sessions_root=history.SESSION_ROOT)["name"]
-                if request.name.strip() else "")
-        return {"session_id": session_id, "tags": tags, "name": name}
+        return await open_session(supervisor, request)
 
     @app.delete("/v1/sessions/{session_id}", status_code=204)
     async def delete_session(
@@ -456,6 +435,40 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
         # Read-only on purpose: the allowlists and the token budget are what
         # stop a stray request reaching an expensive model.
         return history.describe_settings()
+
+    @app.get("/v1/memory")
+    def read_memory(_scope: None = Depends(require_token)) -> dict:
+        return memory_view.describe_memory()
+
+    @app.get("/v1/memory/episodes/{episode_id}/check")
+    def check_memory_episode(episode_id: str, _scope: None = Depends(require_token)) -> dict:
+        try:
+            return memory_view.check_episode(episode_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="That episode is no longer remembered.") from error
+
+    @app.delete("/v1/memory/episodes/{episode_id}", status_code=204)
+    def forget_memory_episode(episode_id: str, _scope: None = Depends(require_token)) -> None:
+        if not memory_view.forget_episode(episode_id):
+            raise HTTPException(status_code=404, detail="That episode is no longer remembered.")
+
+    @app.delete("/v1/memory/preferences/{key}", status_code=204)
+    def forget_memory_preference(key: str, _scope: None = Depends(require_token)) -> None:
+        if not memory_view.forget_preference(key):
+            raise HTTPException(status_code=404, detail="That preference is not saved.")
+
+    @app.get("/v1/provider")
+    def read_provider(_scope: None = Depends(require_token)) -> dict:
+        return provider_config.public_view()
+
+    @app.post("/v1/provider")
+    def save_provider(request: ProviderRequest, _scope: None = Depends(require_token)) -> dict:
+        # The key is written owner-only under .netzoo/ and never read back out:
+        # the response says whether one is saved and shows its last 4 characters.
+        try:
+            return provider_config.save(request.model_dump())
+        except provider_config.ProviderError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.post("/v1/sessions/{session_id}/cancel")
     def cancel_turn(

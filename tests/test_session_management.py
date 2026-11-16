@@ -79,7 +79,7 @@ def test_a_name_and_notes_round_trip_are_searched_and_compared(store):
     assert [(row["name"], row["notes"]) for row in compared] == [("Batch 2: DNA damage", "Mutations first."), ("", "")]
     details = client.get("/v1/history/n1/details", headers=AUTH).json()
     assert details == {"session_id": "n1", "name": "Batch 2: DNA damage", "notes": "Mutations first.",
-                       "tags": [], "models": {}}
+                       "tags": [], "models": {}, "current_models": {}, "model_switches": []}
     assert client.post("/v1/history/n1/details", json={"name": ""}, headers=AUTH).json()["name"] == ""
     # Names and notes live beside the checkpoint, never in it.
     assert "notes" not in json.loads((sessions / "n1.json").read_text())

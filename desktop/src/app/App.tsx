@@ -12,6 +12,7 @@ import { SessionsPane } from "../features/sessions/SessionsPane";
 import { SettingsView } from "../features/sessions/SettingsView";
 import { TagEditor } from "../features/sessions/TagEditor";
 import { TranscriptView } from "../features/sessions/TranscriptView";
+import { ModelSwitch } from "../features/sessions/ModelSwitch";
 import { RunDescriptionView } from "../features/timeline/RunDescription";
 import { Timeline } from "../features/timeline/Timeline";
 import {
@@ -177,7 +178,9 @@ export function App() {
         if (generation !== connectionGeneration.current) return;
         // A daemon from before a field existed leaves it out; never pass undefined on.
         setSessionTags(details.tags ?? []); setSessionName(details.name ?? ""); setSessionNotes(details.notes ?? "");
-        if (details.models?.response) setSessionModel(details.models.response);
+        // After a mid-conversation switch the session resumes on the model it switched to.
+        const models = details.current_models?.response ? details.current_models : details.models;
+        if (models?.response) setSessionModel(models.response);
       }).catch(() => undefined);
       socket.current = new SessionSocket(config, sessionId, (apply) =>
         setSession((current) => (current?.sessionId === sessionId ? apply(current) : current)),
@@ -267,7 +270,7 @@ export function App() {
               setShowSettings((value) => !value);
             }}
           >
-            {showSettings ? "Conversation" : "Settings"}
+            {showSettings ? "Conversation" : "Settings & memory"}
           </button>
           <button
             type="button"
@@ -292,7 +295,6 @@ export function App() {
               onSaved={(name) => { setSessionName(name); metaChanged(); }} /> : null}
             <code>{viewingSessionId ?? session.sessionId}</code>{viewingSessionId ? <span className="workspace__readonly">Read only</span> : null}
             {!viewingSessionId ? <>
-              {sessionModel ? <span className="workspace__model" title="The model this session runs under">{sessionModel.split("/").pop()}</span> : null}
               <TagEditor config={phase.config} sessionId={session.sessionId} tags={sessionTags}
                 onSaved={(tags) => { setSessionTags(tags); metaChanged(); }} />
               <NotesButton config={phase.config} sessionId={session.sessionId} notes={sessionNotes}
@@ -394,6 +396,9 @@ export function App() {
               onDecline={() => socket.current?.declineExecution()}
               onCancel={() => socket.current?.cancel()}
               onOpenOutputs={(paths) => { if (paths[0]) openLiveOutput(paths[0], "conversation"); }}
+              composerFooter={<ModelSwitch config={phase.config} model={session.models?.response ?? sessionModel} busy={session.busy}
+                refusals={session.entries.filter((entry) => entry.kind === "error" && entry.errorType.startsWith("Model")).length}
+                onSwitch={(model) => socket.current?.setModel(model)} />}
             />
           </div>
         </div>

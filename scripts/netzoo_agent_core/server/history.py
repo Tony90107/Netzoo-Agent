@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .. import settings as runtime_settings
-from ..session_meta import card_for, load_meta, normalize_tags, readable_request, set_details, set_tags
+from ..session_meta import card_for, load_meta, normalize_tags, read_archive, readable_request, set_details, set_tags
 from ..output_tags import tags_for
 from ..session_outputs import SESSION_OUTPUT_ROOT
 from ..settings import SESSION_ROOT
@@ -246,8 +246,10 @@ def read_transcript(session_id: str) -> SessionTranscript | None:
     status = str(plan.get("status") or "unknown")
     session_id = str(payload.get("session_id") or path.stem)
     meta = load_meta(session_id, sessions_root=SESSION_ROOT)
+    archive = read_archive(session_id, sessions_root=SESSION_ROOT)
     messages = []
-    for item in payload.get("messages") or []:
+    # Turns compaction moved out of the checkpoint come first, so the transcript is whole.
+    for item in [*archive["messages"], *(payload.get("messages") or [])]:
         if not isinstance(item, dict):
             continue
         message = {"role": str(item.get("role") or "user"), "content": str(item.get("content") or "")}
@@ -260,7 +262,10 @@ def read_transcript(session_id: str) -> SessionTranscript | None:
         workflow=str(plan.get("workflow") or ""),
         resumable=status in RESUMABLE,
         messages=messages,
-        truncated=bool(payload.get("compacted") or payload.get("truncated")),
+        # Incomplete only when the archive itself had to drop turns, or for a
+        # checkpoint written before the archive existed that says it was cut.
+        truncated=bool(archive["dropped"] or (not archive["messages"]
+                                              and (payload.get("compacted") or payload.get("truncated")))),
         tags=tuple(meta.get("tags") or ()),
         models=dict(meta.get("models") or {}) or None,
         outputs=_outputs(payload),
@@ -297,7 +302,10 @@ def session_details(session_id: str) -> dict:
     """What the person attached to a session, whether or not it has a checkpoint yet."""
     meta = load_meta(_safe(session_id), sessions_root=SESSION_ROOT)
     return {"session_id": session_id, "name": meta["name"], "notes": meta["notes"],
-            "tags": list(meta["tags"]), "models": dict(meta.get("models") or {})}
+            "tags": list(meta["tags"]), "models": dict(meta.get("models") or {}),
+            # The models it runs under now, after any mid-conversation switch.
+            "current_models": dict(meta.get("current_models") or meta.get("models") or {}),
+            "model_switches": list(meta.get("model_switches") or [])}
 
 
 def tag_counts(limit: int = 500) -> list[dict]:
@@ -511,9 +519,12 @@ def _model(name: str, default: str = "") -> str:
 def describe_settings() -> dict:
     """The configuration this daemon is actually running under.
 
-    Reported, not editable. Anything here that could be changed from the
-    window would be a control the agent's own limits do not have.
+    Reported, not editable -- except the provider, which has its own route
+    (``/v1/provider``): the limits and the .env allowlists stay read-only.
     """
+    from ..provider_config import public_view
+
+    provider = public_view()
     return {
         "models": {
             "response": _model("OPENROUTER_MODEL"),
@@ -551,5 +562,9 @@ def describe_settings() -> dict:
             "traces": int(os.environ.get("NETZOO_TRACE_RETENTION_DAYS") or 30),
         },
         "storage": measure_storage(),
-        "api_key_present": bool(os.environ.get("OPENROUTER_API_KEY")),
+        "api_key_present": provider["key_source"] != "none" or provider["provider"] != "openrouter",
+        # The provider sessions start under (Settings), never with its key, and
+        # the models a session may start on or switch to under it.
+        "provider": provider,
+        "model_choices": provider["model_choices"],
     }

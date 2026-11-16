@@ -116,7 +116,33 @@ export type EffectiveSettings = {
     traces: { files: number; bytes: number; runs: number; unsealed_runs: number };
   };
   api_key_present: boolean;
+  /** Daemons from before 2026-11-14 leave these out. */
+  provider?: ProviderView;
+  model_choices?: string[];
 };
+
+export type ProviderName = "openrouter" | "openai" | "custom";
+/** The saved provider; its key never comes back, only whether one is saved. */
+export type ProviderView = {
+  provider: ProviderName;
+  base_url: string;
+  models: string[];
+  key_saved: boolean;
+  key_hint: string;
+  key_source: "saved" | "env" | "none";
+  presets: Record<ProviderName, string>;
+  model_choices: string[];
+  free_models: string[];
+};
+export type ProviderUpdate = {
+  provider: ProviderName; base_url?: string; api_key?: string; clear_key?: boolean; models?: string[];
+};
+export function readProvider(config: DaemonConfig): Promise<ProviderView> {
+  return get(config, "/v1/provider");
+}
+export function saveProvider(config: DaemonConfig, update: ProviderUpdate): Promise<ProviderView> {
+  return post(config, "/v1/provider", update);
+}
 
 export type SessionPage = { sessions: SessionSummary[]; offset: number; has_more: boolean; next_offset: number | null };
 export type SessionFilter = "all" | "needs_input" | "needs_confirmation" | "completed" | "failed" | "dry_run";
@@ -153,6 +179,9 @@ export function saveOutputTags(config: DaemonConfig, path: string, tags: string[
 
 export type SessionDetails = {
   session_id: string; name: string; notes: string; tags: string[]; models: Record<string, string>;
+  /** After a mid-conversation switch: what the session runs under now. */
+  current_models?: Record<string, string>;
+  model_switches?: { at: number; models: Record<string, string>; provider: string }[];
 };
 /** What the person attached to a session: works before its first checkpoint too. */
 export function readDetails(config: DaemonConfig, sessionId: string, signal?: AbortSignal): Promise<SessionDetails> {
@@ -234,4 +263,43 @@ export function readTranscript(
   sessionId: string,
 ): Promise<Transcript> {
   return get<Transcript>(config, `/v1/history/${encodeURIComponent(sessionId)}`);
+}
+
+/** What the agent remembers between sessions (desktop Memory view). */
+export type MemorySnapshot = {
+  profile_id: string;
+  preferences: { key: string; label: string; value: unknown; source: string }[];
+  episodes: {
+    episode_id: string; created_at: number; workflow: string; status: string; task_summary: string;
+    inputs: Record<string, string>; artifacts: string[]; fingerprinted: string[];
+  }[];
+  episode_count: number;
+  retention_days: { completed: number; failed: number; dry_run: number };
+  max_episodes: number;
+};
+export type EpisodeCheck = {
+  episode_id: string;
+  inputs: Record<string, { path: string; state: string; detail: string }>;
+};
+export function readMemory(config: DaemonConfig): Promise<MemorySnapshot> {
+  return get(config, "/v1/memory");
+}
+export function checkEpisode(config: DaemonConfig, episodeId: string): Promise<EpisodeCheck> {
+  return get(config, `/v1/memory/episodes/${encodeURIComponent(episodeId)}/check`);
+}
+async function remove(config: DaemonConfig, path: string): Promise<void> {
+  const response = await fetch(`${config.baseUrl}${path}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${config.token}` },
+  });
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    throw new Error(detail.detail ?? `request failed (${response.status})`);
+  }
+}
+export function forgetEpisode(config: DaemonConfig, episodeId: string): Promise<void> {
+  return remove(config, `/v1/memory/episodes/${encodeURIComponent(episodeId)}`);
+}
+export function forgetPreference(config: DaemonConfig, key: string): Promise<void> {
+  return remove(config, `/v1/memory/preferences/${encodeURIComponent(key)}`);
 }

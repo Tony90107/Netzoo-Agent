@@ -81,6 +81,11 @@ def _run(request: dict, channel: QueueChannel) -> int:
     from .broadcast_recorder import broadcast_recorder_factory
     from .driver import ProgressWriter, WorkerDriver
 
+    from ..provider_config import apply_to_environment
+
+    # The saved provider (Settings) applies to this process only, before the
+    # model defaults are read from the environment.
+    apply_to_environment()
     # A worker takes its settings from the session request, not from the
     # daemon's command line, which it would otherwise inherit.
     sys.argv = sys.argv[:1]
@@ -137,9 +142,12 @@ def _run(request: dict, channel: QueueChannel) -> int:
 
 def worker_environment_error() -> str | None:
     """The one precondition worth reporting before a process is spawned."""
-    if not os.environ.get("OPENROUTER_API_KEY"):
-        return (
-            "Missing OPENROUTER_API_KEY. The daemon container needs it in its "
-            "environment before a session can start."
-        )
-    return None
+    from ..provider_config import load
+
+    config = load()
+    if config["api_key"] or config["provider"] != "openrouter" or os.environ.get("OPENROUTER_API_KEY"):
+        return None
+    return (
+        "Missing OPENROUTER_API_KEY. Put it in the project's .env, or save your "
+        "own provider and key in Settings, before a session can start."
+    )

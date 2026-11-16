@@ -39,6 +39,7 @@ ServerMessageType = Literal[
     "turn_started",
     "turn_finished",
     "usage",
+    "model_changed",
     "error",
     "stopped",
 ]
@@ -49,6 +50,8 @@ ClientMessageType = Literal[
     "decline_execution",
     "cancel",
     "ping",
+    # Between turns: run the rest of the conversation on another model.
+    "set_model",
 ]
 
 
@@ -94,6 +97,7 @@ class ClientMessage(BaseModel):
     text: str = Field(default="", max_length=100_000)
     plan_hash: str = Field(default="", max_length=64)
     prompt_seq: int | None = Field(default=None, ge=0)
+    model: str = Field(default="", max_length=200)
 
     @classmethod
     def from_envelope(cls, envelope: Envelope) -> "ClientMessage":

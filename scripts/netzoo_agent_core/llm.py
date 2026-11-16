@@ -965,14 +965,17 @@ def build_llm(
     # Use OpenRouter's OpenAI-compatible endpoint directly. The previously used
     # ChatOpenRouter/OpenRouter SDK adapter treated seconds as timeout_ms and
     # re-enabled its long default retry policy when max_retries was zero.
+    # The endpoint and key come from the session's provider (provider_config):
+    # OpenRouter with the .env key unless the person saved another provider.
     from langchain_openai import ChatOpenAI
 
-    api_key = os.environ.get("OPENROUTER_API_KEY")
+    from .provider_config import llm_api_key, llm_base_url
+
     return ChatOpenAI(
         model=model_name,
         temperature=temperature,
-        api_key=api_key,
-        base_url="https://openrouter.ai/api/v1",
+        api_key=llm_api_key(),
+        base_url=llm_base_url(),
         max_tokens=max_output_tokens,
         timeout=timeout_seconds,
         max_retries=DEFAULT_LLM_MAX_RETRIES,

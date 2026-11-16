@@ -1,15 +1,18 @@
 /**
  * What this daemon is running under.
  *
- * Read-only, deliberately. The model allowlists and the token budget are the
- * limits that stop a stray request reaching an expensive model; a window that
- * could edit them would be a window that could remove them. Changing them is
- * an edit to the environment the container starts with.
+ * Read-only, deliberately -- except the provider and its key (ProviderSettings).
+ * The .env model allowlists and the token budget are the limits that stop a
+ * stray request reaching an expensive model; a window that could edit them
+ * would be a window that could remove them. Changing them is an edit to the
+ * environment the container starts with.
  */
 import { useEffect, useState } from "react";
 
 import { DaemonConfig } from "../../transport/daemon";
 import { EffectiveSettings, formatBytes, readSettings } from "../../transport/files";
+import { MemoryView } from "./MemoryView";
+import { ProviderSettings } from "./ProviderSettings";
 import { TimeZoneSettings } from "./TimeZoneSettings";
 
 function Group({ title, rows }: { title: string; rows: [string, string][] }) {
@@ -50,12 +53,15 @@ export function SettingsView({ config, onClose }: { config: DaemonConfig; onClos
       </header>
       <div className="pane__scroll set">
         <TimeZoneSettings />
+        <ProviderSettings config={config} onSaved={() => readSettings(config).then(setSettings).catch(() => undefined)} />
+        <MemoryView config={config} />
         {error ? <div className="fv__error">{error}</div> : null}
         {settings ? (
           <>
             <p className="set__note">
-              Reported, not editable. These limits are what the agent enforces;
-              changing one means changing the environment the daemon starts with.
+              Reported, not editable (the provider above is the exception). These
+              limits are what the agent enforces; changing one means changing the
+              environment the daemon starts with.
             </p>
             <Group
               title="Models"
@@ -111,8 +117,8 @@ export function SettingsView({ config, onClose }: { config: DaemonConfig; onClos
               rows={Object.entries(settings.paths).map(([k, v]) => [k, v || "(not set)"])}
             />
             <Group
-              title="Provider"
-              rows={[["OPENROUTER_API_KEY", settings.api_key_present ? "present" : "missing"]]}
+              title="Provider key"
+              rows={[["OPENROUTER_API_KEY (.env)", settings.api_key_present ? "present" : "missing"]]}
             />
           </>
         ) : (

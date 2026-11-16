@@ -182,6 +182,41 @@ def goal_unclear(check, decision=None, task: str = "") -> bool:
     return check.goal == "result_named" and not any(_overlaps(check.goal_quote, quote) for quote in asked)
 
 
+def _choice_question(actions: list[str]) -> str:
+    """The one question that picks between named workflows, from the registry.
+
+    The planner names what separates them. Scale: aggregate or sample-specific. Only the algorithm (the tie replies'
+    `is_method_tie`): the study conditions each method is preferred under, as those replies ask them ("Both fit; to
+    choose, tell me: ..."). That question says both fit and names a default, so it is never asked of methods that give
+    different results ("DRAGON or PUMA?" would be told "Both fit ... If none of these applies: DRAGON"). Otherwise:
+    which result.
+    """
+    from workflow_registry import SINGLE_CELL_ACTIONS, workflow_name
+
+    from .condition_questions import condition_options, separating_question
+    from ..routing.clarification_planner import plan_clarification
+
+    # Single-cell against bulk is told by the data, not the result: "PANDA and SCORPION" were asked "aggregate or
+    # sample-specific?" because SCORPION can also give one network per group of cells (2026-11-16 live). Only between
+    # methods that build the same kind of network from expression: PORCUPINE takes networks, so "SCORPION and
+    # PORCUPINE" is a choice of result, never "bulk samples -> PORCUPINE".
+    cells = [workflow_name(action) for action in actions if action in SINGLE_CELL_ACTIONS]
+    bulk = [workflow_name(action) for action in actions if action not in SINGLE_CELL_ACTIONS]
+    same_network = len({OUTPUT_CAPABILITIES[action].artifact_type for action in actions}) == 1 and all(
+        "expression_matrix" in OUTPUT_CAPABILITIES[action].input_artifacts for action in actions)
+    if cells and bulk and same_network:
+        return (f"Is your expression data from single cells or from bulk samples? (single cells → {', '.join(cells)}; "
+                f"bulk samples → {', '.join(bulk)})")
+    planned = plan_clarification(actions)
+    if planned and planned.dimension == "granularity":
+        return planned.question
+    if planned and planned.dimension == "algorithm":
+        if options := condition_options(actions):
+            return separating_question(options, actions)
+        return "Which of these methods' assumptions fits your data better?"
+    return "Which of these results do you want?"
+
+
 def _clarify_need(decision, check, goal_quote: str = "", task: str = "") -> ClarifyNeed:
     """The results the request's stated data can give -- listed as possible, never as fitting. `goal_quote`: the
     user's words for the open result (phase 5c), else the check's goal words."""
@@ -190,13 +225,9 @@ def _clarify_need(decision, check, goal_quote: str = "", task: str = "") -> Clar
     choices = method_choice(check, decision, task)
     if choices:
         from ..method_names import registered_workflows
-        from ..routing.clarification_planner import plan_clarification
 
         actions = [registered_workflows()[name] for name in choices]
-        planned = plan_clarification(actions)
-        return ClarifyNeed(missing="result", candidates=choices,
-                           question=(planned.question if planned and planned.dimension == "granularity"
-                                     else "Which of these results do you want?"),
+        return ClarifyNeed(missing="result", candidates=choices, question=_choice_question(actions),
                            goal_quote=goal_quote or check.goal_quote)
     stated = {*decision.guidance_input_artifacts,
               *(artifact for hypothesis in decision.outcome_hypotheses

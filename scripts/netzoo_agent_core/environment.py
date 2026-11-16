@@ -48,9 +48,14 @@ def environment_report() -> dict:
     add("modules", "Algorithm source modules", "warning" if missing else "passed",
         f"Found: {', '.join(available) or 'none'}." + (f" Missing: {', '.join(missing)}." if missing else ""),
         "Rebuild the pinned project image to restore missing modules." if missing else "")
-    add("api_key", "Agent API key", "passed" if os.environ.get("OPENROUTER_API_KEY", "").strip() else "warning",
-        "Configured (value hidden)." if os.environ.get("OPENROUTER_API_KEY", "").strip() else "Not configured.",
-        "Set OPENROUTER_API_KEY in the project's .env and restart the desktop app." if not os.environ.get("OPENROUTER_API_KEY", "").strip() else "")
+    from .provider_config import load as load_provider
+
+    provider = load_provider()
+    has_key = bool(provider["api_key"] or provider["provider"] != "openrouter"
+                   or os.environ.get("OPENROUTER_API_KEY", "").strip())
+    add("api_key", "Agent API key", "passed" if has_key else "warning",
+        f"Configured for {provider['provider']} (value hidden)." if has_key else "Not configured.",
+        "" if has_key else "Save your provider key in Settings, or set OPENROUTER_API_KEY in the project's .env and restart the desktop app.")
     outputs = settings.PROJECT_ROOT / "outputs"
     writable = outputs if outputs.exists() else outputs.parent
     ready = (outputs.is_dir() or not outputs.exists()) and os.access(writable, os.W_OK)

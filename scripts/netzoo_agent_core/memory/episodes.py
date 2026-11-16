@@ -594,6 +594,18 @@ class EpisodeStore:
             self._cleanup_quarantine_locked(report, now=now)
         return [episode for _, episode in records]
 
+    def delete_episode(self, profile_id: str, episode_id: str) -> bool:
+        """Remove one remembered episode; a later search can no longer return it."""
+        if not re.fullmatch(r"[0-9a-f]{32}", episode_id or ""):
+            return False
+        safe_profile_id = _safe_memory_id(profile_id)
+        with _exclusive_file_lock(self.lock_path):
+            path = self.path_for(safe_profile_id, episode_id)
+            if not path.exists():
+                return False
+            path.unlink()
+            return True
+
     def delete_for_profile(self, profile_id: str) -> int:
         safe_profile_id = _safe_memory_id(profile_id)
         report = EpisodeCleanupReport()

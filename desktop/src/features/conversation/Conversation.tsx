@@ -1,7 +1,7 @@
 /**
  * The conversation thread plus whatever the agent is currently asking for.
  */
-import { useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 
 import { Entry, entryTimestamp, SessionState } from "../../transport/session";
 import { Splitter, usePaneSize } from "../../app/Splitter";
@@ -42,6 +42,8 @@ type Props = {
   onDecline: () => void;
   onCancel: () => void;
   onOpenOutputs?: (paths: string[]) => void;
+  /** A row under the input box (the model picker), as in Claude Code's composer. */
+  composerFooter?: ReactNode;
 };
 
 export function Conversation({
@@ -52,6 +54,7 @@ export function Conversation({
   onDecline,
   onCancel,
   onOpenOutputs,
+  composerFooter,
 }: Props) {
   const tail = useRef<HTMLDivElement>(null);
   const composerSlot = useRef<HTMLDivElement>(null);
@@ -140,6 +143,7 @@ export function Conversation({
         ) : (
           <div className="composer composer--busy">Connecting…</div>
         )}
+        {composerFooter && !session.stopped ? <div className="composer__footer">{composerFooter}</div> : null}
       </div>
     </section>
   );

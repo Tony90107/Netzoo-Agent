@@ -424,7 +424,10 @@ def test_settings_are_reported_and_carry_no_secret(client):
         "retention_days",
         "storage",
         "api_key_present",
+        "provider",
+        "model_choices",
     }
+    assert "api_key" not in body["provider"]
     # The key's presence is useful; the key itself must never leave the daemon.
     assert isinstance(body["api_key_present"], bool)
     assert "sk-" not in json.dumps(body)

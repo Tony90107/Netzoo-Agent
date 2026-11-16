@@ -123,3 +123,22 @@ describe("deciding whether a dropped session can come back", () => {
     expect(await sessionVerdict(config, "s1")).toBe(NOT_AUTHORISED);
   });
 });
+
+describe("switching model mid-conversation", () => {
+  it("keeps every entry and the open question, records the new model and says so", () => {
+    const before = {
+      ...emptySession("s1"),
+      entries: [{ kind: "user" as const, id: 1, text: "compare PANDA and LIONESS" }],
+      view: { prompt_kind: "main" } as never,
+    };
+    const after = reduce(before, "model_changed", {
+      models: { response: "baidu/ernie-5.5-flash-preview:free" }, provider: "openrouter",
+    } as never);
+    expect(after.models?.response).toBe("baidu/ernie-5.5-flash-preview:free");
+    expect(after.view).toBe(before.view);
+    expect(after.entries).toHaveLength(2);
+    expect(after.entries[0]).toEqual(before.entries[0]);
+    expect(after.entries[1].kind).toBe("notice");
+    expect(after.entries[1].text).toContain("ernie-5.5-flash-preview");
+  });
+});

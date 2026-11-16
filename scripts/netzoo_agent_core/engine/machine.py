@@ -42,7 +42,6 @@ from ..planning_audit import write_planning_audit
 from ..presentation import _clear_transient_trace, _trace, _ui_text
 from ..session import (
     _is_auto_session_id,
-    compact_conversation,
     delete_session,
     save_session,
 )
@@ -80,6 +79,7 @@ from .choices import (
 )
 from .state import ConversationState, PreviewState
 from .task_updates import after_turn, reply_answers, unanswered_round
+from .transcript_archive import compact_and_archive
 from .view import Event, Prompt, Stop, Turn
 
 __all__ = ["ConversationMachine"]
@@ -824,8 +824,7 @@ class ConversationMachine:
 
     def _turn_finished(self, task: str, result: dict, execute_once: bool) -> list[Event]:
         state = self.state
-        events: list[Event] = []
-        state.conversation = compact_conversation(result["messages"])
+        state.conversation, events = compact_and_archive(self.runtime, state.session_id, result["messages"])
         state.active_usage = result.get("token_usage")
         state.task_state = after_turn(state.task_state, result, task)
         save_session(

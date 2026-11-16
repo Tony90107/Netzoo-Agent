@@ -37,7 +37,10 @@ __all__ = [
     "normalize_name",
     "normalize_notes",
     "normalize_tags",
+    "archive_messages",
+    "read_archive",
     "readable_request",
+    "record_model_switch",
     "remember_turn",
     "set_details",
     "set_tags",
@@ -163,6 +166,30 @@ def normalize_notes(value) -> str:
     return "\n".join(line.rstrip() for line in text.split("\n")).strip()[:MAX_NOTES_CHARS].rstrip()
 
 
+MAX_MODEL_SWITCHES = 50
+
+
+def record_model_switch(session_id: str, models: dict, *, provider: str = "",
+                        sessions_root: Path | None = None) -> dict:
+    """Record a mid-conversation model switch.
+
+    ``models`` (what the session started with) is never rewritten, so Compare
+    still says which model produced its first turns; ``current_models`` is what
+    a resume continues with, and ``model_switches`` keeps when each switch was.
+    """
+    models = {key: value for key, value in (models or {}).items() if value}
+    payload = load_meta(session_id, sessions_root=sessions_root)
+    if not payload["models"]:
+        payload["models"] = dict(models)
+        payload.setdefault("created_at", time.time())
+    payload["current_models"] = dict(models)
+    switches = list(payload.get("model_switches") or [])
+    switches.append({"at": time.time(), "models": dict(models), "provider": provider})
+    payload["model_switches"] = switches[-MAX_MODEL_SWITCHES:]
+    _save(session_id, payload, sessions_root)
+    return payload
+
+
 def set_details(session_id: str, *, name=None, notes=None,
                 sessions_root: Path | None = None) -> dict:
     """Replace the name, the notes, or both; a field left as None is kept."""
@@ -229,7 +256,7 @@ def remember_turn(session_id: str, *, models: dict | None = None, content: str |
     if models and not payload["models"]:
         payload["models"] = models
         payload.setdefault("created_at", time.time())
-    elif models and payload["models"] != models:
+    elif models and payload["models"] != models and models != payload.get("current_models"):
         payload["resumed_with_models"] = models
     if output_dir:
         payload["output_dir"] = output_dir
@@ -247,7 +274,57 @@ def card_for(meta: dict, content: str) -> dict | None:
 
 def delete_meta(session_id: str, *, sessions_root: Path | None = None) -> bool:
     try:
+        _archive_path(session_id, sessions_root).unlink()
+    except OSError:
+        pass
+    try:
         _path(session_id, sessions_root).unlink()
         return True
     except OSError:
         return False
+
+
+# The checkpoint keeps only the newest turns (session.compact_conversation), the
+# agent's working context. The turns it drops are appended here first, so the
+# session's transcript stays whole, the way Claude keeps a full transcript while
+# compacting what the model works from. Bounded; past the bound, the oldest are
+# dropped and the transcript says it is incomplete.
+MAX_ARCHIVED_MESSAGES = 2_000
+MAX_ARCHIVED_CHARS = 2_000_000
+
+
+def _archive_path(session_id: str, sessions_root: Path | None = None) -> Path:
+    return meta_root(sessions_root) / f"{_safe_id(session_id)}.archive.json"
+
+
+def read_archive(session_id: str, *, sessions_root: Path | None = None) -> dict:
+    """``{"messages": [{role, content, at}], "dropped": n}`` -- the turns compaction moved out."""
+    try:
+        payload = json.loads(_archive_path(session_id, sessions_root).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    messages = [item for item in payload.get("messages") or [] if isinstance(item, dict)]
+    return {"messages": messages, "dropped": int(payload.get("dropped") or 0)}
+
+
+def archive_messages(session_id: str, messages: list[dict], *, sessions_root: Path | None = None) -> int:
+    """Append messages compaction is about to drop; returns how many are archived in all."""
+    if not messages:
+        return len(read_archive(session_id, sessions_root=sessions_root)["messages"])
+    archive = read_archive(session_id, sessions_root=sessions_root)
+    now = time.time()
+    kept = archive["messages"] + [
+        {"role": str(item.get("role") or "user"), "content": str(item.get("content") or ""), "at": now}
+        for item in messages
+    ]
+    dropped = archive["dropped"]
+    while kept and (len(kept) > MAX_ARCHIVED_MESSAGES
+                    or sum(len(item["content"]) for item in kept) > MAX_ARCHIVED_CHARS):
+        kept.pop(0)
+        dropped += 1
+    path = _archive_path(session_id, sessions_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _write_json_atomic(path, {"version": 1, "session_id": session_id, "messages": kept, "dropped": dropped})
+    return len(kept)

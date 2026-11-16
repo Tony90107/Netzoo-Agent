@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+#
+# NetZoo Agent as a local MCP server, for any MCP client that can start a
+# stdio server: Claude Code, Claude Desktop, Codex, Cursor and others.
+#
+# The client starts this script and speaks MCP over its stdin and stdout. The
+# agent runs in Docker, as it does for ./netzoo-web and ./netzoo-chat, so
+# nothing but Docker is needed on the host. You do not run this by hand,
+# except with --check:
+#
+#   ./netzoo-mcp --check    report whether the server can start, then exit
+#
+# Register it with a client by its absolute path:
+#
+#   claude mcp add --scope user netzoo -- /path/to/netzoo_agent/netzoo-mcp
+#   codex mcp add netzoo -- /path/to/netzoo_agent/netzoo-mcp
+#
+# Running analyses from the client is off by default. To allow it, add
+# NETZOO_MCP_EXECUTE=on to .env. See docs/MCP_SERVER.md.
+
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+# A desktop app starts its servers with a short PATH that often lacks Docker.
+PATH="$PATH:/usr/local/bin:/opt/homebrew/bin:$HOME/.docker/bin:/Applications/Docker.app/Contents/Resources/bin"
+export PATH
+
+check=0
+case "${1:-}" in
+  --check) check=1 ;;
+  -h|--help) sed -n '3,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  "") ;;
+  *) echo "netzoo-mcp: unknown option: $1 (try --help)" >&2; exit 2 ;;
+esac
+
+# stdout belongs to the protocol: every message here goes to stderr, where the
+# client keeps it in its server log.
+fail() { printf 'netzoo-mcp: %s\n' "$1" >&2; exit 1; }
+
+command -v docker >/dev/null 2>&1 \
+  || fail "Docker is not installed. Install Docker Desktop: https://www.docker.com/products/docker-desktop/"
+docker info >/dev/null 2>&1 \
+  || fail "Docker is not running. Start Docker Desktop, then reconnect the server in your client."
+[[ -f .env ]] || fail "No .env in $PWD. Run ./setup first; it asks for your OpenRouter API key."
+[[ -n "$(docker images -q netzoo_agent:latest 2>/dev/null)" ]] \
+  || fail "The netzoo_agent image is not built yet. Run ./setup (or: docker compose build netzoo)."
+
+export NETZOO_HOST_PROJECT_ROOT="$PWD"
+
+if [[ "$check" == 1 ]]; then
+  docker compose run --rm -T netzoo-mcp python -c \
+    'import mcp.server.fastmcp, netzoo_agent_core.mcp_server.tools' >/dev/null 2>&1 \
+    || fail "The image cannot start the MCP server. Rebuild it: docker compose build netzoo"
+  execute="$(sed -n 's/^NETZOO_MCP_EXECUTE=\(.*\)$/\1/p' .env | tail -1)"
+  echo "netzoo-mcp: ready. Project folder: $PWD" >&2
+  echo "netzoo-mcp: running analyses from the client is ${execute:-off} (NETZOO_MCP_EXECUTE)." >&2
+  exit 0
+fi
+
+# -T: no terminal, so the pipe carries the protocol bytes unchanged.
+exec docker compose run --rm -T netzoo-mcp

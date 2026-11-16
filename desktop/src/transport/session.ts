@@ -48,6 +48,8 @@ export type SessionState = {
    * so it has to be said rather than quietly papered over.
    */
   missedEvents: boolean;
+  /** The models the worker runs under after a mid-conversation switch; null until one. */
+  models?: Record<string, string> | null;
 };
 
 export type Connection = "connecting" | "open" | "reconnecting" | "closed";
@@ -270,6 +272,16 @@ export class SessionSocket {
     });
   }
 
+  /**
+   * Run the rest of the conversation on another model.
+   *
+   * The worker reads it at its next prompt, so it applies from the next turn;
+   * the open question or plan stays where it is and is not answered by this.
+   */
+  setModel(model: string): void {
+    this.send({ type: "set_model", model });
+  }
+
   declineExecution(): void {
     this.onChange((s) => ({ ...s, view: null, entries: [...s.entries, timestamped({
       kind: "user", id: entryId(), text: "Declined execution of the current plan.", action: "confirmation",
@@ -356,6 +368,17 @@ export function reduce(
       return { ...state, busy: false, progress: null };
     case "usage":
       return { ...state, usage: body as unknown as LLMUsage };
+    case "model_changed": {
+      const models = (body.models as Record<string, string> | undefined) ?? {};
+      return {
+        ...state,
+        models,
+        entries: [...state.entries, timestamped({
+          kind: "notice", id: entryId(),
+          text: `Model switched to ${models.response ?? "?"}. The conversation, the open task and any pending plan carry over; the next turn runs on it.`,
+        }, body)],
+      };
+    }
     case "error":
       return {
         ...state,
