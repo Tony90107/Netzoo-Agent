@@ -16,10 +16,10 @@ __all__ = ["ALLOWED", "core_view", "decline_reply", "unchecked_reply"]
 DECLINE_KIND = "decline"
 UNCHECKED_KIND = "unchecked"
 ALLOWED = {
-    "CLARIFY": frozenset({"clarify_goal"}),
-    "ASK": frozenset({"ask_facts", "needs_fact"}),
-    "DECLINE": frozenset({DECLINE_KIND, "capability_check_gap"}),
-    "UNCHECKED": frozenset({UNCHECKED_KIND, "run_held", "capability_unconfirmed", "unresolved"}),
+    "CLARIFY": frozenset({"clarify_goal", "prep_concept"}),
+    "ASK": frozenset({"ask_facts", "needs_fact", "prep_concept"}),
+    "DECLINE": frozenset({DECLINE_KIND, "capability_check_gap", "prep_concept"}),
+    "UNCHECKED": frozenset({UNCHECKED_KIND, "run_held", "capability_unconfirmed", "unresolved", "prep_concept"}),
     "DO": frozenset({
         "needs_input", "input_confirmation", "preference_confirmation", "plan_rejected", "execution",
         "verified_guidance", "scientific_guidance", "workflow_contract", "handoff_script", "outcome_clarification",
@@ -94,6 +94,11 @@ def core_view(context, state, reply) -> dict | None:
     core = decision.core
     if core.kind == "DO":
         return None
+    from .prep_concepts import prep_concept_result
+
+    # A question about a preparation step (SNAIL, SPONGE): no workflow gives it, so no call but DO can answer it.
+    if (concept := prep_concept_result(task, reply)) is not None:
+        return concept
     from .task_answers import EXHAUSTED_NOTE, exhausted, exhausted_body
 
     if core.kind in ("ASK", "CLARIFY") and exhausted(core):  # harness repair P3: a third round is not asked
