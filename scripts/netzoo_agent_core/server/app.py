@@ -273,6 +273,7 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
                     "resumable": item.resumable,
                     "title": item.title,
                     "name": item.name,
+                    "auto_title": item.auto_title,
                     "notes_preview": item.notes.split("\n", 1)[0][:120],
                     "total_tokens": item.total_tokens,
                     "tags": list(item.tags),

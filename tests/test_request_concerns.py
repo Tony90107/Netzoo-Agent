@@ -195,8 +195,9 @@ def test_stated_concerns_attach_without_changing_the_decision(otter_concerns):
     assert context.selection_condition_llm.options == [
         {"method": "function_calling", "include_raw": True, "strict": True},
     ]
+    # llm.started is the live "now doing" line the window and terminal show before the call.
     assert [event for event, _ in context.recorder.events] == [
-        "routing.request_concerns_started", "routing.request_concerns_matched",
+        "llm.started", "routing.request_concerns_started", "routing.request_concerns_matched",
     ]
 
 

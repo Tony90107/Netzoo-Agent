@@ -28,12 +28,15 @@ type Props = {
 
 function FreeText({
   placeholder,
+  label,
   submitLabel,
   onSubmit,
   autoFocus = true,
   inputRef,
 }: {
   placeholder: string;
+  /** Accessible name when the placeholder is left empty because the question is already shown above. */
+  label?: string;
   submitLabel: string;
   onSubmit: (text: string) => void;
   autoFocus?: boolean;
@@ -62,7 +65,7 @@ function FreeText({
         rows={3}
         value={text}
         placeholder={placeholder}
-        aria-label={placeholder}
+        aria-label={label || placeholder}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {
           // Enter sends; Shift-Enter is a newline, matching the terminal's
@@ -158,6 +161,8 @@ function MainInput({ view, onAnswer, onOpenOutputs }: Pick<Props, "view" | "onAn
   const asking = Boolean(card?.choices?.options.some((option) => option.available));
   const offersExecute = Boolean(card?.next_steps.some((step) => step.key === "execute"));
   const readyToExecute = view.next_prompt?.kind === "dry_run";
+  const question = !asking ? view.next_prompt?.question?.trim() ?? "" : "";
+  const fallback = asking ? "Or ask something else" : "What would you like to accomplish with NetZoo?";
   return (
     <div className="main-input">
       {card ? (
@@ -167,8 +172,8 @@ function MainInput({ view, onAnswer, onOpenOutputs }: Pick<Props, "view" | "onAn
           onOpenOutputs={onOpenOutputs}
         />
       ) : null}
-      {view.next_prompt?.question && !asking ? (
-        <Markdown className="main-input__question">{view.next_prompt.question}</Markdown>
+      {question ? (
+        <Markdown className="main-input__question">{question}</Markdown>
       ) : null}
       {readyToExecute && !offersExecute ? (
         <button className="btn btn--primary" type="button" onClick={() => onAnswer("/execute")}>
@@ -178,7 +183,9 @@ function MainInput({ view, onAnswer, onOpenOutputs }: Pick<Props, "view" | "onAn
       <FreeText
         inputRef={textRef}
         autoFocus={!asking}
-        placeholder={asking ? "Or ask something else" : "What would you like to accomplish with NetZoo?"}
+        // The question above already says it; repeating it inside the box read as a duplicate.
+        placeholder={question ? "" : fallback}
+        label={question || fallback}
         submitLabel="Send"
         onSubmit={onAnswer}
       />

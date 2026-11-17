@@ -66,6 +66,8 @@ class SessionSummary:
     name: str = ""
     """What the person named the session; `title` stays their first request."""
     notes: str = ""
+    auto_title: str = ""
+    """A few words NetZoo wrote from the first request (session_title); shown when there is no `name`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,6 +188,7 @@ def _summarise(path: Path) -> SessionSummary | None:
         output_dir=str(meta.get("output_dir") or ""),
         name=str(meta.get("name") or ""),
         notes=str(meta.get("notes") or ""),
+        auto_title=str(meta.get("auto_title") or ""),
     )
 
 
@@ -214,7 +217,7 @@ def list_sessions(limit: int = DEFAULT_LIMIT, profile_id: str = "", *, offset: i
             continue
         if tag and tag.casefold() not in {item.casefold() for item in summary.tags}:
             continue
-        haystack = "\n".join([summary.name, summary.title, summary.workflow, summary.session_id,
+        haystack = "\n".join([summary.name, summary.auto_title, summary.title, summary.workflow, summary.session_id,
                               *summary.tags, summary.notes])
         if needle and needle not in haystack.casefold():
             continue

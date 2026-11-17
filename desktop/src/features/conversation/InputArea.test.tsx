@@ -313,3 +313,21 @@ describe("the main prompt with a reply card", () => {
     expect(onAnswer).toHaveBeenCalledWith("/execute");
   });
 });
+
+describe("the main prompt", () => {
+  it("shows the agent's question once, not again inside the box", () => {
+    const question = "What would you like to accomplish with NetZoo?";
+    harness(view({ prompt_kind: "main", next_prompt: makeNextTurnPrompt({ question }) }));
+
+    expect(screen.getAllByText(question)).toHaveLength(1);
+    const box = screen.getByRole("textbox");
+    expect(box.getAttribute("placeholder")).toBe("");
+    expect(box.getAttribute("aria-label")).toBe(question);
+  });
+
+  it("keeps the placeholder when no question is shown", () => {
+    harness(view({ prompt_kind: "main" }));
+
+    expect(screen.getByPlaceholderText(/accomplish with NetZoo/)).toBeTruthy();
+  });
+});

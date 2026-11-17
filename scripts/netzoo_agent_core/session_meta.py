@@ -42,6 +42,7 @@ __all__ = [
     "readable_request",
     "record_model_switch",
     "remember_turn",
+    "set_auto_title",
     "set_details",
     "set_tags",
     "tag_field",
@@ -200,6 +201,18 @@ def set_details(session_id: str, *, name=None, notes=None,
         payload["notes"] = normalize_notes(notes)
     _save(session_id, payload, sessions_root)
     return {"name": payload["name"], "notes": payload["notes"]}
+
+
+def set_auto_title(session_id: str, title: str, *, tokens: int = 0,
+                   sessions_root: Path | None = None) -> None:
+    """Record the generated sidebar title (see session_title); the person's own `name` is never touched."""
+    payload = load_meta(session_id, sessions_root=sessions_root)
+    payload["auto_title"] = str(title)[:80]
+    # Kept apart from `tokens_total`: that field, once present, replaces the checkpoint's own count in
+    # the sessions list, so adding a title's ~120 tokens to a session that had none recorded yet hid
+    # the real total behind it.
+    payload["auto_title_tokens"] = max(int(tokens), 0)
+    _save(session_id, payload, sessions_root)
 
 
 def is_kept(meta: dict) -> bool:

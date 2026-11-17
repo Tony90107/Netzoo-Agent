@@ -924,6 +924,7 @@ class ConversationMachine:
             from .. import session as session_store
             from ..session_meta import remember_turn
             from ..session_outputs import session_output_path
+            from ..session_title import start_auto_title  # the sidebar's short name, in the background
 
             messages = result.get("messages") or []
             finished = self.state.pending_plan is None
@@ -933,12 +934,12 @@ class ConversationMachine:
                 content=str(messages[-1].content) if messages and self.state.reply_card else None,
                 card=self.state.reply_card,
                 output_dir=session_output_path(self.state.session_id),
-                # A paused run carries its usage into the turn that finishes it,
-                # so a run is counted once, when it finishes.
+                # A paused run's usage is counted once, in the turn that finishes it.
                 tokens=int(((result.get("token_usage") or {}).get("total_tokens") or 0)) if finished else 0,
                 request=task,
                 sessions_root=session_store.SESSION_ROOT,
             )
+            start_auto_title(self.state.session_id, self.runtime.session_models, session_store.SESSION_ROOT)
         except Exception:  # noqa: BLE001 - bookkeeping must not break a turn
             return
 

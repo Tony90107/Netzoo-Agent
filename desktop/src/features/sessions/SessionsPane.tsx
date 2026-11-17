@@ -48,6 +48,14 @@ function shortModel(models?: Record<string, string>): string {
   return name.split("/").pop() ?? "";
 }
 
+/**
+ * What the row is called: the person's name for it, else the few words NetZoo wrote from the first
+ * request (like a chat sidebar), else the request itself. The full request stays in the tooltip.
+ */
+export function sessionHeading(session: { name?: string; auto_title?: string; title?: string }): string {
+  return session.name || session.auto_title || session.title || "";
+}
+
 export function SessionsPane({
   config,
   currentId,
@@ -166,7 +174,7 @@ export function SessionsPane({
                 }${session.session_id === selectedId ? " is-selected" : ""}`}
               >
                 {comparing ? (
-                  <input type="checkbox" className="sl__pick" aria-label={`Compare ${session.name || session.title || session.session_id}`}
+                  <input type="checkbox" className="sl__pick" aria-label={`Compare ${sessionHeading(session) || session.session_id}`}
                     checked={picked.includes(session.session_id)} onChange={() => togglePick(session.session_id)} />
                 ) : null}
                 <button
@@ -176,8 +184,8 @@ export function SessionsPane({
                   aria-current={session.session_id === selectedId ? "page" : undefined}
                   onClick={() => (comparing ? togglePick(session.session_id) : onOpen(session.session_id))}
                 >
-                  <span className="sl__title">
-                    {session.name || session.title || "(no request recorded)"}
+                  <span className="sl__title" title={session.title || undefined}>
+                    {sessionHeading(session) || "(no request recorded)"}
                   </span>
                   {session.name && session.title ? <span className="sl__request" title={session.title}>{session.title}</span> : null}
                   <span className="sl__meta">

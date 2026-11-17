@@ -131,7 +131,9 @@ def test_a_failed_call_falls_back_to_the_words():
     context, events = _context(RuntimeError("provider down"))
     entry, usage, _ = invoke_study_purpose(context, {}, "We want to show that the drug causes it.", LLMUsage(), [])
     assert entry["source"] == "witness" and entry["claims"][0][0] == "causal"
-    assert [name for name, _ in events] == ["routing.study_purpose_failed", "routing.study_purpose_detected"]
+    assert [name for name, _ in events] == ["llm.started", "routing.study_purpose_failed", "routing.study_purpose_detected"]
+    assert dict(events)["llm.started"] == {"role": "study_purpose", "model": dict(events)["llm.started"]["model"],
+                                           "label": "reading the study purpose"}
     assert [(call.role, call.status) for call in usage.calls] == [("study_purpose", "failed")]
 
 

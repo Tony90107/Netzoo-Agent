@@ -96,6 +96,8 @@ export type SessionSummary = {
   name?: string;
   /** The first line of the session's notes, if it has any. */
   notes_preview?: string;
+  /** A few words NetZoo wrote from the first request; shown when the person gave no name. */
+  auto_title?: string;
   total_tokens: number;
   /** Absent from a daemon older than session tags. */
   tags?: string[];

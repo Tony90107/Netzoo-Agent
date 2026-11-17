@@ -60,9 +60,14 @@ it("shows live source, decision, and tool steps before the answer, then keeps th
     ],
   });
   const view = render(<Conversation session={initial} {...callbacks} />);
-  expect(screen.getByText("Used project policy: /work/AGENTS.md")).toBeTruthy();
-  expect(screen.getByText("Interpret the request")).toBeTruthy();
-  expect(screen.getByText("Checking inputs")).toBeTruthy();
+  // Open while working, headed by the step in progress; bookkeeping steps stay out of the way.
+  expect(screen.getByText("Reading your request…")).toBeTruthy();
+  expect(screen.getByText("Reading your request")).toBeTruthy();
+  expect(screen.queryByText("Used project policy: /work/AGENTS.md")).toBeNull();
+  expect((view.container.querySelector("details.turn-activity") as HTMLDetailsElement).open).toBe(true);
+  // The step box says what is happening; the row under it keeps only Interrupt.
+  expect(screen.queryByText("Checking inputs")).toBeNull();
+  expect(screen.getByText("Interrupt")).toBeTruthy();
 
   const completed = session({
     busy: false,
@@ -85,7 +90,10 @@ it("shows live source, decision, and tool steps before the answer, then keeps th
   });
   view.rerender(<Conversation session={completed} {...callbacks} />);
 
-  expect(screen.getByText(/Selected run panda: Network inference matches/)).toBeTruthy();
+  // The recorded choice is shown; the model's prose reason is not.
+  expect(screen.getByText("Selected Run PANDA")).toBeTruthy();
+  expect(screen.queryByText(/Network inference matches/)).toBeNull();
+  expect(screen.getByText("Ran web search and PANDA")).toBeTruthy();
   expect(screen.getByText("Input · expression_file: data/expression.tsv (provided)")).toBeTruthy();
   expect(screen.getByText("web search started: Retrieve method references")).toBeTruthy();
   expect(screen.getByText("Run PANDA started: Infer a gene network")).toBeTruthy();
@@ -95,13 +103,15 @@ it("shows live source, decision, and tool steps before the answer, then keeps th
   expect(screen.getByRole("link", { name: "Method paper" }).getAttribute("href")).toBe("https://example.org/paper");
   expect(screen.getByText("Result completed: Output validated")).toBeTruthy();
   const threadText = view.container.querySelector(".thread")?.textContent ?? "";
-  expect(threadText.indexOf("Agent activity")).toBeLessThan(threadText.indexOf("Analysis is ready."));
+  expect(threadText.indexOf("Worked")).toBeLessThan(threadText.indexOf("Analysis is ready."));
+  // Folded into one line once the turn is done; opening it is the person's choice and sticks.
   const card = view.container.querySelector("details.turn-activity") as HTMLDetailsElement;
-  expect(card.open).toBe(true);
-  fireEvent.click(card.querySelector("summary")!);
   expect(card.open).toBe(false);
+  expect(card.querySelector("summary")?.textContent).toMatch(/^Worked .*steps/);
+  card.open = true;
+  fireEvent(card, new Event("toggle"));
   view.rerender(<Conversation session={{ ...completed, entries: [...completed.entries, { kind: "notice", id: 3, text: "Saved", at: new Date(baseTime + 14_000).toISOString() }] }} {...callbacks} />);
-  expect(card.open).toBe(false);
+  expect(card.open).toBe(true);
 });
 
 it("does not turn arbitrary trace payloads into visible model reasoning", () => {
@@ -111,7 +121,7 @@ it("does not turn arbitrary trace payloads into visible model reasoning", () => 
     event(3, "classify", "routing.internal_detail", { private_reasoning: "hidden analysis text" }),
   ] })} {...callbacks} />);
 
-  expect(screen.getByText("Interpret the request")).toBeTruthy();
+  expect(screen.getByText("Reading your request")).toBeTruthy();
   expect(screen.queryByText("hidden analysis text")).toBeNull();
 });
 
@@ -141,8 +151,9 @@ it("explains a method-only run from its recorded routing decisions", () => {
   expect(screen.getByText("Registry result: ambiguous; no workflow selected")).toBeTruthy();
   expect(screen.getByText("The stated preferences did not resolve the workflow choice")).toBeTruthy();
   expect(screen.getByText("Request type: answer")).toBeTruthy();
-  expect(screen.getByText("Model responses recorded: 1")).toBeTruthy();
-  expect(screen.getByText("Decided to answer without running a workflow: The user is seeking guidance on methods rather than execution.")).toBeTruthy();
+  expect(screen.getByText("Model · 1 call")).toBeTruthy();
+  expect(screen.getByText("Answer in the conversation, without running a workflow")).toBeTruthy();
+  expect(screen.queryByText(/seeking guidance on methods/)).toBeNull();
   expect(screen.getByText("Response path: no workflow execution planned")).toBeTruthy();
 });
 
@@ -172,4 +183,80 @@ it("lets the user resize the choice list while preserving room for the conversat
   view.unmount();
   const reopened = render(<Conversation session={current} {...callbacks} />);
   expect((reopened.container.querySelector(".composer-slot") as HTMLDivElement).style.height).toBe("356px");
+});
+
+it("names the models a step used, by the part of the request each call read", () => {
+  render(<Conversation session={session({ busy: false, view: makeView(), trace: [
+    event(1, "cli", "run.started"),
+    event(2, "classify", "node.started"),
+    event(3, "classify", "llm.completed", { model: "openai/gpt-4o-mini", role: "semantic_interpreter", total_tokens: 1000, status: "failed" }),
+    event(4, "classify", "llm.completed", { model: "openai/gpt-4o-mini", role: "semantic_interpreter", total_tokens: 1200 }),
+    event(5, "classify", "llm.completed", { model: "openai/gpt-4o-mini", role: "fact_check", total_tokens: 300 }),
+    event(6, "classify", "core.decision", { kind: "ASK", workflows: ["PANDA"] }),
+    event(7, "classify", "node.finished", { duration_ms: 4200 }),
+    event(8, "cli", "run.paused", { status: "pending" }),
+  ] })} {...callbacks} />);
+
+  expect(screen.getByText("gpt-4o-mini · 3 calls (read the request ×2, check the stated facts) · 2,500 tokens · 1 retried")).toBeTruthy();
+  expect(screen.getByText("Decision: ask you for what is still missing")).toBeTruthy();
+  expect(screen.getByText("Waiting for you · 4.2 s · 1 step · 3 model calls")).toBeTruthy();
+});
+
+it("shows no step box for a run that recorded no steps, such as a resume", () => {
+  const view = render(<Conversation session={session({ busy: false, view: makeView(), trace: [
+    event(1, "cli", "run.started"),
+    event(2, "cli", "run.resumed", { session_id: "session-1" }),
+  ] })} {...callbacks} />);
+
+  expect(view.container.querySelector("details.turn-activity")).toBeNull();
+});
+
+it("names an input check in words, not by its action name", () => {
+  render(<Conversation session={session({ busy: false, view: makeView(), trace: [
+    event(1, "cli", "run.started"),
+    event(2, "execute_tool", "node.started"),
+    event(3, "execute_tool", "tool.started", { action: "inspect_inputs" }),
+    event(4, "execute_tool", "tool.completed", { action: "inspect_inputs", status: "failed" }),
+    event(5, "execute_tool", "node.finished", { duration_ms: 900 }),
+    event(6, "cli", "run.finished", { status: "failed" }),
+  ] })} {...callbacks} />);
+
+  expect(screen.getByText("Checked the input files")).toBeTruthy();
+  expect(screen.getByText(/^Failed at "Checked the input files"/)).toBeTruthy();
+});
+
+it("says which model call a running step is waiting on, and lists sub-steps as they finish", () => {
+  const live = (extra: TraceEvent[]) => session({ busy: true, trace: [
+    event(1, "cli", "run.started"),
+    event(2, "classify", "node.started"),
+    event(3, "llm", "llm.started", { role: "semantic_interpreter", model: "openai/gpt-4o-mini", label: "reading the request" }),
+    ...extra,
+  ] });
+  const view = render(<Conversation session={live([])} {...callbacks} />);
+  expect(screen.getByText("Reading your request — reading the request…")).toBeTruthy();
+  expect(screen.getByText("Reading the request…")).toBeTruthy();
+
+  view.rerender(<Conversation session={live([
+    event(4, "classify", "routing.semantic_interpretation_accepted", {}),
+    event(5, "llm", "llm.started", { role: "capability_check", model: "openai/gpt-4o-mini", label: "checking what the methods can do" }),
+  ])} {...callbacks} />);
+  expect(screen.getByText("Read what you asked for")).toBeTruthy();
+  expect(screen.getByText("Reading your request — checking what the methods can do…")).toBeTruthy();
+  expect(screen.getByText("Checking what the methods can do…")).toBeTruthy();
+  // The call is attributed to the running step, never shown as a step of its own.
+  expect(view.container.querySelectorAll(".turn-activity__stage")).toHaveLength(1);
+});
+
+it("words a decision by how the methods deliver, calling only a run a run", () => {
+  const decided = (payload: Record<string, unknown>) => session({ busy: false, view: makeView(), trace: [
+    event(1, "cli", "run.started"),
+    event(2, "classify", "node.started"),
+    event(3, "classify", "core.decision", payload),
+    event(4, "classify", "node.finished", { duration_ms: 10 }),
+    event(5, "cli", "run.finished", { status: "completed" }),
+  ] });
+  const view = render(<Conversation session={decided({ kind: "DO", basis: "results_given", workflows: ["LIONESS-PANDA", "LIONESS-PUMA"] })} {...callbacks} />);
+  expect(screen.getByText("Decision: LIONESS-PANDA, LIONESS-PUMA can give what you asked for")).toBeTruthy();
+  view.rerender(<Conversation session={decided({ kind: "DO", basis: "run", workflows: ["PANDA"] })} {...callbacks} />);
+  expect(screen.getByText("Decision: prepare a run of PANDA")).toBeTruthy();
 });

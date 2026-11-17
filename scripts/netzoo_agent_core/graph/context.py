@@ -98,6 +98,13 @@ def preflight_budget(
         allow_reserve=allow_reserve,
     )
     emitted = list(state.get("budget_warnings", []))
+    if decision.status != "blocked":  # the live "now doing" line in the window and the terminal
+        from ..model_call_labels import role_label
+        from ..presentation import _trace
+
+        label = role_label(role)
+        record_event(context, state, "llm.started", "llm", {"role": role, "model": model, "label": label})
+        _trace("model", f"Model call: {label}", {"kind": "model_call", "role": role, "label": label})
     if decision.status in {"warning_70", "warning_85"}:
         if decision.status not in emitted:
             record_event(

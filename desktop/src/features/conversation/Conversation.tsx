@@ -100,8 +100,11 @@ export function Conversation({
           : <TurnActivity key={`run-${item.run.id}`} run={item.run} busy={session.busy && item.run.id === runs.at(-1)?.id} incomplete={session.missedEvents} />)}
         {session.busy ? (
           <div className="thread__progress">
-            <span className="thread__spinner" aria-hidden="true" />
-            {session.progress ?? "Working…"}
+            {/* While a step box is live it already says what is happening; this row keeps only Interrupt. */}
+            {runs.at(-1)?.status === "Running" ? null : <>
+              <span className="thread__spinner" aria-hidden="true" />
+              {session.progress ?? "Working…"}
+            </>}
             <button
               className="btn btn--quiet btn--small"
               type="button"

@@ -163,6 +163,14 @@ export function buildStages(events: TraceEvent[]): Stage[] {
   };
 
   for (const event of events) {
+    // `llm.started` is recorded by the budget preflight, which does not know its graph node: it
+    // belongs to whichever node of that run is running, and never opens a stage of its own.
+    if (event.event_type === "llm.started") {
+      const host = [...open.values()].filter((stage) => stage.runId === event.run_id && stage.node !== "cli").at(-1);
+      if (host) host.rows.push({ id: event.event_id, kind: "llm", eventType: event.event_type, occurredAt: event.occurred_at,
+        summary: typeof event.payload?.label === "string" ? event.payload.label : "", payload: event.payload ?? {} });
+      continue;
+    }
     const stage = currentFor(event.node, event.occurred_at, event.run_id);
 
     if (event.event_type.startsWith("tool.") && typeof event.payload.action === "string") stage.label = actionLabel(event.payload.action);

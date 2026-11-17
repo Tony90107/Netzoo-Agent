@@ -27,6 +27,8 @@ _TRANSIENT_TRACE_UPDATED_AT = 0.0
 _PROGRESS_STATE: "ProgressState | None" = None
 _PROGRESS_RENDERED_LINES = 0
 _PROGRESS_LAST_TEXT: str | None = None
+# The model call in progress, by its role's words (model_call_labels); None between calls.
+_PROGRESS_ACTIVITY: str | None = None
 _COMMITTED_ACTIVITY_KEYS: set[str] = set()
 
 _PROGRESS_STAGE_ORDER = ("understand", "match", "next_step")
@@ -97,10 +99,13 @@ class ProgressState:
 
 def _render_progress_state(state: ProgressState) -> str:
     """Render only the one public activity currently in progress."""
+    activity = _PROGRESS_ACTIVITY
     for name in _PROGRESS_STAGE_ORDER:
         stage = state.stages[name]
         if stage.status == "active":
-            if name == "understand":
+            if activity:
+                text = activity[:1].upper() + activity[1:] + "…"
+            elif name == "understand":
                 text = "Refining outcome classification…" if "Refining" in (stage.detail or "") else "Classifying requested outcome…"
             elif name == "match":
                 text = "Matching registered workflows…"
@@ -114,6 +119,8 @@ def _render_progress_state(state: ProgressState) -> str:
             return _ui_text(text)
         if stage.status == "failed":
             return _ui_text(_truncate_terminal_line(f"✗ {stage.detail or 'Operation failed'}"))
+    if activity:  # a call outside the three stages (the reply, the planner's input mapping)
+        return _ui_text(_truncate_terminal_line(f"● {activity[:1].upper() + activity[1:]}…"))
     return ""
 
 
@@ -153,6 +160,12 @@ def _apply_public_progress_event(
     detail: str | dict | None = None,
 ) -> bool:
     """Apply only recognized public graph events to the normal progress view."""
+    global _PROGRESS_ACTIVITY
+    if isinstance(detail, dict) and detail.get("kind") == "model_call":
+        # Which part of the request the model is reading now; replaced by the next public event.
+        _PROGRESS_ACTIVITY = str(detail.get("label") or "") or None
+        return True
+    _PROGRESS_ACTIVITY = None
     if isinstance(detail, dict) and detail.get("kind") == "router_activity":
         operation = str(detail.get("operation") or "router")
         if detail.get("status") == "started":
@@ -307,10 +320,11 @@ def _render_or_update_progress_state(state: ProgressState) -> None:
 
 def _finalize_progress_state() -> None:
     """Keep the final state visible while releasing its live redraw position."""
-    global _PROGRESS_LAST_TEXT, _PROGRESS_RENDERED_LINES, _PROGRESS_STATE
+    global _PROGRESS_LAST_TEXT, _PROGRESS_RENDERED_LINES, _PROGRESS_STATE, _PROGRESS_ACTIVITY
     _PROGRESS_RENDERED_LINES = 0
     _PROGRESS_LAST_TEXT = None
     _PROGRESS_STATE = None
+    _PROGRESS_ACTIVITY = None
     _COMMITTED_ACTIVITY_KEYS.clear()
 
 
