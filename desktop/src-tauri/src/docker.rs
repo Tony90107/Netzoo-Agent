@@ -74,6 +74,15 @@ impl DaemonFault {
             detail,
         }
     }
+
+    pub fn internal(detail: String) -> Self {
+        Self::new(
+            "internal",
+            "NetZoo Agent hit an internal error while starting the daemon.",
+            "Quit and reopen NetZoo Agent.",
+            detail,
+        )
+    }
 }
 
 /// Where the compose file lives, relative to the running binary or the repo.
@@ -111,36 +120,90 @@ pub fn project_root() -> Result<PathBuf, DaemonFault> {
     ))
 }
 
-fn run(root: &Path, args: &[&str], token: Option<&str>) -> Result<Output, DaemonFault> {
-    let mut command = Command::new(docker_program());
-    command.current_dir(root).args(args);
-    if let Some(token) = token {
-        command.env("NETZOO_DESKTOP_TOKEN", token);
-    }
-    command.output().map_err(|error| {
-        if error.kind() == std::io::ErrorKind::NotFound {
-            DaemonFault::new(
-                "docker_missing",
-                "Could not find the docker command.",
-                "If Docker Desktop is installed, set NETZOO_DOCKER to the full path \
+/// How long `docker info` may take. Docker Desktop that is still booting (or
+/// wedged) leaves this hanging indefinitely, and an unbounded call there was
+/// one of the ways the window got stuck on "Starting".
+const ENGINE_TIMEOUT: Duration = Duration::from_secs(15);
+
+fn spawn_fault(error: std::io::Error) -> DaemonFault {
+    if error.kind() == std::io::ErrorKind::NotFound {
+        DaemonFault::new(
+            "docker_missing",
+            "Could not find the docker command.",
+            "If Docker Desktop is installed, set NETZOO_DOCKER to the full path \
 of its `docker` binary. Otherwise install Docker Desktop and reopen NetZoo Agent.",
-                error.to_string(),
-            )
-        } else {
-            DaemonFault::new(
-                "docker_unavailable",
-                "Could not run the docker command.",
-                "Check that Docker Desktop is installed and you can run `docker ps` in a terminal.",
-                error.to_string(),
-            )
+            error.to_string(),
+        )
+    } else {
+        DaemonFault::new(
+            "docker_unavailable",
+            "Could not run the docker command.",
+            "Check that Docker Desktop is installed and you can run `docker ps` in a terminal.",
+            error.to_string(),
+        )
+    }
+}
+
+/// Run a command to completion or until `timeout`, whichever comes first.
+///
+/// Both pipes are drained on their own threads while we wait: reading them
+/// only after exit let a chatty child fill the 64 KB pipe buffer, block on its
+/// next write and never exit, which looked exactly like a slow start.
+/// `Ok(None)` means the deadline passed and the child was killed.
+fn run_bounded(mut command: Command, timeout: Duration) -> std::io::Result<Option<Output>> {
+    use std::io::Read;
+    let mut child = command
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()?;
+    let drain = |pipe: Option<Box<dyn Read + Send>>| {
+        std::thread::spawn(move || {
+            let mut buffer = Vec::new();
+            if let Some(mut pipe) = pipe {
+                let _ = pipe.read_to_end(&mut buffer);
+            }
+            buffer
+        })
+    };
+    let stdout = drain(child.stdout.take().map(|p| Box::new(p) as Box<dyn Read + Send>));
+    let stderr = drain(child.stderr.take().map(|p| Box::new(p) as Box<dyn Read + Send>));
+    let deadline = std::time::Instant::now() + timeout;
+    let status = loop {
+        if let Some(status) = child.try_wait()? {
+            break Some(status);
         }
-    })
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            break None;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    };
+    // After a kill a grandchild may still hold the pipe open; do not wait on it.
+    let Some(status) = status else { return Ok(None) };
+    Ok(Some(Output {
+        status,
+        stdout: stdout.join().unwrap_or_default(),
+        stderr: stderr.join().unwrap_or_default(),
+    }))
 }
 
 /// Is the Docker engine reachable at all?  Checked separately so that the most
 /// common failure gets its own message instead of a compose stack trace.
 pub fn engine_ready(root: &Path) -> Result<(), DaemonFault> {
-    let output = run(root, &["info", "--format", "{{.ServerVersion}}"], None)?;
+    let mut command = Command::new(docker_program());
+    command
+        .current_dir(root)
+        .args(["info", "--format", "{{.ServerVersion}}"]);
+    let Some(output) = run_bounded(command, ENGINE_TIMEOUT).map_err(spawn_fault)? else {
+        return Err(DaemonFault::new(
+            "docker_not_running",
+            "Docker Desktop is not answering.",
+            "Docker Desktop may still be starting. Wait until its whale icon stops animating, then press Retry. If it stays stuck, restart Docker Desktop.",
+            format!("`docker info` did not finish within {}s.", ENGINE_TIMEOUT.as_secs()),
+        ));
+    };
     if output.status.success() {
         return Ok(());
     }
@@ -173,31 +236,14 @@ fn check(key: &str, label: &str, status: &str, detail: &str, remedy: &str) -> En
 
 /// Fixed, read-only Docker queries. No token, shell, build, pull, or container mutation.
 fn diagnostic_query(root: &Path, args: &[&str]) -> Result<String, String> {
-    let mut child = Command::new(docker_program())
-        .current_dir(root)
-        .args(args)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-        .map_err(|error| error.to_string())?;
-    let deadline = std::time::Instant::now() + Duration::from_secs(8);
-    loop {
-        if let Some(status) = child.try_wait().map_err(|error| error.to_string())? {
-            let output = child
-                .wait_with_output()
-                .map_err(|error| error.to_string())?;
-            return if status.success() {
-                Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-            } else {
-                Err("Docker did not complete this check successfully.".into())
-            };
+    let mut command = Command::new(docker_program());
+    command.current_dir(root).args(args);
+    match run_bounded(command, Duration::from_secs(8)).map_err(|error| error.to_string())? {
+        Some(output) if output.status.success() => {
+            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
         }
-        if std::time::Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err("Docker check timed out after 8 seconds.".into());
-        }
-        std::thread::sleep(Duration::from_millis(50));
+        Some(_) => Err("Docker did not complete this check successfully.".into()),
+        None => Err("Docker check timed out after 8 seconds.".into()),
     }
 }
 
@@ -300,7 +346,10 @@ pub fn start(root: &Path, token: &str, port: u16) -> Result<(), DaemonFault> {
         || stderr.contains("port is already allocated")
     {
         "port_in_use"
-    } else if stderr.contains("pull access denied") || stderr.contains("not found") {
+    } else if stderr.contains("pull access denied")
+        || stderr.contains("No such image")
+        || stderr.contains("not found")
+    {
         "image_missing"
     } else {
         "compose_failed"
@@ -310,7 +359,7 @@ pub fn start(root: &Path, token: &str, port: u16) -> Result<(), DaemonFault> {
             "Something else is already listening on port {port}. Close it, or set NETZOO_DAEMON_PORT to a free port."
         ),
         "image_missing" => {
-            "Build the image first: docker compose build netzoo".to_string()
+            "Build the image once in a terminal, in the project folder: docker compose build netzoo. Then press Retry.".to_string()
         }
         _ => "Run `docker compose up netzoo-daemon` in a terminal to see the full output.".to_string(),
     };
@@ -323,61 +372,44 @@ pub fn start(root: &Path, token: &str, port: u16) -> Result<(), DaemonFault> {
 }
 
 fn run_with_timeout(root: &Path, token: &str, port: &str) -> Result<Output, DaemonFault> {
-    // `docker compose up -d` returns once the container is created; the image
-    // build it may trigger is what can take minutes, hence the generous cap.
     let mut command = Command::new(docker_program());
     command
         .current_dir(root)
-        .args(["compose", "up", "-d", "netzoo-daemon"])
+        // --no-build: the compose file can build the 10 GB image, which takes
+        // far longer than any window should sit on "Starting". A missing image
+        // now fails at once with the command that builds it.
+        .args(["compose", "up", "-d", "--no-build", "netzoo-daemon"])
         .env("NETZOO_DESKTOP_TOKEN", token)
         .env("NETZOO_DAEMON_PORT", port)
         // The container sees the project as /work and cannot know what it is
         // called out here; a path shown to the user has to be findable.
         .env("NETZOO_HOST_PROJECT_ROOT", root);
-    let mut child = command
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|error| {
-            DaemonFault::new(
-                "docker_unavailable",
-                "Could not run docker compose.",
-                "Check that Docker Desktop is installed and running.",
-                error.to_string(),
-            )
-        })?;
-    let deadline = std::time::Instant::now() + COMPOSE_TIMEOUT;
-    loop {
-        if child.try_wait().ok().flatten().is_some() {
-            return child.wait_with_output().map_err(|error| {
-                DaemonFault::new(
-                    "compose_failed",
-                    "Could not read the result of docker compose.",
-                    "Run `docker compose up netzoo-daemon` in a terminal.",
-                    error.to_string(),
-                )
-            });
-        }
-        if std::time::Instant::now() > deadline {
-            let _ = child.kill();
-            return Err(DaemonFault::new(
-                "compose_timeout",
-                "Starting the daemon container timed out.",
-                "The first launch may need to build the image. Run `docker compose build netzoo` once, then reopen the app.",
-                String::new(),
-            ));
-        }
-        std::thread::sleep(Duration::from_millis(120));
+    match run_bounded(command, COMPOSE_TIMEOUT) {
+        Ok(Some(output)) => Ok(output),
+        Ok(None) => Err(DaemonFault::new(
+            "compose_timeout",
+            "Starting the daemon container timed out.",
+            "Docker did not finish within two minutes. Restart Docker Desktop, then press Retry.",
+            String::new(),
+        )),
+        Err(error) => Err(spawn_fault(error)),
     }
 }
 
 pub fn stop(root: &Path) {
-    // Best effort: the app is closing either way, and leaving a stopped
-    // container behind is better than blocking quit on Docker.
+    // Fire and forget. Waiting here held Cmd-Q for as long as Docker took to
+    // stop the container (10 s at best, forever if Docker was wedged), which
+    // is how quitting turned into Force Quit. The spawned docker process is
+    // not tied to ours and finishes the stop after the window is gone.
     let _ = Command::new(docker_program())
         .current_dir(root)
-        .args(["compose", "stop", "netzoo-daemon"])
-        .output();
+        .args(["compose", "stop", "--timeout", "5", "netzoo-daemon"])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        // Reap it if we are still alive when it ends, so no zombie lingers.
+        .map(|mut child| std::thread::spawn(move || child.wait()));
 }
 
 #[cfg(test)]
@@ -486,5 +518,36 @@ mod diagnostic_tests {
             !commands.contains(" up ") && !commands.contains("build") && !commands.contains("pull")
         );
         std::fs::remove_dir_all(directory).unwrap();
+    }
+}
+
+#[cfg(all(test, unix))]
+mod bounded_tests {
+    use super::*;
+
+    #[test]
+    fn a_hanging_command_is_killed_at_the_deadline() {
+        let mut command = Command::new("/bin/sleep");
+        command.arg("30");
+        let started = std::time::Instant::now();
+        let result = run_bounded(command, Duration::from_millis(300)).unwrap();
+        assert!(result.is_none());
+        assert!(started.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn output_larger_than_a_pipe_buffer_does_not_block_the_child() {
+        // 1 MB on each stream: far past the 64 KB a pipe holds unread.
+        let mut command = Command::new("/bin/sh");
+        command.args([
+            "-c",
+            "head -c 1048576 /dev/zero; head -c 1048576 /dev/zero 1>&2",
+        ]);
+        let output = run_bounded(command, Duration::from_secs(10))
+            .unwrap()
+            .expect("the child must finish, not hang on a full pipe");
+        assert!(output.status.success());
+        assert_eq!(output.stdout.len(), 1_048_576);
+        assert_eq!(output.stderr.len(), 1_048_576);
     }
 }

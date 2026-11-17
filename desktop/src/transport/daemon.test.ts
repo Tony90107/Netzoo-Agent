@@ -29,7 +29,7 @@ it("takes the token from the launcher's link and drops it from the address bar",
   expect(config.socketUrl).toBe(window.location.origin.replace(/^http/, "ws"));
   expect(window.location.hash).toBe("");
   expect(JSON.parse(window.localStorage.getItem("netzoo.daemon") ?? "{}").token).toBe("abc123");
-  expect(fetch).toHaveBeenCalledWith(`${window.location.origin}/v1/sessions`, { headers: { Authorization: "Bearer abc123" } });
+  expect(fetch).toHaveBeenCalledWith(`${window.location.origin}/v1/sessions`, expect.objectContaining({ headers: { Authorization: "Bearer abc123" } }));
 });
 
 it("forgets a token the running daemon no longer accepts", async () => {

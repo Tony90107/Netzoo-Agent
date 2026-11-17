@@ -32,7 +32,9 @@ runs the workflow in Docker after you approve the plan.
 | SCORPION | TF → gene networks from single-cell RNA-seq, one per group of cells, and the edges that differ between groups (R package) |
 
 It can also download STRING protein networks (functional, physical or regulatory) for a species, and build a human
-TF motif prior and TF PPI prior with SPONGE (see `docs/SPONGE_INTEGRATION.md`).
+TF motif prior and TF PPI prior with SPONGE (see `docs/SPONGE_INTEGRATION.md`). When you ask for it by
+name, it also normalizes a raw count matrix between samples first: SNAIL (PySNAIL), RLE (DESeq2), TMM
+(edgeR), quantile or FPKM.
 
 ## How the agent works
 
@@ -60,7 +62,7 @@ the user interface) is inside the Docker image.
 
 | Requirement | Where to get it | Notes |
 |---|---|---|
-| Docker Desktop (macOS / Windows) or Docker Engine + Compose v2 (Linux) | <https://www.docker.com/products/docker-desktop/> | Give Docker about **15 GB of disk**; 8 GB of memory is recommended |
+| Docker Desktop (macOS / Windows) or Docker Engine + Compose v2 (Linux) | <https://www.docker.com/products/docker-desktop/> | Give Docker about **25 GB of disk** (the image is about 10 GB, plus build cache); 8 GB of memory is recommended |
 | OpenRouter API key | <https://openrouter.ai/keys> | Billed per token. The default model is `openai/gpt-4o-mini`, one of the cheapest |
 | Git | <https://git-scm.com/downloads> | To clone the repository |
 
@@ -81,7 +83,7 @@ cd Netzoo-Agent
 
 1. Checks that Docker is running.
 2. Asks for your OpenRouter key. Input is hidden, and the key is written to `.env` with mode 600.
-3. Builds the `netzoo_agent:latest` image, about 6 GB.
+3. Builds the `netzoo_agent:latest` image, about 10 GB.
 
 The first build takes **tens of minutes**, mostly spent downloading dependencies. Later builds are cached.
 
@@ -114,8 +116,8 @@ local (stdio) server can then pass your requests to NetZoo and show you its answ
 script by its absolute path:
 
 ```bash
-claude mcp add --scope user netzoo -- /absolute/path/to/netzoo_agent/netzoo-mcp   # Claude Code
-codex mcp add netzoo -- /absolute/path/to/netzoo_agent/netzoo-mcp                 # Codex
+claude mcp add --scope user netzoo -- /absolute/path/to/Netzoo-Agent/netzoo-mcp   # Claude Code
+codex mcp add netzoo -- /absolute/path/to/Netzoo-Agent/netzoo-mcp                 # Codex
 ```
 
 Claude Desktop, Cursor and others take the same path as the `command` of a server entry in their
@@ -149,7 +151,8 @@ docker compose build netzoo
 ./netzoo-web
 ```
 
-Rebuild after every pull, because the browser UI is built into the image.
+Rebuild after every pull, because the browser UI is built into the image. If you use the native
+desktop app, run `./setup --desktop` again as well.
 
 ---
 
@@ -232,7 +235,9 @@ install Node.js 20+ and Rust, then run:
 open "desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"
 ```
 
-The app starts and stops the agent container by itself. Keep it inside the repository folder,
+The app starts and stops the agent container by itself, using the image that `./setup` built. It
+never builds the image on its own: if the image is missing, it says so and shows the command that
+builds it. Keep the app inside the repository folder,
 because it finds `docker-compose.yml` by walking up from its own location. It is built locally,
 not downloaded, because a locally built app is not quarantined by Gatekeeper. Only macOS on
 Apple Silicon has been tested. Tauri can also produce Linux and Windows bundles, but they are
@@ -290,4 +295,6 @@ are the author's experiment records and are not part of this repository.
 PANDA and PUMA do not take raw sequencing reads. Expression data must first be preprocessed:
 QC, alignment or pseudo-alignment, quantification, gene-ID mapping, filtering and normalisation.
 The result should be a gene × sample expression matrix. The agent can transpose sample × gene
-tables and skip leading annotation lines, and it writes PANDA/PUMA-compatible TSV.
+tables and skip leading annotation lines, and it writes PANDA/PUMA-compatible TSV. If you have a raw
+count matrix, it can run the between-sample normalization for you when you ask for it by name (see
+*What it can run*); the earlier steps are up to you.

@@ -39,18 +39,34 @@ fn daemon_config(daemon: State<'_, Daemon>) -> DaemonConfig {
     }
 }
 
+/// Async on purpose: Tauri runs a plain `fn` command on the main thread, so a
+/// `docker compose up` that took a minute froze the whole window (the beach
+/// ball people answered with Force Quit). The Docker work runs on a blocking
+/// worker and the event loop keeps drawing.
 #[tauri::command]
-fn start_daemon(daemon: State<'_, Daemon>) -> Result<(), docker::DaemonFault> {
-    let root = docker::project_root()?;
-    docker::start(&root, &daemon.token, daemon.port)?;
-    *daemon.root.lock().expect("daemon root lock") = Some(root);
+async fn start_daemon(daemon: State<'_, Daemon>) -> Result<(), docker::DaemonFault> {
+    let token = daemon.token.clone();
+    let port = daemon.port;
+    let root = tauri::async_runtime::spawn_blocking(move || {
+        let root = docker::project_root()?;
+        docker::start(&root, &token, port)?;
+        Ok::<_, docker::DaemonFault>(root)
+    })
+    .await
+    .map_err(|error| docker::DaemonFault::internal(error.to_string()))??;
+    *daemon.root.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(root);
     Ok(())
 }
 
 #[tauri::command]
 fn stop_daemon(daemon: State<'_, Daemon>) {
-    let root = daemon.root.lock().expect("daemon root lock").clone();
+    let root = daemon
+        .root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone();
     if let Some(root) = root {
+        // Returns at once: the stop runs in a detached docker process.
         docker::stop(&root);
     }
 }
@@ -139,7 +155,11 @@ fn configured_port() -> u16 {
 
 fn shutdown_daemon(handle: &tauri::AppHandle) {
     let daemon = handle.state::<Daemon>();
-    let root = daemon.root.lock().expect("daemon root lock").clone();
+    let root = daemon
+        .root
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone();
     if let Some(root) = root {
         docker::stop(&root);
     }

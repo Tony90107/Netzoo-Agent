@@ -31,6 +31,12 @@ export type Phase =
 /** Health polling budget. Past this the container exists but is not answering. */
 const HEALTH_TIMEOUT_MS = 60_000;
 const HEALTH_INTERVAL_MS = 250;
+/**
+ * One probe's budget. Docker Desktop accepts a connection on a published port
+ * before the container behind it answers, so an unbounded fetch could sit
+ * there and stall the whole startup instead of retrying.
+ */
+const PROBE_TIMEOUT_MS = 3_000;
 
 function isFault(value: unknown): value is DaemonFault {
   return typeof value === "object" && value !== null && "kind" in value;
@@ -48,7 +54,9 @@ function asFault(error: unknown, kind: string, remedy: string): DaemonFault {
 
 async function health(config: DaemonConfig): Promise<boolean> {
   try {
-    const response = await fetch(`${config.baseUrl}/health`);
+    const response = await fetch(`${config.baseUrl}/health`, {
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    });
     if (!response.ok) return false;
     const body = await response.json();
     return body?.status === "ok";
@@ -71,6 +79,7 @@ async function authorized(config: DaemonConfig): Promise<boolean> {
   try {
     const response = await fetch(`${config.baseUrl}/v1/sessions`, {
       headers: { Authorization: `Bearer ${config.token}` },
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
     return response.ok;
   } catch {
