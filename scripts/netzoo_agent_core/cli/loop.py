@@ -45,5 +45,16 @@ def run_cli(args) -> int:
     policy = load_project_policy()
     if (result := handle_policy_command(args, policy)) is not None:
         return result
-    runtime = bootstrap_runtime(args, memory_runtime, policy)
+    recorder_factory = None
+    if presentation_mode == "state_machine" and not args.quiet:
+        # The terminal's step list (step_report.py): each step printed as it finishes, with what it
+        # found and on what basis, the way the desktop window shows it.
+        from ..presentation import enable_step_report, print_step_lines
+        from ..server.broadcast_recorder import broadcast_recorder_factory
+        from ..step_report import StepReporter
+
+        enable_step_report()
+        recorder_factory = broadcast_recorder_factory(StepReporter(print_step_lines))
+    runtime = (bootstrap_runtime(args, memory_runtime, policy, recorder_factory=recorder_factory)
+               if recorder_factory else bootstrap_runtime(args, memory_runtime, policy))
     return run_conversation(args, runtime)

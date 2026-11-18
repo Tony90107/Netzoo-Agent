@@ -150,9 +150,8 @@ it("explains a method-only run from its recorded routing decisions", () => {
   expect(screen.getByText("Candidate workflows: PANDA, LIONESS-PANDA, OTTER, GIRAFFE")).toBeTruthy();
   expect(screen.getByText("Registry result: ambiguous; no workflow selected")).toBeTruthy();
   expect(screen.getByText("The stated preferences did not resolve the workflow choice")).toBeTruthy();
-  expect(screen.getByText("Request type: answer")).toBeTruthy();
   expect(screen.getByText("Model · 1 call")).toBeTruthy();
-  expect(screen.getByText("Answer in the conversation, without running a workflow")).toBeTruthy();
+  expect(screen.getByText("Reply in the conversation; no workflow is run")).toBeTruthy();
   expect(screen.queryByText(/seeking guidance on methods/)).toBeNull();
   expect(screen.getByText("Response path: no workflow execution planned")).toBeTruthy();
 });
@@ -259,4 +258,71 @@ it("words a decision by how the methods deliver, calling only a run a run", () =
   expect(screen.getByText("Decision: LIONESS-PANDA, LIONESS-PUMA can give what you asked for")).toBeTruthy();
   view.rerender(<Conversation session={decided({ kind: "DO", basis: "run", workflows: ["PANDA"] })} {...callbacks} />);
   expect(screen.getByText("Decision: prepare a run of PANDA")).toBeTruthy();
+});
+
+it("shows what the request was understood as, with the words each value rests on", () => {
+  render(<Conversation session={session({ busy: false, view: makeView(), trace: [
+    event(1, "cli", "run.started"),
+    event(2, "classify", "node.started"),
+    event(3, "classify", "routing.semantic_interpretation_accepted", { reading: [{
+      operation: "infer", artifact_type: "regulatory_network", granularity: "sample_specific", regulator_types: ["tf"],
+      stated: [{ dimension: "granularity", value: "sample_specific", quote: "one regulatory network per sample" },
+        { dimension: "operation", value: "infer", quote: "want one regulatory network" },
+        { dimension: "input_artifact", value: "expression_matrix", quote: "expression matrix" }],
+      inferred: [{ dimension: "regulator_type", value: "tf" }], unresolved: [],
+    }] }),
+    event(4, "classify", "node.finished", { duration_ms: 10 }),
+    event(5, "cli", "run.finished", { status: "completed" }),
+  ] })} {...callbacks} />);
+
+  expect(screen.getByText("Understood: a regulatory network, one per sample, regulators: TFs")).toBeTruthy();
+  expect(screen.getByText(/“one regulatory network per sample” → one per sample/)).toBeTruthy();
+  expect(screen.getByText(/Not stated, inferred: regulators: TFs/)).toBeTruthy();
+  expect(screen.getByText(/“want one regulatory network” → you want to build it/)).toBeTruthy();
+  expect(screen.getByText(/“expression matrix” → input: an expression matrix/)).toBeTruthy();
+});
+
+it("gives each check its finding and basis, and leaves out a not-available with no basis", () => {
+  render(<Conversation session={session({ busy: false, view: makeView(), trace: [
+    event(1, "cli", "run.started"),
+    event(2, "classify", "node.started"),
+    event(3, "classify", "routing.capability_checked", { check: { requirements: [
+      { kind: "result", quote: "one network per sample", status: "available", delivered_by: ["lioness_panda.per_sample_networks"] },
+      { kind: "result", quote: "predict drug response", status: "not_available", not_by: ["outcome_prediction"] },
+      { kind: "result", quote: "something unsettled", status: "not_available" },
+      { kind: "context", quote: "my lab data", status: "not_checked" },
+    ] } }),
+    event(4, "classify", "core.fact_check", { candidates: ["LIONESS-PANDA"], accepted: [],
+      rejected: [{ rule: "R1 the check did not read these words as the user being unsure" }, { rule: "R1 the check did not read these words as the user being unsure" }] }),
+    event(5, "classify", "core.jev_guard", { action: "agrees_or_unsure", jev: { kind: "DO", confidence: 0.84 } }),
+    event(6, "classify", "core.decision", { kind: "ASK", basis: "jev_link", workflows: ["PANDA"],
+      facts: [{ question: "Did you mean PANDA's result?", contract_quote: "Infer an aggregate TF-to-gene regulatory network with PANDA." }] }),
+    event(7, "classify", "node.finished", { duration_ms: 10 }),
+    event(8, "cli", "run.paused", { status: "pending" }),
+  ] })} {...callbacks} />);
+
+  expect(screen.getByText(/“one network per sample” → LIONESS-PANDA \(per sample networks\)/)).toBeTruthy();
+  expect(screen.getByText(/“predict drug response” → not available: no workflow does outcome prediction/)).toBeTruthy();
+  expect(screen.queryByText(/something unsettled/)).toBeNull();
+  expect(screen.queryByText(/my lab data/)).toBeNull();
+  expect(screen.getByText(/Methods weighed: LIONESS-PANDA/)).toBeTruthy();
+  expect(screen.getByText(/2 possible questions not asked: the check did not read these words as the user being unsure/)).toBeTruthy();
+  expect(screen.getByText("Independent check: decision kept; it read the request as DO (84%)")).toBeTruthy();
+  expect(screen.getByText(/Will ask: “Did you mean PANDA's result\?”/)).toBeTruthy();
+  expect(screen.getByText(/Rule: “Infer an aggregate TF-to-gene regulatory network with PANDA.”/)).toBeTruthy();
+});
+
+it("lists a tool's problems, outputs and log under it", () => {
+  render(<Conversation session={session({ busy: false, view: makeView(), trace: [
+    event(1, "cli", "run.started"),
+    event(2, "execute_tool", "node.started"),
+    event(3, "execute_tool", "tool.started", { action: "run_panda" }),
+    event(4, "execute_tool", "tool.completed", { action: "run_panda", status: "success", summary: "Network written",
+      errors: [], artifacts: ["outputs/panda.tsv"], log_file: ".netzoo/logs/run_panda-1.log" }),
+    event(5, "execute_tool", "node.finished", { duration_ms: 1200 }),
+    event(6, "cli", "run.finished", { status: "completed" }),
+  ] })} {...callbacks} />);
+
+  expect(screen.getByText(/Output: outputs\/panda.tsv/)).toBeTruthy();
+  expect(screen.getByText(/Log: .netzoo\/logs\/run_panda-1.log/)).toBeTruthy();
 });

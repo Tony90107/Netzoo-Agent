@@ -3,6 +3,7 @@
 import re
 import time
 from workflow_registry import OUTPUT_CAPABILITIES
+from ..interpretation.reading_view import reading_view  # what the window shows as "Understood"
 from ..contracts import _trace, SystemMessage, HumanMessage
 from ..contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
 from ..contracts.repair_scope import FIELD_BY_DIMENSION, permitted_fields, issues_for_hypothesis
@@ -526,6 +527,7 @@ def invoke_claim_interpreter(
             {
                 "attempt": attempt + 1,
                 "hypothesis_count": len(interpretation.outcome_hypotheses),
+                "reading": reading_view(interpretation.outcome_hypotheses, user_task),
                 "registry_match_status": match.status,
                 "evidence_census": list(
                     evidence_census(interpretation.outcome_hypotheses)

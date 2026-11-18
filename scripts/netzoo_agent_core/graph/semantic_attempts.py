@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import time
 
+from ..interpretation.reading_view import reading_view  # what the window shows as "Understood"
 from ..contracts import AgentState, LLMUsage, _trace
 from ..contracts.outcomes import (
     SemanticInterpretation,
@@ -788,6 +789,7 @@ def invoke_semantic_interpreter(
             ):
                 record_event(context, state, "routing.semantic_interpretation_accepted", "classify", {
                     "attempt": 1, "hypothesis_count": 1,
+                    "reading": reading_view(interpretation.outcome_hypotheses, user_task),
                     "registry_match_status": preliminary_match.status,
                     "review_skipped": "validated_complete_match",
                     "evidence_census": list(evidence_census(interpretation.outcome_hypotheses)),
@@ -859,6 +861,7 @@ def invoke_semantic_interpreter(
             {
                 "attempt": attempt + 1,
                 "hypothesis_count": len(interpretation.outcome_hypotheses),
+                "reading": reading_view(interpretation.outcome_hypotheses, user_task),
                 "evidence_dimensions": [
                     sorted({item.dimension for item in hypothesis.evidence})
                     for hypothesis in interpretation.outcome_hypotheses

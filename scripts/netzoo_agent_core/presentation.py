@@ -29,6 +29,9 @@ _PROGRESS_RENDERED_LINES = 0
 _PROGRESS_LAST_TEXT: str | None = None
 # The model call in progress, by its role's words (model_call_labels); None between calls.
 _PROGRESS_ACTIVITY: str | None = None
+# On when the terminal prints the step list (step_report.py): the older one-line "✓" summaries and
+# tool records then repeat what the step list says, so they are left out. Warnings still print.
+_STEP_REPORT_ACTIVE = False
 _COMMITTED_ACTIVITY_KEYS: set[str] = set()
 
 _PROGRESS_STAGE_ORDER = ("understand", "match", "next_step")
@@ -140,6 +143,9 @@ def _truncate_terminal_line(text: str) -> str:
 def _commit_public_activity(key: str, text: str) -> None:
     """Keep one verified public activity visible above the live status block."""
     if key in _COMMITTED_ACTIVITY_KEYS:
+        return
+    if _STEP_REPORT_ACTIVE and text.lstrip().startswith("✓"):
+        _COMMITTED_ACTIVITY_KEYS.add(key)
         return
     _commit_live_progress_block()
     print(_truncate_terminal_line(_ui_text(text)), flush=True)
@@ -326,6 +332,33 @@ def _finalize_progress_state() -> None:
     _PROGRESS_STATE = None
     _PROGRESS_ACTIVITY = None
     _COMMITTED_ACTIVITY_KEYS.clear()
+
+
+def enable_step_report() -> None:
+    """The terminal prints the step list; see `_STEP_REPORT_ACTIVE`."""
+    global _STEP_REPORT_ACTIVE
+    _STEP_REPORT_ACTIVE = True
+
+
+def print_step_lines(lines: list[str]) -> None:
+    """Print a finished step above the live status line, then draw that line again.
+
+    The lines quote the user's own words, which may be in any language, so they are printed as they
+    are (step_report.py writes everything else in English). The live line is cleared rather than
+    kept: it named the call that has just finished.
+    """
+    global _PROGRESS_RENDERED_LINES, _PROGRESS_LAST_TEXT
+    if sys.stdout.isatty() and _PROGRESS_RENDERED_LINES:
+        print(f"\033[{_PROGRESS_RENDERED_LINES}A", end="", flush=True)
+        for _ in range(_PROGRESS_RENDERED_LINES):
+            print("\r\033[2K", flush=True)
+        print(f"\033[{_PROGRESS_RENDERED_LINES}A", end="", flush=True)
+    _PROGRESS_RENDERED_LINES = 0
+    for line in lines:
+        print(line, flush=True)
+    _PROGRESS_LAST_TEXT = None
+    if _PROGRESS_STATE is not None and sys.stdout.isatty():
+        _render_or_update_progress_state(_PROGRESS_STATE)
 
 
 def _commit_live_progress_block() -> None:
@@ -624,8 +657,9 @@ def _trace(stage: str, message: str, detail: str | dict | None = None) -> None:
                 _PROGRESS_STATE.activate("next_step", _state_machine_tool_label(action))
             else:
                 _PROGRESS_STATE.complete("next_step")
-            _commit_live_progress_block()
-            print(_render_tool_activity(action, status, detail), flush=True)
+            if not _STEP_REPORT_ACTIVE:  # the step list prints the tool with its problems and outputs
+                _commit_live_progress_block()
+                print(_render_tool_activity(action, status, detail), flush=True)
             _render_or_update_progress_state(_PROGRESS_STATE)
             return
         return
