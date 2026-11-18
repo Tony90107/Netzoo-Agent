@@ -5,7 +5,9 @@ and the model allowlists the container starts with. A person can instead save
 their own provider in the desktop Settings view:
 
 * ``openrouter`` with their own key (the allowlists still apply; the curated
-  free models below are added, because they cost nothing),
+  free models below are added, because they cost nothing). Models the person
+  picks from OpenRouter's full catalog are added too: choosing one is the
+  person's own decision to pay for it,
 * ``openai`` (api.openai.com) or ``custom`` -- any OpenAI-compatible endpoint
   (Groq, DeepSeek, a local Ollama via host.docker.internal, ...). Their model
   ids are not OpenRouter ids, so the models the person lists for the provider
@@ -36,8 +38,11 @@ __all__ = [
     "load",
     "llm_api_key",
     "llm_base_url",
+    "add_model",
     "model_choices",
     "public_view",
+    "recommended_models",
+    "remove_model",
     "save",
 ]
 
@@ -144,22 +149,84 @@ def _env_list(name: str, default: str = "") -> list[str]:
             if item.strip() and item.strip() != "(unset)"]
 
 
-def model_choices(config: dict | None = None) -> list[str]:
-    """Models a whole session may run on under this provider, default first.
+def _start_env_list(name: str, default: str = "") -> list[str]:
+    """``_env_list`` as the process started, before a provider widened it."""
+    original = _ORIGINAL_ENV.get(id(os.environ))
+    if original is None or name not in original:
+        return _env_list(name, default)
+    value = original[name]
+    return [item.strip() for item in (default if value is None else value).split(",")
+            if item.strip() and item.strip() != "(unset)"]
+
+
+def recommended_models(config: dict | None = None) -> list[str]:
+    """The models NetZoo has been checked on under this provider, default first.
 
     OpenRouter: what both ``.env`` allowlists permit, then the curated free
-    models. Any other provider: exactly the models the person listed for it.
+    models. Any other provider: none -- NetZoo has not been checked there, so
+    only the models the person listed are offered.
     """
     config = config or load()
     if config["provider"] != "openrouter":
-        return list(config["models"])
-    router = set(_env_list("NETZOO_ROUTER_MODEL_ALLOWLIST", DEFAULT_ROUTER_MODEL))
-    allowed = [name for name in _env_list("NETZOO_RESPONSE_MODEL_ALLOWLIST", DEFAULT_ROUTER_MODEL)
+        return []
+    router = set(_start_env_list("NETZOO_ROUTER_MODEL_ALLOWLIST", DEFAULT_ROUTER_MODEL))
+    allowed = [name for name in _start_env_list("NETZOO_RESPONSE_MODEL_ALLOWLIST", DEFAULT_ROUTER_MODEL)
                if name in router]
     # A free model the .env still names but OpenRouter retired (the
     # nemotron-3-super that 404s since 2026-10-20) is not offered again.
     allowed = [name for name in allowed if not name.endswith(":free") or name in FREE_OPENROUTER_MODELS]
     return allowed + [name for name in FREE_OPENROUTER_MODELS if name not in allowed]
+
+
+def model_choices(config: dict | None = None) -> list[str]:
+    """Models a whole session may run on under this provider, default first.
+
+    OpenRouter: the recommended models, then the ones the person added from
+    the catalog. Any other provider: exactly the models the person listed.
+    """
+    config = config or load()
+    recommended = recommended_models(config)
+    return recommended + [name for name in config["models"] if name not in recommended]
+
+
+def _with_models(change, path: Path | None = None) -> dict:
+    """Rewrite only the saved model list, keeping provider, URL and key."""
+    path = path or PROVIDER_PATH
+    with _exclusive_file_lock(path.with_suffix(".lock")):
+        current = load(path)
+        models = change(list(current["models"]), current)
+        _write_json_atomic(path, {"provider": current["provider"], "base_url": current["base_url"],
+                                  "api_key": current["api_key"], "models": models})
+    return public_view(path)
+
+
+def add_model(model: str, path: Path | None = None) -> dict:
+    """Add one model (picked from the catalog) to the saved provider's list."""
+    model = str(model or "").strip()
+    if not model or len(model) > 200 or any(ch.isspace() for ch in model):
+        raise ProviderError("Give one model id, e.g. anthropic/claude-haiku-5.5.")
+
+    def change(models: list[str], current: dict) -> list[str]:
+        if model in models or model in recommended_models(current):
+            return models
+        if len(models) >= MAX_MODELS:
+            raise ProviderError(f"At most {MAX_MODELS} added models; remove one in Settings first.")
+        return models + [model]
+
+    return _with_models(change, path)
+
+
+def remove_model(model: str, path: Path | None = None) -> dict:
+    """Remove one added model; another provider keeps at least one."""
+    model = str(model or "").strip()
+
+    def change(models: list[str], current: dict) -> list[str]:
+        kept = [name for name in models if name != model]
+        if not kept and current["provider"] != "openrouter":
+            raise ProviderError("This provider needs at least one model.")
+        return kept
+
+    return _with_models(change, path)
 
 
 def llm_base_url() -> str:
@@ -195,9 +262,11 @@ def apply_to_environment(config: dict | None = None, environ=None) -> dict:
             environ["NETZOO_LLM_API_KEY"] = config["api_key"]
         else:
             environ.pop("NETZOO_LLM_API_KEY", None)
+        # The free models, and the ones the person added from the catalog.
+        extra = list(FREE_OPENROUTER_MODELS) + config["models"]
         for name in ("NETZOO_RESPONSE_MODEL_ALLOWLIST", "NETZOO_ROUTER_MODEL_ALLOWLIST"):
             current = _env_list(name, DEFAULT_ROUTER_MODEL)
-            environ[name] = ",".join(current + [m for m in FREE_OPENROUTER_MODELS if m not in current])
+            environ[name] = ",".join(current + [m for m in dict.fromkeys(extra) if m not in current])
         return config
     # Another provider: OpenRouter ids mean nothing there. Its own models are
     # the allowlist and the defaults; the capability check, which normally
@@ -227,5 +296,6 @@ def public_view(path: Path | None = None) -> dict:
         "key_source": "saved" if key else ("env" if using_env and os.environ.get("OPENROUTER_API_KEY") else "none"),
         "presets": dict(PROVIDERS),
         "model_choices": model_choices(config),
+        "recommended_models": recommended_models(config),
         "free_models": list(FREE_OPENROUTER_MODELS),
     }

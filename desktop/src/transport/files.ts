@@ -134,6 +134,8 @@ export type ProviderView = {
   key_source: "saved" | "env" | "none";
   presets: Record<ProviderName, string>;
   model_choices: string[];
+  /** The models NetZoo was checked on; daemons from before 2026-11-18 leave it out. */
+  recommended_models?: string[];
   free_models: string[];
 };
 export type ProviderUpdate = {
@@ -144,6 +146,32 @@ export function readProvider(config: DaemonConfig): Promise<ProviderView> {
 }
 export function saveProvider(config: DaemonConfig, update: ProviderUpdate): Promise<ProviderView> {
   return post(config, "/v1/provider", update);
+}
+
+/** One model the provider serves; null means the provider does not say. */
+export type CatalogModel = {
+  id: string;
+  name: string;
+  context_length: number | null;
+  prompt_per_million: number | null;
+  completion_per_million: number | null;
+  free: boolean;
+  tools: boolean | null;
+  created: number | null;
+};
+export type ModelCatalog = {
+  provider: ProviderName;
+  models: CatalogModel[];
+  recommended: string[];
+  added: string[];
+  max_added: number;
+};
+export function readCatalog(config: DaemonConfig, refresh = false): Promise<ModelCatalog> {
+  return get(config, `/v1/provider/catalog${refresh ? "?refresh=true" : ""}`);
+}
+/** Add a model picked from the catalog to the provider's list, or remove an added one. */
+export function changeProviderModel(config: DaemonConfig, model: string, remove = false): Promise<ProviderView> {
+  return post(config, "/v1/provider/models", { model, remove });
 }
 
 export type SessionPage = { sessions: SessionSummary[]; offset: number; has_more: boolean; next_offset: number | null };

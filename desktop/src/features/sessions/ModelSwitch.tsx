@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 
 import { DaemonConfig } from "../../transport/daemon";
 import { readSettings } from "../../transport/files";
+import { BROWSE_ALL, ModelCatalogDialog, ModelGroups, ModelOptions, groupModels } from "./ModelCatalog";
 import { sessionModels } from "./NewSessionDialog";
 
 /** "nvidia/nemotron-3-ultra-550b-a55b:free" → "Nemotron 3 Ultra · free". */
@@ -41,13 +42,15 @@ export function ModelSwitch({
   refusals: number;
   onSwitch: (model: string) => void;
 }) {
-  const [choices, setChoices] = useState<string[]>([]);
+  const [groups, setGroups] = useState<ModelGroups>({ recommended: [], added: [] });
+  const [browsing, setBrowsing] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [fallback, setFallback] = useState("");
 
   const refresh = () => {
     readSettings(config).then((settings) => {
-      setChoices(settings.model_choices?.length ? settings.model_choices : sessionModels(settings.allowlists));
+      const choices = settings.model_choices?.length ? settings.model_choices : sessionModels(settings.allowlists);
+      setGroups(groupModels(choices, settings.provider?.recommended_models));
       // A session started without choosing runs on the daemon's default model.
       const daemonDefault = settings.provider && settings.provider.provider !== "openrouter"
         ? settings.provider.models[0] : settings.models?.response;
@@ -59,28 +62,38 @@ export function ModelSwitch({
   useEffect(() => { setPending(null); }, [model, refusals]);
 
   model = model || fallback;
-  const options = model && !choices.includes(model) ? [model, ...choices] : choices;
-  if (!model && options.length === 0) return null;
+  const switchTo = (next: string) => {
+    if (!next || next === model) return;
+    setPending(next);
+    onSwitch(next);
+  };
   const shown = pending ?? model;
   return (
+    <>
     <label className="model-picker" title={busy
       ? "The model can be switched once this turn finishes"
       : "Switch the model for the rest of this conversation; everything said so far carries over"}>
       <select
         aria-label="Session model"
         value={shown}
-        disabled={busy || options.length <= 1}
+        disabled={busy}
         onFocus={refresh}
         onChange={(event) => {
           const next = event.target.value;
-          if (!next || next === model) return;
-          setPending(next);
-          onSwitch(next);
+          if (next === BROWSE_ALL) { setBrowsing(true); return; }
+          switchTo(next);
         }}
       >
-        {options.map((name) => <option key={name} value={name}>{pickerLabel(name)}</option>)}
+        {!shown ? <option value="">Daemon default</option> : null}
+        <ModelOptions groups={groups} label={pickerLabel} extra={shown || undefined} />
       </select>
       {pending ? <span className="model-picker__pending">Switching…</span> : null}
     </label>
+    {browsing ? (
+      <ModelCatalogDialog config={config} current={model}
+        onCancel={() => setBrowsing(false)}
+        onPick={(next) => { setBrowsing(false); refresh(); switchTo(next); }} />
+    ) : null}
+    </>
   );
 }

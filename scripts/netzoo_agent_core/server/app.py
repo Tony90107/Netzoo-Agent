@@ -21,7 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.websockets import WebSocketDisconnect
 
 from . import activity, files, history, memory_view
-from .. import provider_config
+from .. import provider_catalog, provider_config
 from ..environment import environment_report
 from ..session_meta import set_details, set_tags
 from .path_mapper import PathMapper, PathOutsideProject
@@ -86,6 +86,15 @@ class ProviderRequest(BaseModel):
     api_key: str = Field(default="", max_length=400)
     clear_key: bool = False
     models: list[str] = Field(default_factory=list, max_length=provider_config.MAX_MODELS)
+
+
+class ProviderModelRequest(BaseModel):
+    """Add a model picked from the provider's catalog, or remove an added one."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = Field(min_length=1, max_length=200)
+    remove: bool = False
 
 
 def resolve_token() -> tuple[str, bool]:
@@ -468,6 +477,23 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
         # the response says whether one is saved and shows its last 4 characters.
         try:
             return provider_config.save(request.model_dump())
+        except provider_config.ProviderError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.get("/v1/provider/catalog")
+    def read_provider_catalog(refresh: bool = False, _scope: None = Depends(require_token)) -> dict:
+        # Fetched by the daemon so the key never leaves it.
+        try:
+            return provider_catalog.fetch_catalog(refresh=refresh)
+        except provider_catalog.CatalogError as error:
+            raise HTTPException(status_code=502, detail=str(error)) from error
+
+    @app.post("/v1/provider/models")
+    def change_provider_models(request: ProviderModelRequest, _scope: None = Depends(require_token)) -> dict:
+        try:
+            if request.remove:
+                return provider_config.remove_model(request.model)
+            return provider_config.add_model(request.model)
         except provider_config.ProviderError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 

@@ -6,13 +6,15 @@
  * both .env allowlists plus the curated OpenRouter free models, or the models
  * listed for another provider. The model can be switched between turns from
  * the session header; the session records each switch. OpenRouter's free
- * models (ids ending in ":free") are labelled.
+ * models (ids ending in ":free") are labelled. The menu groups the recommended
+ * models apart from ones added through "All models…" (ModelCatalog).
  */
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { DaemonConfig } from "../../transport/daemon";
 import { readSettings } from "../../transport/files";
 import { NewSessionOptions } from "../../transport/session";
+import { BROWSE_ALL, ModelCatalogDialog, ModelGroups, ModelOptions, groupModels } from "./ModelCatalog";
 
 function allowlisted(value: string | undefined): string[] {
   return (value ?? "").split(",").map((item) => item.trim()).filter((item) => item && item !== "(unset)");
@@ -37,24 +39,27 @@ export function NewSessionDialog({
   onStart: (options: NewSessionOptions) => void;
   onCancel: () => void;
 }) {
-  const [models, setModels] = useState<string[]>([]);
+  const [groups, setGroups] = useState<ModelGroups>({ recommended: [], added: [] });
   const [model, setModel] = useState("");
+  const [browsing, setBrowsing] = useState(false);
   const [tags, setTags] = useState("");
   const [name, setName] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
 
-  useEffect(() => {
+  const load = (keep?: string) => {
     let current = true;
     readSettings(config).then((settings) => {
       if (!current) return;
       const allowed = settings.model_choices?.length ? settings.model_choices : sessionModels(settings.allowlists);
       const fallback = settings.models?.response && settings.models.response !== "(unset)" ? [settings.models.response] : [];
       const options = allowed.length ? allowed : fallback;
-      setModels(options);
-      setModel(options.includes(settings.models?.response) ? settings.models.response : options[0] ?? "");
+      setGroups(groupModels(options, settings.provider?.recommended_models));
+      setModel(keep && options.includes(keep) ? keep
+        : options.includes(settings.models?.response) ? settings.models.response : options[0] ?? "");
     }).catch(() => undefined);
     return () => { current = false; };
-  }, [config]);
+  };
+  useEffect(() => load(), [config]);
 
   useEffect(() => {
     const node = dialog.current;
@@ -80,11 +85,16 @@ export function NewSessionDialog({
           <span className="nsd__hint">Shown instead of your first request in the session list and in Compare.</span>
         </label>
         <label className="nsd__field">Model
-          <select value={model} onChange={(event) => setModel(event.target.value)} disabled={models.length <= 1}>
-            {models.length === 0 ? <option value="">Daemon default</option> : null}
-            {models.map((name) => <option key={name} value={name}>{modelLabel(name)}</option>)}
+          <select value={model} onChange={(event) => {
+            if (event.target.value === BROWSE_ALL) setBrowsing(true);
+            else setModel(event.target.value);
+          }}>
+            {!model ? <option value="">Daemon default</option> : null}
+            <ModelOptions groups={groups} label={modelLabel} extra={model || undefined} />
           </select>
-          {models.length === 1 ? <span className="nsd__hint">The only model the allowlist permits.</span> : null}
+          {groups.added.includes(model) ? (
+            <span className="nsd__hint">Added from All models: NetZoo was not checked on it, and a paid model is billed to your provider account.</span>
+          ) : null}
           {model.endsWith(":free") ? (
             <span className="nsd__hint">Free on OpenRouter: at most 20 requests a minute and 1000 a day (fewer without account credit), often slower; its routing has not been measured like the default model's.</span>
           ) : null}
@@ -98,6 +108,11 @@ export function NewSessionDialog({
           <button className="btn btn--primary" type="submit">Start session</button>
         </div>
       </form>
+      {browsing ? (
+        <ModelCatalogDialog config={config} current={model}
+          onCancel={() => setBrowsing(false)}
+          onPick={(next) => { setBrowsing(false); setModel(next); load(next); }} />
+      ) : null}
     </dialog>
   );
 }

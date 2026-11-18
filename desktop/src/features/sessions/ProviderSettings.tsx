@@ -95,10 +95,10 @@ export function ProviderSettings({ config, onSaved }: { config: DaemonConfig; on
       </label>
       <label className="prov__field">Models
         <input value={models} onChange={(event) => setModels(event.target.value)}
-          placeholder={provider === "openrouter" ? "optional: the .env allowlists and free models are offered" : "e.g. gpt-4o-mini, gpt-4.1-mini"} />
+          placeholder={provider === "openrouter" ? "optional, e.g. anthropic/claude-haiku-5.5" : "e.g. gpt-4o-mini, gpt-4.1-mini"} />
         <span className="nsd__hint">
           {provider === "openrouter"
-            ? "OpenRouter offers the .env allowlist plus these free models:"
+            ? "Models you added (the model menus' \"All models…\" adds them here; remove one by deleting it). The recommended models are always offered: the .env allowlist plus these free models:"
             : "Comma-separated model ids this provider serves; the first is the default. Every role of a session runs on the chosen one, through function calling."}
         </span>
       </label>

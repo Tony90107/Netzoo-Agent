@@ -170,3 +170,96 @@ def test_the_window_can_switch_model_between_turns(monkeypatch):
         harness.answer("exit")
         assert harness.next("stopped").payload["exit_code"] == 0
     assert calls == [FREE]
+
+
+def test_a_catalog_model_is_offered_after_the_recommended_and_allowed(provider_file):
+    from netzoo_agent_core.llm import validate_response_model, validate_router_model
+
+    recommended = provider_config.recommended_models()
+    view = provider_config.add_model("anthropic/claude-haiku-5.5")
+    assert view["recommended_models"] == recommended
+    assert view["model_choices"] == recommended + ["anthropic/claude-haiku-5.5"]
+    provider_config.add_model("anthropic/claude-haiku-5.5")  # twice is once
+    provider_config.add_model(recommended[0])  # a recommended one is not added
+    assert provider_config.load()["models"] == ["anthropic/claude-haiku-5.5"]
+    provider_config.apply_to_environment()
+    validate_response_model("anthropic/claude-haiku-5.5")
+    validate_router_model("anthropic/claude-haiku-5.5")
+    view = provider_config.remove_model("anthropic/claude-haiku-5.5")
+    assert view["model_choices"] == recommended
+    provider_config.apply_to_environment()
+    with pytest.raises(ValueError):
+        validate_router_model("anthropic/claude-haiku-5.5")
+
+
+def test_adding_a_model_keeps_the_saved_key_and_has_a_cap(provider_file):
+    provider_config.save({"provider": "openrouter", "api_key": "sk-or-mine-1234"})
+    provider_config.add_model("google/gemini-3-flash")
+    assert provider_config.load()["api_key"] == "sk-or-mine-1234"
+    with pytest.raises(provider_config.ProviderError):
+        provider_config.add_model("two words")
+    for index in range(provider_config.MAX_MODELS - 1):
+        provider_config.add_model(f"vendor/model-{index}")
+    with pytest.raises(provider_config.ProviderError):
+        provider_config.add_model("vendor/one-too-many")
+
+
+def test_another_provider_keeps_at_least_one_model(provider_file):
+    provider_config.save({"provider": "openai", "api_key": "sk-openai-1234", "models": ["gpt-4o-mini"]})
+    assert provider_config.recommended_models() == []
+    with pytest.raises(provider_config.ProviderError):
+        provider_config.remove_model("gpt-4o-mini")
+
+
+def test_the_catalog_marks_tool_support_price_and_caches(provider_file):
+    from netzoo_agent_core import provider_catalog
+
+    provider_catalog._cache.clear()
+    calls = []
+
+    def download(base_url, api_key, timeout):
+        calls.append((base_url, api_key))
+        return [model for model in map(provider_catalog._normalize, [
+            {"id": "old/tools", "created": 1, "supported_parameters": ["tools"],
+             "pricing": {"prompt": "0.00000015", "completion": "0.0000006"}, "context_length": 128000},
+            {"id": "new/no-tools:free", "created": 2, "supported_parameters": ["max_tokens"],
+             "pricing": {"prompt": "0", "completion": "0"}},
+            {"id": "bare-id"},
+            {"id": "old/tools:batch", "endpoints": ["/api/v1/batches"]},
+        ]) if model]
+
+    catalog = provider_catalog.fetch_catalog(download=download)
+    assert [model["id"] for model in catalog["models"]] == ["new/no-tools:free", "old/tools", "bare-id"]
+    old = catalog["models"][1]
+    assert old["tools"] is True and old["prompt_per_million"] == 0.15 and old["completion_per_million"] == 0.6
+    assert catalog["models"][0]["tools"] is False and catalog["models"][0]["free"]
+    assert catalog["models"][2]["tools"] is None and catalog["models"][2]["prompt_per_million"] is None
+    assert calls == [(provider_config.OPENROUTER_BASE_URL, "sk-or-env-0000")]
+    provider_catalog.fetch_catalog(download=download)
+    assert len(calls) == 1
+    provider_catalog._cache.clear()
+
+
+def test_the_daemon_serves_the_catalog_and_adds_models(provider_file, monkeypatch):
+    from starlette.testclient import TestClient
+    from netzoo_agent_core import provider_catalog
+    from netzoo_agent_core.server.app import create_app
+
+    def broken(refresh=False):
+        raise provider_catalog.CatalogError("offline")
+
+    auth = {"Authorization": "Bearer catalog-token"}
+    with TestClient(create_app(token="catalog-token")) as client:
+        monkeypatch.setattr(provider_catalog, "fetch_catalog", lambda refresh=False: {"models": [], "refresh": refresh})
+        assert client.get("/v1/provider/catalog", params={"refresh": "true"}, headers=auth).json() == {
+            "models": [], "refresh": True}
+        monkeypatch.setattr(provider_catalog, "fetch_catalog", broken)
+        assert client.get("/v1/provider/catalog", headers=auth).status_code == 502
+        added = client.post("/v1/provider/models", json={"model": "anthropic/claude-haiku-5.5"}, headers=auth)
+        assert added.status_code == 200 and added.json()["model_choices"][-1] == "anthropic/claude-haiku-5.5"
+        assert "api_key" not in added.json()
+        removed = client.post("/v1/provider/models", json={"model": "anthropic/claude-haiku-5.5", "remove": True},
+                              headers=auth)
+        assert "anthropic/claude-haiku-5.5" not in removed.json()["model_choices"]
+        assert client.post("/v1/provider/models", json={"model": "a b"}, headers=auth).status_code == 422
+        assert client.get("/v1/provider/catalog").status_code in {401, 403}
