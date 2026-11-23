@@ -24,15 +24,17 @@ def form(**fields):
 
 
 class FakeClient:
-    def __init__(self, raw, explain="From the contracts: PANDA builds one network."):
-        self.raw, self.explain, self.calls = raw, explain, []
+    def __init__(self, raw, explain="From the contracts: PANDA builds one network.", wanted=None):
+        self.raw, self.explain, self.wanted, self.calls = raw, explain, wanted or [], []
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
 
     def create(self, **request):
         self.calls.append(request)
         if isinstance(self.raw, Exception):
             raise self.raw
-        content = json.dumps(self.raw) if "response_format" in request else self.explain
+        reading = (request.get("response_format") or {}).get("json_schema", {}).get("name") == "LeanWanted"
+        content = (json.dumps({"items": self.wanted}) if reading else
+                   json.dumps(self.raw) if "response_format" in request else self.explain)
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
                                usage=SimpleNamespace(prompt_tokens=100, completion_tokens=20, cost=0.0001,
                                                      model_extra={}))
@@ -46,9 +48,9 @@ class Recorder:
         self.events.append((event_type, payload))
 
 
-def run(task, raw, **state):
+def run(task, raw, wanted=None, **state):
     context = SimpleNamespace(recorder=Recorder(), router_model_name="openai/gpt-4o-mini", router_max_tokens=1200,
-                              lean_client=FakeClient(raw))
+                              lean_client=FakeClient(raw, wanted=wanted))
     result = classify_lean(context, {"messages": [HumanMessage(content=task)], "run_id": "r", **state}, task)
     return result, context
 
@@ -235,3 +237,46 @@ def test_cards_say_only_what_is_verified():
                                question="Are the samples paired?", reply="Preamble the model wrote."))
     card = _core_card("lean_ask", TaskDecision.model_validate(result["decision"]), None, task)
     assert card.kind == "clarification" and card.points == ["Are the samples paired?"]
+
+
+def test_r6_refusal_names_the_users_words_and_no_reason():
+    from netzoo_agent_core.interpretation.core_views import core_view
+    from netzoo_agent_core.lean import _menu
+
+    task = ("Our LIONESS-PANDA table covers 64 melanoma patients, 29 responders and 35 non-responders, with a Reactome "
+            "GMT. Test each pathway for a regulation difference between responders and non-responders.")
+    kind = next(key for key, text, _ in _menu("six")
+                if text == "Pathways differentially expressed or enriched between predefined groups.")
+    wanted = [{"quote": "Test each pathway for a regulation difference between responders and non-responders",
+               "role": "result", "kind": kind}]
+    result, context = run(task, form(steps=["PORCUPINE"], reply="PORCUPINE tests the groups."), wanted=wanted)
+    decision = TaskDecision.model_validate(result["decision"])
+    assert decision.action == "no_tool" and decision.core.kind == "DECLINE"
+    assert not decision.core.evidence["lean"]["verified"] and decision.core.evidence["lean"]["rules"][-1][:2] == "R6"
+    assert len(context.lean_client.calls) == 2  # the form and the blind reading
+    blind = next(call for call in context.lean_client.calls
+                 if call["response_format"]["json_schema"]["name"] == "LeanWanted")
+    assert "PORCUPINE" not in blind["messages"][0]["content"]  # the reader never sees the workflows
+    recorded = next(payload for name, payload in context.recorder.events if name == "lean.decision")
+    assert recorded["form"]["wanted"] == wanted  # saved, so the rule can be replayed at no cost
+    shown = core_view(None, {"decision": result["decision"], "messages": [HumanMessage(content=task)]}, reply)
+    text = shown["messages"][0].content
+    assert '"Test each pathway for a regulation difference' in text and "couldn't match" in text
+    assert "PORCUPINE tests the groups" not in text
+
+
+def test_r7_refusal_gives_codes_reason(monkeypatch):
+    from netzoo_agent_core.interpretation.core_views import core_view
+
+    task = "Normalize my raw counts from 30 adipose biopsies with TMM and write the matrix."
+    result, _ = run(task, form(steps=["NORMALIZE-EXPRESSION"]))
+    decision = TaskDecision.model_validate(result["decision"])
+    assert decision.core.kind == "DECLINE" and decision.core.evidence["lean"]["verified"]
+    shown = core_view(None, {"decision": result["decision"], "messages": [HumanMessage(content=task)]}, reply)
+    assert "SNAIL only" in shown["messages"][0].content
+
+
+def test_the_result_check_can_be_turned_off(monkeypatch):
+    monkeypatch.setenv("NETZOO_LEAN_RESULT_CHECK", "off")
+    result, context = run("Run PANDA on data/expr.tsv with my motif and PPI priors.", form(steps=["PANDA"]))
+    assert len(context.lean_client.calls) == 1 and result["decision"]["core"]["kind"] == "DO"

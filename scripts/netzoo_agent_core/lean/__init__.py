@@ -1,4 +1,4 @@
-"""Lean decider (2026-11-20): one model call with a nine-field form, then rules taken from the contracts (R0-R5).
+"""Lean decider (2026-11-20): one model call with a nine-field form, then rules taken from the contracts (R0-R7).
 
 Why: on the sealed six-tool bank (local evaluation data), the full routing stack (about ten model calls, ~91 typed
 values per request, Jev checks) scored 68/120 against 73/120 for one plain model call (B1), and lost mainly by holding
@@ -18,6 +18,20 @@ R4  PORCUPINE reads sample-specific networks: an aggregate-only producer before 
 
 R5  A setting the request gives (words found in it) that the workflow's contract does not allow (setting_issue) stops
     the run; words naming no allowed choice are asked about.
+R6  (2026-11-20, user: the model must not see the correspondence, or it forces a request onto a workflow) A second
+    call reads the request blind -- it never sees the workflows -- and lists its parts; for each result asked for it
+    picks the same result from the capability sheet's closed list of result texts (`_menu`: produces, near misses,
+    registry-wide, preparation steps; who gives them is not shown). Code then looks the pick up: a result whose
+    words are found in the request and that no workflow in scope gives directly (with_step counts as not given) stops
+    the run. "None of these" stops nothing (settings and loose phrases land there: formal F114 "edge weights on the
+    0-1 scale", F005 "needs a regulatory network"), nor do words naming one of the six ("run PANDA" read as OTTER's
+    look-alike result: F006, X027). Replayed on every saved reading: 19 stops on gold dont, 0 on do/ask (the first
+    version: 22 and 6). The refusal names the user's words, never a reason: the pick is the model's reading.
+R7  Six-package scope: a DO with NORMALIZE-EXPRESSION whose request names a method other than SNAIL is refused.
+
+Scope (2026-11-20, user: let it see only the six): the decider sees only PANDA, LIONESS-PANDA, SCORPION, PORCUPINE, SPONGE and
+SNAIL (NORMALIZE-EXPRESSION, method snail), and their settings. NETZOO_LEAN_SCOPE=all shows every registered workflow;
+NETZOO_LEAN_RESULT_CHECK=off skips R6's call.
 
 EXPLAIN (2026-11-20, user: the model answers from the algorithms of the packages it has read): a question about how a method works, what it
 needs or gives, how methods differ or how to proceed gets an answer written by a second call that sees only the
@@ -37,12 +51,29 @@ from pathlib import Path
 
 import yaml
 
-__all__ = ["LeanDecision", "apply_rules", "decide", "explain_context", "instructions", "latest_words", "plan_notes",
-           "prep_steps", "response_format",
-           "tool_names", "tools_text"]
+__all__ = ["SIX", "LeanDecision", "apply_rules", "decide", "explain_context", "instructions", "latest_words",
+           "plan_notes", "prep_steps", "response_format", "result_check", "scope", "tool_names", "tools_text",
+           "wanted_format", "wanted_instructions"]
 
 ROOT = Path(__file__).resolve().parents[3]
 SYSTEM_NAME = {"SPONGE": "SPONGE-PRIORS"}
+SIX = ("PANDA", "LIONESS-PANDA", "SCORPION", "PORCUPINE", "SPONGE", "NORMALIZE-EXPRESSION")
+"""The thesis scope (advisor, 2026-11-14), by registry name; SNAIL is NORMALIZE-EXPRESSION with method snail."""
+
+
+def scope() -> str:
+    """Which workflows the decider sees: "six" (default, 2026-11-20 user: let it see only the six) or "all" registered
+    workflows, from NETZOO_LEAN_SCOPE."""
+    import os
+
+    return "all" if os.environ.get("NETZOO_LEAN_SCOPE", "").strip().lower() == "all" else "six"
+
+
+def result_check() -> bool:
+    """R6's blind reading call runs unless NETZOO_LEAN_RESULT_CHECK=off."""
+    import os
+
+    return os.environ.get("NETZOO_LEAN_RESULT_CHECK", "").strip().lower() not in ("off", "0", "false")
 
 
 @lru_cache(maxsize=1)
@@ -51,22 +82,64 @@ def _specs() -> dict[str, dict]:
                                                 sorted((ROOT / "workflows").glob("*.yaml")))}
 
 
-@lru_cache(maxsize=1)
+def _line_name(line: str) -> str:
+    return line[2:].split(":")[0].split(" ")[0]
+
+
+def _six_readers(actions) -> str:
+    from workflow_registry import ACTION_DEFINITIONS
+
+    return ", ".join(sorted(name for name in (ACTION_DEFINITIONS[action].workflow for action in actions) if name in SIX))
+
+
+def _six_preparation_line(name: str, line: str) -> str:
+    """A preparation step's registry line inside the six-package scope: only the six read its output, and
+    normalization is SNAIL only (the other methods are outside the scope)."""
+    from workflow_registry import ACTION_DEFINITIONS
+
+    from ..graph.jev_guard_call import _defaults, _workflow_names
+    from ..normalization_request import CHAINABLE_ACTIONS, METHOD_OPTION_LINES
+    from ..prior_request import PRIOR_CONSUMERS
+
+    if name == "SPONGE":
+        return line.replace(f"inputs that {_workflow_names(PRIOR_CONSUMERS)} read",
+                            f"inputs that {_six_readers(PRIOR_CONSUMERS)} read")
+    normalize = ACTION_DEFINITIONS["normalize_expression"]
+    return ("- NORMALIZE-EXPRESSION (SNAIL; a preparation step, not a network workflow): normalizes an expression matrix "
+            f"between samples -- {METHOD_OPTION_LINES['snail']}. It writes a normalized expression matrix that "
+            f"{_six_readers(CHAINABLE_ACTIONS)} can then read. Required inputs: {', '.join(normalize.required_inputs)}. "
+            "Controls: normalization_method snail; "
+            f"{_defaults('normalize_expression', skip=('normalization_method', 'gene_lengths_file'))}.")
+
+
 def tools_text() -> str:
-    """The registry line of every workflow and preparation step, each followed by its contract's input checks."""
+    """The registry line of every workflow and preparation step in `scope()`, each followed by its contract's input
+    checks."""
+    return _tools_text(scope())
+
+
+@lru_cache(maxsize=2)
+def _tools_text(which: str) -> str:
     from ..graph.jev_guard_call import registry_text
 
     lines = []
     for line in registry_text().split("\n"):
-        name = line[2:].split(":")[0].split(" ")[0]
+        name = _line_name(line)
+        if which == "six":
+            if name not in SIX:
+                continue
+            if name in ("SPONGE", "NORMALIZE-EXPRESSION"):
+                line = _six_preparation_line(name, line)
+            elif optional := [item for item in _specs().get(name, {}).get("optional_inputs") or []
+                              if item.endswith("_file")]:  # PANDA's coexpression_file, SCORPION's cell metadata
+                line = line.replace(" Controls:", f" Optional inputs: {', '.join(optional)}. Controls:", 1)
         checks = [item["text"] for item in (_specs().get(name, {}).get("input_checks") or [])]
         lines.append(line + (f" Checks: {' '.join(checks)}" if checks else ""))
     return "\n".join(lines)
 
 
-@lru_cache(maxsize=1)
 def tool_names() -> tuple[str, ...]:
-    return tuple(line[2:].split(":")[0].split(" ")[0] for line in tools_text().split("\n"))
+    return tuple(_line_name(line) for line in tools_text().split("\n"))
 
 
 def instructions() -> str:
@@ -93,17 +166,77 @@ def instructions() -> str:
         "Registered workflows and steps:\n" + tools_text())
 
 
-@lru_cache(maxsize=1)
 def prep_steps() -> frozenset[str]:
     """The preparation steps, by the names apply_rules uses (the registry line says "a preparation step")."""
-    names = {line[2:].split(":")[0].split(" ")[0] for line in tools_text().split("\n") if "a preparation step" in line}
+    names = {_line_name(line) for line in tools_text().split("\n") if "a preparation step" in line}
     return frozenset(SYSTEM_NAME.get(name, name) for name in names)
 
 
 def _setting_names() -> list[str]:
     from ..method_names import UNREGISTERED, setting_names
 
-    return [*setting_names(True), UNREGISTERED]
+    names = setting_names(True)
+    if scope() == "six":
+        names = tuple(name for name in names if name.split(".", 1)[0] in SIX)
+    return [*names, UNREGISTERED]
+
+
+WANTED_ROLES = ("result", "purpose", "data", "other")
+
+
+@lru_cache(maxsize=2)
+def _menu(which: str) -> tuple[tuple[str, str, frozenset[str]], ...]:
+    """R6's closed list of result kinds: every capability-sheet result text (produces, near misses, registry-wide,
+    the preparation steps), each once, in alphabetical order under a neutral key, with the workflows in `which` scope
+    that give it directly (system names). A with_step result is given by none (2026-11-20, user: a result NetZoo
+    leaves to a step outside it counts as not produced). The reader sees the texts only, never who gives them."""
+    from workflow_registry import ACTION_DEFINITIONS
+
+    from ..capability_sheet import lean_entries, sheet_entries
+
+    givers: dict[str, set[str]] = {}
+    for item in [*sheet_entries().values(), *lean_entries().values()]:
+        given = givers.setdefault(item.text, set())
+        # A near miss of one workflow that the sheet says another gives instead ("One network per sample." from OTTER
+        # is LIONESS-PANDA's) is given by that one.
+        workflow = item.workflow if item.kind == "produces" and item.level == "direct" else (
+            ACTION_DEFINITIONS[item.instead_registered].workflow if item.instead_registered else None)
+        if workflow and (which == "all" or workflow in SIX):
+            given.add(SYSTEM_NAME.get(workflow, workflow))
+    import hashlib
+
+    texts = sorted(givers, key=lambda text: (text.casefold(), text))
+    # The key is the text's own hash, so a saved reading still means the same result after the sheet changes.
+    return tuple((f"K{hashlib.sha1(text.encode()).hexdigest()[:6]}", text, frozenset(givers[text])) for text in texts)
+
+
+_NAMED_IN_SCOPE = __import__("re").compile(
+    r"(?<![\w-])(?:LIONESS-PANDA|PANDA|LIONESS|SCORPION|PORCUPINE|SPONGE|(?:py)?SNAIL)(?![\w-])", __import__("re").I)
+
+
+def wanted_instructions() -> str:
+    """The blind reading (R6): the request's parts and, for each result asked for, its kind from the closed list."""
+    return (
+        "List the parts of the researcher's request as the JSON object described below, from the request's own words "
+        "only.\n"
+        "- items: one entry per part of the request.\n"
+        "  - quote: the request's exact words for that part.\n"
+        "  - role: result when the part asks for something to be produced or delivered; purpose when it says why the "
+        "researcher wants it or what they will do with it afterwards; data when it describes what they have; other "
+        "otherwise.\n"
+        "  - kind: for a result, the key of the result kind below that is that same result; none when no kind below "
+        "is that result. For any other role, none.\n\n"
+        "Result kinds:\n" + "\n".join(f"{key}: {text}" for key, text, _ in _menu(scope())))
+
+
+def wanted_format() -> dict:
+    keys = [key for key, _, _ in _menu(scope())] + ["none"]
+    return {"type": "json_schema", "json_schema": {"name": "LeanWanted", "strict": True, "schema": {
+        "type": "object", "additionalProperties": False, "required": ["items"],
+        "properties": {"items": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False, "required": ["quote", "role", "kind"],
+            "properties": {"quote": {"type": "string"}, "role": {"type": "string", "enum": list(WANTED_ROLES)},
+                           "kind": {"type": "string", "enum": keys}}}}}}}}
 
 
 def response_format() -> dict:
@@ -135,6 +268,8 @@ class LeanDecision:
     """For a DO: the settings the request gave, every default used, and what the files are checked for."""
     calls: list[dict] = field(default_factory=list)
     """Each model call: model, input_tokens, output_tokens, cost_usd, duration_ms (for the app's usage record)."""
+    decline_quote: str = ""
+    """R6: the request's words for the result no workflow in scope gives (the refusal names them, never a reason)."""
 
     def as_dict(self) -> dict:
         return {"kind": self.kind, "workflows": self.steps, "question": self.question, "reply": self.reply,
@@ -284,11 +419,37 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
                 rules.append(f"R5: {item['setting']} not allowed by the contract")
                 break
 
+    if kind == "DO" and scope() == "six" and "NORMALIZE-EXPRESSION" in steps:  # R7
+        from ..normalization_request import METHOD_LABELS, method_named
+
+        method = method_named(task)
+        if method and method != "snail":
+            kind, question = "DECLINE", ""
+            reply = (f"In the six-package scope NetZoo normalizes with SNAIL only; the request names "
+                     f"{METHOD_LABELS[method]}.")
+            rules.append(f"R7: normalization {method} is outside the six-package scope")
+
+    decline_quote = ""
+    if kind == "DO" and raw.get("wanted") is not None:  # R6
+        from ..interpretation.reason_layers import UNMATCHED_RESULT
+
+        givers = {key: given for key, _, given in _menu(scope())}
+        for item in raw["wanted"]:
+            quote, key = item.get("quote", ""), item.get("kind")
+            if item.get("role") != "result" or not _found(task, quote) or key not in givers or givers[key]:
+                continue  # "none" (and a key from another version of the list) is no evidence either way
+            if scope() == "six" and _NAMED_IN_SCOPE.search(quote):
+                continue  # "run PANDA", "SPONGE run please": the reader cannot know what a name gives; the named step does
+            kind, question, decline_quote = "DECLINE", "", quote
+            reply = f'"{quote}" -- {UNMATCHED_RESULT}'
+            rules.append(f"R6: {item.get('kind')} is given by no workflow in scope ({scope()})")
+            break
+
     if kind == "DO" and not steps:
         kind = "ASK"  # nothing to run: ask what is wanted
     notes = plan_notes(task, steps, stated, raw) if kind == "DO" else []
     return LeanDecision(kind=kind, steps=steps if kind != "DECLINE" else [], question=question, reply=reply,
-                        rules=rules, notes=notes)
+                        rules=rules, notes=notes, decline_quote=decline_quote)
 
 
 def plan_notes(task: str, steps: list[str], stated: list[dict], raw: dict) -> list[str]:
@@ -398,11 +559,24 @@ def decide(task: str, client, model: str = "openai/gpt-4o-mini", max_tokens: int
     `max_tokens`: reasoning models spend output tokens before the answer (free models: 6000, as bootstrap gives).
     `usage_extra`: ask for the cost in the usage block (OpenRouter's `usage.include`; other providers may refuse it).
     `plan_details`: append the plan notes to a DO's reply (the app shows them under its own plan instead)."""
+    from concurrent.futures import ThreadPoolExecutor
+
     calls: list[dict] = []
-    response = _call(client, calls, usage_extra, model=model, temperature=0, max_tokens=max_tokens,
-                     response_format=response_format(),
-                     messages=[{"role": "system", "content": instructions()}, {"role": "user", "content": task}])
+    read_calls: list[dict] = []
+    with ThreadPoolExecutor(max_workers=2) as pool:  # R6's blind reading runs beside the form, never sees it
+        form = pool.submit(_call, client, calls, usage_extra, model=model, temperature=0, max_tokens=max_tokens,
+                           response_format=response_format(),
+                           messages=[{"role": "system", "content": instructions()}, {"role": "user", "content": task}])
+        reading = pool.submit(_call, client, read_calls, usage_extra, model=model, temperature=0,
+                              max_tokens=max_tokens, response_format=wanted_format(),
+                              messages=[{"role": "system", "content": wanted_instructions()},
+                                        {"role": "user", "content": task}]) if result_check() else None
+        response = form.result()
+        read = reading.result() if reading else None
     raw = json.loads(response.choices[0].message.content)
+    if read is not None:
+        raw["wanted"] = json.loads(read.choices[0].message.content).get("items", [])
+    calls += read_calls
     decided = apply_rules(task, raw)
     if decided.kind == "EXPLAIN":
         decided.reply, _ = _explain(task, decided.steps, client, model, max_tokens, calls, usage_extra)
