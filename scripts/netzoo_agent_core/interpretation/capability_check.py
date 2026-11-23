@@ -32,7 +32,7 @@ from ..contracts.capability_check import (
 from .count_alternatives import (count_update, file_count_note, verified_count_alternatives, weigh_credited_counts,
                                  weigh_sample_doubts)
 from .request_spans import _locate_tokens, _span, distinct_passages  # noqa: F401 -- research tools import _span
-from .request_readings import only_inputs, ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal  # noqa: F401
+from .request_readings import only_inputs, ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal, corrected_forms  # noqa: F401
 from .method_conditions import (
     method_fitting, named_limits, request_method_for, request_method_limit, settings_apart, typed_setting,
     verified_method, with_request_method,
@@ -44,7 +44,7 @@ from .sentence_ownership import owned_sentences, request_sentences
 from .requirement_split import (
     ask_conditions, condition_requirements, delivery_requirements, form_condition_spans, split_additions, unmet,
 )
-from .reason_layers import UNMATCHED_RESULT, options_line, registry_wide, unmatched
+from .reason_layers import UNMATCHED_RESULT, nearest_or_options, registry_wide, unmatched
 from .stated_reasons import _form_reasons, claim_sentences, stated  # noqa: F401 -- research tools import _form_reasons
 from .unconfirmed_routes import checked_body_result
 
@@ -374,10 +374,9 @@ def build_capability_check(
 ) -> tuple[CapabilityCheck, list[dict]]:
     """The verified check for one proposal, and what was rejected.
 
-    A registry-wide reason (no causal proof, no prediction) is kept only when the
-    study-purpose reader verified that claim with its cue words: the smoke run cited
-    both for a splicing request. Given with the claims' words, the reply says one only for a
-    result in a sentence holding them (ROUND-20, `stated_reasons.claim_sentences`).
+    A registry-wide reason (no causal proof, no prediction) is kept only when the study-purpose reader verified that
+    claim with its cue words: the smoke run cited both for a splicing request. Given with the claims' words, the reply
+    says one only for a result in a sentence holding them (ROUND-20, `stated_reasons.claim_sentences`).
 
     A passage asked for several times is one requirement; when one reading names an
     entry and another names none (Log 387 dev round: a network and a forecast quoted as
@@ -385,6 +384,7 @@ def build_capability_check(
 
     `counted_samples` (ROUND-07): (samples, path) counted in the named expression file (`weigh_sample_doubts`).
     """
+    proposal = corrected_forms(task, proposal)  # needs-sign-2026-11-18, stated-forms-2026-11-19: from the words
     known = sheet_entries()
     rejected, spans, asks, other = [], [], {}, {}
     conditions = verified_conditions(task, proposal)
@@ -749,7 +749,7 @@ def full_gap_result(state, reply) -> dict | None:
     plain = full_gap_reply(check)
     if with_outside_steps(plain, decision, task) != plain:
         return reply(with_outside_steps(full_gap_reply(check, with_note=True), decision, task), "capability_check_gap")
-    return reply(full_gap_reply(check, options=options_line(decision)), "capability_check_gap")
+    return reply(full_gap_reply(check, options=nearest_or_options(decision)), "capability_check_gap")
 
 
 def whole_check_result(state, reply) -> dict | None:

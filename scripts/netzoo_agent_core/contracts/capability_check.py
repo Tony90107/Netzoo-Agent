@@ -725,6 +725,9 @@ class CapabilityCheck(BaseModel):
     only_inputs: list[str] = Field(default_factory=list)
     only_inputs_quote: str = ""
     """Phase 4b: the input kinds the user says are all they have, with their verified words (the rest are absent)."""
+    linked: dict[str, list[str]] = Field(default_factory=dict)
+    """couldn't-match-2026-11-18: the reading's own sheet links per asked sentence, before the check judged them. Only
+    the nearest-workflow line of a full gap reads it (`interpretation.nearest_workflows`); it credits nothing."""
     open_goal_quote: str = ""
     """ROUND-21 (R21-A): on a full gap no reason can be given for, the request's verified words asking for an analysis
     that names no result (`interpretation.goal_read`); the turn is CLARIFY, not DECLINE."""

@@ -33,7 +33,9 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     # Plan item 2: the request's requirements are read once, from the full
     # message; the router and model calls read the bounded window.
     requirements = read_request_requirements(latest_user_message(state["messages"]))
-    jev = start_jev(user_task)  # Jev guard (off by default): reads the request alone, beside the reading
+    from ..interpretation.nearest_workflows import CONFIRMED_CHOICE  # a picked option is a choice: no Jev read
+
+    jev = None if user_task.startswith(CONFIRMED_CHOICE) else start_jev(user_task)  # Jev guard: the request alone
     invocation = with_operation_authority(
         context, state, requirements, invoke_router(context, state, user_task),
     )
@@ -45,6 +47,9 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
             carried=(state.get("workflow_continuation") or {}).get("parameters"),
         )
     decision = invocation.decision
+    from ..interpretation.repair import confirmed_choice_decision
+
+    decision = confirmed_choice_decision(decision, user_task)  # repeat-questions-2026-11-18: a picked option decides
     if decision.run_verdict is not None:
         # Items 1-2: the verdict holds for this request only; a plan evaluated against another one fails.
         decision = decision.model_copy(update={"run_verdict": decision.run_verdict.model_copy(
@@ -59,6 +64,11 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
                                                        budget_warnings)
     # Jev guard (PLAN-FRESH.md): a confident Jev CLARIFY/ASK may turn a DO or DECLINE into that question, never more.
     core = apply_jev_guard(context, state, decision, core, user_task, jev)
+    from ..interpretation.stated_inputs import porcupine_on_aggregate_core  # dev-bank D011
+
+    core, stated = porcupine_on_aggregate_core(core, user_task)
+    if stated == "declined":
+        record_event(context, state, "core.stated_inputs", "classify", core.evidence["stated_inputs"])
     # jev-data-first: a form-only ASK whose workflows the user's data rules out asks the guard's data confirm instead.
     from .jev_forms_call import apply_data_first
 
@@ -77,6 +87,11 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     from ..interpretation.task_answers import clarification_rounds
 
     core = clarification_rounds(core, state.get("task_state"))
+    # couldn't-match-2026-11-18: a refusal with no verified reason gets labelled general background (off by default).
+    from .general_background_call import apply_general_background
+
+    core, usage, budget_warnings = apply_general_background(context, state, decision, core, user_task, usage,
+                                                            budget_warnings)
     decision = with_core(decision, core)
     record_event(context, state, "core.decision", "classify", core.model_dump(mode="json"))
     routing_state = invocation.routing_state

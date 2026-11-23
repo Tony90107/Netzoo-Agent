@@ -270,6 +270,9 @@ class TaskDecision(BaseModel):
     sponge_tf_names: list[str] | None = Field(default=None, max_length=400, exclude_if=lambda value: value is None)
     jaspar_release: str | None = Field(default=None, pattern=r"^JASPAR20\d\d$", exclude_if=lambda value: value is None)
     genome_assembly: Literal["hg38", "hg19", "hs1"] | None = Field(default=None, exclude_if=lambda value: value is None)
+    # dev-bank-2026-11-19: what the request's words say that stops a SPONGE run (two or an unsupported genome assembly,
+    # no internet access), each a sentence for the preflight to report; code-read, never the model's.
+    sponge_blockers: list[str] | None = Field(default=None, max_length=8, exclude_if=lambda value: value is None)
     promoter_upstream: int | None = Field(default=None, ge=0, le=100_000, exclude_if=lambda value: value is None)
     promoter_downstream: int | None = Field(default=None, ge=0, le=100_000, exclude_if=lambda value: value is None)
     motif_score_threshold: int | None = Field(default=None, ge=0, le=1000, exclude_if=lambda value: value is None)

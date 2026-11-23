@@ -24,6 +24,7 @@ def sponge_input_errors(decision: Any) -> list[str]:
     upstream, downstream = get("promoter_upstream"), get("promoter_downstream")
     if upstream is not None and downstream is not None and upstream + downstream == 0:
         errors.append("the promoter window is empty (0 bp upstream and 0 bp downstream)")
+    errors.extend(get("sponge_blockers") or [])  # dev-bank-2026-11-19: what the request's words rule out
     output_dir = get("output_dir")
     if output_dir and _resolve_user_path(output_dir).is_file():
         errors.append(f"output_dir is a file: {output_dir}")

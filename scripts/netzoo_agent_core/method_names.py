@@ -10,7 +10,7 @@ import re
 
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS, SINGLE_CELL_ACTIONS
 
-__all__ = ["LIONESS_FAMILY", "PROJECT_IDENTITIES", "UNREGISTERED", "is_project_identity", "method_names", "named_workflows", "registered_workflows",
+__all__ = ["LIONESS_FAMILY", "bare_lioness", "PROJECT_IDENTITIES", "UNREGISTERED", "is_project_identity", "method_names", "named_workflows", "registered_workflows",
            "setting_meanings", "setting_names", "workflows_in"]
 
 LIONESS_FAMILY = "LIONESS"
@@ -82,3 +82,23 @@ def setting_meanings(single_cell: bool = True) -> tuple[str, ...]:
                  for workflow, action in sorted(registered_workflows().items())
                  if single_cell or action not in SINGLE_CELL_ACTIONS
                  for control in ACTION_DEFINITIONS[action].controls)
+
+
+#: Words that point a bare "LIONESS" at a version other than LIONESS-PANDA (dev-bank-2026-11-19).
+_OTHER_LIONESS = re.compile(
+    r"\bmi\W?rnas?\b|micro\W?rna|\bmir-\d|co\W?expression|correlation network|\bdragon\b|two[- ]layer|"
+    r"multi[- ]?omic|metabol\w*|proteom\w*|methylation", re.IGNORECASE)
+_BARE_LIONESS = re.compile(r"(?<![A-Za-z0-9-])LIONESS(?![A-Za-z0-9-])", re.IGNORECASE)
+
+
+def bare_lioness(task: str) -> str | None:
+    """The workflow a bare "LIONESS" stands for: LIONESS-PANDA, the version that takes exactly expression, a TF motif
+    prior and a PPI network, unless the request's words point at another version (miRNA -> LIONESS-PUMA,
+    co-expression, DRAGON or two omics layers); None when it names no bare LIONESS or is ambiguous.
+
+    dev-bank-2026-11-19: "build the priors with SPONGE ..., then run LIONESS" was refused as a full gap (D005, D010) and
+    "Please run LIONESS on our bulk RNA-seq" asked "Did you mean LIONESS-PANDA's result?" (D015). The 11-16 named
+    comparison (`goal_evidence.compared_workflows`) already reads a bare LIONESS the same way."""
+    if not _BARE_LIONESS.search(task or "") or _OTHER_LIONESS.search(task or ""):
+        return None
+    return "LIONESS-PANDA" if "LIONESS-PANDA" in registered_workflows() else None

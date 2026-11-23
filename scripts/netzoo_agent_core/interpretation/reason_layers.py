@@ -18,7 +18,8 @@ from workflow_registry import OUTPUT_CAPABILITIES, workflow_name
 from ..capability_sheet import entry, produced_text
 from ..method_names import registered_workflows, workflows_in
 
-__all__ = ["UNMATCHED", "UNMATCHED_RESULT", "is_unmatched", "options_line", "registry_wide", "unmatched"]
+__all__ = ["UNMATCHED", "UNMATCHED_RESULT", "is_unmatched", "nearest_or_options", "options_line", "registry_wide",
+           "unmatched"]
 
 UNMATCHED = "I couldn't match this to anything a registered NetZoo workflow produces or lets you set."
 UNMATCHED_RESULT = "I couldn't match this to a result any registered NetZoo workflow produces."
@@ -58,3 +59,10 @@ def options_line(decision) -> str:
         return ""
     return (f"Registered workflows that take the kind of data you described: {', '.join(names)}. "
             "Tell me if one of them gives what you meant, or which result you need.")
+
+
+def nearest_or_options(decision) -> str:
+    """couldn't-match-2026-11-18: the nearest of the six main workflows when code finds one, else `options_line`."""
+    from .nearest_workflows import nearest_line
+
+    return nearest_line(decision) or options_line(decision)

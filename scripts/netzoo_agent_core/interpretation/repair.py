@@ -295,3 +295,14 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
     return decision.model_copy(
         update={"should_execute": decision.action != "no_tool"}
     )
+
+
+def confirmed_choice_decision(decision: TaskDecision, task: str) -> TaskDecision:
+    """repeat-questions-2026-11-18: on the turn a picked option becomes (`engine.choices.confirmed_outcome_task`), the
+    picked workflow is the decision -- its readings of the marker text, which named no result, are dropped. Without it
+    the turn re-listed the options it had just offered (live rq r2 P1) or asked "Did you mean X's result?" (3 of 4
+    recorded such turns). Any other task is returned as it came."""
+    if not task.startswith("CONFIRMED_OUTCOME_ACTION="):
+        return decision
+    return repair_router_decision(decision, task).model_copy(update={"hypothesis_actions": [], "outcome_hypotheses": []})
+

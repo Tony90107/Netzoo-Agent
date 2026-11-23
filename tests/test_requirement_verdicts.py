@@ -341,7 +341,9 @@ def test_result_forms_no_workflow_gives_rule_every_entry_out():
     quote = "a fuzzy community structure in which every gene has a degree of membership in each community"
     for form, value in (("group_membership", "several_groups"), ("time_model", "dynamic"),
                         ("spatial", "uses_neighbors")):
-        check, _ = build_capability_check(task, _one_sentence(task, "asks", quote, ("condor.communities",),
+        # stated-forms-2026-11-19: uses_neighbors stands only beside words asking for neighbours
+        said = task.replace("community.", "community, using neighbouring spots.") if form == "spatial" else task
+        check, _ = build_capability_check(said, _one_sentence(said, "asks", quote, ("condor.communities",),
                                                                 input_network="regulator_gene", **{form: value}))
         assert check.results()[0].status == "not_available", form
     plain, _ = build_capability_check(task, _one_sentence(task, "asks", quote, ("condor.communities",),

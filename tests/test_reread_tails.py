@@ -80,3 +80,49 @@ def test_on_a_whole_sentence_given_to_the_reread_is_still_added(monkeypatch):
                             unchecked=[sentence])
     merged = merge_reread(task, empty, _reread_check(task, sentence), [sentence])
     assert [(item.quote, item.status) for item in merged.results()] == [(sentence, "not_available")]
+
+
+# repeat-questions-2026-11-18 (live rq D1): a tail that only names again the inputs already quoted is not refused.
+
+D1 = ("Please run LIONESS-PANDA to get one TF-to-gene network per patient for our 60 tumours, using the RNA-seq "
+      "expression matrix, the motif prior and the PPI file.")
+D1_RESULT = "one TF-to-gene network per patient for our 60 tumours"
+D1_TAIL = "using the RNA-seq expression matrix, the motif prior and the"
+
+
+def _d1_found():
+    return CapabilityCheck(requirements=[
+        _req(D1_RESULT, "result", "available", ["lioness_panda.per_sample_networks"]),
+        _req("RNA-seq expression matrix", "context"), _req("motif prior", "context"), _req("PPI file", "context")])
+
+
+def test_a_tail_restating_quoted_inputs_is_not_added_with_the_flag_off(monkeypatch):
+    monkeypatch.delenv("NETZOO_REREAD_TAILS", raising=False)
+    merged = merge_reread(D1, _d1_found(), _reread_check(D1, D1_TAIL), [D1_TAIL])
+    assert [item.quote for item in merged.results()] == [D1_RESULT] and not merged.full_gap
+
+
+def test_a_tail_with_words_of_its_own_is_still_added_and_refused(monkeypatch):
+    monkeypatch.delenv("NETZOO_REREAD_TAILS", raising=False)
+    task = D1.replace("PPI file.", "PPI file, emailed to each patient's doctor automatically.")
+    tail = "emailed to each patient's doctor automatically"
+    merged = merge_reread(task, _d1_found(), _reread_check(task, tail), [tail])
+    assert [(item.quote, item.status) for item in merged.results()][-1] == (tail, "not_available")
+
+
+def test_a_credited_restating_tail_is_still_added(monkeypatch):
+    monkeypatch.delenv("NETZOO_REREAD_TAILS", raising=False)
+    merged = merge_reread(D1, _d1_found(), _reread_check(D1, D1_TAIL, ["panda.tf_gene_network"]), [D1_TAIL])
+    assert D1_TAIL in [item.quote for item in merged.results()]
+
+
+def test_a_tail_naming_only_registry_inputs_is_not_added_even_when_the_first_reading_quoted_none(monkeypatch):
+    monkeypatch.delenv("NETZOO_REREAD_TAILS", raising=False)
+    tail = "using the RNA-seq expression matrix, the motif prior and the PPI file"
+    found = CapabilityCheck(requirements=[_req(D1_RESULT, "result", "available", ["lioness_panda.per_sample_networks"])])
+    merged = merge_reread(D1, found, _reread_check(D1, tail), [tail])
+    assert [item.quote for item in merged.results()] == [D1_RESULT]
+    output_tail = "and also the sample-specific LIONESS output"
+    task = D1.replace("PPI file.", f"PPI file, {output_tail}.")
+    kept = merge_reread(task, found, _reread_check(task, output_tail), [output_tail])
+    assert output_tail in [item.quote for item in kept.results()]  # an output name is not an input
