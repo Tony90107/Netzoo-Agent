@@ -46,6 +46,9 @@ R9  (2026-11-21, scorpion.yaml) A SCORPION comparison needs two built networks o
     refused (`single_source_comparison`). R8, R9 and R10 give code-written reasons.
 R10 (2026-11-21, output_capability.incompatible_input_artifacts) The first step's contract refuses an input the
     request says the user already has (F080: computed co-expression networks for PORCUPINE).
+R15 (2026-11-23, flag NETZOO_LEAN_CONDITION_CHECK, off) A DO whose request leaves a condition of the plan's contracts
+    unstated (priors, GMT, sample count, raw counts...) becomes a question: code lists the conditions, Jev only says
+    whether the request states each one (`required_conditions`).
 
 Scope (2026-11-20, user: let it see only the six): the decider sees only PANDA, LIONESS-PANDA, SCORPION, PORCUPINE, SPONGE and
 SNAIL (NORMALIZE-EXPRESSION, method snail), and their settings. NETZOO_LEAN_SCOPE=all shows every registered workflow;
@@ -777,6 +780,13 @@ def decide(task: str, client, model: str = "openai/gpt-4o-mini", max_tokens: int
         raw["wanted"] = json.loads(read.choices[0].message.content).get("items", [])
     calls += read_calls
     decided = apply_rules(task, raw)
+    if decided.kind == "DO":  # R15 (flag off by default): conditions the contracts need, unstated in the request
+        from .required_conditions import check, enabled
+
+        if enabled():
+            decided, record = check(task, raw, decided)
+            if record:
+                calls.append({"input_tokens": 0, "output_tokens": 0, "duration_ms": 0, **record})
     if decided.kind == "EXPLAIN":
         decided.reply, _ = _explain(task, decided.steps, client, model, max_tokens, calls, usage_extra)
     elif decided.notes and plan_details:
