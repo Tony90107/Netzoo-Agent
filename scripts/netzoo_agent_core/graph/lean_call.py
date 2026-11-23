@@ -131,6 +131,17 @@ def _do_decision(task: str, found, raw: dict, requirements):
         credited=list(steps))}), notes
 
 
+REASONING_MODELS = ("particle-ai/particle-1",)
+"""Models that reason before answering; the reasoning counts against max_tokens (2026-11-23: particle-1 used 500-850
+output tokens for a ~200-token form, and an EXPLAIN answer hit a 1200 cap)."""
+
+
+def lean_max_tokens(model: str) -> int:
+    """The output cap for a lean call: 6000 for free and reasoning models (the cap is a ceiling, only used tokens are
+    billed), 1200 otherwise."""
+    return 6000 if model.endswith(":free") or model.split(":")[0] in REASONING_MODELS else 1200
+
+
 VERIFIED_RULES = frozenset({"R2", "R3", "R5", "R7", "R8", "R9", "R10"})
 """Rules whose refusal reason the code writes from the contracts (2026-11-22: R8-R10 were missing, so their refusals
 reached the user with no reason). R6 is not here: its pick is the model's reading, so it names the user's words only."""
@@ -219,8 +230,7 @@ def classify_lean(context, state: dict, user_task: str) -> dict | None:
     started = time.time()
     try:
         found, raw, cost = lean.decide(
-            user_task, _client(context), model, max(getattr(context, "router_max_tokens", 0) or 0,
-                                                    6000 if model.endswith(":free") else 1200),
+            user_task, _client(context), model, max(getattr(context, "router_max_tokens", 0) or 0, lean_max_tokens(model)),
             usage_extra="openrouter.ai" in llm_base_url(), plan_details=False)
     except Exception as error:  # noqa: BLE001 - recorded; the old path answers the turn
         record_event(context, state, "lean.failed", "classify", {
