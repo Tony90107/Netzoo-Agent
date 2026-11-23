@@ -6,6 +6,8 @@ back on doable requests (28 items: conceptual questions answered with "which res
 mean" / overlap questions). Here the model decides once; code only applies rules the workflow contracts state:
 
 R0  Preparation steps (the registry marks them "a preparation step") run first; the rest keep their order.
+R1  (other way, 2026-11-22) A DO or EXPLAIN whose request states the user's own doubt about this run (`doubt_before_run`)
+    becomes a code-written question quoting it.
 R1  A question needs the user's own doubt: ASK stands only when `unsure_quote` is found in the request, or code finds
     words of doubt in it (`stated_doubt`, 2026-11-21: F036's form left unsure_quote empty). (Tried and
     withdrawn 2026-11-20: keeping the question when the steps are not one contract chain. Replayed on the saved forms
@@ -13,7 +15,10 @@ R1  A question needs the user's own doubt: ASK stands only when `unsure_quote` i
     In a follow-up ("Previous NetZoo goal: ...\nUser follow-up: ..."), the doubt must be in the follow-up: the earlier
     doubt is what the question already asked about.
 R2  Sample minimums (workflow_conditions.min_samples), when the request states the count in words found in it.
-R3  SPONGE's own limits (prior_request.sponge_blockers, the non-human check of execution_sponge).
+R3  SPONGE's own limits (prior_request.sponge_blockers, the non-human check of execution_sponge). When SPONGE is the only
+    step (priors only, no expression data of the user's), an unstated organism is not asked about: SPONGE builds human
+    priors, and the plan says so (2026-11-22, large blind bank: 7 of 9 needless questions were this one; replay: 5
+    gold-do items fixed, nothing else changed).
 R4  PORCUPINE reads sample-specific networks: an aggregate-only producer before it becomes its per-sample version
     (the workflow whose guidance_predecessors name it and whose handoff_targets include run_porcupine).
 
@@ -224,6 +229,17 @@ def _menu(which: str) -> tuple[tuple[str, str, frozenset[str]], ...]:
 def _signature(entry) -> tuple:
     return (entry.granularity, entry.regulators, entry.signed, entry.layers, entry.groups, entry.input_network,
             entry.family, entry.data_units)
+
+
+def _own_phrase(quote: str, steps: list[str]) -> str:
+    """A planned step's own selection phrase (workflows/*.yaml output_capability.selection_phrases) that the quote says
+    (2026-11-22, L024: "the pathways whose regulation varies across patients" is PORCUPINE's "pathways that vary across
+    patients"). The reader picked another result for words the contract itself uses for this step."""
+    for step in steps:
+        for phrase in ((_specs().get(step) or {}).get("output_capability") or {}).get("selection_phrases") or []:
+            if len(_units(phrase)) >= 3 and _found(quote, phrase):
+                return phrase
+    return ""
 
 
 def _names_outside_method(task: str) -> list[str]:
@@ -533,6 +549,37 @@ def stated_doubt(task: str) -> str:
     return found.group(0) if found else ""
 
 
+_PRIORS_HELD = _RE.compile(  # motif or PPI priors only: a miRNA-target "prior" is not what SPONGE builds (L079)
+    r"\b(?:motif|PPI|protein[- ]protein)\b.{0,80}?\b(?:priors?|files?|networks?|edge lists?)\b"
+    r"|\bpriors?\b.{0,40}?\b(?:motif|PPI)\b", _RE.I)
+_BUILD_WORDS = _RE.compile(  # any build of priors asked for keeps SPONGE ("also build human priors for SOX2")
+    r"\b(?:build|generate|create|make|construct|produce|prepare|derive)\w*\b.{0,40}?\bpriors?\b"
+    r"|\bSPONGE\b|建立.{0,10}先驗|產生.{0,10}先驗", _RE.I)
+_HOLD = _RE.compile(r"\b(?:have|has|had|ready|available|on hand|in hand|prepared|got)\b|手上|已有|準備好", _RE.I)
+
+
+def priors_on_hand(task: str) -> bool:
+    """The request says the user already has motif and PPI priors (a clause naming priors with "have", "ready",
+    "available"... and no negation)."""
+    return any(_PRIORS_HELD.search(part) and _HOLD.search(part) and not _NEGATION.search(part)
+               for part in _clauses(task))
+
+
+_LATER = _RE.compile(r"\b(?:afterwards?|later|downstream|next step|follow[- ]up analys\w*|eventually)\b|之後|以後|後續",
+                    _RE.I)
+
+
+def doubt_before_run(task: str) -> str:
+    """R1 the other way (2026-11-22, user: why run it when the user already said they are not sure?): the user's own words of doubt, in their
+    newest words, about something this run depends on -- the clause holding the doubt words, unless it is about a
+    later step ("whether I'll look at individual samples afterwards", F030). Empty when there is none."""
+    words = latest_words(task)
+    for part in _RE.split(r"[.;!?\n。；！？]", words):
+        if _DOUBT.search(part) and not _LATER.search(part):
+            return part.strip()
+    return ""
+
+
 FOLLOW_UP = "\nUser follow-up: "
 
 
@@ -573,13 +620,27 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
         for name in steps:
             limits = conditions_for(name)
             if limits and limits.min_samples and count < limits.min_samples:
+                if stated_doubt(task):  # 2026-11-22: the user doubts the count, so it is asked, not refused
+                    kind = "ASK"
+                    question = reply = (f"{name} needs at least {limits.min_samples} samples. How many usable "
+                                        "samples do you have?")
+                    rules.append(f"R2: {name} minimum {limits.min_samples}, count {count} doubted by the user")
+                    break
                 kind, question = "DECLINE", ""
                 reply = f"{name} needs at least {limits.min_samples} samples; the request has {count}."
                 rules.append(f"R2: {name} minimum {limits.min_samples} samples, request states {count}")
                 break
 
+    if kind == "DO" and "SPONGE-PRIORS" in steps and len(steps) > 1 and priors_on_hand(task):
+        from ..prior_request import prior_requested  # 2026-11-22 (L046): the user has priors and asked to build none
+
+        if not prior_requested(task) and not _BUILD_WORDS.search(task):
+            steps = [name for name in steps if name != "SPONGE-PRIORS"]
+            rules.append("R3: SPONGE not asked for and the request has its own priors, so the step was dropped")
     if kind == "DO" and "SPONGE-PRIORS" in steps:  # R3
         blockers = sponge_blockers(task)
+        if steps == ["SPONGE-PRIORS"]:  # 2026-11-22: priors only, no data of the user's whose species could differ
+            blockers = [b for b in blockers if "say whether they are human" not in b]  # SPONGE's default is human
         if (non_human := _NON_HUMAN.search(task)):
             blockers.append(f"SPONGE builds human priors only (hg38, hg19 or T2T-CHM13); the request names "
                             f"{non_human.group(0)}")
@@ -640,6 +701,11 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
             steps = [name for name in steps if name != "NORMALIZE-EXPRESSION"]
             rules.append(f"R8: SNAIL not asked for and needs raw counts ({scale}), so the step was dropped")
 
+    if kind == "DO" and "SCORPION" in steps and (single := single_source_comparison(task)) and stated_doubt(task):
+        kind = "ASK"  # R9 under the user's own doubt (L111 "might be a single donor, but I'm not sure"): asked
+        question = reply = ("A SCORPION comparison needs at least two built networks on each side. How many donors "
+                            "(or other replicates) does each side have?")
+        rules.append(f"R9: one network per side ({single}) doubted by the user")
     if kind == "DO" and "SCORPION" in steps and (single := single_source_comparison(task)):  # R9
         kind, question = "DECLINE", ""
         reply = (f"A SCORPION comparison needs at least two built networks on each side; with \"{single}\" and no "
@@ -654,6 +720,12 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
             reply = f'{steps[0]} does not take {label} as input, and the request has "{quote}".'
             rules.append(f"R10: {steps[0]} input {label} is incompatible ({quote})")
 
+    if kind in ("DO", "EXPLAIN") and steps and (doubt := doubt_before_run(task)):  # R1 the other way, after the contract rules
+        # (their own question, e.g. R9's donors per side, is more specific)
+        kind, question = "ASK", f'You wrote that you are not sure: "{doubt}". Which is it? Nothing runs until then.'
+        reply = question
+        rules.append("R1: the user's own doubt about this run, so a question first")
+
     decline_quote = ""
     if kind == "DO" and raw.get("wanted") is not None:  # R6
         from ..interpretation.reason_layers import UNMATCHED_RESULT
@@ -665,6 +737,8 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
                 continue  # "none" (and a key from another version of the list) is no evidence either way
             if scope() == "six" and _NAMED_IN_SCOPE.search(quote):
                 continue  # "run PANDA", "SPONGE run please": the reader cannot know what a name gives; the named step does
+            if _own_phrase(quote, steps):
+                continue  # PORCUPINE's "pathways that vary across patients" read as a group difference (L024)
             if _same_kind_given(key, steps) and not _names_outside_method(task):
                 continue  # OTTER's "fitted so that it agrees with the PPI" read for PANDA's network (B013): same typed result
             kind, question, decline_quote = "DECLINE", "", quote
@@ -696,7 +770,7 @@ def plan_notes(task: str, steps: list[str], stated: list[dict], raw: dict) -> li
         if name == "SPONGE-PRIORS":
             defaults = ACTION_DEFINITIONS["build_priors"].executor_defaults
             tfs, assembly, (up, down) = requested_tf_names(task), _assembly(task), _window(task)
-            notes.append("SPONGE: TFs " + (", ".join(tfs) + " (from your request)" if tfs else
+            notes.append("SPONGE: human priors; TFs " + (", ".join(tfs) + " (from your request)" if tfs else
                                             "every vertebrate JASPAR CORE motif (default; can take hours)")
                          + f"; genome assembly {assembly + ' (from your request)' if assembly else defaults['genome_assembly'] + ' (default)'}"
                          + f"; promoter window {up if up is not None else defaults['promoter_upstream']} bp upstream to "

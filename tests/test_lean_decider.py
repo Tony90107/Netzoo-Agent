@@ -69,7 +69,7 @@ def test_r3_sponge_offline_declines_and_missing_species_asks():
                           raw(steps=["SPONGE"]))
     assert offline.kind == "DECLINE" and "internet" in offline.reply
     species = apply_rules("Build motif and PPI priors for SOX2 and MYC.", raw(steps=["SPONGE"]))
-    assert species.kind == "ASK" and "human" in species.question
+    assert species.kind == "DO" and any("human" in note for note in species.notes)  # 2026-11-22: priors only
     mouse = apply_rules("Build mouse motif and PPI priors for Sox2.", raw(steps=["SPONGE"]))
     assert mouse.kind == "DECLINE" and "human priors only" in mouse.reply
 
@@ -442,3 +442,57 @@ def test_explain_sources_carry_the_scope_card_unless_switched_off(monkeypatch):
     assert panda.count("# Known limitations") == 1
     monkeypatch.setenv("NETZOO_LEAN_EXPLAIN_SCOPE", "off")
     assert "- SCORPION:" not in explain_context(("PANDA",)) and len(explain_context(("PANDA",))) < len(panda)
+
+
+def test_r3_priors_only_needs_no_species_question():
+    only = "Run SPONGE for TP63, SOX2 and KLF5 and write the motif and PPI priors to the default folder."
+    assert apply_rules(only, raw(steps=["SPONGE"])).kind == "DO"
+    with_data = ("No motif or PPI files yet. Build the priors with SPONGE for MYOD1 and MEF2C, then run LIONESS on my "
+                 "20 skeletal muscle samples.")
+    assert apply_rules(with_data, raw(steps=["SPONGE", "LIONESS-PANDA"])).kind == "ASK"  # the data's species matters
+
+
+def test_count_rules_ask_when_the_user_doubts_the_count():
+    """2026-11-22 (L111): the user's doubt about a count turns R9's refusal into a question."""
+    doubt = ("snRNA-seq of failing versus non-failing hearts, metadata columns donor and status. I'd like the edges that "
+             "differ between failing and non-failing. I think the non-failing arm might be a single donor, but I'm not sure.")
+    asked = apply_rules(doubt, raw(steps=["SCORPION"]))
+    assert asked.kind == "ASK" and "How many donors" in asked.question
+    sure = ("snRNA-seq from one donor, failing and non-failing regions. Test the edges that differ between failing "
+            "and non-failing.")
+    assert apply_rules(sure, raw(steps=["SCORPION"])).kind == "DECLINE"
+
+
+def test_an_unasked_sponge_step_is_dropped_when_the_user_has_priors():
+    """2026-11-22 (L046): mouse motif and PPI priors in hand, no build asked: SPONGE is not run (or refused)."""
+    task = ("A mouse thymus counts matrix with about 90 bulk samples. We have mouse motif and PPI priors. I want a "
+            "regulatory network for each sample.")
+    decided = apply_rules(task, raw(steps=["SPONGE", "LIONESS-PANDA"]))
+    assert decided.kind == "DO" and decided.steps == ["LIONESS-PANDA"]
+    mirna = ("We have TargetScan miRNA target predictions to use as a prior and mRNA expression for 50 samples; build "
+             "a miRNA-to-gene network.")
+    assert "SPONGE-PRIORS" in apply_rules(mirna, raw(steps=["SPONGE", "PANDA"])).steps or \
+        apply_rules(mirna, raw(steps=["SPONGE", "PANDA"])).kind != "DO"  # a miRNA prior is not a motif/PPI prior
+    asked = "We have mouse motif and PPI priors, but please also build human priors for SOX2, then run PANDA."
+    assert "SPONGE-PRIORS" in apply_rules(asked, raw(steps=["SPONGE", "PANDA"])).steps or \
+        apply_rules(asked, raw(steps=["SPONGE", "PANDA"])).kind != "DO"  # a build asked for stays
+
+
+def test_r6_does_not_stop_a_planned_steps_own_phrase():
+    """2026-11-22 (L024): "pathways whose regulation varies across patients" is PORCUPINE's own selection phrase."""
+    task = ("scRNA-seq with a metadata table giving each cell's patient, motif and PPI priors: one network per patient, "
+            "then the pathways whose regulation varies across patients, using a Hallmark GMT.")
+    wanted = [{"quote": "the pathways whose regulation varies across patients", "role": "result",
+               "kind": _key("Pathways differentially expressed or enriched between predefined groups.")}]
+    assert apply_rules(task, raw(steps=["SCORPION", "PORCUPINE"], wanted=wanted)).kind == "DO"
+
+
+def test_r1_the_other_way_stated_doubt_is_asked_before_a_run():
+    """2026-11-22 (L175): the user says they are not sure about something the run depends on, so nothing runs yet."""
+    task = ("I downloaded an expression matrix of 32 rice panicle samples from GEO, but I'm not sure whether it holds raw "
+            "counts or values the authors already normalized. I want to smooth-quantile normalize it.")
+    asked = apply_rules(task, raw(steps=["NORMALIZE-EXPRESSION"]))
+    assert asked.kind == "ASK" and "not sure whether it holds raw counts" in asked.question
+    later = ("Expression matrix, motif prior and PPI are ready for our skin samples; build one network for them as a "
+             "group. I haven't decided whether I'll look at individual samples afterwards.")
+    assert apply_rules(later, raw(steps=["PANDA"])).kind == "DO"  # a doubt about a later step is not asked now
