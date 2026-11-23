@@ -393,3 +393,21 @@ def test_review_round4_counterexamples():
     organoids = ("scRNA-seq from one patient across 6 organoids (3 treated vs 3 control), with no technical "
                  "replicates. Compare treated vs control with SCORPION.")
     assert apply_rules(organoids, raw(steps=["SCORPION"])).kind == "DO"
+
+
+def test_r6_same_typed_result_from_a_planned_step_is_not_missing():
+    task = ("Affymetrix expression for 118 tumours, RMA-normalized, plus a motif prior and a PPI network. Please infer a "
+            "single cohort-wide network of which transcription factors regulate which genes.")
+    look_alike = [{"quote": "Please infer a single cohort-wide network of which transcription factors regulate which genes.",
+                   "role": "result",
+                   "kind": _key("One weighted TF-to-gene regulatory network across all samples, fitted so that it "
+                                "agrees with the PPI network and gene co-expression.")}]
+    assert apply_rules(task, raw(steps=["PANDA"], wanted=look_alike)).kind == "DO"
+    mirna = [{"quote": "Please infer a single cohort-wide network of which transcription factors regulate which genes.",
+              "role": "result", "kind": _key("One weighted network of how TFs and miRNAs regulate genes, across all samples.")}]
+    assert apply_rules(task, raw(steps=["PANDA"], wanted=mirna)).kind == "DECLINE"  # TF+miRNA is another result
+    otter = ("Please run OTTER on our tumour RNA-seq and PPI data to infer a single cohort-wide network of which "
+             "transcription factors regulate which genes.")
+    named = [{**look_alike[0], "quote": "infer a single cohort-wide network of which transcription factors regulate "
+                                        "which genes"}]
+    assert apply_rules(otter, raw(steps=["PANDA"], wanted=named)).kind == "DECLINE"  # OTTER named: not PANDA's

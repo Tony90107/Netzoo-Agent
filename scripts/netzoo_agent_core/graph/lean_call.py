@@ -131,6 +131,11 @@ def _do_decision(task: str, found, raw: dict, requirements):
         credited=list(steps))}), notes
 
 
+VERIFIED_RULES = frozenset({"R2", "R3", "R5", "R7", "R8", "R9", "R10"})
+"""Rules whose refusal reason the code writes from the contracts (2026-11-22: R8-R10 were missing, so their refusals
+reached the user with no reason). R6 is not here: its pick is the model's reading, so it names the user's words only."""
+
+
 def _declined(task: str, found, raw: dict, verified: bool) -> list:
     """A verified refusal keeps its reason line; the model's own refusal keeps only the request's words it names
     (found in the request), so the reply says what could not be matched, never why."""
@@ -157,7 +162,7 @@ def _decision(task: str, found, raw: dict, requirements, task_state):
                          # A refusal R2, R3, R5 or R7 made: its reason is code's, from the contract and the user's
                          # words. Any other refusal (the model's, or R6's, which rests on the blind reading) never
                          # shows a reason (never a wrong reason).
-                         "verified": found.kind == "DECLINE" and any(rule[:2] in ("R2", "R3", "R5", "R7")
+                         "verified": found.kind == "DECLINE" and any(rule.split(":", 1)[0] in VERIFIED_RULES
                                                                       for rule in found.rules)}}
     if found.kind == "DO":
         decision, notes = _do_decision(task, found, raw, requirements)

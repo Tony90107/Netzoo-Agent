@@ -276,6 +276,26 @@ def test_r7_refusal_gives_codes_reason(monkeypatch):
     assert "SNAIL only" in shown["messages"][0].content
 
 
+@pytest.mark.parametrize("task, steps, words", [
+    ("We kept only the TPM matrix of 30 adipose biopsies; the read counts were not saved. Run SNAIL on these TPM "
+     "values and give me the normalized matrix.", ["NORMALIZE-EXPRESSION"], "SNAIL normalizes raw read counts only"),
+    ("From one glioblastoma patient we have scRNA-seq of the tumour core and the margin. Build the networks and test "
+     "which edges differ between core and margin.", ["SCORPION"], "at least two built networks on each side"),
+    ("For 50 biopsies I computed sample-specific co-expression networks, stored as a gene1, gene2 table. I want "
+     "pathway-level heterogeneity of these networks. A Reactome GMT is available.", ["PORCUPINE"],
+     "does not take a co-expression network"),
+])
+def test_r8_r9_r10_refusals_give_the_codes_reason(task, steps, words):
+    """2026-11-22: R8-R10 write their reason from the contracts, like R2, R3, R5 and R7; it must reach the user."""
+    from netzoo_agent_core.interpretation.core_views import core_view
+
+    result, _ = run(task, form(steps=steps))
+    decision = TaskDecision.model_validate(result["decision"])
+    assert decision.core.kind == "DECLINE" and decision.core.evidence["lean"]["verified"]
+    shown = core_view(None, {"decision": result["decision"], "messages": [HumanMessage(content=task)]}, reply)
+    assert words in shown["messages"][0].content
+
+
 def test_the_result_check_can_be_turned_off(monkeypatch):
     monkeypatch.setenv("NETZOO_LEAN_RESULT_CHECK", "off")
     result, context = run("Run PANDA on data/expr.tsv with my motif and PPI priors.", form(steps=["PANDA"]))
