@@ -52,6 +52,8 @@ def wanted(core) -> bool:
         return False
     if core.basis == "full_gap":
         return True
+    if core.basis == "lean":  # the lean decider: only an R2/R3/R5 refusal has a verified reason
+        return not ((core.evidence or {}).get("lean") or {}).get("verified")
     return bool(core.declined) and all(is_unmatched(part.line or "") for part in core.declined)
 
 

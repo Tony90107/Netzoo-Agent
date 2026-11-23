@@ -760,10 +760,11 @@ class CapabilityCheck(BaseModel):
         return self.unavailable or self.provisional or self.gap_unconfirmed
 
 
-RunVerdictName = Literal["agrees", "no_result", "not_on_sheet", "no_check_model", "user_selected",
+RunVerdictName = Literal["agrees", "no_result", "not_on_sheet", "no_check_model", "user_selected", "contract_rules",
                          "other_workflow", "partial_gap", "outside_step", "needs_fact", "unread", "gap", "unconfirmed"]
 
-APPROVING_RUN_VERDICTS = frozenset({"agrees", "no_result", "not_on_sheet", "no_check_model", "user_selected"})
+APPROVING_RUN_VERDICTS = frozenset({"agrees", "no_result", "not_on_sheet", "no_check_model", "user_selected",
+                                    "contract_rules"})  # contract_rules: the lean decider's rules (2026-11-20)
 """agrees: the run's workflow gives every result asked for, directly; no_result: the check found nothing asked for
 beyond running it; not_on_sheet: not an analysis workflow (STRING download, own rules); no_check_model: nothing is
 configured to read the check (tests, the routing harness -- never production); user_selected: the user picked the

@@ -17,7 +17,8 @@ DECLINE_KIND = "decline"
 UNCHECKED_KIND = "unchecked"
 ALLOWED = {
     "CLARIFY": frozenset({"clarify_goal", "prep_concept"}),
-    "ASK": frozenset({"ask_facts", "needs_fact", "prep_concept"}),
+    "ASK": frozenset({"ask_facts", "needs_fact", "prep_concept", "lean_ask"}),
+    "EXPLAIN": frozenset({"lean_explain"}),
     "DECLINE": frozenset({DECLINE_KIND, "capability_check_gap", "prep_concept"}),
     "UNCHECKED": frozenset({UNCHECKED_KIND, "run_held", "capability_unconfirmed", "unresolved", "prep_concept"}),
     "DO": frozenset({
@@ -104,6 +105,13 @@ def core_view(context, state, reply) -> dict | None:
         core = CoreDecision(kind="DECLINE", basis=found[0], declined=[DeclinedPart(quote="", line=found[1])])
         return reply(decline_reply(core), DECLINE_KIND)
     core = decision.core
+    if core.basis == "lean":  # the lean decider's call answers itself (2026-11-20)
+        from .lean_view import lean_view
+
+        if core.kind == "DECLINE" and not ((core.evidence or {}).get("lean") or {}).get("verified"):
+            # The model's own refusal: the user's words and "not matched", never the model's reason (layer 2).
+            return reply(decline_reply(core.model_copy(update={"basis": "lean_unverified"})), DECLINE_KIND)
+        return lean_view(core, reply)
     if core.kind == "DO":
         return None
     from .prep_concepts import prep_concept_result

@@ -27,6 +27,16 @@ _KIND_SENTENCES = {
     "CLARIFY": "The request did not say clearly enough which result is wanted, so the agent asked which one you mean.",
     "DECLINE": "The agent found no available workflow that produces what was asked, so it did not plan a run.",
     "UNCHECKED": "The agent could not confirm from the workflow descriptions that this can be done as asked.",
+    "EXPLAIN": "The agent read this as a question about the methods or how to proceed and answered it from the workflow "
+               "descriptions; nothing was planned or run.",
+}
+# The lean decider (2026-11-20) asks for a stated doubt, a SPONGE answer or an unclear setting, and declines for a
+# stated fact a workflow condition rules out as well as for a result no workflow gives: its ASK and DECLINE sentences
+# say only what holds for all of these.
+_LEAN_SENTENCES = {
+    "ASK": "The agent asked a question before running anything; the reply says what it needs.",
+    "DECLINE": "The agent did not plan a run: what was asked cannot be done as stated with the registered workflows; "
+               "the reply says why.",
 }
 _EVIDENCE_WORDS = {
     "provided": "given in the request",
@@ -324,7 +334,7 @@ def build_operation_summary(state: dict, result: dict | None = None, policy=None
         narrative.append(f"You asked: “{request}”" + (
             "" if not reply_to_agent else f" {reply_to_agent}" if reply_to_agent.startswith("You ")
             else f" Then you replied: “{reply_to_agent}”"))
-    reading = _KIND_SENTENCES.get(core_kind, "")
+    reading = (_LEAN_SENTENCES.get(core_kind) if core.get("basis") == "lean" else None) or _KIND_SENTENCES.get(core_kind, "")
     if core_kind == "DO" and core.get("partial"):
         reading += " Part of the request is outside what that workflow does, and that part was not run."
     if workflows and outcome not in {"answered", "declined"}:

@@ -29,6 +29,10 @@ __all__: list[str] = []
 def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace("intent", "Interpreting the request and capability boundaries")
     user_task = latest_user_task(state["messages"])
+    from .lean_call import classify_lean, lean_applies  # lean decider (NETZOO_LEAN_DECIDER=on), 2026-11-20
+
+    if lean_applies(state, user_task) and (lean_result := classify_lean(context, state, user_task)) is not None:
+        return lean_result
     current_usage = state.get("token_usage")
     # Plan item 2: the request's requirements are read once, from the full
     # message; the router and model calls read the bounded window.

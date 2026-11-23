@@ -555,6 +555,9 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
     if kind == "unchecked" and decision.core is not None:  # core decision phase 3: the UNCHECKED view's card
         return ReplyCard(kind="unresolved", headline="I could not judge this request this turn, so nothing was selected.",
                          points=["Asking again re-runs the check; restating the result you want usually helps."])
+    if kind == "lean_ask" and decision.core is not None:  # the lean decider's question (2026-11-20)
+        return ReplyCard(kind="clarification", headline="One question before anything runs.",
+                         points=[clip(fact.question, 300) for fact in decision.core.facts][:1])
     if kind == "ask_facts" and decision.core is not None:  # core decision phase 2
         asked = [fact.question for fact in decision.core.facts]
         from .answer_buttons import ask_choices  # answer-buttons: its one question's answers as buttons, when on

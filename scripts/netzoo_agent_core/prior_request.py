@@ -148,8 +148,17 @@ def _assemblies(task: str) -> list[str]:
     return [value for pattern, value in _ASSEMBLIES if re.search(pattern, task, re.I)]
 
 
+def _assembly_text(task: str) -> str:
+    """The words the genome assembly is read from: a follow-up's own words when they name one (the answer to "hg19 or
+    hg18?" settles it, 2026-11-20 lean live D025), else the whole request."""
+    marker = "\nUser follow-up: "
+    if marker in task and _assemblies(latest := task.rsplit(marker, 1)[1]):
+        return latest
+    return task
+
+
 def _assembly(task: str) -> str | None:
-    named = _assemblies(task)
+    named = _assemblies(_assembly_text(task))
     return named[0] if len(named) == 1 and named[0] != "older" else None
 
 
@@ -157,13 +166,14 @@ def sponge_blockers(task: str) -> list[str]:
     """dev-bank-2026-11-19: what the request's own words say that SPONGE cannot do as asked (D025 "either hg19 or
     hg18 and I honestly don't remember which" took hg19 silently; D021 "fully air-gapped" planned a run that needs
     the internet). Each sentence is reported by the preflight in place of a run."""
-    blockers, named = [], _assemblies(task)
+    said = _assembly_text(task)
+    blockers, named = [], _assemblies(said)
     if len(named) > 1:
-        shown = [re.search(pattern, task, re.I).group(0) for pattern, value in _ASSEMBLIES if value in named]
+        shown = [re.search(pattern, said, re.I).group(0) for pattern, value in _ASSEMBLIES if value in named]
         blockers.append(f"The request names more than one genome assembly ({', '.join(shown)}); say which one SPONGE "
                         "should use. SPONGE builds hg38, hg19 or T2T-CHM13 priors.")
     elif named == ["older"]:
-        shown = re.search(_ASSEMBLIES[-1][0], task, re.I).group(0)
+        shown = re.search(_ASSEMBLIES[-1][0], said, re.I).group(0)
         blockers.append(f"SPONGE builds hg38, hg19 or T2T-CHM13 priors only; the request names {shown}.")
     if not _NON_HUMAN.search(task) and not _HUMAN_WORDS.search(task):  # dev-bank D005: species never said
         blockers.append("SPONGE builds human priors only (hg38, hg19 or T2T-CHM13), and the request does not say which "
@@ -198,6 +208,11 @@ def prior_decision(task: str, interpretation: SemanticInterpretation | None = No
     """build_priors for this request, or None when it is not one."""
     if not prior_requested(task, interpretation):
         return None
+    return build_prior_decision(task, chained_action(task))
+
+
+def build_prior_decision(task: str, then_action: str | None) -> TaskDecision:
+    """build_priors with every setting read from the request's own words; `then_action` is offered after it runs."""
     upstream, downstream = _window(task)
     non_human = _NON_HUMAN.search(task)
     return TaskDecision(
@@ -205,7 +220,7 @@ def prior_decision(task: str, interpretation: SemanticInterpretation | None = No
         reason="Build a human TF motif prior and a TF PPI prior with SPONGE (JASPAR, Ensembl promoters, STRING).",
         requested_outcome=RequestedOutcome(operation="prepare", artifact_type="unknown", granularity="not_applicable"),
         capability_match_status="exact", match_basis="semantic", matched_actions=["build_priors"],
-        then_action=chained_action(task),
+        then_action=then_action,
         sponge_tf_names=requested_tf_names(task) or None,
         jaspar_release=_jaspar_release(task),
         genome_assembly=_assembly(task),
