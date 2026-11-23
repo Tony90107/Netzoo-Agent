@@ -15,12 +15,13 @@ def raw(**fields):
     return {**base, **fields}
 
 
-def test_the_tools_are_the_registry_with_contract_checks():
+def test_the_tools_are_the_registry_with_contract_checks(monkeypatch):
     names = tool_names()
-    assert len(names) == 17 and {"PANDA", "LIONESS-PANDA", "SCORPION", "PORCUPINE", "SPONGE",
-                                 "NORMALIZE-EXPRESSION"} <= set(names)
+    assert set(names) == {"PANDA", "LIONESS-PANDA", "SCORPION", "PORCUPINE", "SPONGE", "NORMALIZE-EXPRESSION"}
     assert "Require at least 8 samples." in tools_text() and "Require at least three expression samples" in tools_text()
     assert instructions().endswith(tools_text())
+    monkeypatch.setenv("NETZOO_LEAN_SCOPE", "all")  # every registered workflow, as before 2026-11-20
+    assert len(tool_names()) == 17 and "PUMA" in tool_names() and instructions().endswith(tools_text())
 
 
 def test_the_form_has_eight_answers():
@@ -170,3 +171,126 @@ def test_an_unregistered_setting_is_noted_not_dropped():
         {"setting": "unregistered", "value": "on", "quote": "turbo mode on"}]))
     assert decided.kind == "DO"
     assert any("turbo mode on" in note and "not applied" in note for note in decided.notes)
+
+
+def test_six_scope_shows_only_the_six_and_snail(monkeypatch):
+    from netzoo_agent_core.lean import SIX, prep_steps, scope
+
+    monkeypatch.delenv("NETZOO_LEAN_SCOPE", raising=False)
+    assert scope() == "six" and set(tool_names()) == set(SIX)
+    assert prep_steps() == {"SPONGE-PRIORS", "NORMALIZE-EXPRESSION"}
+    text = tools_text()
+    for outside in ("PUMA", "OTTER", "GIRAFFE", "BONOBO", "CONDOR", "RLE", "TMM", "FPKM", "preprocessCore"):
+        assert outside not in text, outside
+    assert "normalization_method snail;" in text and "inputs that LIONESS-PANDA, PANDA, SCORPION read" in text
+    settings = response_format()["json_schema"]["schema"]["properties"]["settings"]["items"]["properties"]
+    assert all(name.split(".")[0] in SIX or name == "unregistered" for name in settings["setting"]["enum"])
+    assert "SAMBAR.kmin" not in settings["setting"]["enum"] and "PORCUPINE.seed" in settings["setting"]["enum"]
+
+
+def test_the_result_menu_hides_who_gives_what():
+    from netzoo_agent_core.lean import _menu, wanted_format, wanted_instructions
+
+    menu = {text: given for _, text, given in _menu("six")}
+    assert menu["One weighted TF-to-gene regulatory network across all the samples given."] == {"PANDA"}
+    assert menu["Networks for individual cells."] == frozenset()  # near misses only
+    assert menu["One network per sample."] == {"LIONESS-PANDA"}  # OTTER's near miss, given instead by LIONESS-PANDA
+    # with_step (NetZoo leaves the step to the user) counts as not given (2026-11-20 user decision)
+    assert menu["Edges or targeting scores tested between groups, paired time points, or against clinical "
+                "variables (e.g. survival)."] == frozenset()
+    assert menu["One TF/miRNA-gene network per sample, plus the aggregate network."] == frozenset()  # LIONESS-PUMA
+    assert any("SPONGE-PRIORS" in given for given in menu.values())
+    assert any("NORMALIZE-EXPRESSION" in given for given in menu.values())
+    shown = wanted_instructions()
+    for name in ("PANDA:", "LIONESS", "PORCUPINE", "SPONGE", "Registered workflows"):
+        assert name not in shown.split("Result kinds:")[1].replace("built by PANDA", ""), name
+    keys = wanted_format()["json_schema"]["schema"]["properties"]["items"]["items"]["properties"]["kind"]["enum"]
+    assert keys[-1] == "none" and len(keys) == len(menu) + 1
+
+
+def _key(text):
+    from netzoo_agent_core.lean import _menu
+
+    return next(key for key, shown, _ in _menu("six") if shown == text)
+
+
+def test_r6_a_result_no_workflow_in_scope_gives_stops_the_run():
+    task = ("We have 10x scRNA-seq of 6,500 tumour cells with motif and PPI priors. Build a TF-gene network for every "
+            "individual cell, then find the pathways whose regulation varies most between cells.")
+    wanted = [{"quote": "Build a TF-gene network for every individual cell", "role": "result",
+               "kind": _key("Networks for individual cells.")},
+              {"quote": "10x scRNA-seq of 6,500 tumour cells", "role": "data", "kind": "none"}]
+    decided = apply_rules(task, raw(steps=["SCORPION", "PORCUPINE"], wanted=wanted))
+    assert decided.kind == "DECLINE" and decided.steps == [] and decided.rules[-1].startswith("R6")
+    assert decided.decline_quote == "Build a TF-gene network for every individual cell"
+    assert decided.reply.startswith('"Build a TF-gene network for every individual cell" -- I couldn\'t match')
+
+
+def test_r6_leaves_given_results_purposes_and_unfound_words_alone():
+    task = "Run PANDA on our 40 lung samples so we can later cut the network into modules ourselves."
+    given = [{"quote": "Run PANDA on our 40 lung samples", "role": "result",
+              "kind": _key("One weighted TF-to-gene regulatory network across all the samples given.")},
+             {"quote": "so we can later cut the network into modules ourselves", "role": "purpose", "kind": "none"}]
+    assert apply_rules(task, raw(steps=["PANDA"], wanted=given)).kind == "DO"
+    made_up = [{"quote": "a Cox model of every edge", "role": "result", "kind": "none"}]  # not the user's words
+    assert apply_rules(task, raw(steps=["PANDA"], wanted=made_up)).kind == "DO"
+    other = [{"quote": "Run PANDA on our 40 lung samples", "role": "result",
+              "kind": _key("One TF-gene network per sample, plus the aggregate network.")}]  # LIONESS-PANDA gives it
+    assert apply_rules(task, raw(steps=["PANDA"], wanted=other)).kind == "DO"
+    assert apply_rules(task, raw(steps=["PANDA"])).kind == "DO"  # a saved form without the reading: unchanged
+    asked = apply_rules(task, raw(steps=["PANDA"], decision="EXPLAIN",
+                                  wanted=[{"quote": "Run PANDA", "role": "result", "kind": "none"}]))
+    assert asked.kind == "EXPLAIN"  # R6 only stops a run
+
+
+def test_r7_normalization_other_than_snail_is_outside_the_six():
+    task = "Convert my raw rat hippocampus counts to FPKM with the gene-length table and send me the matrix."
+    decided = apply_rules(task, raw(steps=["NORMALIZE-EXPRESSION"]))
+    assert decided.kind == "DECLINE" and decided.rules[-1].startswith("R7") and "SNAIL only" in decided.reply
+    snail = apply_rules("Normalize my raw counts across samples with SNAIL.", raw(steps=["NORMALIZE-EXPRESSION"]))
+    assert snail.kind == "DO"
+
+
+def test_the_lean_entries_leave_the_old_sheet_alone():
+    from netzoo_agent_core.capability_sheet import lean_entries, sheet_entries
+
+    extra = lean_entries()
+    assert {item.workflow for item in extra.values()} == {"SPONGE", "NORMALIZE-EXPRESSION", "PANDA"}
+    assert not set(extra) & set(sheet_entries()) and all(item.source for item in extra.values())
+    assert all(item.workflow not in ("SPONGE", "NORMALIZE-EXPRESSION") for item in sheet_entries().values())
+    assert "panda.adjusted_coexpression_network" not in sheet_entries()  # the old tables never see it
+    from netzoo_agent_core.lean import _menu
+
+    assert {"PANDA"} in [given for _, text, given in _menu("six") if "adjusted gene-by-gene co-expression" in text]
+
+
+def test_r6_a_named_step_or_an_old_key_is_not_evidence():
+    task = "Build human motif and PPI priors for ZEB1 and SNAI2 on hg19. SPONGE run please."
+    named = [{"quote": "SPONGE run please", "role": "result", "kind": "none"}]
+    assert apply_rules(task, raw(steps=["SPONGE"], wanted=named)).kind == "DO"  # the named step gives its result
+    old = [{"quote": "Build human motif and PPI priors for ZEB1 and SNAI2 on hg19", "role": "result", "kind": "K03"}]
+    assert apply_rules(task, raw(steps=["SPONGE"], wanted=old)).kind == "DO"  # not a key of this list
+    communities = _key("Communities in one bipartite network, with regulator-side and gene-side memberships, by "
+                       "bipartite modularity.")
+    outside = [{"quote": "Run CONDOR on it", "role": "result", "kind": communities}]
+    decided = apply_rules("Run PANDA on my 40 samples. Run CONDOR on it.", raw(steps=["PANDA"], wanted=outside))
+    assert decided.kind == "DECLINE"  # CONDOR is outside the six: only a name inside the scope is let through
+    unread = [{"quote": "give me the edge weights on the 0-1 scale", "role": "result", "kind": "none"}]
+    task = "Build SCORPION networks per line and day, and give me the edge weights on the 0-1 scale."
+    assert apply_rules(task, raw(steps=["SCORPION"], wanted=unread)).kind == "DO"  # "none of these" stops nothing
+    lookalike = [{"quote": "then build one PANDA TF-to-gene network across all 48 placentas", "role": "result",
+                  "kind": _key(next(text for _, text, _ in __import__("netzoo_agent_core.lean", fromlist=["_menu"])
+                                    ._menu("six") if text.startswith("One weighted TF-to-gene regulatory network across "
+                                                                     "all samples, fitted")))}]
+    task = "Normalize the counts with SNAIL first, then build one PANDA TF-to-gene network across all 48 placentas."
+    assert apply_rules(task, raw(steps=["NORMALIZE-EXPRESSION", "PANDA"], wanted=lookalike)).kind == "DO"
+
+
+def test_menu_keys_follow_the_text_not_the_order():
+    import hashlib
+
+    from netzoo_agent_core.lean import _menu
+
+    for key, text, _ in _menu("six"):
+        assert key == "K" + hashlib.sha1(text.encode()).hexdigest()[:6]
+    assert len({key for key, _, _ in _menu("six")}) == len(_menu("six"))

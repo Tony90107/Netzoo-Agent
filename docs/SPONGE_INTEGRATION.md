@@ -12,7 +12,8 @@ UniProt and STRING.
 ## Where it sits
 
 SPONGE is a preparation step (`build_priors`), like normalization and the STRING download: it produces inputs, not
-a result, so it is never a menu workflow and its result is not checked against the capability sheet.
+a result, so it is never a menu workflow and the old capability check never checks it. Its entries (and SNAIL's) sit
+in the sheet's separate `preparation_steps` section, which only the lean decider's result check (R6) reads.
 
 ```
 (nothing) ──SPONGE──▶ motif_prior.tsv + ppi_prior.tsv ──▶ PANDA / LIONESS-PANDA / OTTER / GIRAFFE / SCORPION ...

@@ -137,7 +137,7 @@ def _declined(task: str, found, raw: dict, verified: bool) -> list:
     from ..contracts.core_decision import DeclinedPart
     from ..lean import _found
 
-    quote = raw.get("decline_quote", "")
+    quote = found.decline_quote or raw.get("decline_quote", "")  # R6 names the result it found no workflow for
     quote = quote if _found(task, quote) else ""
     if verified:
         return [DeclinedPart(quote=quote, line=found.reply)]
@@ -154,9 +154,10 @@ def _decision(task: str, found, raw: dict, requirements, task_state):
 
     evidence = {"lean": {"rules": found.rules, "reply": found.reply, "question": found.question,
                          "steps": found.steps, "model": (found.calls[0]["model"] if found.calls else ""),
-                         # A refusal R2, R3 or R5 made: its reason is code's, from the contract and the user's words.
-                         # Any other refusal is the model's judgement; its reason is never shown (never a wrong reason).
-                         "verified": found.kind == "DECLINE" and any(rule[:2] in ("R2", "R3", "R5")
+                         # A refusal R2, R3, R5 or R7 made: its reason is code's, from the contract and the user's
+                         # words. Any other refusal (the model's, or R6's, which rests on the blind reading) never
+                         # shows a reason (never a wrong reason).
+                         "verified": found.kind == "DECLINE" and any(rule[:2] in ("R2", "R3", "R5", "R7")
                                                                       for rule in found.rules)}}
     if found.kind == "DO":
         decision, notes = _do_decision(task, found, raw, requirements)

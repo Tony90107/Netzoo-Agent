@@ -28,6 +28,7 @@ import yaml
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
 __all__ = ["SheetEntry", "SHEET_PATH", "data_units", "takes_unit", "result_forms", "RESULT_FORMS", "load_sheet", "sheet_entries",
+           "lean_entries",
            "entry", "in_view", "produced_text", "produces_ids", "not_produced_ids", "result_families"]
 
 SHEET_PATH = Path(__file__).resolve().parents[1] / "capability_sheet.yaml"
@@ -169,6 +170,40 @@ def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
 @lru_cache(maxsize=1)
 def sheet_entries() -> dict[str, SheetEntry]:
     return load_sheet()
+
+
+@lru_cache(maxsize=1)
+def lean_entries() -> dict[str, SheetEntry]:
+    """2026-11-20: the `preparation_steps` entries (SPONGE, SNAIL) and the `lean_results` entries (results of the six
+    workflows that had no line), read only by the lean decider's result check, so the old capability check and the
+    tables keyed on its produces ids keep reading exactly the workflows above. Fails closed like `load_sheet`."""
+    data = yaml.safe_load(SHEET_PATH.read_text(encoding="utf-8"))
+    taken = set(sheet_entries())
+    entries: dict[str, SheetEntry] = {}
+    for section, run_step in (("preparation_steps", False), ("lean_results", True)):
+        for workflow, spec in (data.get(section) or {}).items():
+            action = spec.get("action")
+            if action not in ACTION_DEFINITIONS or (action in RUN_ACTIONS) != run_step:
+                raise ValueError(f"capability sheet: {section} {workflow} names {action!r}")
+            if run_step and ACTION_DEFINITIONS[action].workflow != workflow:
+                raise ValueError(f"capability sheet: {section} {workflow} is not the workflow of {action!r}")
+            for kind, items in (("produces", spec.get("produces")), ("near_miss", spec.get("near_misses"))):
+                for item in items or []:
+                    key = item.get("id")
+                    text = item.get("result") if kind == "produces" else item.get("result_asked")
+                    if not key or key in taken or key in entries:
+                        raise ValueError(f"capability sheet: missing or duplicate id {key!r}")
+                    if not text or not item.get("source"):
+                        raise ValueError(f"capability sheet: {key} needs its text and a source")
+                    if kind == "produces" and item.get("level") != "direct":
+                        raise ValueError(f"capability sheet: lean entry {key} must be direct")
+                    if kind == "near_miss" and not item.get("why_not"):
+                        raise ValueError(f"capability sheet: {key} must say why it is not produced")
+                    entries[key] = SheetEntry(
+                        id=key, kind=kind, action=action, workflow=workflow, text=" ".join(str(text).split()),
+                        level="direct" if kind == "produces" else None,
+                        why_not=" ".join(str(item.get("why_not", "")).split()), source=str(item["source"]))
+    return entries
 
 
 @lru_cache(maxsize=1)

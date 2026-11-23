@@ -536,6 +536,7 @@ workflows:
       - id: scorpion.no_bulk
         result_asked: Networks from bulk samples (tissues, patients, cell lines or pseudo-bulk profiles).
         why_not: SCORPION takes single cells; PANDA and the other expression workflows take bulk samples.
+        instead_registered: run_panda
         source: "[REG] scorpion.yaml handoff_contract"
 
   PORCUPINE:
@@ -565,8 +566,62 @@ workflows:
       - id: porcupine.no_network_inference
         result_asked: Building the sample-specific networks from expression.
         why_not: PORCUPINE analyses existing LIONESS networks; LIONESS-PANDA or LIONESS-PUMA builds them first.
+        instead_registered: run_lioness_panda
         source: "[REG] porcupine.yaml guidance_predecessors"
       - id: porcupine.no_differential_expression
         result_asked: Pathways differentially expressed or enriched between predefined groups.
         why_not: PORCUPINE finds variation in regulation across all samples without groups; it is not a group comparison or expression enrichment test.
         source: "Belova et al. 2023"
+
+# 2026-11-20 (lean scope check, user approved adding them): the two preparation steps of the six-package scope, and results
+# of the six that had no line. Kept apart from `workflows`, so the old capability check and the tables keyed on its
+# produces ids (judgment_defaults.yaml) read exactly what they read before (the old check never checked a preparation
+# step: docs/SPONGE_INTEGRATION.md); only the lean decider's result check (`capability_sheet.lean_entries`) reads
+# them. Same entry shapes as above, without granularity or family.
+lean_results:
+  PANDA:
+    action: run_panda
+    produces:
+      # The contract's adjusted co-expression input had no result line, so a request for it could only be read as
+      # another workflow's result (dev X018 was read as OTTER's).
+      - id: panda.adjusted_coexpression_network
+        level: direct
+        result: One weighted TF-to-gene regulatory network built from an adjusted gene-by-gene co-expression matrix the user gives, in place of PANDA's own Pearson co-expression.
+        source: "[REG] panda.yaml optional_inputs coexpression_file (the adjusted matrix replaces PANDA's Pearson co-expression)"
+
+preparation_steps:
+
+  SPONGE:
+    action: build_priors
+    produces:
+      # One entry: SPONGE always writes both files, and a request asks for "the priors" together (dev X022, X039).
+      - id: sponge.priors
+        level: direct
+        result: Human TF motif and PPI priors -- a motif prior (one row per TF and target gene, weight 1, from JASPAR binding sites inside Ensembl promoter windows, transcripts aggregated to genes) and a TF-TF PPI prior (STRING physical interactions between the selected TFs, weighted by the combined score divided by 1000).
+        source: "[EXEC] scripts/run_sponge.py motif_prior.tsv (TF symbol, target gene symbol, 1) and ppi_prior.tsv (TF, TF, STRING combined score / 1000); docs/SPONGE_INTEGRATION.md"
+    near_misses:
+      - id: sponge.no_other_organism
+        result_asked: Motif or PPI priors for a non-human organism (mouse, rat, zebrafish and others).
+        why_not: SPONGE builds human priors only (hg38, hg19 or T2T-CHM13); a request naming another organism is refused before anything runs.
+        source: "docs/SPONGE_INTEGRATION.md (A request naming another organism is refused before anything runs)"
+      - id: sponge.no_weighted_motif
+        result_asked: A motif prior whose TF-gene edges carry motif match or binding-strength scores.
+        why_not: Every motif prior edge has weight 1; motif_score_threshold only decides which binding sites are kept.
+        source: "docs/SPONGE_INTEGRATION.md Outputs (motif_prior.tsv: TF symbol, target gene symbol, 1)"
+      - id: sponge.no_transcript_targets
+        result_asked: A motif prior with transcripts or isoforms as its targets.
+        why_not: SPONGE aggregates transcripts to genes; every target is a gene symbol.
+        source: "docs/SPONGE_INTEGRATION.md (aggregates transcripts to genes)"
+
+  NORMALIZE-EXPRESSION:
+    action: normalize_expression
+    produces:
+      - id: snail.normalized_matrix
+        level: direct
+        result: A gene-by-sample expression matrix normalized between samples with SNAIL (smooth quantile normalization within the sample groups given), with a record of the normalization.
+        source: "[REG] normalization_request.METHOD_OPTION_LINES['snail']; [EXEC] normalize_expression writes the normalized matrix"
+    near_misses:
+      - id: snail.no_batch_correction
+        result_asked: An expression matrix with a named batch effect (sequencing centre, run, plate or site) removed.
+        why_not: SNAIL equalizes value distributions between samples within the groups given; normalize_expression takes no batch factor (its controls are the method, a groups file, the aggregation and gene lengths).
+        source: "[REG] normalize_expression controls; workflows/panda.yaml conventions (batch correction is an explicit step)"
