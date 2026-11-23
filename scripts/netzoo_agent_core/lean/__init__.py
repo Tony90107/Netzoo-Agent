@@ -6,7 +6,8 @@ back on doable requests (28 items: conceptual questions answered with "which res
 mean" / overlap questions). Here the model decides once; code only applies rules the workflow contracts state:
 
 R0  Preparation steps (the registry marks them "a preparation step") run first; the rest keep their order.
-R1  A question needs the user's own doubt: ASK stands only when `unsure_quote` is found in the request. (Tried and
+R1  A question needs the user's own doubt: ASK stands only when `unsure_quote` is found in the request, or code finds
+    words of doubt in it (`stated_doubt`, 2026-11-21: F036's form left unsure_quote empty). (Tried and
     withdrawn 2026-11-20: keeping the question when the steps are not one contract chain. Replayed on the saved forms
     it lost F063 x3 and D007 -- "either matrix is fine" -- and fixed nothing; PANDA -> CONDOR is itself a handoff.)
     In a follow-up ("Previous NetZoo goal: ...\nUser follow-up: ..."), the doubt must be in the follow-up: the earlier
@@ -28,6 +29,15 @@ R6  (2026-11-20, user: the model must not see the correspondence, or it forces a
     look-alike result: F006, X027). Replayed on every saved reading: 19 stops on gold dont, 0 on do/ask (the first
     version: 22 and 6). The refusal names the user's words, never a reason: the pick is the model's reading.
 R7  Six-package scope: a DO with NORMALIZE-EXPRESSION whose request names a method other than SNAIL is refused.
+R8  (2026-11-21; advisor 2026-11-11) SNAIL takes raw counts: a DO with NORMALIZE-EXPRESSION whose request calls the
+    expression TPM, FPKM, CPM, log values or microarray intensities, and states raw counts nowhere, is refused
+    when the request asks for a normalization (`normalization_asked`); when it does not, the model added SNAIL on
+    its own and the step is dropped (F085). `non_count_scale`: clauses with a negation count neither way.
+R9  (2026-11-21, scorpion.yaml) A SCORPION comparison needs two built networks on each side: a DO with SCORPION whose
+    request asks for a comparison from one stated patient or donor, naming no replicate or other grouping, is
+    refused (`single_source_comparison`). R8, R9 and R10 give code-written reasons.
+R10 (2026-11-21, output_capability.incompatible_input_artifacts) The first step's contract refuses an input the
+    request says the user already has (F080: computed co-expression networks for PORCUPINE).
 
 Scope (2026-11-20, user: let it see only the six): the decider sees only PANDA, LIONESS-PANDA, SCORPION, PORCUPINE, SPONGE and
 SNAIL (NORMALIZE-EXPRESSION, method snail), and their settings. NETZOO_LEAN_SCOPE=all shows every registered workflow;
@@ -342,6 +352,156 @@ def _per_sample_version(workflow: str) -> str | None:
     return None
 
 
+_RE = __import__("re")
+_CLAUSE = _RE.compile(r"[.;:!?\n，。；：！？]|,\s|、")
+_NEGATION = _RE.compile(r"\b(?:no|not|never|without|deleted|discarded|lost|unavailable)\b|n't\b|沒有|沒|無|未|不|刪", _RE.I)
+_NON_COUNT = _RE.compile(
+    r"(?<![A-Za-z0-9])(?:log2?\s*\(?\s*)?(?:TPM|[FR]PKM)(?:\s*\+\s*1\s*\))?(?![A-Za-z0-9])"
+    # CPM is also a gene (carboxypeptidase M): only as a unit ("log2 CPM", "CPM-normalized", "in CPM")
+    r"|(?<![A-Za-z0-9])log2?\s*\(?\s*CPM(?![A-Za-z0-9])|(?<![A-Za-z0-9])CPM(?=[- ](?:normali|values?\b|matri|table|"
+    r"units?\b|scale|transform))|\b(?:in|as|to)\s+CPM(?![A-Za-z0-9])"
+    r"|(?<![A-Za-z0-9])log(?:2|10)?[- ]?(?:transformed|scale[d]?|values?|intensit(?:y|ies)|expression)"
+    r"|(?<![A-Za-z0-9])RMA(?![A-Za-z0-9])|microarrays?|Affymetrix|BeadChip|(?:array|probe)[- ]intensit(?:y|ies)"
+    r"|晶片|強度值|log2?\s*強度", _RE.I)
+_RAW_COUNTS = _RE.compile(
+    r"raw\s+(?:\w+\s+){0,2}counts?|read[- ]counts?|integer\s+counts?|unnormali[sz]ed\s+counts?"
+    r"|count\s+(?:matrix|table)|featureCounts|HTSeq|原始.{0,6}(?:counts?|計數)|read\s*count"
+    r"|\bcounts?\b", _RE.I)  # bare "the counts are in data.tsv" (Gemini review): count data stated, no refusal
+_OTHER_DATA = _RE.compile(r"\bpreviously\b|\bpublished\b|\bearlier\b|以前|之前|發表", _RE.I)
+
+
+def _clauses(task: str) -> list[str]:
+    return [part for part in _CLAUSE.split(task) if part.strip()]
+
+
+def non_count_scale(task: str) -> str:
+    """R8 (2026-11-21; advisor 2026-11-11: SNAIL takes raw counts): the words calling the expression TPM, FPKM, CPM,
+    log values or microarray intensities, when no clause of the request states raw counts. Clauses with a negation
+    are skipped both ways ("the read counts were not saved" is no raw-count statement; "not sure whether raw counts
+    or TPM" states neither), and a scale in a clause about other data ("previously we published TPM") is no
+    statement either. Any counts named (even "the counts are in data.tsv") means no refusal: a wrong refusal costs
+    more than a run that SNAIL's own input check can still stop. Empty when the request states counts or no other
+    scale."""
+    plain = [part for part in _clauses(task) if not _NEGATION.search(part)]
+    if any(_RAW_COUNTS.search(part) for part in plain):
+        return ""
+    return next((found.group(0).strip() for part in plain
+                 if not _OTHER_DATA.search(part) and (found := _NON_COUNT.search(part))), "")
+
+
+_ASK_NORMALIZE = _RE.compile(r"(?<![A-Za-z0-9])(?:py)?snail(?![A-Za-z0-9])|qsmooth|smooth[- _]?quantile"
+                            r"|\bnormali[sz](?:e|es|ing|ation)\b|標準化|正規化", _RE.I)
+_DONE = _RE.compile(r"\balready\b|\bpreviously\b|已|過", _RE.I)
+
+
+def normalization_asked(task: str) -> bool:
+    """The request asks for a normalization: SNAIL or smooth quantile named, or "normalize" (or its Chinese word) in a clause that
+    does not say it was already done ("already normalized to log2 TPM", or the same in Chinese)."""
+    return any(_ASK_NORMALIZE.search(part) and not _DONE.search(part) for part in _clauses(task))
+
+
+_ARTIFACT_WORDS = {  # what a request calls an input artifact the contracts name in incompatible_input_artifacts
+    "coexpression_network": (r"co-?expression\s+(?:networks?|matri(?:x|ces)|tables?|edges?)|共表現(?:網路|矩陣)",
+                             "a co-expression network"),
+    "mutation_matrix": (r"(?:somatic\s+)?mutation\s+(?:matri(?:x|ces)|tables?|calls)|突變矩陣", "a mutation matrix"),
+}
+_ACCEPTED_WORDS = {  # what a request calls an input the contract's input_artifacts accept
+    "expression_matrix": r"expression|RNA-?seq|counts?\b|microarray|transcriptom|表現|表達|定序",
+    "regulatory_network": r"TF[- ]?(?:to[- ])?(?:gene|target)|regulatory\s+networks?|LIONESS|PANDA|調控網路",
+    "coexpression_network": _ARTIFACT_WORDS["coexpression_network"][0],
+}
+_HAS = _RE.compile(r"\b(?:computed|calculated|stored|saved|built|made|generated|exported|estimated|have|has|had|got)\b"
+                   r"|手上|已經|已有|算好|建好|存成", _RE.I)
+_WANTS = _RE.compile(r"\b(?:need|needs|want|wants|please|would\s+like|give\s+me|build|make|construct|get)\b"
+                     r"|想要|需要|請|幫我", _RE.I)
+
+
+def held_incompatible_input(task: str, workflow: str) -> tuple[str, str]:
+    """R10 (2026-11-21, workflows/*.yaml output_capability.incompatible_input_artifacts): the artifact the request says
+    the user already has (a clause with "computed", "stored", "we have"...; none with "need", "build", "please"...) that
+    `workflow`'s contract lists as incompatible, when no clause names an input it accepts (input_artifacts) apart from
+    it. ("label", "quote") or ("", ""). A co-expression network the user asks
+    for (X003, X019) is a wanted result, not an input: its clause has a want word, so it is never read here."""
+    spec = (_specs().get(workflow) or {}).get("output_capability") or {}
+    plain = [part for part in _clauses(task) if not _NEGATION.search(part)]
+    for accepted in spec.get("input_artifacts") or []:  # a usable input is stated too: the other data is background
+        words = _ACCEPTED_WORDS.get(accepted)  # ("mutation calls and RNA-seq ... run PANDA on the RNA-seq", review)
+        if words and any(_RE.search(words, part, _RE.I) and not _RE.search(
+                "|".join(w for w, _ in _ARTIFACT_WORDS.values()), part, _RE.I) for part in plain):
+            return "", ""
+    for artifact in spec.get("incompatible_input_artifacts") or []:
+        if artifact not in _ARTIFACT_WORDS:
+            continue
+        words, label = _ARTIFACT_WORDS[artifact]
+        for part in _clauses(task):
+            if (found := _RE.search(words, part, _RE.I)) and _HAS.search(part) and not _WANTS.search(part) \
+                    and not _NEGATION.search(part):
+                return label, found.group(0)
+    return "", ""
+
+
+_COMPARE = _RE.compile(  # two sides named: "between core and margin", "failing vs healthy", "腫瘤和正常之間"
+    r"\bbetween\b.{1,80}?\band\b|\bversus\b|\bvs\.?(?!\w)|\bcompar\w*\b.{1,80}?\b(?:and|with|to|against)\b"
+    r"|兩組|兩邊|(?:和|與|跟|及|對).{1,30}?之間|(?:比較|對照)", _RE.I | _RE.S)
+_PER_CELL = _RE.compile(  # one network per cell is R6's (no workflow gives it), never a one-per-side comparison
+    r"\b(?:each|every|per|individual|single)\s+(?:individual\s+)?cells?\b|\bcell[- ]to[- ]cell\b|between\s+cells"
+    r"|每(?:一)?個?細胞|細胞(?:與|和|跟|到)細胞", _RE.I)
+_INDIVIDUAL = r"(?:patients?|donors?|individuals?|subjects?|persons?|mice|mouse|animals?|病人|患者|捐贈者|個體|受試者|小鼠|老鼠)"
+_SINGLE = _RE.compile(
+    rf"\b(?:our|the|a|this)\s+only\s+(?:\w+\s+)?{_INDIVIDUAL}\b"
+    rf"|\b(?:only|just)\s+one\s+(?:\w+\s+)?{_INDIVIDUAL}\b"
+    rf"|\b(?:a\s+single|one|single)\s+(?!per\b|each\b|for\b|of\b)(?:[\w-]+\s+)?{_INDIVIDUAL}(?![\w-])"
+    r"(?!\s+to\s+(?:the\s+)?(?:next|another|other))"
+    rf"|(?<!每)(?:同一|只有一|僅一|單一|唯一|一)[位名個隻](?:[^\s，。；、]{{0,8}}?){_INDIVIDUAL}", _RE.I)
+_REPLICATED = _RE.compile(
+    r"\b(?:\d+|two|three|four|five|six|several|multiple)\s+(?:\w+\s+)?(?:replicates?|libraries|biopsies|captures|"
+    r"runs|batches|sections|samples|donors|patients|time\s?points|stages|lanes|pools|slices|wells|organoids|lines|"
+    r"visits)\b|\breplicates?\b|cell[- ]?types?|clusters?|重複|細胞類型|時間點", _RE.I)
+_NO_REPLICATE = _RE.compile(r"\bno\s+(?:other\s+)?(?:donors?|patients?|individuals?|(?:biological\s+)?replicates?)"
+                           r"(?:\s+(?:and|or)\s+no\s+(?:other\s+)?(?:donors?|patients?|replicates?))?"
+                           r"|沒有(?:其他)?(?:捐贈者|病人|重複)", _RE.I)
+_MANY_INDIVIDUALS = _RE.compile(r"\b(?:[2-9]|\d{2,}|two|three|four|five|six|seven|eight|nine|ten|several|multiple)\s+"
+                               r"(?:\w+\s+)?(?:donors|patients|individuals|subjects|mice|animals)\b", _RE.I)
+_THREE_PLUS_UNITS = _RE.compile(  # "exactly two biopsies" across two sides is one per side (F010); three or more may not be
+    r"\b(?:[3-9]|\d{2,}|three|four|five|six|seven|eight|nine|ten|several|multiple)\s+(?:\w+\s+)?(?:replicates?|"
+    r"libraries|biopsies|captures|runs|batches|sections|samples|time\s?points|stages|lanes|pools|slices|wells|"
+    r"organoids|lines|visits|treated|controls?)\b", _RE.I)
+_ONE_PER_SIDE = _RE.compile(  # "one donor per condition" (Gemini review); the unit is named: "one network per condition"
+    r"\b(?:one|a\s+single)\s+(?:donor|patient|individual|subject|mouse|animal|sample|library|biopsy)\s+"
+    r"(?:per|for\s+each|in\s+each)\s+(?:condition|group|side|arm|region|state|genotype|treatment)\b", _RE.I)
+
+
+def single_source_comparison(task: str) -> str:
+    """R9 (2026-11-21, scorpion.yaml: "A comparison needs compare_by in group_by and at least two built networks on each
+    side"): the words stating a single patient or donor, in a request that compares two named sides and names no
+    replicate, other grouping column or second individual. A request about each cell (X032: per-cell networks) is
+    left to R6, whose refusal states no reason: R9's reason would be wrong there. Empty otherwise."""
+    if not _COMPARE.search(task) or _PER_CELL.search(task):
+        return ""
+    plain = " . ".join(part for part in _clauses(task) if not _NEGATION.search(part))
+    if (none := _NO_REPLICATE.search(task)) and not _MANY_INDIVIDUALS.search(plain) \
+            and not _THREE_PLUS_UNITS.search(plain):  # "6 organoids (3 treated vs 3 control)" can (review)
+        return none.group(0).strip()  # F010: "There are no other donors and no replicates."
+    if _REPLICATED.search(plain):
+        return ""
+    found = _SINGLE.search(task) or _ONE_PER_SIDE.search(task)
+    return found.group(0).strip() if found else ""
+
+
+_DOUBT = _RE.compile(
+    r"\bnot\s+sure\b|\bunsure\b|\bdon'?t\s+know\b|\bdo\s+not\s+know\b|\bhaven'?t\s+(?:decided|settled|found\s+out|"
+    r"checked)|\bnot\s+(?:yet\s+)?(?:decided|settled|certain)\b|\bmay\s+or\s+may\s+not\b|\bno\s+idea\b|"
+    r"\bwondering\s+whether\b|不確定|不知道|還沒決定|還沒確定|不清楚|還在問|沒把握", _RE.I)
+
+
+def stated_doubt(task: str) -> str:
+    """R1's second source (2026-11-21, F036): the user's own words of doubt in their newest words, found by code when
+    the form's unsure_quote is empty. Replayed on every saved form: R1 turned 30 gold-do questions into runs and none
+    of them has these words; 3 gold-ask ones do."""
+    found = _DOUBT.search(latest_words(task))
+    return found.group(0) if found else ""
+
+
 FOLLOW_UP = "\nUser follow-up: "
 
 
@@ -351,7 +511,7 @@ def latest_words(task: str) -> str:
 
 
 def apply_rules(task: str, raw: dict) -> LeanDecision:
-    """The model's handling with the contracts' rules applied (R0-R5 in the module docstring)."""
+    """The model's handling with the contracts' rules applied (R0-R9 in the module docstring)."""
     from ..prior_request import _NON_HUMAN, sponge_blockers
     from ..workflow_conditions import conditions_for
 
@@ -371,7 +531,8 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
                 steps[index - 1] = swap
                 rules.append(f"R4: PORCUPINE reads per-sample networks, so {before} became {swap}")
 
-    if kind == "ASK" and not _found(latest_words(task), raw.get("unsure_quote", "")) and steps:  # R1
+    if (kind == "ASK" and steps and not _found(latest_words(task), raw.get("unsure_quote", ""))
+            and not stated_doubt(task)):  # R1
         kind, question = "DO", ""
         rules.append("R1: no doubt stated by the user, so no question")
 
@@ -428,6 +589,30 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
             reply = (f"In the six-package scope NetZoo normalizes with SNAIL only; the request names "
                      f"{METHOD_LABELS[method]}.")
             rules.append(f"R7: normalization {method} is outside the six-package scope")
+
+    if kind == "DO" and "NORMALIZE-EXPRESSION" in steps and (scale := non_count_scale(task)):  # R8
+        if normalization_asked(task):
+            kind, question = "DECLINE", ""
+            reply = (f"SNAIL normalizes raw read counts only; the request states \"{scale}\" and no raw counts. "
+                     "With the raw count matrix, SNAIL can run.")
+            rules.append(f"R8: SNAIL needs raw counts, request states {scale}")
+        else:  # the model added SNAIL on its own to expression that is not counts (F085: TPM, log, batch-corrected)
+            steps = [name for name in steps if name != "NORMALIZE-EXPRESSION"]
+            rules.append(f"R8: SNAIL not asked for and needs raw counts ({scale}), so the step was dropped")
+
+    if kind == "DO" and "SCORPION" in steps and (single := single_source_comparison(task)):  # R9
+        kind, question = "DECLINE", ""
+        reply = (f"A SCORPION comparison needs at least two built networks on each side; with \"{single}\" and no "
+                 "replicate column, each side gives one network. A replicate column such as the donor, with two or "
+                 "more per side, makes the comparison possible.")
+        rules.append(f"R9: SCORPION comparison with one network per side ({single})")
+
+    if kind == "DO" and steps and steps[0] not in prep_steps():  # R10: the first step reads the user's input
+        label, quote = held_incompatible_input(task, steps[0])
+        if label:
+            kind, question = "DECLINE", ""
+            reply = f'{steps[0]} does not take {label} as input, and the request has "{quote}".'
+            rules.append(f"R10: {steps[0]} input {label} is incompatible ({quote})")
 
     decline_quote = ""
     if kind == "DO" and raw.get("wanted") is not None:  # R6

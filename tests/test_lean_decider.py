@@ -294,3 +294,102 @@ def test_menu_keys_follow_the_text_not_the_order():
     for key, text, _ in _menu("six"):
         assert key == "K" + hashlib.sha1(text.encode()).hexdigest()[:6]
     assert len({key for key, _, _ in _menu("six")}) == len(_menu("six"))
+
+
+def test_r8_snail_needs_raw_counts():
+    tpm = ("For our obesity study we quantified adipose biopsies from 30 adults with Salmon, and the only table we kept "
+           "is the gene-level TPM matrix; the read counts were not saved. Please run SNAIL across the 30 samples on "
+           "these TPM values and give me the normalized matrix.")
+    decided = apply_rules(tpm, raw(steps=["NORMALIZE-EXPRESSION"]))
+    assert decided.kind == "DECLINE" and decided.rules[-1].startswith("R8") and "raw read counts only" in decided.reply
+    array = ("我們有 48 位 AML 病人的 Affymetrix 晶片資料，已經用 RMA 處理成 log2 強度值；這批樣本沒有做定序，也沒有任何 "
+             "read counts。請用 SNAIL 對這 48 個樣本做樣本間標準化。")
+    assert apply_rules(array, raw(steps=["NORMALIZE-EXPRESSION"])).kind == "DECLINE"
+    counts = "Raw HTSeq read counts for 60 tumours (TPM also exported for plots). Normalize the counts with SNAIL first."
+    assert apply_rules(counts, raw(steps=["NORMALIZE-EXPRESSION"])).kind == "DO"
+    unsure = ("I'm not sure whether the numbers are raw counts or something already processed like TPM. Can you run "
+              "SNAIL on it?")
+    assert not any(rule.startswith("R8") for rule in apply_rules(unsure, raw(steps=["NORMALIZE-EXPRESSION"])).rules)
+
+
+def test_r8_drops_a_snail_step_nobody_asked_for():
+    task = ("Bulk RNA-seq from 143 liver samples, already TPM-quantified, log-transformed and batch-corrected, with a "
+            "motif prior and a PPI file. I'd like a single regulatory network for the whole cohort.")
+    decided = apply_rules(task, raw(steps=["NORMALIZE-EXPRESSION", "PANDA"]))
+    assert decided.kind == "DO" and decided.steps == ["PANDA"] and decided.rules[-1].startswith("R8")
+    done = "已經做過 TPM 標準化並取 log2 的表現矩陣，請建一張 PANDA 網路。"
+    assert apply_rules(done, raw(steps=["NORMALIZE-EXPRESSION", "PANDA"])).steps == ["PANDA"]
+
+
+def test_r9_scorpion_comparison_needs_two_networks_per_side():
+    one = ("From one glioblastoma patient we have scRNA-seq of the tumour core and the margin; this is our only "
+           "patient, with one library per region. Please build the networks and test which edges differ between core "
+           "and margin.")
+    decided = apply_rules(one, raw(steps=["SCORPION"]))
+    assert decided.kind == "DECLINE" and decided.rules[-1].startswith("R9") and "two built networks" in decided.reply
+    donors = ("snRNA-seq of human heart: one donor with heart failure and one healthy donor. Build SCORPION networks "
+              "per condition and test which edges differ between failing and healthy.")
+    assert apply_rules(donors, raw(steps=["SCORPION"])).kind == "DECLINE"
+    replicated = ("One patient, three biopsies from each region (core and margin). Test which edges differ between "
+                  "core and margin with SCORPION.")
+    assert apply_rules(replicated, raw(steps=["SCORPION"])).kind == "DO"
+    per_cell = "一位肝細胞癌病人的單細胞資料，請為每一個細胞各建立網路，找出細胞與細胞之間差異最大的 pathway。"
+    assert not any(rule.startswith("R9") for rule in apply_rules(per_cell, raw(steps=["SCORPION"])).rules)
+    no_compare = "One patient's 8,000 tumour cells: build one SCORPION network for the tumour."
+    assert apply_rules(no_compare, raw(steps=["SCORPION"])).kind == "DO"
+
+
+def test_r8_r9_review_counterexamples():
+    """Counterexamples from the Gemini review (2026-11-21): none may be refused."""
+    gene = "Normalize expression of CPM and EGFR across our 30 tumor samples using SNAIL; the counts are in data.tsv."
+    assert apply_rules(gene, raw(steps=["NORMALIZE-EXPRESSION"])).kind == "DO"
+    earlier = ("We have raw sequencing data from 50 biopsies and want to normalize with SNAIL; previously we published "
+               "TPM values.")
+    assert apply_rules(earlier, raw(steps=["NORMALIZE-EXPRESSION"])).kind == "DO"
+    timepoints = ("From one patient we collected scRNA-seq across 4 timepoints (2 pre-treatment vs 2 post-treatment). "
+                  "Compare pre vs post with SCORPION.")
+    assert apply_rules(timepoints, raw(steps=["SCORPION"])).kind == "DO"
+    output = "Build SCORPION networks for 6 donors, one network per condition, and compare treated vs control."
+    assert apply_rules(output, raw(steps=["SCORPION"])).kind == "DO"
+    per_side = "snRNA-seq with one donor per condition; test which edges differ between treated and control."
+    assert apply_rules(per_side, raw(steps=["SCORPION"])).kind == "DECLINE"
+
+
+def test_r10_an_input_the_contract_refuses():
+    held = ("For 50 psoriasis biopsies I computed sample-specific co-expression networks, stored as a gene1, gene2 table "
+            "with one column per biopsy. I want pathway-level heterogeneity of these networks. A Reactome GMT is "
+            "available.")
+    decided = apply_rules(held, raw(steps=["PORCUPINE"]))
+    assert decided.kind == "DECLINE" and decided.rules[-1].startswith("R10") and "co-expression network" in decided.reply
+    wanted = ("I have bulk RNA-seq from 72 tumours. Please build a separate gene-by-gene co-expression network for each "
+              "tumour.")
+    assert not any(r.startswith("R10") for r in apply_rules(wanted, raw(steps=["LIONESS-PANDA"])).rules)
+    panda = "I've already computed a covariate-adjusted co-expression matrix and want PANDA to use it. Run PANDA."
+    assert apply_rules(panda, raw(steps=["PANDA"])).kind == "DO"  # PANDA's contract takes it (coexpression_file)
+
+
+def test_r9_no_replicates_stated():
+    task = ("scRNA-seq from exactly two biopsies: one lesion from one patient and one healthy sample from one "
+            "volunteer. There are no other donors and no replicates. I need the test of which TF-gene edges differ "
+            "between lesion and healthy.")
+    assert apply_rules(task, raw(steps=["SCORPION"])).rules[-1].startswith("R9")
+    many = "30 donors per arm, no replicates per donor. Test which edges differ between treated and control."
+    assert apply_rules(many, raw(steps=["SCORPION"])).kind == "DO"
+
+
+def test_r1_keeps_a_question_when_the_user_states_doubt():
+    task = "請幫我建立人類的 motif 和 PPI 先驗，TF 是 STAT3、RELA。不過這台主機我不確定能不能連到外面的網路。"
+    asked = apply_rules(task, raw(steps=["SPONGE"], decision="ASK", question="Does the machine have internet access?"))
+    assert asked.kind == "ASK"
+    plain = "Please build human motif and PPI priors for STAT3 and RELA."
+    assert apply_rules(plain, raw(steps=["SPONGE"], decision="ASK", question="Which genome?")).kind == "DO"
+
+
+def test_review_round4_counterexamples():
+    """Gemini review 2026-11-21, round 4: neither may be refused."""
+    background = ("Our cohort has whole-exome sequencing mutation calls and RNA-seq. Run PANDA on the RNA-seq data with "
+                  "motif and PPI priors.")
+    assert apply_rules(background, raw(steps=["PANDA"])).kind == "DO"
+    organoids = ("scRNA-seq from one patient across 6 organoids (3 treated vs 3 control), with no technical "
+                 "replicates. Compare treated vs control with SCORPION.")
+    assert apply_rules(organoids, raw(steps=["SCORPION"])).kind == "DO"
