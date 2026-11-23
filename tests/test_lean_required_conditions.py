@@ -76,3 +76,26 @@ def test_flag_off_by_default(monkeypatch):
     assert not rc.enabled()
     monkeypatch.setenv("NETZOO_LEAN_CONDITION_CHECK", "on")
     assert rc.enabled()
+
+
+def test_sponge_added_by_the_model_does_not_cover_the_priors():
+    # R051: only a STRING PPI is named; the model put SPONGE in the plan on its own
+    task = "Now run PANDA on the 85 colorectal tumour RNA-seq profiles using the STRING human PPI I downloaded."
+    assert rc.conditions(task, {}, ["SPONGE-PRIORS", "PANDA"])[:2] == ["motif", "ppi"]
+    # asked for: SPONGE covers them (L008)
+    assert "motif" not in rc.conditions(L008, {}, ["SPONGE-PRIORS", "LIONESS-PANDA"])
+    assert "motif" not in rc.conditions("Build human priors with SPONGE, then run PANDA.", {}, ["SPONGE-PRIORS", "PANDA"])
+
+
+def test_sponge_question_offers_to_build(monkeypatch):
+    task = "Run PANDA on our 85 tumour profiles with the STRING PPI I downloaded."
+    need = rc.conditions(task, {}, ["SPONGE-PRIORS", "PANDA"])
+    monkeypatch.setattr(jev_client, "decide", fake({n: ("stated_has", 1.0) for n in need} | {"motif": ("not_mentioned", 1.0)}))
+    decided, _ = rc.check(task, {}, do(["SPONGE-PRIORS", "PANDA"]))
+    assert decided.kind == "ASK" and "SPONGE can build" in decided.question
+
+
+def test_porcupine_first_asks_the_network_kind():
+    need = rc.conditions("x", {}, ["PORCUPINE"])
+    assert "per_sample" in need and "regulatory" in need
+    assert "regulatory" not in rc.conditions("x", {}, ["LIONESS-PANDA", "PORCUPINE"])
