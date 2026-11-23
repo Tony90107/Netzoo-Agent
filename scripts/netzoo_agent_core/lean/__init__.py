@@ -220,6 +220,36 @@ def _menu(which: str) -> tuple[tuple[str, str, frozenset[str]], ...]:
     return tuple((f"K{hashlib.sha1(text.encode()).hexdigest()[:6]}", text, frozenset(givers[text])) for text in texts)
 
 
+def _signature(entry) -> tuple:
+    return (entry.granularity, entry.regulators, entry.signed, entry.layers, entry.groups, entry.input_network,
+            entry.family, entry.data_units)
+
+
+def _names_outside_method(task: str) -> list[str]:
+    """Registered methods outside the six that the request names (registry spelling, `method_names.workflows_in`).
+    When the user names OTTER, a PANDA network of the same type is not what they asked for (Gemini review, round 5):
+    R6's same-type exemption does not apply."""
+    from ..method_names import workflows_in
+
+    return [name for name in workflows_in(task) if name not in SIX and name != "LIONESS"]
+
+
+def _same_kind_given(key: str, steps: list[str]) -> bool:
+    """R6 (2026-11-21, blind bank B013): the picked result has the same typed fields on the capability sheet
+    (granularity, regulators, signed, layers, groups, input network, family, data unit) as a result a planned step
+    gives directly; it differs only in the method's own wording ("fitted so that it agrees with the PPI network" is
+    OTTER's aggregate TF-gene network, PANDA's has the same fields). Entries without a family are never matched.
+    Replayed on every saved reading: removes B013's false stop, keeps all 24 stops on gold dont."""
+    from ..capability_sheet import lean_entries, sheet_entries
+
+    texts = {k: text for k, text, _ in _menu(scope())}
+    entries = [*sheet_entries().values(), *lean_entries().values()]
+    picked = [e for e in entries if e.text == texts.get(key) and e.family]
+    planned = [e for e in entries if e.kind == "produces" and e.level == "direct"
+               and SYSTEM_NAME.get(e.workflow, e.workflow) in steps]
+    return any(_signature(p) == _signature(m) for p in picked for m in planned)
+
+
 _NAMED_IN_SCOPE = __import__("re").compile(
     r"(?<![\w-])(?:LIONESS-PANDA|PANDA|LIONESS|SCORPION|PORCUPINE|SPONGE|(?:py)?SNAIL)(?![\w-])", __import__("re").I)
 
@@ -625,6 +655,8 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
                 continue  # "none" (and a key from another version of the list) is no evidence either way
             if scope() == "six" and _NAMED_IN_SCOPE.search(quote):
                 continue  # "run PANDA", "SPONGE run please": the reader cannot know what a name gives; the named step does
+            if _same_kind_given(key, steps) and not _names_outside_method(task):
+                continue  # OTTER's "fitted so that it agrees with the PPI" read for PANDA's network (B013): same typed result
             kind, question, decline_quote = "DECLINE", "", quote
             reply = f'"{quote}" -- {UNMATCHED_RESULT}'
             rules.append(f"R6: {item.get('kind')} is given by no workflow in scope ({scope()})")
