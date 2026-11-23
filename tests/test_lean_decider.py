@@ -562,3 +562,69 @@ def test_r12_single_cell_background_does_not_move_bulk_to_scorpion():
                  "Bulk RNA-seq of 20 patients (we also have scRNA-seq of the same tissue, not used here); one network "
                  "per patient with our motif and PPI priors."):
         assert apply_rules(task, raw(steps=["LIONESS-PANDA"])).steps == ["LIONESS-PANDA"]
+
+
+def test_round4_contract_rules_from_the_acceptance_bank():
+    """2026-11-23: rules from the acceptance bank's first-run errors (all by contract text)."""
+    few = ("Could you build a TF-gene network from our single-cell RNA-seq of human oocytes? It's Smart-seq2, so there "
+           "are only 24 cells in total. Motif and PPI priors are ready.")
+    d = apply_rules(few, raw(steps=["SCORPION"]))
+    assert d.kind == "DECLINE" and d.rules[-1].startswith("R14") and "at least 30 cells" in d.reply
+    many = "scRNA-seq with every cluster over 500 cells and priors; one network per cluster."
+    assert apply_rules(many, raw(steps=["SCORPION"])).kind == "DO"
+    scaled = ("scRNA-seq of ascites: the only matrix left is the scaled one (centred z-scores, many negative values); "
+              "the raw counts and the normalized data are gone. Build a network per malignant state with our priors.")
+    assert apply_rules(scaled, raw(steps=["SCORPION"])).kind == "DECLINE"
+    gone = ("All we kept from 95 biopsies is a gene-by-gene Spearman correlation matrix; the original expression data "
+            "were deleted and can't be recovered. Build the TF-to-gene network with our motif and PPI priors.")
+    d = apply_rules(gone, raw(steps=["PANDA"]))
+    assert d.kind == "DECLINE" and d.rules[-1].startswith("R13")
+    mutation = ("Here's a binary gene-by-sample somatic mutation matrix for 410 tumours. Please run PANDA on it with our "
+                "motif and PPI priors. There is no RNA-seq for this cohort.")
+    assert apply_rules(mutation, raw(steps=["PANDA"])).kind == "DECLINE"
+    own = ("For each of the ~3,000 CD8 T cells in our 10x scRNA-seq, I'd like that cell's own TF-to-gene regulatory "
+           "network. Raw counts and priors are available.")
+    assert apply_rules(own, raw(steps=["SCORPION"])).rules[-1].startswith("R11")
+
+
+def test_r11_wins_over_r3_question_and_doubt_turns_a_refusal_into_a_question():
+    task = ("We have 3,000 cells from one tumour with scRNA-seq, priors and a GMT. Build a separate regulatory network "
+            "for every individual cell and then test which pathways vary across the cells.")
+    assert apply_rules(task, raw(steps=["SPONGE", "SCORPION", "PORCUPINE"])).rules[-1].startswith("R11")
+    doubt = ("Our core gave us a TF-to-gene network file for 25 biopsies. I honestly don't know if it holds one network "
+             "per biopsy or a single consensus network. Find the pathways whose regulation varies across patients.")
+    assert apply_rules(doubt, raw(steps=[], decision="DECLINE", decline_quote="x")).kind == "ASK"
+
+
+def test_r3_non_human_without_priors_asks_for_them():
+    task = "Build TF-gene networks for each cluster in our mouse organoid scRNA-seq; cluster labels are in a metadata CSV."
+    d = apply_rules(task, raw(steps=["SPONGE", "SCORPION"]))
+    assert d.kind == "ASK" and "Do you have mouse motif and PPI prior files?" in d.question
+    built = "Build mouse motif and PPI priors for Sox2."
+    assert apply_rules(built, raw(steps=["SPONGE"])).kind == "DECLINE"  # a build asked for: still refused
+
+
+def test_r6_heterogeneity_is_not_a_group_difference():
+    from netzoo_agent_core.lean import _menu
+
+    group = next(t for _, t, _ in _menu("six") if t.startswith("Pathways differentially expressed or enriched"))
+    task = ("Bulk RNA-seq of 64 resections with priors and a KEGG GMT: a network for each patient, then which pathways "
+            "are regulated differently from one patient to the next.")
+    w = [{"quote": "which pathways are regulated differently from one patient to the next", "role": "result",
+          "kind": _key(group)}]
+    assert apply_rules(task, raw(steps=["LIONESS-PANDA", "PORCUPINE"], wanted=w)).kind == "DO"
+    two = ("LIONESS networks for 64 patients and a GMT: for each pathway test whether regulation differs between "
+           "responders and non-responders.")
+    w2 = [{"quote": "test whether regulation differs between responders and non-responders", "role": "result",
+           "kind": _key(group)}]
+    assert apply_rules(two, raw(steps=["PORCUPINE"], wanted=w2)).kind == "DECLINE"
+
+
+def test_round4_review_counterexamples():
+    """Gemini review 2026-11-23: neither may be refused."""
+    qc = ("We have 10,000 single cells in total, but filtered out only 15 cells with high mitochondrial content. Run "
+          "SCORPION on the remaining cells with our motif and PPI priors.")
+    assert apply_rules(qc, raw(steps=["SCORPION"])).kind == "DO"
+    fpkm = ("The microarray expression data were deleted; however, we uploaded the batch-corrected matrix (or FPKM "
+            "table) for 40 samples with motif and PPI priors. Run LIONESS.")
+    assert apply_rules(fpkm, raw(steps=["LIONESS-PANDA"])).kind == "DO"

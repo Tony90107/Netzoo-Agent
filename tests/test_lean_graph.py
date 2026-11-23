@@ -300,3 +300,11 @@ def test_the_result_check_can_be_turned_off(monkeypatch):
     monkeypatch.setenv("NETZOO_LEAN_RESULT_CHECK", "off")
     result, context = run("Run PANDA on data/expr.tsv with my motif and PPI priors.", form(steps=["PANDA"]))
     assert len(context.lean_client.calls) == 1 and result["decision"]["core"]["kind"] == "DO"
+
+
+def test_reasoning_models_get_room_to_answer():
+    """2026-11-23: particle-1 reasons before answering, so its lean calls get the same 6000-token cap as free models."""
+    from netzoo_agent_core.graph.lean_call import lean_max_tokens
+
+    assert lean_max_tokens("particle-ai/particle-1") == 6000 and lean_max_tokens("particle-ai/particle-1:free") == 6000
+    assert lean_max_tokens("nvidia/nemotron-3.5-super-vl:free") == 6000 and lean_max_tokens("openai/gpt-4o-mini") == 1200
