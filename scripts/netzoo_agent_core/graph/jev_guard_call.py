@@ -99,7 +99,53 @@ def registry_text() -> str:
             f"({', '.join(cap.get('granularities') or [])}{regulators}). "
             f"Required inputs: {', '.join(spec.get('required_inputs') or [])}. "
             f"Controls: {'; '.join(controls) or 'none'}.")
-    return "\n".join(lines)
+    return "\n".join(lines + _preparation_lines())
+
+
+def _defaults(action: str, skip: tuple[str, ...] = ()) -> str:
+    from workflow_registry import ACTION_DEFINITIONS
+
+    found = []
+    for name, value in ACTION_DEFINITIONS[action].executor_defaults.items():
+        if name in skip:
+            continue
+        found.append(f"{name} default {value}" if value not in ("", [], None) else name)
+    return "; ".join(found) or "none"
+
+
+def _workflow_names(actions) -> str:
+    from workflow_registry import ACTION_DEFINITIONS
+
+    return ", ".join(sorted(ACTION_DEFINITIONS[action].workflow for action in actions))
+
+
+def _preparation_lines() -> list[str]:
+    """jev-guard-tools 2026-11-19: SPONGE and SNAIL are preparation steps with no workflow YAML, so the registry above
+    never listed them, and Jev read requests for them as DECLINE (dev bank r1: D017 1.00, D008 0.91, D022 0.89, D012
+    0.83). Their lines use the words the run paths already give the user (`prior_request`, `normalization_request`)."""
+    from workflow_registry import ACTION_DEFINITIONS
+
+    from ..normalization_request import CHAINABLE_ACTIONS, METHOD_OPTION_LINES
+    from ..prior_request import PRIOR_CONSUMERS
+
+    sponge = ACTION_DEFINITIONS["build_priors"]
+    normalize = ACTION_DEFINITIONS["normalize_expression"]
+    methods = "/".join(METHOD_OPTION_LINES)
+    return [
+        "- SPONGE (a preparation step, not a network workflow): builds the two prior files a regulatory network "
+        "starts from, for human genes only (hg38, hg19 or T2T-CHM13) -- a TF motif prior, by scanning JASPAR binding "
+        "sites in gene promoters, and a TF PPI prior, from the STRING interactions between the selected TFs. It needs "
+        "internet access to JASPAR, Ensembl, NCBI, UniProt and STRING while it runs. Its priors are inputs that "
+        f"{_workflow_names(PRIOR_CONSUMERS)} read. Produces a motif prior file and a PPI prior file. "
+        f"Required inputs: {', '.join(sponge.required_inputs)}. Controls: {_defaults('build_priors')}.",
+        "- NORMALIZE-EXPRESSION (SNAIL, RLE, TMM, quantile or FPKM; a preparation step, not a network workflow): "
+        "normalizes an expression matrix between samples -- "
+        + "; ".join(METHOD_OPTION_LINES.values())
+        + f". It writes a normalized expression matrix that {_workflow_names(CHAINABLE_ACTIONS)} can then read. "
+        f"Required inputs: {', '.join(normalize.required_inputs)}. "
+        f"Controls: normalization_method one of {methods} (default snail); "
+        f"{_defaults('normalize_expression', skip=('normalization_method',))}.",
+    ]
 
 
 def request_sentences(task: str) -> list[str]:
@@ -399,6 +445,67 @@ def condition_question(typed: dict, line: str) -> str | None:
     return f"{CONFIRM_UNPLACED}is the data you will use {DATA_CRITERIA[kind]}?{YES_OR_NO}"
 
 
+def own_words(sentence: str) -> str:
+    """A Jev sentence without the task text's "User follow-up:" label (reply-states-data-2026-11-18: the confirm
+    showed 'You wrote: "User follow-up: She meant ..."')."""
+    from ..interpretation.task_answers import follow_up_reply
+
+    return follow_up_reply(sentence or "")
+
+
+def answers_a_question(task_state) -> bool:
+    """This turn is the user's reply to a question the task asked: one still waiting, or one bound this turn."""
+    state = task_state or {}
+    return (any(item.get("status", "asked") == "asked" for item in state.get("pending") or [])
+            or any(item.get("turn") == state.get("turns") for item in state.get("facts") or []))
+
+
+HEDGED = re.compile(r"\?|\b(?:not sure|unsure|can'?t remember|cannot remember|don'?t know|do not know|can'?t tell|"
+                    r"cannot tell|whether|either|maybe|might|perhaps|probably|i think|i believe|wonder)\b", re.IGNORECASE)
+
+
+def stated_violation_core(core: CoreDecision, typed: dict, reply: str, task_state,
+                          request: str = "") -> tuple[CoreDecision, str]:
+    """A data fact the user stated plainly is not confirmed back to them: when that data is what the typed contract
+    field rules out, DECLINE now with the user's own words and the contract line, instead of a yes/no confirm.
+
+    - reply-states-data-2026-11-18: the user's reply to the task's own question states it (j11 C08 x4, S35 x2, J20:
+      the confirm got the same sentence back, which binds no yes/no, and the task ended asking) -> "You answered".
+    - repeat-questions-2026-11-18: the request itself states it, with no hedge ("the only data we have is a somatic
+      mutation matrix", r1/r2 B2; every recorded turn-1 confirm with a label was gold DECLINE, 23 items) -> "You wrote".
+
+    Only on a DO, only a placed violation, only with a confident typed read; a hedged or unplaced one still gets the
+    confirm (`conditioned_core`)."""
+    if core.kind != "DO" or not typed.get("violated"):
+        return core, "not_stated"
+    from ..interpretation.task_answers import fold
+
+    sentence, words = own_words(typed.get("sentence", "")), reply.strip()
+    in_reply = bool(sentence and words and answers_a_question(task_state) and fold(sentence) in fold(words))
+    as_written = bool(sentence and request and fold(sentence) in fold(request) and not HEDGED.search(sentence))
+    if not (in_reply or as_written):
+        return core, "not_stated"
+    read = typed.get("same_samples") if typed["violated"] == SAME_SAMPLE_LINE else typed.get("data")
+    confidence = float((read or (None, 0.0))[1] or 0.0)
+    if confidence < THRESHOLD:
+        return core, "unsure_read"
+    workflow = typed.get("workflow") or core.workflows[0]
+    question = {"user_quote": "", "workflows": [workflow],
+                "labels": {"contract": typed["violated"], "workflow": workflow}}
+    if in_reply:
+        after, action = answered_core(core, question, words, {"answer": "fails", "confidence": confidence,
+                                                             "by": "reply_states"})
+        return after, ("declined_from_reply" if action == "declined" else action)
+    from ..interpretation.ask_facts import contract_clause
+
+    line = (f'You wrote "{sentence.rstrip(". ")}". {contract_clause(workflow, typed["violated"])}. '
+            f"So {workflow} cannot do this as you asked.")
+    evidence = {**core.evidence, "jev_stated": {"kind_before": core.kind, "basis_before": core.basis,
+                                                "confidence": confidence, "sentence": sentence}}
+    return CoreDecision(kind="DECLINE", basis="jev_stated", evidence=evidence,
+                        declined=[DeclinedPart(quote=sentence, reasons=[line], line=line)]), "declined_as_stated"
+
+
 def condition_asked(task_state) -> bool:
     """FIXES.md A: a task asks its data confirm at most once."""
     return any(item.get("what") == "jev:condition"
@@ -416,8 +523,8 @@ def conditioned_core(core: CoreDecision, typed: dict, asked: set[str] = frozense
     line = typed.get("violated") or typed.get("unplaced")
     if not line:
         return core, "no_violation"
-    sentence = typed.get("sentence", "") if typed.get("violated") else ""
-    if already or (sentence and sentence in asked):
+    sentence = own_words(typed.get("sentence", "")) if typed.get("violated") else ""
+    if already or (sentence and (sentence in asked or typed.get("sentence") in asked)):
         return core, "already_asked"
     workflow = typed.get("workflow") or core.workflows[0]
     # 2026-11-06: the placed confirm showed only "could you confirm this about your data?" -- it now states the
@@ -721,8 +828,15 @@ def apply_jev_guard(context, state, decision, core: CoreDecision, user_task: str
             typed = check_typed_data(user_task, core.workflows)
         except Exception as exc:  # noqa: BLE001 -- the call as it came, and says so
             typed = {"violated": None, "error": type(exc).__name__}
-        after, action = conditioned_core(core, typed, asked_sentences(state.get("task_state")),
-                                         condition_asked(state.get("task_state")))
+        from ..interpretation.task_answers import follow_up_reply
+        from ..llm import latest_user_message
+
+        reply = follow_up_reply(latest_user_message(state.get("messages") or []))
+        after, action = stated_violation_core(core, typed, reply, state.get("task_state"),
+                                              latest_user_message(state.get("messages") or []))
+        if after is core:
+            after, action = conditioned_core(core, typed, asked_sentences(state.get("task_state")),
+                                             condition_asked(state.get("task_state")))
         record_event(context, state, "core.jev_condition", "classify", {
             "mode": mode, "action": action, "kind_before": core.kind, "basis_before": core.basis,
             "would_have": {"kind": after.kind, "basis": after.basis}, "typed": typed})

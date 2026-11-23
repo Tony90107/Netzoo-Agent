@@ -186,6 +186,41 @@ def _unmatched_tail(task: str, item, whole, tails, reread) -> bool:
             and not item.violations and not _why_not(item, reread))
 
 
+FILLER = frozenset({"the", "a", "an", "and", "or", "of", "to", "for", "with", "from", "by", "on", "in", "our", "my",
+                    "we", "us", "i", "using", "use", "plus", "also", "as", "into", "via", "its", "their", "this", "that",
+                    "these", "those", "both", "together", "along"})
+
+
+def _content_words(text: str) -> set[str]:
+    return {word for word in re.findall(r"[a-z0-9][a-z0-9+-]*", (text or "").casefold()) if word not in FILLER}
+
+
+_OUTPUT_FIELDS = ("output_file", "lioness_output", "output_dir", "normalization_method")
+_DATA_WORDS = frozenset({"file", "files", "table", "data", "rna-seq", "tpm", "counts", "we", "have", "prepared",
+                         "already"})
+
+
+def _input_words() -> set[str]:
+    """The words of the registry's own input names (expression matrix, motif/prior, PPI network ...), outputs left out."""
+    from .extraction import INPUT_LABELS
+
+    names = [label for field, label in INPUT_LABELS.items() if field not in _OUTPUT_FIELDS]
+    return set().union(*(_content_words(name) for name in names)) | _DATA_WORDS
+
+
+def restated_inputs(task: str, item, check, whole, tails, reread) -> bool:
+    """repeat-questions-2026-11-18 (live rq D1): a re-read tail that matches nothing and only names inputs -- words
+    the first reading already quoted or the registry's own input names, e.g. "using the RNA-seq expression matrix, the
+    motif prior and the PPI file" -- asks for nothing; refusing it held a plain LIONESS-PANDA run. Unlike
+    NETZOO_REREAD_TAILS every content word must be such a word, so a tail with words of its own ("email each network
+    to the patient's doctor") is still added and refused."""
+    if not _unmatched_tail(task, item, whole, tails, reread):
+        return False
+    words = _content_words(item.quote)
+    quoted = set().union(*(_content_words(row.quote) for row in check.requirements)) if check.requirements else set()
+    return bool(words) and words <= quoted | _input_words()
+
+
 def merge_reread(task: str, check, reread, passages=(), rejected=()):
     """The check with the re-read's new results: those overlapping a result already read are dropped
     (heldout11 VP5q: the whole sentence re-read as one result would have hidden the TF activity
@@ -216,6 +251,7 @@ def merge_reread(task: str, check, reread, passages=(), rejected=()):
            and (not passages or given(item.quote))]
     if tails_mode() == "on":  # reread-tail-fragments-2026-10-31: a tail that matches nothing asks for nothing
         new = [item for item in new if not _unmatched_tail(task, item, whole, tails, reread)]
+    new = [item for item in new if not restated_inputs(task, item, check, whole, tails, reread)]
     unchecked = list(check.unchecked) if rejected else [item for item in check.unchecked if item not in passages]
     if not new and unchecked == check.unchecked:
         return check

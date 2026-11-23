@@ -223,7 +223,7 @@ SCHEMA_DIGESTS = {
     # Same day: optional code-owned TaskDecision.normalization_choice (named / need / default / answered, with the
     # verified need quotes and the candidate methods); omitted from dumps while unset.
     # Same day: PORCUPINE min/max_pathway_size are at least 4 (irlba's 3-component PCA needs 4 edges).
-    "TaskDecision": "0c06ad4ca6cea9d0c72aa883f9c5a51ef688512eb47f1c187c47221753c00577",
+    "TaskDecision": "c8febc04e887fa7639f056cd55e5d2e4a21048c4d29f319ab1b3c461e22a6fe7",
     "RouterDecision": "bef9d4bafb13d9ac1ff69128869e41ab6234866cf28e47623eedfd25abea8a41",
     "RequestedOutcome": "9be3f9457d9e5346db5ab185b4afe128039ca973e9e54dfb31b2748a5e7f567e",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from workflow_registry import ACTION_DEFINITIONS
 
 from .contracts import RequestedOutcome, TaskDecision
-from .method_names import LIONESS_FAMILY, registered_workflows
+from .method_names import LIONESS_FAMILY, bare_lioness, registered_workflows
 from .routing.capability import has_explicit_advice_intent, is_workflow_information_request
 from .routing.path_tokens import output_directory
 
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "PRIOR_CONSUMERS", "SPONGE_DEFAULTS", "SPONGE_MOTIFS_JASPAR2026", "prior_decision", "prior_requested",
-    "requested_tf_names", "sponge_cost_note", "sponge_plan_lines",
+    "requested_tf_names", "sponge_blockers", "sponge_cost_note", "sponge_plan_lines",
 ]
 
 #: Vertebrate JASPAR CORE motifs (latest versions) SPONGE selects without a TF list, counted with pyjaspar 4.0.0 on
@@ -81,7 +81,7 @@ def _named_workflows(task: str) -> list[str]:
         for found in re.finditer(rf"(?<![A-Za-z0-9]){re.escape(name)}(?![A-Za-z0-9])", task, re.I):
             if not any(start <= found.start() and found.end() <= end for start, end, _ in spans):
                 spans.append((found.start(), found.end(), name))
-    return list(dict.fromkeys(workflows.get(name, name) for _, _, name in sorted(spans)))
+    return list(dict.fromkeys(workflows.get(bare_lioness(task) if name == LIONESS_FAMILY else name, name) for _, _, name in sorted(spans)))
 
 
 def chained_action(task: str) -> str | None:
@@ -106,7 +106,7 @@ def prior_requested(task: str, interpretation: SemanticInterpretation | None = N
     return commanded or bool(_COMMAND.search(task.strip()))
 
 
-_SYMBOL = r"[A-Z][A-Z0-9-]{1,14}"
+_SYMBOL = r"[A-Z][A-Z0-9-]{0,13}[A-Z0-9]"
 
 
 def requested_tf_names(task: str) -> list[str]:
@@ -118,6 +118,10 @@ def requested_tf_names(task: str) -> list[str]:
         rf"((?:{_SYMBOL})(?:\s*(?:,|、|/|\band\b|\bor\b|和|與|与)\s*(?:{_SYMBOL}))*)",
         task,
     )
+    if not found:  # dev-bank-2026-11-19: "build the priors with SPONGE for RUNX1, CEBPA, GATA2, SPI1 and MYB"
+        found = re.search(
+            rf"\b(?:priors?|SPONGE)\b(?:\s+\w+){{0,4}}?\s+for\s+(?:the\s+)?((?:{_SYMBOL})(?:\s*(?:,|、|/|\band\b|和|與|与)\s*"
+            rf"(?:{_SYMBOL}))+)", task)
     if not found:
         return []
     names = re.split(r"\s*(?:,|、|/|\band\b|\bor\b|和|與|与)\s*", found.group(1))
@@ -129,10 +133,45 @@ def _jaspar_release(task: str) -> str | None:
     return f"JASPAR{found.group(1)}" if found else None
 
 
+_ASSEMBLIES = ((r"\bhg19\b|GRCh37", "hg19"), (r"\bhg38\b|GRCh38", "hg38"), (r"\bT2T\b|CHM13|\bhs1\b", "hs1"),
+               (r"\bhg1[0-8]\b|GRCh3[0-6]", "older"))
+_HUMAN_WORDS = re.compile(r"\bhuman\b|homo sapiens|\bpatients?\b|\bhg(?:19|38)\b|grch3[78]|\bt2t\b|chm13|\bhs1\b|"
+                          r"clinical|\bdonors?\b|\bTCGA\b|人類|人类|病人|患者", re.I)
+_OFFLINE = re.compile(
+    r"air[- ]?gapped|no (?:internet|network|outbound|external) (?:access|connections?|connectivity)|"
+    r"no outbound connections|without (?:internet|network) access|cannot (?:access|reach) the internet|"
+    r"nothing can be (?:fetched|downloaded)|(?:沒有|無法|不能)(?:連網|上網|連線)|離線環境", re.I)
+
+
+def _assemblies(task: str) -> list[str]:
+    """Every genome assembly the request names, as SPONGE spells it ("older" for hg18 and before)."""
+    return [value for pattern, value in _ASSEMBLIES if re.search(pattern, task, re.I)]
+
+
 def _assembly(task: str) -> str | None:
-    named = {value for pattern, value in ((r"\bhg19\b|GRCh37", "hg19"), (r"\bhg38\b|GRCh38", "hg38"),
-                                           (r"\bT2T\b|CHM13|\bhs1\b", "hs1")) if re.search(pattern, task, re.I)}
-    return named.pop() if len(named) == 1 else None
+    named = _assemblies(task)
+    return named[0] if len(named) == 1 and named[0] != "older" else None
+
+
+def sponge_blockers(task: str) -> list[str]:
+    """dev-bank-2026-11-19: what the request's own words say that SPONGE cannot do as asked (D025 "either hg19 or
+    hg18 and I honestly don't remember which" took hg19 silently; D021 "fully air-gapped" planned a run that needs
+    the internet). Each sentence is reported by the preflight in place of a run."""
+    blockers, named = [], _assemblies(task)
+    if len(named) > 1:
+        shown = [re.search(pattern, task, re.I).group(0) for pattern, value in _ASSEMBLIES if value in named]
+        blockers.append(f"The request names more than one genome assembly ({', '.join(shown)}); say which one SPONGE "
+                        "should use. SPONGE builds hg38, hg19 or T2T-CHM13 priors.")
+    elif named == ["older"]:
+        shown = re.search(_ASSEMBLIES[-1][0], task, re.I).group(0)
+        blockers.append(f"SPONGE builds hg38, hg19 or T2T-CHM13 priors only; the request names {shown}.")
+    if not _NON_HUMAN.search(task) and not _HUMAN_WORDS.search(task):  # dev-bank D005: species never said
+        blockers.append("SPONGE builds human priors only (hg38, hg19 or T2T-CHM13), and the request does not say which "
+                        "organism the samples come from; say whether they are human.")
+    if found := _OFFLINE.search(task):
+        blockers.append("SPONGE needs internet access to JASPAR, Ensembl, NCBI, UniProt and STRING while it runs; the "
+                        f'request says "{found.group(0)}".')
+    return blockers
 
 
 def _window(task: str) -> tuple[int | None, int | None]:
@@ -170,6 +209,7 @@ def prior_decision(task: str, interpretation: SemanticInterpretation | None = No
         sponge_tf_names=requested_tf_names(task) or None,
         jaspar_release=_jaspar_release(task),
         genome_assembly=_assembly(task),
+        sponge_blockers=sponge_blockers(task) or None,
         promoter_upstream=upstream, promoter_downstream=downstream,
         output_dir=_output_dir(task),
         taxon=non_human.group(0) if non_human else None,

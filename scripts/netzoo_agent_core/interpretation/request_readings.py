@@ -7,10 +7,11 @@ reading typed as stated (R4) and as uncertain (R1's second reader, phase 2), and
 
 from __future__ import annotations
 
+
 from ..contracts.capability_check import CONDITIONS
 from .request_spans import _span
 
-__all__ = ["only_inputs", "ruled_out_inputs", "stated_quotes", "uncertain_quotes", "verified_goal"]
+__all__ = ["only_inputs", "ruled_out_inputs", "stated_quotes", "uncertain_quotes", "verified_goal", "without_unasked_sign"]
 
 
 _INDEFINITE = {"", "not_stated", "none", None}
@@ -65,3 +66,6 @@ def only_inputs(task: str, proposal) -> tuple[list[str], str]:
     quote = (getattr(conditions, "only_inputs_quote", "") or "").strip()
     span = _span(task, quote) if kinds and quote else None
     return ([], "") if span is None else (kinds, task[span[0]:span[1]])
+
+
+from .stated_forms import SIGN_WORDS, corrected_forms, without_unasked_sign  # noqa: E402,F401  stated-forms-2026-11-19

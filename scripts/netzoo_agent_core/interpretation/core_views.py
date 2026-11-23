@@ -36,7 +36,7 @@ def decline_reply(core, options: str = "") -> str:
     closing."""
     if core.basis in ("algorithm_boundary", "cobra_boundary"):
         return core.declined[0].line if core.declined else ""
-    if core.basis in ("jev_answer", "count_answer"):  # ANSWERS.md: the user's answer and the contract line only
+    if core.basis in ("jev_answer", "jev_stated", "count_answer"):  # the user's own words and the contract line only
         return "\n\n".join(["\n".join(part.line for part in core.declined), _CLOSING])
     if core.basis == "contract_veto":  # hybrid spec 4: "cannot, because <contract words>", then the nearest options
         nearest = list(dict.fromkeys(w for part in core.declined for w in part.alternatives))
@@ -66,6 +66,18 @@ def unchecked_reply(core) -> str:
              if core.workflows else "")
     return "\n\n".join([f"The capability check could not confirm this turn what a registered workflow gives you, so "
                         f"nothing was selected and nothing runs.{named}", "Ask again to re-run the check.", _CLOSING])
+
+
+def _with_background(result: dict, core, reply) -> dict:
+    """couldn't-match-2026-11-18: the refusal with its labelled general background, when the call recorded one."""
+    from .general_background import with_background
+
+    text = ((core.evidence or {}).get("general_background") or {}).get("text")
+    if not text:
+        return result
+    content = with_background(str(result["messages"][-1].content), text, _CLOSING)
+    return {**reply(content, result["reply_kind"]),
+            **{key: value for key, value in result.items() if key not in ("messages", "reply_kind")}}
 
 
 def core_view(context, state, reply) -> dict | None:
@@ -115,10 +127,12 @@ def core_view(context, state, reply) -> dict | None:
         return ask_result(state, reply)
     if core.kind == "DECLINE":
         if core.basis == "full_gap" and (gap := full_gap_result(state, reply)) is not None:
-            return gap
-        from .reason_layers import options_line
+            return _with_background(gap, core, reply)
+        from .reason_layers import nearest_or_options
 
-        return reply(with_outside_steps(decline_reply(core, options_line(decision)), decision, task), DECLINE_KIND)
+        return _with_background(
+            reply(with_outside_steps(decline_reply(core, nearest_or_options(decision)), decision, task), DECLINE_KIND),
+            core, reply)
     if core.basis == "routing_failed":  # the system's own failure: never reported as an unclear question
         from .unresolved_router_fallback import render_unresolved_router_fallback
 

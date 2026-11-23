@@ -48,6 +48,7 @@ from ..interpretation.checked_match import _USER_CHOSEN, checked_match, credited
 from ..routing.capability import validate_task_text
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS, PREPARATION_ACTIONS
 from ..interpretation.reread import merge_reread, reread_passages
+from ..interpretation.nearest_workflows import CONFIRMED_CHOICE, reading_links
 from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candidates
 from ..interpretation.capability_check import (
     apply_condition_answers, apply_redirect_answers, apply_second_opinion, blank_requirement_pairs,
@@ -175,7 +176,7 @@ def invoke_router(
     """
     continuation = state.get("workflow_continuation")
     # M2: a continuation the user changed is read as a new run request is -- checked, then planned or held.
-    follow_up = (state.get("method_comparison") is not None
+    follow_up = (state.get("method_comparison") is not None or user_task.startswith(CONFIRMED_CHOICE)
                  or (continuation is not None and not continuation.get("recheck")))
     result = _route_request(context, state, user_task)
     if follow_up or result.reason_code == "string_download_continuation":
@@ -506,6 +507,7 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     forms = forms_reader()  # jev-forms: Jev's reads of time_model, spatial and input_network; None when off
     check, rejected = build_capability_check(user_task, proposal, claims, counted, overlap_reader=reader,
                                              forms_reader=forms)
+    check = check.model_copy(update={"linked": reading_links(proposal)})  # couldn't-match-2026-11-18: nearest line
     record_event(context, state, "routing.capability_checked", "classify", {
         "proposal": proposal.model_dump(), "rejected": rejected, "check": check.model_dump(),
     })

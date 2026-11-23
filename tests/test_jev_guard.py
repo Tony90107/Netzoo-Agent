@@ -147,7 +147,18 @@ def test_no_key_fails_inside_the_future(monkeypatch):
 
 def test_the_registry_lists_every_workflow():
     text = jev_guard_call.registry_text()
-    assert sum(line.startswith("- ") for line in text.splitlines()) == 15 and "LIONESS-DRAGON" in text
+    assert sum(line.startswith("- ") for line in text.splitlines()) == 17 and "LIONESS-DRAGON" in text
+
+
+def test_the_registry_lists_the_two_preparation_steps():
+    # jev-guard-tools 2026-11-19: without these lines Jev read SPONGE and SNAIL requests as DECLINE (dev bank r1).
+    lines = jev_guard_call.registry_text().splitlines()
+    sponge = next(line for line in lines if line.startswith("- SPONGE "))
+    snail = next(line for line in lines if line.startswith("- NORMALIZE-EXPRESSION "))
+    assert "human genes only" in sponge and "internet access" in sponge and "PANDA" in sponge
+    assert "SCORPION" in sponge and "genome_assembly default hg38" in sponge
+    assert "SNAIL (PySNAIL)" in snail and "snail/rle/tmm/quantile/fpkm" in snail and "PANDA" in snail
+    assert all("preparation step, not a network workflow" in line for line in (sponge, snail))
 
 
 def test_an_unreachable_jev_fails_inside_the_future(monkeypatch):
@@ -530,3 +541,130 @@ def test_the_answer_read_and_its_decline_use_only_the_reply_not_the_previous_goa
     line = after.declined[0].line
     assert line.startswith('You answered "It\'s the COBRA adjusted co-expression matrix."')
     assert "Previous NetZoo goal" not in line and "User follow-up" not in line
+
+
+# reply-states-data-2026-11-18 (j11 C08 x4, S35 x2, J20): the user's reply to the task's own question states the data
+# the typed contract field rules out; it declines on that turn instead of a yes/no confirm of the same words.
+
+C08_REPLY = "She meant cohort_somatic_calls.csv, the mutation calls."
+C08_TYPED = {"violated": "LIONESS-PANDA incompatible_input_artifacts: mutation_matrix", "workflow": "LIONESS-PANDA",
+             "sentence": f"User follow-up: {C08_REPLY}", "data": ["mutation_matrix", 1.0]}
+WAITING = {"task_id": "t", "goal": "g", "turns": 1, "facts": [],
+           "pending": [{"what": "LIONESS-PANDA", "status": "asked", "source": "agent",
+                        "question": "Is the patient matrix you want to use the cohort_rnaseq_tpm.tsv file?"}]}
+
+
+def lioness():
+    return CoreDecision(kind="DO", basis="results_given", workflows=["LIONESS-PANDA"])
+
+
+def test_a_reply_that_states_the_ruled_out_data_declines_with_the_reply_and_the_contract():
+    after, action = jev_guard_call.stated_violation_core(lioness(), C08_TYPED, C08_REPLY, WAITING)
+    assert (after.kind, after.basis, action) == ("DECLINE", "jev_answer", "declined_from_reply")
+    assert after.declined[0].line == (
+        'You answered "She meant cohort_somatic_calls.csv, the mutation calls.". LIONESS-PANDA\'s contract lists '
+        'mutation_matrix among the inputs it cannot take. So LIONESS-PANDA cannot do this as you asked.')
+    assert after.evidence["jev_answer"]["by"] == "reply_states"
+
+
+@pytest.mark.parametrize("change", [
+    {"typed": {**C08_TYPED, "sentence": "I'd like a TF-to-gene network for each of the 38 patients."}},  # not the reply
+    {"state": {**WAITING, "pending": []}},  # no question was waiting: not an answer turn
+    {"typed": {**C08_TYPED, "data": ["mutation_matrix", 0.6]}},  # unsure typed read
+    {"typed": {**C08_TYPED, "violated": None, "unplaced": "x"}},  # unplaced: the confirm names the fact, as before
+    {"core": CoreDecision(kind="ASK", basis="x", workflows=["LIONESS-PANDA"])}])  # only a DO
+def test_anything_else_leaves_the_call_for_the_confirm(change):
+    core = change.get("core") or lioness()
+    after, action = jev_guard_call.stated_violation_core(core, change.get("typed", C08_TYPED), C08_REPLY,
+                                                         change.get("state", WAITING))
+    assert after is core and action in ("not_stated", "unsure_read")
+
+
+def test_a_question_bound_this_turn_also_makes_it_an_answer_turn():
+    state = {**WAITING, "turns": 2, "pending": [], "facts": [{"what": "x", "value": "b.csv", "turn": 2}]}
+    assert jev_guard_call.answers_a_question(state)
+    assert not jev_guard_call.answers_a_question({**state, "facts": [{"what": "x", "turn": 1}]})
+
+
+def test_the_guard_declines_on_the_answer_turn_and_never_asks_the_confirm(monkeypatch):
+    from netzoo_agent_core.contracts import HumanMessage
+
+    monkeypatch.setenv("NETZOO_JEV_GUARD", "on")
+    monkeypatch.setattr(jev_guard_call, "check_typed_data", lambda task, workflows: C08_TYPED)
+    seen = []
+    monkeypatch.setattr(jev_guard_call, "record_event", lambda *a: seen.append(a[4]))
+    message = "Previous NetZoo goal: per-patient TF networks\nUser follow-up: " + C08_REPLY
+    state = {"task_state": WAITING, "messages": [HumanMessage(content=message)]}
+    after = jev_guard_call.apply_jev_guard(None, state, None, lioness(), TASK, done(read("DO")))
+    assert (after.kind, after.basis) == ("DECLINE", "jev_answer") and seen[-1]["action"] == "declined_from_reply"
+
+
+def test_a_confirm_quotes_the_users_words_without_the_follow_up_label():
+    typed = {**C08_TYPED, "sentence": "User follow-up: It's the COBRA adjusted co-expression matrix."}
+    after, _ = jev_guard_call.conditioned_core(lioness(), typed)
+    assert after.facts[0].user_quote == "It's the COBRA adjusted co-expression matrix."
+    assert jev_guard_call.conditioned_core(lioness(), typed, {typed["sentence"]})[1] == "already_asked"
+
+
+# repeat-questions-2026-11-18: data the request states plainly is not confirmed back (r1/r2 B2).
+
+B2_SENTENCE = ("I want a TF-to-gene network for each of our 50 patients with LIONESS-PANDA, but the only data we have is "
+               "a somatic mutation matrix (patients by genes), plus the motif prior and PPI file.")
+B2_TYPED = {"violated": "LIONESS-PANDA incompatible_input_artifacts: mutation_matrix", "workflow": "LIONESS-PANDA",
+            "sentence": B2_SENTENCE, "data": ["mutation_matrix", 0.98]}
+
+
+def test_a_plainly_stated_ruled_out_input_declines_on_turn_one_with_the_users_words():
+    after, action = jev_guard_call.stated_violation_core(lioness(), B2_TYPED, B2_SENTENCE, None, B2_SENTENCE)
+    assert (after.kind, after.basis, action) == ("DECLINE", "jev_stated", "declined_as_stated")
+    assert after.declined[0].line == (
+        f'You wrote "{B2_SENTENCE.rstrip(".")}". LIONESS-PANDA\'s contract lists mutation_matrix among the inputs it '
+        "cannot take. So LIONESS-PANDA cannot do this as you asked.")
+
+
+@pytest.mark.parametrize("sentence", [
+    "I can't remember whether the matrix is expression or the somatic mutation matrix.",
+    "I'm not sure, but I think it's the mutation calls.",
+    "Is the mutation matrix usable as the input?"])
+def test_a_hedged_or_asked_sentence_still_gets_the_confirm(sentence):
+    typed = {**B2_TYPED, "sentence": sentence}
+    after, action = jev_guard_call.stated_violation_core(lioness(), typed, sentence, None, sentence)
+    assert after is lioness() or (after.kind, action) == ("DO", "not_stated")
+    asked, _ = jev_guard_call.conditioned_core(lioness(), typed)
+    assert asked.basis == "jev_condition"
+
+
+@pytest.mark.parametrize("typed", [{**B2_TYPED, "data": ["mutation_matrix", 0.6]},
+                                   {**B2_TYPED, "violated": None, "unplaced": "x", "sentence": ""}])
+def test_an_unsure_read_or_an_unplaced_violation_is_never_declined_as_stated(typed):
+    core = lioness()
+    assert jev_guard_call.stated_violation_core(core, typed, B2_SENTENCE, None, B2_SENTENCE)[0] is core
+
+
+def test_the_stated_decline_reply_is_its_line_and_the_closing():
+    from netzoo_agent_core.interpretation.core_views import decline_reply
+
+    after, _ = jev_guard_call.stated_violation_core(lioness(), B2_TYPED, B2_SENTENCE, None, B2_SENTENCE)
+    assert decline_reply(after) == after.declined[0].line + "\n\nNo files were inspected and no analysis ran."
+
+
+def test_a_picked_option_marker_is_the_choice_prefix_the_engine_writes():
+    from netzoo_agent_core.engine.choices import confirmed_outcome_task
+    from netzoo_agent_core.interpretation.nearest_workflows import CONFIRMED_CHOICE
+
+    assert confirmed_outcome_task("run_lioness_panda").startswith(CONFIRMED_CHOICE)
+
+
+def test_a_picked_option_is_the_turns_decision_and_its_marker_readings_are_dropped():
+    from netzoo_agent_core.contracts import TaskDecision
+    from netzoo_agent_core.engine.choices import confirmed_outcome_task
+    from netzoo_agent_core.interpretation.core_decision import decide_core
+    from netzoo_agent_core.interpretation.repair import confirmed_choice_decision
+
+    raw = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="x",
+                       hypothesis_actions=["run_otter", "run_giraffe"])
+    task = confirmed_outcome_task("run_panda")
+    picked = confirmed_choice_decision(raw, task)
+    assert picked.matched_actions == ["run_panda"] and picked.hypothesis_actions == []
+    assert decide_core(picked, task).workflows == ["PANDA"]
+    assert confirmed_choice_decision(raw, "Run PANDA on expr.tsv.") is raw

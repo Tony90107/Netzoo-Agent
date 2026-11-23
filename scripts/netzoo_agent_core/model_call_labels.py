@@ -34,6 +34,7 @@ ROLE_LABELS: dict[str, str] = {
     "input_content_mapper": "matching file contents to inputs",
     "settings_read": "reading the requested settings",
     "jev_settings_values": "reading the setting values",
+    "general_background": "writing general background",
     "response": "writing the reply",
 }
 

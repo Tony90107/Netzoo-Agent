@@ -77,6 +77,11 @@ def solely_named_run_action(task: str) -> RecommendedAction | None:
     when they occupy separate spans.
     """
     distinct = _named_spans(task)
+    if not distinct:  # dev-bank-2026-11-19: a bare "LIONESS" is LIONESS-PANDA when nothing points elsewhere
+        from ..method_names import bare_lioness
+
+        workflow = bare_lioness(_current_scope_text(task))
+        return next((action for action in RUN_ACTIONS if ACTION_DEFINITIONS[action].workflow == workflow), None)
     if len(distinct) != 1:
         return None
     action = distinct[0][2]

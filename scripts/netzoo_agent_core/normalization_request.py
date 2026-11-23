@@ -22,7 +22,7 @@ from .data.normalization import METHOD_LABELS, raw_count_signal
 from .interpretation.extraction import _task_path
 from workflow_registry import ACTION_DEFINITIONS
 
-from .method_names import LIONESS_FAMILY, registered_workflows
+from .method_names import LIONESS_FAMILY, bare_lioness, registered_workflows
 from .routing.capability import has_explicit_advice_intent, is_workflow_information_request
 from .routing.path_tokens import is_path_token
 from .settings import INPUT_ROLE_FIELDS
@@ -111,7 +111,7 @@ def _named_workflows(task: str) -> list[str]:
         for found in re.finditer(rf"(?<![A-Za-z0-9]){re.escape(name)}(?![A-Za-z0-9])", task, re.I):
             if not any(start <= found.start() and found.end() <= end for start, end, _ in spans):
                 spans.append((found.start(), found.end(), name))
-    return list(dict.fromkeys(workflows.get(name, name) for _, _, name in spans))
+    return list(dict.fromkeys(workflows.get(bare_lioness(task) if name == LIONESS_FAMILY else name, name) for _, _, name in spans))
 
 
 def _names_network_workflow(task: str) -> bool:

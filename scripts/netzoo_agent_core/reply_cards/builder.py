@@ -545,8 +545,12 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
                          points=[clip(decision.clarification_question, 300)])
     if kind == "decline" and decision.core is not None:  # core decision phase 3: the DECLINE view's card
         parts = decision.core.declined
-        return ReplyCard(kind="capability_gap",
-                         headline="This cannot be done as you asked, so no workflow is offered for it.",
+        from ..interpretation.general_background import wanted
+
+        # couldn't-match-2026-11-18: with no verified reason the headline says what was checked, not "cannot"
+        headline = ("I couldn't match this to a result a registered workflow produces, so none is offered."
+                    if wanted(decision.core) else "This cannot be done as you asked, so no workflow is offered for it.")
+        return ReplyCard(kind="capability_gap", headline=headline,
                          points=[clip(part.line, 300) for part in parts if part.line][:4])
     if kind == "unchecked" and decision.core is not None:  # core decision phase 3: the UNCHECKED view's card
         return ReplyCard(kind="unresolved", headline="I could not judge this request this turn, so nothing was selected.",
@@ -712,6 +716,26 @@ def _one_result_steps(decision, policy, task: str, state, steps: list[ReplyOptio
     return [*steps, *(plan_step(policy, action) for action in instead if action in RUN_ACTIONS and action not in planned)]
 
 
+def _with_nearest(card: ReplyCard, result: dict) -> ReplyCard:
+    """couldn't-match-2026-11-18: the reply's nearest-main-workflow line as a card point, only when the text says it."""
+    messages = result.get("messages") or []
+    text = str(getattr(messages[-1], "content", "")) if messages else ""
+    line = next((part for part in text.split("\n\n") if part.startswith("Nearest of NetZoo's main workflows")), "")
+    if not line:
+        return card
+    return card.model_copy(update={"points": [*card.points[:5], clip(line.replace("**", ""), 600)]})
+
+
+def _with_general_background(card: ReplyCard, decision) -> ReplyCard:
+    """couldn't-match-2026-11-18: the labelled general background as the card's last point, when recorded."""
+    from ..interpretation.general_background import LABEL
+
+    text = (((decision.core.evidence if decision.core else None) or {}).get("general_background") or {}).get("text")
+    if not text:
+        return card
+    return card.model_copy(update={"points": [*card.points[:5], clip(f"{LABEL} {text}", 900)]})
+
+
 def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str) -> ReplyCard | None:
     """The card for a finished turn, or None when the turn is a wizard or not a policy run."""
     if not isinstance(policy, ProjectPolicySnapshot):
@@ -725,6 +749,9 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
     card = _run_card(plan, results, result.get("evaluation")) if kind == "execution" else None
     if card is None:
         card = _core_card(kind, decision, policy, task)
+    if card is not None and kind in {"capability_check_gap", "decline"}:
+        card = _with_nearest(card, result)
+        card = _with_general_background(card, decision)
     if card is not None and card.kind in _INPUT_ALTERNATIVE_CARDS:
         card = _with_input_alternative(card, decision, policy, task, result)
     if card is not None and kind not in {"execution", "capability_check_gap", "clarify_goal", "ask_facts", "decline", "unchecked"}:
