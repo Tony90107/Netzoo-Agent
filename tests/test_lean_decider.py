@@ -78,7 +78,10 @@ def test_r4_porcupine_gets_per_sample_networks():
     task = "Bulk expression for 60 patients, motif, PPI and a GMT: which pathways vary in regulation?"
     decided = apply_rules(task, raw(steps=["PANDA", "PORCUPINE"]))
     assert decided.steps == ["LIONESS-PANDA", "PORCUPINE"] and decided.rules[0].startswith("R4")
-    kept = apply_rules(task, raw(steps=["SCORPION", "PORCUPINE"]))
+    swapped = apply_rules(task, raw(steps=["SCORPION", "PORCUPINE"]))  # 2026-11-22 R12: bulk never goes to SCORPION
+    assert swapped.steps == ["LIONESS-PANDA", "PORCUPINE"] and swapped.rules[0].startswith("R12")
+    cells = "scRNA-seq of 60 patients, motif, PPI and a GMT: which pathways vary in regulation between patients?"
+    kept = apply_rules(cells, raw(steps=["SCORPION", "PORCUPINE"]))
     assert kept.steps == ["SCORPION", "PORCUPINE"] and not kept.rules
 
 
@@ -225,9 +228,18 @@ def test_r6_a_result_no_workflow_in_scope_gives_stops_the_run():
                "kind": _key("Networks for individual cells.")},
               {"quote": "10x scRNA-seq of 6,500 tumour cells", "role": "data", "kind": "none"}]
     decided = apply_rules(task, raw(steps=["SCORPION", "PORCUPINE"], wanted=wanted))
-    assert decided.kind == "DECLINE" and decided.steps == [] and decided.rules[-1].startswith("R6")
-    assert decided.decline_quote == "Build a TF-gene network for every individual cell"
-    assert decided.reply.startswith('"Build a TF-gene network for every individual cell" -- I couldn\'t match')
+    # 2026-11-22: R11 refuses a network per cell first, with the contract's reason
+    assert decided.kind == "DECLINE" and decided.steps == [] and decided.rules[-1].startswith("R11")
+    from netzoo_agent_core.lean import _menu
+
+    weights = next(text for _, text, given in _menu("six") if text.startswith("A motif prior whose TF-gene edges carry"))
+    task = "Build a human motif prior for SOX2 and MYC whose edges carry the motif binding strength."
+    wanted = [{"quote": "a human motif prior for SOX2 and MYC whose edges carry the motif binding strength",
+               "role": "result", "kind": _key(weights)}]
+    decided = apply_rules(task, raw(steps=["SPONGE"], wanted=wanted))
+    assert decided.kind == "DECLINE" and decided.rules[-1].startswith("R6")
+    assert decided.reply.startswith('"a human motif prior for SOX2 and MYC whose edges carry the motif binding strength" '
+                                    "-- I couldn't match")
 
 
 def test_r6_leaves_given_results_purposes_and_unfound_words_alone():
@@ -496,3 +508,57 @@ def test_r1_the_other_way_stated_doubt_is_asked_before_a_run():
     later = ("Expression matrix, motif prior and PPI are ready for our skin samples; build one network for them as a "
              "group. I haven't decided whether I'll look at individual samples afterwards.")
     assert apply_rules(later, raw(steps=["PANDA"])).kind == "DO"  # a doubt about a later step is not asked now
+
+
+def test_r11_one_network_per_cell_is_refused_but_a_cell_type_is_a_group():
+    task = "10x scRNA-seq of 8,000 organoid cells with priors: a separate PANDA regulatory network for every individual cell."
+    decided = apply_rules(task, raw(steps=["SCORPION"]))
+    assert decided.kind == "DECLINE" and decided.rules[-1].startswith("R11") and "never one per cell" in decided.reply
+    types = "scRNA-seq of 30,000 esophageal cells with priors; we'd like one regulatory network for each cell type."
+    assert apply_rules(types, raw(steps=["SCORPION"])).kind == "DO"
+
+
+def test_r6_snail_method_name_and_data_unit():
+    """2026-11-22: "smooth-quantile normalize" names SNAIL (L149); SCORPION's one network across all nuclei is the same
+    typed result as the bulk look-alike, the data unit aside (L086)."""
+    from netzoo_agent_core.lean import _menu
+
+    batch = next(text for _, text, _ in _menu("six") if text.startswith("An expression matrix with a named batch effect"))
+    task = "Smooth-quantile normalize the raw read counts from our 36 tumour libraries, then infer one PANDA network."
+    wanted = [{"quote": "Smooth-quantile normalize the raw read counts from our 36 tumour libraries", "role": "result",
+               "kind": _key(batch)}]
+    assert apply_rules(task, raw(steps=["NORMALIZE-EXPRESSION", "PANDA"], wanted=wanted)).kind == "DO"
+
+
+def test_r12_scorpion_only_for_single_cells():
+    """2026-11-22 (KNOWN_LIMITATIONS): bulk requests never go to SCORPION, single-cell ones never to PANDA/LIONESS."""
+    bulk = ("Raw counts from pancreatic islets of 10 mice plus motif and PPI priors; normalize with SNAIL and build a "
+            "separate network for each mouse.")
+    assert apply_rules(bulk, raw(steps=["NORMALIZE-EXPRESSION", "SCORPION"])).steps == ["NORMALIZE-EXPRESSION",
+                                                                                         "LIONESS-PANDA"]
+    cells = ("Single-nuclei RNA-seq from 3 explants, 18,000 nuclei, log-normalized, with motif and PPI priors: one "
+             "regulatory network across all nuclei.")
+    assert apply_rules(cells, raw(steps=["PANDA"])).steps == ["SCORPION"]
+    both = ("10x scRNA-seq of 14 donors: I can give you the cell-level matrix or a pseudo-bulk matrix, whichever "
+            "works. Motif and PPI priors are ready. One TF-to-gene network for this tissue.")
+    assert apply_rules(both, raw(steps=["SCORPION"])).steps == ["SCORPION"]  # both offered: not swapped
+    named = "Run SCORPION on my bulk RNA-seq of 30 samples with motif and PPI priors."
+    assert apply_rules(named, raw(steps=["SCORPION"])).steps == ["SCORPION"]  # named by the user: not swapped
+
+
+def test_r4_porcupine_from_expression_gets_its_network_step():
+    task = ("Normalized expression for 52 gastric cancer cases, a motif prior, a PPI network and a KEGG GMT: which "
+            "pathways show regulatory heterogeneity between patients?")
+    assert apply_rules(task, raw(steps=["PORCUPINE"])).steps == ["LIONESS-PANDA", "PORCUPINE"]
+    held = ("We computed LIONESS networks for 26 patients (a table with tf and gene columns) and have a Reactome GMT: "
+            "which pathways vary most between patients?")
+    assert apply_rules(held, raw(steps=["PORCUPINE"])).steps == ["PORCUPINE"]
+
+
+def test_r12_single_cell_background_does_not_move_bulk_to_scorpion():
+    """Review 2026-11-22 (Gemini): single-cell data named only as background keeps a bulk request on LIONESS."""
+    for task in ("We did bulk RNA-seq on 20 patients and used single-cell annotations from the same tissue as a "
+                 "reference; build an individual network for each patient with our motif and PPI priors.",
+                 "Bulk RNA-seq of 20 patients (we also have scRNA-seq of the same tissue, not used here); one network "
+                 "per patient with our motif and PPI priors."):
+        assert apply_rules(task, raw(steps=["LIONESS-PANDA"])).steps == ["LIONESS-PANDA"]

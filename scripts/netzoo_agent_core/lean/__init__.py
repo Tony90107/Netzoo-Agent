@@ -39,6 +39,8 @@ R8  (2026-11-21; advisor 2026-11-11) SNAIL takes raw counts: a DO with NORMALIZE
     expression TPM, FPKM, CPM, log values or microarray intensities, and states raw counts nowhere, is refused
     when the request asks for a normalization (`normalization_asked`); when it does not, the model added SNAIL on
     its own and the step is dropped (F085). `non_count_scale`: clauses with a negation count neither way.
+R11 (2026-11-22, scorpion.yaml) A network for each individual cell is refused with a code reason: SCORPION builds
+    one network per group of cells, and nothing in scope builds one per cell (L163).
 R9  (2026-11-21, scorpion.yaml) A SCORPION comparison needs two built networks on each side: a DO with SCORPION whose
     request asks for a comparison from one stated patient or donor, naming no replicate or other grouping, is
     refused (`single_source_comparison`). R8, R9 and R10 give code-written reasons.
@@ -264,11 +266,13 @@ def _same_kind_given(key: str, steps: list[str]) -> bool:
     picked = [e for e in entries if e.text == texts.get(key) and e.family]
     planned = [e for e in entries if e.kind == "produces" and e.level == "direct"
                and SYSTEM_NAME.get(e.workflow, e.workflow) in steps]
-    return any(_signature(p) == _signature(m) for p in picked for m in planned)
+    # The data unit follows the user's data, not the result (L086: SCORPION's one network for all nuclei).
+    return any(_signature(p)[:-1] == _signature(m)[:-1] for p in picked for m in planned)
 
 
 _NAMED_IN_SCOPE = __import__("re").compile(
-    r"(?<![\w-])(?:LIONESS-PANDA|PANDA|LIONESS|SCORPION|PORCUPINE|SPONGE|(?:py)?SNAIL)(?![\w-])", __import__("re").I)
+    r"(?<![\w-])(?:LIONESS-PANDA|PANDA|LIONESS|SCORPION|PORCUPINE|SPONGE|(?:py)?SNAIL)(?![\w-])"
+    r"|smooth[- _]?quantile|qsmooth", __import__("re").I)  # SNAIL's method by name (L149: read as batch removal)
 
 
 def wanted_instructions() -> str:
@@ -580,6 +584,72 @@ def doubt_before_run(task: str) -> str:
     return ""
 
 
+_PER_CELL_NETWORK = _RE.compile(
+    r"\b(?:network|PANDA|LIONESS)\w*\b[^.;]{0,60}?\b(?:for|per|of)\s+(?:each|every|every single|each single)\s+"
+    r"(?:individual\s+)?cell\b(?![- ]?(?:types?|lines?|populations?|clusters?|states?|groups?))"
+    r"|\b(?:each|every)\s+(?:individual\s+|single\s+)?cell\b(?![- ]?(?:types?|lines?|populations?|clusters?|states?|groups?))"
+    r"[^.;]{0,40}?\b(?:its|their|own|separate)\b[^.;]{0,30}?\bnetwork"
+    r"|每(?:一)?(?:個|顆)細胞(?!類型|株|群)[^。；]{0,20}?網路", _RE.I)
+
+
+def per_cell_networks(task: str) -> str:
+    """R11 (2026-11-22; scorpion.yaml: one network per group of cells): the request's words asking for a network for
+    each individual cell. A cell type, line, population or cluster is a group, not a cell."""
+    found = _PER_CELL_NETWORK.search(task)
+    return found.group(0).strip() if found else ""
+
+
+_PER_SAMPLE = _RE.compile(r"\b(?:each|every|per|individual|separate|own)\b|sample-specific|patient-specific|每(?:一)?(?:個|位|隻)", _RE.I)
+_NAMED_SCORPION = _RE.compile(r"(?<![A-Za-z0-9])SCORPION(?![A-Za-z0-9])", _RE.I)
+_NAMED_BULK_TOOL = _RE.compile(r"(?<![\w-])(?:LIONESS(?:-PANDA)?|PANDA)(?![\w-])", _RE.I)
+
+
+def data_unit_label(task: str) -> str:
+    from ..routing.data_unit import data_unit_of
+
+    return "single cells" if data_unit_of(task) == "single_cells" else "bulk samples"
+
+
+def _data_unit_swap(task: str, steps: list[str]) -> list[str]:
+    """R12 (2026-11-22; KNOWN_LIMITATIONS: "SCORPION is only for single cells, and only single cells go to SCORPION",
+    read by code from the request's words, pseudo-bulk counting as bulk -- routing.data_unit): a network workflow the
+    model chose for the other data unit is swapped, unless the user named it. Bulk SCORPION becomes LIONESS-PANDA when
+    the request asks for one network per sample or patient, else PANDA; single-cell PANDA/LIONESS-PANDA becomes
+    SCORPION."""
+    from ..routing.data_unit import data_unit_of
+
+    unit = data_unit_of(task)
+    out = list(steps)
+    from ..routing.data_unit import _SINGLE_CELL
+
+    # Only with no single-cell word at all: "either the cell-level matrix or the pseudo-bulk one" offers both (D007).
+    if unit == "bulk_samples" and "SCORPION" in out and not _NAMED_SCORPION.search(task) and not _SINGLE_CELL.search(task):
+        out[out.index("SCORPION")] = "LIONESS-PANDA" if _PER_SAMPLE.search(task) else "PANDA"
+    stated_bulk = any(_RE.search(r"\bbulk\b|整體組織|塊狀", part, _RE.I) and not _NEGATION.search(part)
+                      for part in _clauses(task))  # "bulk RNA-seq ... single-cell only as a reference" (review)
+    if unit == "single_cells" and not _NAMED_BULK_TOOL.search(task) and not stated_bulk:
+        bulk = [name for name in out if name in ("PANDA", "LIONESS-PANDA")]
+        if bulk and "SCORPION" not in out:
+            out[out.index(bulk[0])] = "SCORPION"
+            out = [name for name in out if name not in ("PANDA", "LIONESS-PANDA")]
+    return list(dict.fromkeys(out))
+
+
+_EXPRESSION_HELD = _RE.compile(r"\b(?:expression|RNA-?seq|counts?|TPM|CPM|microarray|transcriptom\w*)\b|表現|表達|定序", _RE.I)
+_NETWORKS_HELD = _RE.compile(
+    r"\bnetworks?\b[^.;]{0,60}?\b(?:computed|built|made|generated|have|from|table|file|output)\b"
+    r"|\b(?:computed|built|made|generated|have)\b[^.;]{0,60}?\bnetworks?\b|\btf\b[^.;]{0,20}\bgene\b[^.;]{0,20}columns?"
+    r"|LIONESS(?:-PANDA)? (?:output|table|networks?)|網路(?:表|檔)", _RE.I)
+
+
+def expression_without_networks(task: str) -> bool:
+    """R4 for a PORCUPINE first step (2026-11-22, L018; porcupine.yaml: expression_matrix is an incompatible input,
+    LIONESS-PANDA hands its sample-specific networks to PORCUPINE): the request states expression data and no network
+    table of its own."""
+    plain = " . ".join(part for part in _clauses(task) if not _NEGATION.search(part))
+    return bool(_EXPRESSION_HELD.search(plain)) and not _NETWORKS_HELD.search(plain)
+
+
 FOLLOW_UP = "\nUser follow-up: "
 
 
@@ -600,6 +670,18 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
     if ordered != steps:
         steps = ordered
         rules.append("R0: preparation steps run first")
+
+    swapped = _data_unit_swap(task, steps)  # R12
+    if swapped != steps:
+        rules.append(f"R12: the request's data unit is {data_unit_label(task)}, so {steps} became {swapped}")
+        steps = swapped
+
+    if steps and steps[0] == "PORCUPINE" and expression_without_networks(task):  # R4, first step
+        from ..routing.data_unit import data_unit_of
+
+        builder = "SCORPION" if data_unit_of(task) == "single_cells" else "LIONESS-PANDA"
+        steps = [builder, *steps]
+        rules.append(f"R4: PORCUPINE reads sample-specific networks and the request has expression, so {builder} first")
 
     for index, name in enumerate(steps):  # R4
         if name == "PORCUPINE" and index > 0:
@@ -725,6 +807,12 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
         kind, question = "ASK", f'You wrote that you are not sure: "{doubt}". Which is it? Nothing runs until then.'
         reply = question
         rules.append("R1: the user's own doubt about this run, so a question first")
+
+    if kind == "DO" and (per_cell := per_cell_networks(task)):  # R11
+        kind, question, steps = "DECLINE", "", steps
+        reply = (f'"{per_cell}": SCORPION builds one network per group of cells (at least min_cells of them), never one '
+                 "per cell, and no other workflow in scope builds networks for single cells.")
+        rules.append(f"R11: one network per cell ({per_cell})")
 
     decline_quote = ""
     if kind == "DO" and raw.get("wanted") is not None:  # R6
