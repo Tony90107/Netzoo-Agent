@@ -106,8 +106,12 @@ def test_r5_a_setting_the_contract_forbids_stops_and_an_unclear_one_asks():
     forbidden = apply_rules(task, raw(steps=["SCORPION"], settings=[
         {"setting": "SCORPION.min_cells", "value": "0", "quote": "min_cells 0"}]))
     assert forbidden.kind == "DECLINE" and "min_cells" in forbidden.reply
-    unclear = apply_rules(task, raw(steps=["SCORPION"], settings=[
+    named = apply_rules(task, raw(steps=["SCORPION"], settings=[
         {"setting": "SCORPION.assoc_method", "value": "Kendall", "quote": "Kendall association"}]))
+    assert named.kind == "DECLINE" and "pearson" in named.reply  # 2026-11-22: a named value is refused, not asked
+    vague = "Run SCORPION on my snRNA-seq with an association that copes with dropouts."
+    unclear = apply_rules(vague, raw(steps=["SCORPION"], settings=[
+        {"setting": "SCORPION.assoc_method", "value": "dropout-robust", "quote": "an association that copes with dropouts"}]))
     assert unclear.kind == "ASK" and "pearson" in unclear.question
 
 
@@ -411,3 +415,30 @@ def test_r6_same_typed_result_from_a_planned_step_is_not_missing():
     named = [{**look_alike[0], "quote": "infer a single cohort-wide network of which transcription factors regulate "
                                         "which genes"}]
     assert apply_rules(otter, raw(steps=["PANDA"], wanted=named)).kind == "DECLINE"  # OTTER named: not PANDA's
+
+
+def test_r5_a_named_value_outside_the_contract_is_refused():
+    task = ("Run SCORPION on my fly wing disc scRNA-seq (raw counts, 9,500 cells; motif prior and PPI ready). The "
+            "association between super-cells has to be Kendall's tau, so Pearson or Spearman won't do.")
+    setting = {"setting": "SCORPION.assoc_method", "value": "kendall",
+               "quote": "The association between super-cells has to be Kendall's tau"}
+    decided = apply_rules(task, raw(steps=["SCORPION"], settings=[setting]))
+    assert decided.kind == "DECLINE" and "named and not allowed" in decided.rules[-1]
+    assert "pearson, spearman and pcNet" in decided.reply and 'asks for "kendall"' in decided.reply
+    vague = "Run SCORPION on my 9,500 cells with motif and PPI priors; use whichever association suits sparse data best."
+    unclear = {"setting": "SCORPION.assoc_method", "value": "best for sparse data",
+               "quote": "use whichever association suits sparse data best"}
+    assert apply_rules(vague, raw(steps=["SCORPION"], settings=[unclear])).kind == "ASK"  # not named: asked
+
+
+def test_explain_sources_carry_the_scope_card_unless_switched_off(monkeypatch):
+    """2026-11-22: EXPLAIN's sources start with every workflow in scope (one line each) and the known limitations, so an
+    answer about PANDA can still point a single-cell user to SCORPION (audit F063)."""
+    from netzoo_agent_core.lean import explain_context
+
+    panda = explain_context(("PANDA",))
+    assert panda.startswith("Everything this system can run") and "- SCORPION:" in panda and "Known limitations" in panda
+    assert " Checks: " not in panda.split("---")[0]  # the card has no input checks
+    assert panda.count("# Known limitations") == 1
+    monkeypatch.setenv("NETZOO_LEAN_EXPLAIN_SCOPE", "off")
+    assert "- SCORPION:" not in explain_context(("PANDA",)) and len(explain_context(("PANDA",))) < len(panda)

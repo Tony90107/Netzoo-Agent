@@ -18,7 +18,8 @@ R4  PORCUPINE reads sample-specific networks: an aggregate-only producer before 
     (the workflow whose guidance_predecessors name it and whose handoff_targets include run_porcupine).
 
 R5  A setting the request gives (words found in it) that the workflow's contract does not allow (setting_issue) stops
-    the run; words naming no allowed choice are asked about.
+    the run; words naming no allowed choice are asked about, unless the request names that value word for word
+    (2026-11-22, D002 "Kendall's tau"): then it is refused with the contract's list of allowed values.
 R6  (2026-11-20, user: the model must not see the correspondence, or it forces a request onto a workflow) A second
     call reads the request blind -- it never sees the workflows -- and lists its parts; for each result asked for it
     picks the same result from the capability sheet's closed list of result texts (`_menu`: produces, near misses,
@@ -601,6 +602,15 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
 
             issue = setting_issue(limits, StatedSetting(name=item["setting"], quote=item["quote"],
                                                         value=item.get("value", "")))
+            value = (item.get("value") or "").strip()
+            if issue and issue.endswith(UNCLEAR_CHOICE) and value and _RE.search(
+                    rf"(?<![A-Za-z]){_RE.escape(value)}(?![A-Za-z])", task, _RE.I):
+                # 2026-11-22 (D002): the request names the value itself ("Kendall's tau") and it is not an allowed
+                # choice: a refusal with the contract's list, not a question about what was meant.
+                kind, question = "DECLINE", ""
+                reply = f'{issue.split(";")[0]}; the request asks for "{value}".'
+                rules.append(f"R5: {item['setting']} value {value} named and not allowed by the contract")
+                break
             if issue and issue.endswith(UNCLEAR_CHOICE):
                 kind, question, reply = "ASK", issue + ".", issue + "."
                 rules.append(f"R5: {item['setting']} value unclear")
@@ -719,10 +729,32 @@ _DOCS = {"SPONGE": "SPONGE_INTEGRATION.md", "SCORPION": "SCORPION_INTEGRATION.md
 _MAIN = ("PANDA", "LIONESS-PANDA", "SCORPION", "PORCUPINE", "SPONGE", "NORMALIZE-EXPRESSION")
 
 
-@lru_cache(maxsize=64)
-def explain_context(steps: tuple[str, ...]) -> str:
-    """What the answer may rest on: each workflow's contract text, its capability-sheet entries and its integration
-    doc. With no steps, the six main workflows."""
+def explain_scope() -> bool:
+    """The scope card in front of EXPLAIN's sources, unless NETZOO_LEAN_EXPLAIN_SCOPE=off."""
+    import os
+
+    return os.environ.get("NETZOO_LEAN_EXPLAIN_SCOPE", "").strip().lower() not in ("off", "0", "false")
+
+
+def _scope_card() -> str:
+    """Layer one of EXPLAIN's sources (2026-11-22, audit of 33 answers: the 2 misapplied answers had only the chosen
+    workflow's text, so a single-cell user was not pointed to SCORPION): every workflow and step in scope, one registry
+    line each (without its input checks), and the known limitations."""
+    lines = [line.split(" Checks: ")[0] for line in _tools_text("six").split("\n")]
+    limits = ROOT / "docs" / "KNOWN_LIMITATIONS.md"
+    return ("Everything this system can run (one line each):\n" + "\n".join(lines)
+            + (f"\n\n{limits.read_text()}" if limits.exists() else ""))
+
+
+def explain_context(steps: tuple[str, ...], scope_card: bool | None = None) -> str:
+    """What the answer may rest on: the scope card (`_scope_card`, unless NETZOO_LEAN_EXPLAIN_SCOPE=off), then each
+    workflow's contract text, its capability-sheet entries and its integration doc. With no steps, the six main
+    workflows."""
+    return _explain_context(tuple(steps), explain_scope() if scope_card is None else scope_card)
+
+
+@lru_cache(maxsize=128)
+def _explain_context(steps: tuple[str, ...], card: bool) -> str:
     from ..capability_sheet import sheet_entries
     from ..contract_text import contract_text
     from ..policy import ProjectPolicyLoader
@@ -736,10 +768,10 @@ def explain_context(steps: tuple[str, ...]) -> str:
         entries = [f"- {'gives' if item.kind == 'produces' else 'does not give'}: {item.text}"
                    for item in sheet_entries().values() if item.workflow == name and item.kind != "registry_wide"]
         block += entries
-        if name in _DOCS and (ROOT / "docs" / _DOCS[name]).exists():
+        if name in _DOCS and (ROOT / "docs" / _DOCS[name]).exists() and not (card and _DOCS[name] == "KNOWN_LIMITATIONS.md"):
             block.append((ROOT / "docs" / _DOCS[name]).read_text())
         parts.append("\n".join(block))
-    return "\n\n---\n\n".join(parts)
+    return "\n\n---\n\n".join(([_scope_card()] if card else []) + parts)
 
 
 def _call(client, record: list, usage_extra: bool, **request):
