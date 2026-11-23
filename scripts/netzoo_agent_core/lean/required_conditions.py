@@ -13,6 +13,13 @@ state each one: stated_has / stated_lacks / not_mentioned. Code turns DO into AS
 confidence >= the threshold; stated_lacks changes nothing here (other rules refuse what they can verify). A Jev
 failure leaves the decision as it was.
 
+R15b (2026-11-23, user: a missing required input must be asked about, never filled in by the model):
+- SPONGE in the plan covers the motif and PPI priors only when the request asks for priors to be built (R3's
+  `_BUILD_WORDS`, `prior_requested`). Otherwise the priors are still conditions: the model added SPONGE on its own
+  (R015, R051: only a STRING PPI was named, and SPONGE would have replaced it). A stated lack of priors asks nothing.
+- PORCUPINE as the first step also needs the networks to be TF-to-gene regulatory networks (porcupine.yaml refuses
+  co-expression networks): condition `regulatory` (R050).
+
 The cell-grouping condition is two questions (2026-11-23): whether networks per group are wanted, and whether a table
 labels the cells. The first version asked both at once and read "SCORPION on all cells" as "groups wanted, no table"
 (L011, F005, L155).
@@ -50,6 +57,10 @@ QUESTIONS = {
     "per_sample": _tri("Does the request say its network table holds one network per sample (sample-specific "
                        "networks)?", "Yes: one network per sample, patient or biopsy (for example LIONESS output, "
                        "one column per sample).", "No: it is a single aggregate network, or a different kind of table."),
+    "regulatory": _tri("Does the request say its networks are TF-to-gene regulatory networks (for example PANDA, "
+                       "LIONESS-PANDA or SCORPION output), rather than gene-gene co-expression networks?",
+                       "Yes: regulatory networks linking transcription factors to target genes.",
+                       "No: co-expression or gene-gene networks, or another kind of network."),
     "count": _tri("Does the request give how many samples (patients, tumours, biopsies, donors) there are?",
                   "Yes: a number of samples is given.", "No: it says the number is unknown.",
                   "No number of samples is given."),
@@ -81,6 +92,7 @@ ASK_TEXT = {
     "ppi": "a protein-protein interaction prior (do you have one?)",
     "gmt": "PORCUPINE needs a pathway gene-set file (GMT); do you have one?",
     "per_sample": "PORCUPINE reads sample-specific networks; does your table hold one network per sample?",
+    "regulatory": "PORCUPINE reads TF-to-gene regulatory networks, not co-expression networks; which kind are yours?",
     "count": "how many samples you have (the workflow has a minimum)",
     "groups": "how many patients or groups will each get a network (PORCUPINE needs at least 8)",
     "raw": "SNAIL takes raw counts; are your expression values raw counts?",
@@ -90,17 +102,25 @@ ASK_TEXT = {
 }
 
 
+def sponge_asked(task: str, steps: list[str]) -> bool:
+    """SPONGE is in the plan because the request asks for priors to be built (R15b), not because the model added it."""
+    from ..prior_request import prior_requested
+    from .request_facts import _BUILD_WORDS
+
+    return "SPONGE-PRIORS" in steps and bool(_BUILD_WORDS.search(task) or prior_requested(task))
+
+
 def conditions(task: str, raw: dict, steps: list[str]) -> list[str]:
     """The questions a DO plan's contracts need answered from the request (code, not the model)."""
     from . import _found, prep_steps
 
     need, nets = [], [s for s in steps if s not in prep_steps()]
-    if "SPONGE-PRIORS" not in steps and any(s in steps for s in ("PANDA", "LIONESS-PANDA", "SCORPION")):
+    if not sponge_asked(task, steps) and any(s in steps for s in ("PANDA", "LIONESS-PANDA", "SCORPION")):
         need += ["motif", "ppi"]
     if "PORCUPINE" in steps:
         need.append("gmt")
         if nets and nets[0] == "PORCUPINE":
-            need.append("per_sample")
+            need += ["per_sample", "regulatory"]
     count = raw.get("sample_count")
     if not (isinstance(count, int) and _found(task, raw.get("sample_count_quote", ""))):
         if "SCORPION" in steps and "PORCUPINE" in steps:
@@ -129,8 +149,11 @@ def missing(answers: dict, threshold: float = THRESHOLD) -> list[str]:
     return out
 
 
-def question_text(names: list[str]) -> str:
-    return "Before anything runs, please tell me:\n" + "\n".join(f"- {ASK_TEXT[n]}" for n in names)
+def question_text(names: list[str], steps: list[str] = ()) -> str:
+    lines = [f"- {ASK_TEXT[n]}" for n in names]
+    if "SPONGE-PRIORS" in steps and {"motif", "ppi"} & set(names):
+        lines.append("- (If you have no priors, SPONGE can build human motif and PPI priors; say so and it will.)")
+    return "Before anything runs, please tell me:\n" + "\n".join(lines)
 
 
 def check(task: str, raw: dict, decided, *, threshold: float = THRESHOLD, timeout: float = 30):
@@ -148,7 +171,7 @@ def check(task: str, raw: dict, decided, *, threshold: float = THRESHOLD, timeou
     record = {"model": JEV_MODEL, "answers": answers, "cost_usd": float((out.get("usage") or {}).get("cost") or 0)}
     if gaps := missing(answers, threshold):
         decided.kind = "ASK"
-        decided.question = decided.reply = question_text(gaps)
+        decided.question = decided.reply = question_text(gaps, list(decided.steps))
         decided.notes = []
         decided.rules.append(f"R15: not stated in the request: {', '.join(gaps)}")
     return decided, record

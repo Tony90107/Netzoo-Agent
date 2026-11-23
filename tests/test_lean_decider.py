@@ -69,7 +69,7 @@ def test_r3_sponge_offline_declines_and_missing_species_asks():
                           raw(steps=["SPONGE"]))
     assert offline.kind == "DECLINE" and "internet" in offline.reply
     species = apply_rules("Build motif and PPI priors for SOX2 and MYC.", raw(steps=["SPONGE"]))
-    assert species.kind == "DO" and any("human" in note for note in species.notes)  # 2026-11-22: priors only
+    assert species.kind == "ASK" and "human" in species.question  # 2026-11-23: priors only asks the organism too
     mouse = apply_rules("Build mouse motif and PPI priors for Sox2.", raw(steps=["SPONGE"]))
     assert mouse.kind == "DECLINE" and "human priors only" in mouse.reply
 
@@ -456,9 +456,12 @@ def test_explain_sources_carry_the_scope_card_unless_switched_off(monkeypatch):
     assert "- SCORPION:" not in explain_context(("PANDA",)) and len(explain_context(("PANDA",))) < len(panda)
 
 
-def test_r3_priors_only_needs_no_species_question():
+def test_r3_priors_only_asks_the_species():
+    """2026-11-23 (user): the organism must come from the user, priors only too (withdraws the 2026-11-22 exemption)."""
     only = "Run SPONGE for TP63, SOX2 and KLF5 and write the motif and PPI priors to the default folder."
-    assert apply_rules(only, raw(steps=["SPONGE"])).kind == "DO"
+    assert apply_rules(only, raw(steps=["SPONGE"])).kind == "ASK"
+    human = "Run SPONGE for human TP63, SOX2 and KLF5 and write the motif and PPI priors to the default folder."
+    assert apply_rules(human, raw(steps=["SPONGE"])).kind == "DO"
     with_data = ("No motif or PPI files yet. Build the priors with SPONGE for MYOD1 and MEF2C, then run LIONESS on my "
                  "20 skeletal muscle samples.")
     assert apply_rules(with_data, raw(steps=["SPONGE", "LIONESS-PANDA"])).kind == "ASK"  # the data's species matters

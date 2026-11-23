@@ -15,10 +15,10 @@ R1  A question needs the user's own doubt: ASK stands only when `unsure_quote` i
     In a follow-up ("Previous NetZoo goal: ...\nUser follow-up: ..."), the doubt must be in the follow-up: the earlier
     doubt is what the question already asked about.
 R2  Sample minimums (workflow_conditions.min_samples), when the request states the count in words found in it.
-R3  SPONGE's own limits (prior_request.sponge_blockers, the non-human check of execution_sponge). When SPONGE is the only
-    step (priors only, no expression data of the user's), an unstated organism is not asked about: SPONGE builds human
-    priors, and the plan says so (2026-11-22, large blind bank: 7 of 9 needless questions were this one; replay: 5
-    gold-do items fixed, nothing else changed).
+R3  SPONGE's own limits (prior_request.sponge_blockers, the non-human check of execution_sponge). An unstated organism
+    is asked about, also when SPONGE is the only step (2026-11-23, user: the organism decides whether the priors are
+    usable, so it must come from the user; this withdraws the 2026-11-22 exemption that let priors-only requests
+    default to human, which the large blind bank had labelled do and the R15b blind bank labels ask).
 R4  PORCUPINE reads sample-specific networks: an aggregate-only producer before it becomes its per-sample version
     (the workflow whose guidance_predecessors name it and whose handoff_targets include run_porcupine).
 
@@ -505,9 +505,7 @@ def apply_rules(task: str, raw: dict) -> LeanDecision:
             steps = [name for name in steps if name != "SPONGE-PRIORS"]
             rules.append("R3: SPONGE not asked for and the request has its own priors, so the step was dropped")
     if kind == "DO" and "SPONGE-PRIORS" in steps:  # R3
-        blockers = sponge_blockers(task)
-        if steps == ["SPONGE-PRIORS"]:  # 2026-11-22: priors only, no data of the user's whose species could differ
-            blockers = [b for b in blockers if "say whether they are human" not in b]  # SPONGE's default is human
+        blockers = sponge_blockers(task)  # an unstated organism is asked about, priors-only too (2026-11-23)
         if (non_human := _NON_HUMAN.search(task)):
             blockers.append(f"SPONGE builds human priors only (hg38, hg19 or T2T-CHM13); the request names "
                             f"{non_human.group(0)}")
