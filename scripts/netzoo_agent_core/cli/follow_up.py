@@ -252,6 +252,12 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         decision.capability_match_status == "ambiguous"
         and decision.clarification_question
     ):
+        if decision.core is not None and decision.core.basis == "lean":
+            # The lean decider's question is the model's, in the request's language: quoted as data, not checked as
+            # agent-authored English (a Chinese question crashed the turn, dev D029, 2026-11-20).
+            return NextTurnPrompt(kind="clarify_outcome", question=_ui_text_with_user_data(
+                f"{user_data_token(0)}\nAnswer this clarification or describe another NetZoo goal.",
+                [decision.clarification_question]))
         return NextTurnPrompt(
             kind="clarify_outcome",
             question=_ui_text(

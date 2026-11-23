@@ -223,7 +223,9 @@ SCHEMA_DIGESTS = {
     # Same day: optional code-owned TaskDecision.normalization_choice (named / need / default / answered, with the
     # verified need quotes and the candidate methods); omitted from dumps while unset.
     # Same day: PORCUPINE min/max_pathway_size are at least 4 (irlba's 3-component PCA needs 4 edges).
-    "TaskDecision": "c8febc04e887fa7639f056cd55e5d2e4a21048c4d29f319ab1b3c461e22a6fe7",
+    # 2026-11-20 (lean decider): code-owned core.kind gains EXPLAIN and run_verdict.verdict gains contract_rules,
+    # both written only by graph/lean_call.py (NETZOO_LEAN_DECIDER=on); every existing decision loads unchanged.
+    "TaskDecision": "77d950864f2c377b993eb7713fdd00c201a265ea39a390a9f29f226c9311d5b2",
     "RouterDecision": "bef9d4bafb13d9ac1ff69128869e41ab6234866cf28e47623eedfd25abea8a41",
     "RequestedOutcome": "9be3f9457d9e5346db5ab185b4afe128039ca973e9e54dfb31b2748a5e7f567e",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

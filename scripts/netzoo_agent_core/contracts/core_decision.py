@@ -12,7 +12,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-CoreKind = Literal["CLARIFY", "ASK", "DECLINE", "DO", "UNCHECKED"]
+CoreKind = Literal["CLARIFY", "ASK", "DECLINE", "DO", "UNCHECKED", "EXPLAIN"]
+"""EXPLAIN (lean decider, 2026-11-20): a question about how methods work or how to proceed, answered from the
+contracts; nothing is selected or run."""
 
 
 class FactQuestion(BaseModel):

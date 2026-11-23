@@ -89,6 +89,9 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     # Logs 383, 387: the data-needs plan, then what was understood to be asked for.
     result = with_capability_check_reply(with_data_plan_reply(result, state, _reply), state, _reply)
     result = with_run_choice_reply(result, state, _reply)  # tied run; hybrid spec 4: the veto's notes on a DO
+    from ..interpretation.lean_view import with_lean_notes  # lean decider: a DO's plan details
+
+    result = with_lean_notes(result, state, _reply)
     return record_core_view(context, state, with_veto_notes(result, state, _reply))  # core view
 
 
